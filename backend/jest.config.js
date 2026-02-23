@@ -7,7 +7,5 @@ module.exports = {
   },
   moduleFileExtensions: ['ts', 'js', 'html'],
   coverageDirectory: '../coverage/backend',
-  rootDir: 'src',
-  testRegex: '.*\\.spec\\.ts$',
   collectCoverageFrom: ['**/*.(t|j)s'],
 };
