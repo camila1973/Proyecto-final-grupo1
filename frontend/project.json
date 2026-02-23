@@ -59,6 +59,14 @@
       "options": {
         "lintFilePatterns": ["frontend/src/**/*.{ts,tsx,js,jsx}"]
       }
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/frontend"],
+      "options": {
+        "jestConfig": "frontend/jest.config.js",
+        "passWithNoTests": true
+      }
     }
   }
 }

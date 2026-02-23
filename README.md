@@ -153,6 +153,7 @@ proyecto-travelhub/
 # Test a specific project
 nx test backend
 nx test frontend
+nx test mobile
 
 # Test all projects
 nx run-many -t test
@@ -160,6 +161,15 @@ nx run-many -t test
 # Watch mode
 nx test backend --watch
 ```
+
+## 🔁 CI (GitHub Actions)
+
+This repository includes a CI workflow at `.github/workflows/ci.yml` that:
+
+- builds `backend`, `frontend`, and `mobile`
+- runs tests for `backend`, `frontend`, and `mobile`
+
+It runs on every push and pull request.
 
 ## 📚 Learn More
 

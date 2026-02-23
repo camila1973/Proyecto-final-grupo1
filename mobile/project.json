@@ -49,6 +49,14 @@
       "options": {
         "lintFilePatterns": ["mobile/**/*.{ts,tsx,js,jsx}"]
       }
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/mobile"],
+      "options": {
+        "jestConfig": "mobile/jest.config.js",
+        "passWithNoTests": true
+      }
     }
   }
 }
