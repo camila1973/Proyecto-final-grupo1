@@ -1,0 +1,54 @@
+{
+  "name": "mobile",
+  "$schema": "../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "mobile",
+  "projectType": "application",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/expo:export",
+      "options": {
+        "platform": "all",
+        "outputDir": "dist/mobile"
+      }
+    },
+    "start": {
+      "executor": "@nx/expo:start",
+      "options": {
+        "port": 8081
+      }
+    },
+    "serve": {
+      "executor": "@nx/expo:start",
+      "options": {
+        "port": 8081
+      }
+    },
+    "run-ios": {
+      "executor": "@nx/expo:run",
+      "options": {
+        "platform": "ios"
+      }
+    },
+    "run-android": {
+      "executor": "@nx/expo:run",
+      "options": {
+        "platform": "android"
+      }
+    },
+    "export": {
+      "executor": "@nx/expo:export",
+      "options": {
+        "platform": "all",
+        "outputDir": "dist/mobile"
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "outputs": ["{options.outputFile}"],
+      "options": {
+        "lintFilePatterns": ["mobile/**/*.{ts,tsx,js,jsx}"]
+      }
+    }
+  }
+}
