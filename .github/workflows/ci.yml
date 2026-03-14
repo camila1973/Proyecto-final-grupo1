@@ -18,6 +18,7 @@ jobs:
 
     env:
       NX_DAEMON: 'false'
+      NX_TUI: 'false'
       HUSKY: '0'
 
     steps:
