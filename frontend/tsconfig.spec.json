@@ -1,7 +1,12 @@
 {
   "extends": "./tsconfig.app.json",
   "compilerOptions": {
-    "types": ["jest", "node"]
+    "types": ["jest", "node"],
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "verbatimModuleSyntax": false,
+    "allowImportingTsExtensions": false,
+    "noEmit": true
   },
   "include": [
     "src/**/*.spec.ts",
