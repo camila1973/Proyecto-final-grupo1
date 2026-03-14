@@ -9,5 +9,6 @@
     "**/*.test.ts",
     "**/*.test.tsx",
     "**/*.d.ts"
-  ]
+  ],
+  "exclude": []
 }

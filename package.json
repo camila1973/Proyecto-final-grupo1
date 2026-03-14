@@ -28,6 +28,7 @@
     "affected:build": "NX_DAEMON=false NX_TUI=false nx affected -t build --outputStyle=static",
     "affected:test": "NX_DAEMON=false NX_TUI=false nx affected -t test --outputStyle=static",
     "affected:lint": "NX_DAEMON=false NX_TUI=false nx affected -t lint --outputStyle=static",
+    "typecheck": "tsc --noEmit -p services/api-gateway/tsconfig.json && tsc --noEmit -p services/auth-service/tsconfig.json && tsc --noEmit -p services/booking-service/tsconfig.json && tsc --noEmit -p services/inventory-service/tsconfig.json && tsc --noEmit -p services/notification-service/tsconfig.json && tsc --noEmit -p services/partners-service/tsconfig.json && tsc --noEmit -p services/payment-service/tsconfig.json && tsc --noEmit -p services/search-service/tsconfig.json && tsc --noEmit -p frontend/tsconfig.app.json && tsc --noEmit -p frontend/tsconfig.spec.json && tsc --noEmit -p mobile/tsconfig.json && tsc --noEmit -p mobile/tsconfig.spec.json",
     "docker:dev": "docker build -t travelhub-base -f docker/Dockerfile.base . && docker compose up --build",
     "docker:down": "docker compose down -v",
     "infra:install": "cd pulumi && npm install",
