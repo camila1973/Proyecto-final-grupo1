@@ -18,6 +18,7 @@ jobs:
       NX_DAEMON: 'false'
       NX_TUI: 'false'
       HUSKY: '0'
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 
     steps:
       - name: Checkout
