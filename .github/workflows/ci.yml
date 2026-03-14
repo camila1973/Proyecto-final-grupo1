@@ -99,11 +99,11 @@ jobs:
             echo "NX_BASE=${{ github.event.before }}" >> "$GITHUB_ENV"
             echo "NX_HEAD=${{ github.sha }}" >> "$GITHUB_ENV"
           fi
-      - run: npm exec -- nx affected -t test --base="$NX_BASE" --head="$NX_HEAD" --outputStyle=static -- --coverage
+      - run: npm exec -- nx run-many -t test --outputStyle=static -- --coverage
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          directory: coverage/
+          files: ./coverage/**/lcov.info
           flags: monorepo
           fail_ci_if_error: false
