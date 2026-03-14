@@ -27,6 +27,11 @@
     "affected:lint": "nx affected -t lint",
     "docker:dev": "docker build -t travelhub-base -f docker/Dockerfile.base . && docker compose up --build",
     "docker:down": "docker compose down -v",
+    "infra:install": "cd pulumi && npm install",
+    "infra:preview": "cd pulumi && pulumi preview",
+    "infra:up": "cd pulumi && pulumi up",
+    "infra:down": "cd pulumi && pulumi destroy",
+    "deploy:frontend": "npm run build:frontend && aws s3 sync dist/frontend/ s3://$(cd pulumi && pulumi stack output frontendBucket)/ --delete && aws cloudfront create-invalidation --distribution-id $(cd pulumi && pulumi stack output cdnId 2>/dev/null || echo '') --paths '/*'",
     "prepare": "husky"
   },
   "dependencies": {

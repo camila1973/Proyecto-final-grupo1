@@ -1,4 +1,5 @@
-FROM travelhub-base AS builder
+ARG BASE_IMAGE=travelhub-base
+FROM ${BASE_IMAGE} AS builder
 COPY frontend/ ./frontend/
 RUN npx nx build frontend --configuration=production
 
