@@ -7,5 +7,6 @@ module.exports = {
   },
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'html'],
   coverageDirectory: '../coverage/frontend',
+  coverageReporters: ['lcov', 'text-summary'],
   collectCoverageFrom: ['src/**/*.{ts,tsx,js,jsx}'],
 };
