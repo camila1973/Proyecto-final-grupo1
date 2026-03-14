@@ -10,32 +10,39 @@ permissions:
   contents: read
   pull-requests: write
 
+env:
+  NX_DAEMON: 'false'
+  NX_TUI: 'false'
+  HUSKY: '0'
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 jobs:
-  affected:
-    name: Affected Projects
+  typecheck:
+    name: Type Check
     runs-on: ubuntu-latest
-
-    env:
-      NX_DAEMON: 'false'
-      NX_TUI: 'false'
-      HUSKY: '0'
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version-file: '.nvmrc'
           cache: npm
+      - run: npm ci
+      - run: npm run typecheck
 
-      - name: Install dependencies
-        run: npm ci
-
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+      - run: npm ci
       - name: Set Nx Base/Head
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
@@ -45,19 +52,54 @@ jobs:
             echo "NX_BASE=${{ github.event.before }}" >> "$GITHUB_ENV"
             echo "NX_HEAD=${{ github.sha }}" >> "$GITHUB_ENV"
           fi
+      - run: npm exec -- nx affected -t lint --base="$NX_BASE" --head="$NX_HEAD" --outputStyle=static
 
-      - name: Type Check
-        run: npm run typecheck
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+      - run: npm ci
+      - name: Set Nx Base/Head
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "NX_BASE=origin/${{ github.base_ref }}" >> "$GITHUB_ENV"
+            echo "NX_HEAD=${{ github.sha }}" >> "$GITHUB_ENV"
+          else
+            echo "NX_BASE=${{ github.event.before }}" >> "$GITHUB_ENV"
+            echo "NX_HEAD=${{ github.sha }}" >> "$GITHUB_ENV"
+          fi
+      - run: npm exec -- nx affected -t build --base="$NX_BASE" --head="$NX_HEAD" --outputStyle=static
 
-      - name: Lint Affected
-        run: npm exec -- nx affected -t lint --base="$NX_BASE" --head="$NX_HEAD" --outputStyle=static
-
-      - name: Build Affected
-        run: npm exec -- nx affected -t build --base="$NX_BASE" --head="$NX_HEAD" --outputStyle=static
-
-      - name: Test Affected
-        run: npm exec -- nx affected -t test --base="$NX_BASE" --head="$NX_HEAD" --outputStyle=static -- --coverage
-
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+      - run: npm ci
+      - name: Set Nx Base/Head
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "NX_BASE=origin/${{ github.base_ref }}" >> "$GITHUB_ENV"
+            echo "NX_HEAD=${{ github.sha }}" >> "$GITHUB_ENV"
+          else
+            echo "NX_BASE=${{ github.event.before }}" >> "$GITHUB_ENV"
+            echo "NX_HEAD=${{ github.sha }}" >> "$GITHUB_ENV"
+          fi
+      - run: npm exec -- nx affected -t test --base="$NX_BASE" --head="$NX_HEAD" --outputStyle=static -- --coverage
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
