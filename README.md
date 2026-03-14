@@ -1,189 +1,130 @@
 [![codecov](https://codecov.io/github/camila1973/Proyecto-final-grupo1/graph/badge.svg?token=SOH7ECOANV)](https://codecov.io/github/camila1973/Proyecto-final-grupo1)
-# TravelHub Nx Monorepo
 
-This is a monorepo workspace managed by [Nx](https://nx.dev), containing three applications:
+# TravelHub
 
-- **backend** - NestJS API server
-- **frontend** - React + Vite web application  
-- **mobile** - Expo React Native mobile application
+Nx 22 monorepo for the TravelHub platform — a hotel and travel booking system built with NestJS microservices, React, and React Native.
 
-## 🚀 Getting Started
+## Structure
 
-### Prerequisites
+```
+/
+├── services/
+│   ├── api-gateway/          # Port 3000 — routes requests, JWT validation, rate limiting
+│   ├── auth-service/         # Port 3001 — registration, login, JWT, MFA, RBAC
+│   ├── search-service/       # Port 3002 — property search and ranking
+│   ├── inventory-service/    # Port 3003 — room/rate/availability management
+│   ├── booking-service/      # Port 3004 — reservations, cart, fare calculation
+│   ├── payment-service/      # Port 3005 — Stripe/MercadoPago/PayPal, fraud detection
+│   ├── notification-service/ # Port 3006 — email and push notifications
+│   └── partners-service/     # Port 3007 — hotel/agency portal and dashboards
+├── frontend/                 # React 19 + Vite SPA (port 4200)
+└── mobile/                   # Expo 54 + React Native app (port 8081)
+```
+
+## Prerequisites
 
 - Node.js 24
-- npm or yarn
-- For mobile development: iOS Simulator or Android Emulator
+- npm
+- For mobile: iOS Simulator or Android Emulator
 
-### Installation
+## Getting Started
 
 ```bash
 npm install
 ```
 
-## 📦 Projects
-
-### Backend (NestJS)
-Located in `backend/`
+## Development
 
 ```bash
-# Build
-nx build backend
+npm start                     # Start all apps concurrently
 
-# Serve in development
-nx serve backend
+# Individual services
+npm run serve:api-gateway     # API Gateway     (port 3000)
+npm run serve:auth            # Auth service    (port 3001)
+npm run serve:search          # Search service  (port 3002)
+npm run serve:inventory       # Inventory       (port 3003)
+npm run serve:booking         # Booking         (port 3004)
+npm run serve:payment         # Payment         (port 3005)
+npm run serve:notification    # Notification    (port 3006)
+npm run serve:partners        # Partners        (port 3007)
+npm run serve:frontend        # Frontend        (port 4200)
+npm run start:mobile          # Mobile (Expo)   (port 8081)
 
-# Run tests
-nx test backend
-
-# Lint
-nx lint backend
+# Mobile simulators
+nx run-ios mobile             # iOS simulator
+nx run-android mobile         # Android emulator
 ```
 
-### Frontend (React + Vite)
-Located in `frontend/`
+## Testing
 
 ```bash
-# Build
-nx build frontend
-
-# Serve in development (runs on http://localhost:4200)
-nx serve frontend
-
-# Preview production build
-nx preview frontend
-
-# Lint
-nx lint frontend
+npm test                               # Test all projects
+nx test auth-service                   # Single service
+nx test auth-service --watch           # Watch mode
+nx test auth-service -- --coverage     # With coverage
+npm run affected:test                  # Only changed projects
 ```
 
-### Mobile (Expo)
-Located in `mobile/`
+## Linting
 
 ```bash
-# Start Expo dev server
-nx start mobile
-
-# Run on iOS
-nx run-ios mobile
-
-# Run on Android
-nx run-android mobile
-
-# Export for production
-nx export mobile
-
-# Lint
-nx lint mobile
+npm run lint                  # Lint all projects
+npm run lint:fix              # Lint and auto-fix
+npm run affected:lint         # Only changed projects
 ```
 
-## 🔧 Common Nx Commands
-
-### Run Multiple Projects
+## Type Checking
 
 ```bash
-# Run all projects in development
-nx run-many -t serve
-
-# Build all projects
-nx run-many -t build
-
-# Lint all projects
-nx run-many -t lint
-
-# Test all projects
-nx run-many -t test
+npm run typecheck             # Type check all projects
 ```
 
-### Dependency Graph
+## Building
 
 ```bash
-# View project dependency graph
-nx graph
+npm run build                 # Build all projects
+npm run build:services        # Build all 8 microservices
+npm run build:frontend        # Build frontend → dist/frontend/
+npm run affected:build        # Only changed projects
 ```
 
-### Affected Commands
-
-Run commands only on projects affected by your changes:
+## Dependency Graph
 
 ```bash
-# Build only affected projects
-nx affected -t build
-
-# Test only affected projects
-nx affected -t test
-
-# Lint only affected projects
-nx affected -t lint
+npm run graph
 ```
 
-## 📁 Workspace Structure
+## CI
 
-```
-proyecto-travelhub/
-├── backend/           # NestJS application
-│   ├── src/
-│   ├── test/
-│   └── project.json   # Nx project configuration
-├── frontend/          # React + Vite application
-│   ├── src/
-│   ├── public/
-│   └── project.json   # Nx project configuration
-├── mobile/            # Expo application
-│   ├── app/
-│   ├── components/
-│   └── project.json   # Nx project configuration
-├── dist/              # Build outputs
-├── node_modules/      # Shared dependencies
-├── nx.json            # Nx workspace configuration
-└── package.json       # Root package.json with all dependencies
-```
+GitHub Actions runs on every push to `main` and on pull requests:
 
-## 🎯 Benefits of Nx Monorepo
+1. **Type check** — all projects
+2. **Lint** — affected projects only
+3. **Build** — affected projects only
+4. **Test** — affected projects only, with coverage
+5. **Coverage** — uploaded to Codecov (requires `CODECOV_TOKEN` repository secret)
 
-- **Unified Dependencies**: Single node_modules for all projects
-- **Smart Caching**: Build and test cache for faster execution
-- **Affected Commands**: Only build/test what changed
-- **Code Sharing**: Easy to create shared libraries between projects
-- **Task Orchestration**: Run tasks in parallel with optimal scheduling
-- **Dependency Graph**: Visualize project relationships
+## Code Quality
 
-## 🧪 Testing
+- **Pre-commit**: Husky runs lint-staged (ESLint + Prettier) on staged files only
+- **CI**: type checking, linting, building, and testing enforced on every PR
 
-```bash
-# Test a specific project
-nx test backend
-nx test frontend
-nx test mobile
+## Tech Stack
 
-# Test all projects
-nx run-many -t test
+| Layer | Technology |
+|---|---|
+| Monorepo | Nx 22.5 |
+| Backend | NestJS 11, Node.js 24 |
+| Frontend | React 19, Vite 7 |
+| Mobile | Expo 54, React Native 0.81 |
+| Language | TypeScript 5 |
+| Testing | Jest 30, ts-jest |
+| Linting | ESLint 9 (flat config), Prettier |
+| Deployment | AWS App Runner (services), S3 + CloudFront (frontend) |
 
-# Watch mode
-nx test backend --watch
-```
-
-## 🔁 CI (GitHub Actions)
-
-This repository includes a CI workflow at `.github/workflows/ci.yml` that:
-
-- builds `backend`, `frontend`, and `mobile`
-- runs tests for `backend`, `frontend`, and `mobile`
-
-It runs on every push and pull request.
-
-## 📚 Learn More
+## Learn More
 
 - [Nx Documentation](https://nx.dev)
 - [NestJS Documentation](https://nestjs.com)
 - [React Documentation](https://react.dev)
-- [Vite Documentation](https://vitejs.dev)
 - [Expo Documentation](https://docs.expo.dev)
-
-## 🔄 Migration Notes
-
-This workspace was converted from separate projects to an Nx monorepo:
-- All dependencies consolidated to root `package.json`
-- Each project has its own `project.json` for Nx configuration
-- Build outputs go to `dist/<project-name>`
-- Nx executors handle building, serving, and testing
