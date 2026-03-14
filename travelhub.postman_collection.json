@@ -1,0 +1,288 @@
+{
+  "info": {
+    "name": "TravelHub API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000",
+      "type": "string",
+      "enabled": true
+    }
+  ],
+  "item": [
+    {
+      "name": "Gateway",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/health" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/auth/health" }
+          }
+        },
+        {
+          "name": "List Users",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/auth/users" }
+          }
+        },
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{base_url}}/api/auth/register" },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test@travelhub.com\",\n  \"password\": \"secret123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{base_url}}/api/auth/login" },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"alice@travelhub.com\",\n  \"password\": \"secret123\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Search",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/search/health" }
+          }
+        },
+        {
+          "name": "List Properties",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/search/properties" }
+          }
+        },
+        {
+          "name": "Search by City",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/search/properties?city=Cancún&checkIn=2026-04-10&checkOut=2026-04-15&guests=2",
+              "query": [
+                { "key": "city", "value": "Cancún" },
+                { "key": "checkIn", "value": "2026-04-10" },
+                { "key": "checkOut", "value": "2026-04-15" },
+                { "key": "guests", "value": "2" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Property by ID",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/search/properties/prop_001" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Inventory",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/inventory/health" }
+          }
+        },
+        {
+          "name": "List Rooms",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/inventory/rooms" }
+          }
+        },
+        {
+          "name": "Rooms by Property",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/inventory/rooms?propertyId=prop_001",
+              "query": [{ "key": "propertyId", "value": "prop_001" }]
+            }
+          }
+        },
+        {
+          "name": "Check Availability",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/inventory/availability?propertyId=prop_001&checkIn=2026-04-10&checkOut=2026-04-15",
+              "query": [
+                { "key": "propertyId", "value": "prop_001" },
+                { "key": "checkIn", "value": "2026-04-10" },
+                { "key": "checkOut", "value": "2026-04-15" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Booking",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/booking/health" }
+          }
+        },
+        {
+          "name": "List Reservations",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/booking/reservations" }
+          }
+        },
+        {
+          "name": "Get Reservation by ID",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/booking/reservations/res_001" }
+          }
+        },
+        {
+          "name": "Create Reservation",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{base_url}}/api/booking/reservations" },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"propertyId\": \"prop_001\",\n  \"roomId\": \"room_001\",\n  \"guestId\": \"usr_002\",\n  \"checkIn\": \"2026-04-10\",\n  \"checkOut\": \"2026-04-15\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Payment",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/payment/health" }
+          }
+        },
+        {
+          "name": "List Transactions",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/payment/transactions" }
+          }
+        },
+        {
+          "name": "Charge",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{base_url}}/api/payment/charge" },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reservationId\": \"res_001\",\n  \"amount\": 1750,\n  \"currency\": \"USD\",\n  \"provider\": \"stripe\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/notifications/health" }
+          }
+        },
+        {
+          "name": "List Notifications",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/notifications/notifications" }
+          }
+        },
+        {
+          "name": "Send Notification",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{base_url}}/api/notifications/notifications/send" },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"usr_002\",\n  \"channel\": \"email\",\n  \"subject\": \"Booking Confirmed\",\n  \"message\": \"Your reservation res_001 has been confirmed.\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Partners",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/partners/health" }
+          }
+        },
+        {
+          "name": "List Hotels",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/partners/hotels" }
+          }
+        },
+        {
+          "name": "Hotel Revenue",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/partners/hotels/hotel_001/revenue" }
+          }
+        },
+        {
+          "name": "All Revenue",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/partners/revenue" }
+          }
+        }
+      ]
+    }
+  ]
+}
