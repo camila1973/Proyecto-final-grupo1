@@ -1,0 +1,1 @@
+NX_DAEMON=false NX_TUI=false npx lint-staged

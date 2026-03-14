@@ -1,0 +1,19 @@
+{
+  "name": "travelhub-infra",
+  "version": "1.0.0",
+  "main": "bin/index.js",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "devDependencies": {
+    "@types/node": "^24",
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@pulumi/aws": "^6",
+    "@pulumi/awsx": "^2",
+    "@pulumi/docker": "^4",
+    "@pulumi/pulumi": "^3",
+    "@pulumi/random": "^4"
+  }
+}

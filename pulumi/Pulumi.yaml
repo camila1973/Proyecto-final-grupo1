@@ -1,0 +1,6 @@
+name: travelhub
+runtime: nodejs
+description: TravelHub — AWS App Runner + RDS + CloudFront (cheapest viable cloud setup)
+config:
+  aws:region:
+    default: us-east-1

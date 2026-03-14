@@ -1,0 +1,28 @@
+{
+  "name": "notification-service",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "services/notification-service/src",
+  "projectType": "application",
+  "tags": ["scope:backend"],
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "outputs": ["{workspaceRoot}/dist/notification-service"],
+      "options": { "command": "nest build", "cwd": "services/notification-service" }
+    },
+    "serve": {
+      "executor": "nx:run-commands",
+      "options": { "command": "node ../../dist/notification-service/main.js", "cwd": "services/notification-service" }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "outputs": ["{options.outputFile}"],
+      "options": { "lintFilePatterns": ["services/notification-service/src/**/*.ts"] }
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/notification-service"],
+      "options": { "jestConfig": "services/notification-service/jest.config.js", "passWithNoTests": true }
+    }
+  }
+}
