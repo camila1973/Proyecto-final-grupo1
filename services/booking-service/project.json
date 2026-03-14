@@ -1,0 +1,28 @@
+{
+  "name": "booking-service",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "services/booking-service/src",
+  "projectType": "application",
+  "tags": ["scope:backend"],
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "outputs": ["{workspaceRoot}/dist/booking-service"],
+      "options": { "command": "nest build", "cwd": "services/booking-service" }
+    },
+    "serve": {
+      "executor": "nx:run-commands",
+      "options": { "command": "node ../../dist/booking-service/main.js", "cwd": "services/booking-service" }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "outputs": ["{options.outputFile}"],
+      "options": { "lintFilePatterns": ["services/booking-service/src/**/*.ts"] }
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/booking-service"],
+      "options": { "jestConfig": "services/booking-service/jest.config.js", "passWithNoTests": true }
+    }
+  }
+}

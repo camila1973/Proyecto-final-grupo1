@@ -1,0 +1,19 @@
+FROM travelhub-base AS builder
+ARG SERVICE_NAME
+ARG SERVICE_PORT
+COPY services/${SERVICE_NAME}/ ./services/${SERVICE_NAME}/
+WORKDIR /workspace/services/${SERVICE_NAME}
+RUN ../../node_modules/.bin/nest build --config nest-cli.json
+
+FROM node:20-alpine AS runtime
+ARG SERVICE_NAME
+ARG SERVICE_PORT
+ENV NODE_ENV=production
+ENV PORT=${SERVICE_PORT}
+ENV SERVICE_NAME=${SERVICE_NAME}
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev --ignore-scripts
+COPY --from=builder /workspace/dist/${SERVICE_NAME}/ ./dist/${SERVICE_NAME}/
+EXPOSE ${SERVICE_PORT}
+CMD ["sh", "-c", "node dist/$SERVICE_NAME/main.js"]

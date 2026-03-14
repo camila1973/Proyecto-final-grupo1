@@ -1,0 +1,28 @@
+{
+  "name": "payment-service",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "services/payment-service/src",
+  "projectType": "application",
+  "tags": ["scope:backend"],
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "outputs": ["{workspaceRoot}/dist/payment-service"],
+      "options": { "command": "nest build", "cwd": "services/payment-service" }
+    },
+    "serve": {
+      "executor": "nx:run-commands",
+      "options": { "command": "node ../../dist/payment-service/main.js", "cwd": "services/payment-service" }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "outputs": ["{options.outputFile}"],
+      "options": { "lintFilePatterns": ["services/payment-service/src/**/*.ts"] }
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/payment-service"],
+      "options": { "jestConfig": "services/payment-service/jest.config.js", "passWithNoTests": true }
+    }
+  }
+}

@@ -14,7 +14,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        project: [backend, frontend, mobile]
+        project: [api-gateway, auth-service, search-service, inventory-service, booking-service, payment-service, notification-service, partners-service, frontend, mobile]
 
     env:
       NX_DAEMON: 'false'

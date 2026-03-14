@@ -1,0 +1,28 @@
+{
+  "name": "partners-service",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "services/partners-service/src",
+  "projectType": "application",
+  "tags": ["scope:backend"],
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "outputs": ["{workspaceRoot}/dist/partners-service"],
+      "options": { "command": "nest build", "cwd": "services/partners-service" }
+    },
+    "serve": {
+      "executor": "nx:run-commands",
+      "options": { "command": "node ../../dist/partners-service/main.js", "cwd": "services/partners-service" }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "outputs": ["{options.outputFile}"],
+      "options": { "lintFilePatterns": ["services/partners-service/src/**/*.ts"] }
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/partners-service"],
+      "options": { "jestConfig": "services/partners-service/jest.config.js", "passWithNoTests": true }
+    }
+  }
+}

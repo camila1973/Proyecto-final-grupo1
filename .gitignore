@@ -62,3 +62,4 @@ Thumbs.db
 # Misc
 *.pem
 .cache
+.nx/polygraph
