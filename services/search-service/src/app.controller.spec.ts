@@ -1,8 +1,8 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
+import { Test, TestingModule } from "@nestjs/testing";
+import { AppController } from "./app.controller";
+import { AppService } from "./app.service";
 
-describe('AppController', () => {
+describe("AppController", () => {
   let appController: AppController;
 
   beforeEach(async () => {
@@ -14,9 +14,12 @@ describe('AppController', () => {
     appController = app.get<AppController>(AppController);
   });
 
-  describe('health', () => {
-    it('should return status ok and service name', () => {
-      expect(appController.getHealth()).toEqual({ status: 'ok', service: 'search-service' });
+  describe("health", () => {
+    it("should return status ok and service name", () => {
+      expect(appController.getHealth()).toEqual({
+        status: "ok",
+        service: "search-service",
+      });
     });
   });
 });

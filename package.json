@@ -20,12 +20,14 @@
     "start:mobile": "nx start mobile",
     "test": "nx run-many -t test",
     "lint": "nx run-many -t lint",
+    "lint:fix": "nx run-many -t lint --fix",
     "graph": "nx graph",
     "affected:build": "nx affected -t build",
     "affected:test": "nx affected -t test",
     "affected:lint": "nx affected -t lint",
     "docker:dev": "docker build -t travelhub-base -f docker/Dockerfile.base . && docker compose up --build",
-    "docker:down": "docker compose down -v"
+    "docker:down": "docker compose down -v",
+    "prepare": "husky"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
@@ -87,6 +89,7 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
+    "husky": "^9.1.7",
     "jest": "^30.0.0",
     "nx": "^22.5.1",
     "prettier": "^3.4.2",

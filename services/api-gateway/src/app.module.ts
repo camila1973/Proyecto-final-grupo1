@@ -1,8 +1,8 @@
-import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
-import { ProxyController } from './proxy.controller';
-import { ProxyService } from './proxy.service';
+import { Module } from "@nestjs/common";
+import { AppController } from "./app.controller";
+import { AppService } from "./app.service";
+import { ProxyController } from "./proxy.controller";
+import { ProxyService } from "./proxy.service";
 
 @Module({
   imports: [],
