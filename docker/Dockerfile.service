@@ -6,7 +6,7 @@ COPY services/${SERVICE_NAME}/ ./services/${SERVICE_NAME}/
 WORKDIR /workspace/services/${SERVICE_NAME}
 RUN ../../node_modules/.bin/nest build --config nest-cli.json
 
-FROM node:20-alpine AS runtime
+FROM node:24-alpine AS runtime
 ARG SERVICE_NAME
 ARG SERVICE_PORT
 ENV NODE_ENV=production

@@ -10,7 +10,7 @@ This is a monorepo workspace managed by [Nx](https://nx.dev), containing three a
 
 ### Prerequisites
 
-- Node.js (v18 or higher)
+- Node.js 24
 - npm or yarn
 - For mobile development: iOS Simulator or Android Emulator
 

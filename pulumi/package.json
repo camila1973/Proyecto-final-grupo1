@@ -2,8 +2,11 @@
   "name": "travelhub-infra",
   "version": "1.0.0",
   "main": "bin/index.js",
+  "engines": {
+    "node": ">=24 <25"
+  },
   "devDependencies": {
-    "@types/node": "^20",
+    "@types/node": "^24",
     "typescript": "^5"
   },
   "dependencies": {

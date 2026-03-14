@@ -3,6 +3,9 @@
   "version": "0.0.0",
   "license": "UNLICENSED",
   "private": true,
+  "engines": {
+    "node": ">=24 <25"
+  },
   "lint-staged": {
     "services/**/*.ts": "eslint --fix",
     "frontend/src/**/*.{ts,tsx}": "eslint --fix",

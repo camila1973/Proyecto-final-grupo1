@@ -123,4 +123,4 @@ Prettier settings: single quotes, trailing commas.
 
 ## CI
 
-`.github/workflows/ci.yml` runs on every push/PR. Uses a matrix strategy to build and test all 10 projects (8 services + frontend + mobile) in parallel on Ubuntu + Node 20. `NX_DAEMON=false` is set for CI. Uses `npm ci` for clean installs.
+`.github/workflows/ci.yml` runs on push to `main` and on pull requests. It uses `nx affected` for lint/build/test so only changed projects run in CI. Node is provided via `.nvmrc` (Node 24). `NX_DAEMON=false` and `NX_TUI=false` are set for CI stability. Uses `npm ci` for clean installs.
