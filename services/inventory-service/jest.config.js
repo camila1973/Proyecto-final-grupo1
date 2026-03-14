@@ -1,6 +1,6 @@
 module.exports = {
   displayName: 'inventory-service',
-  preset: '../../jest.preset.js',
+  ...require('../../jest.preset.js'),
   testEnvironment: 'node',
   transform: { '^.+\\.[tj]s$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.spec.json' }] },
   moduleFileExtensions: ['ts', 'js', 'html'],
