@@ -2,6 +2,8 @@ name: CI
 
 on:
   push:
+    branches:
+      - main
   pull_request:
 
 permissions:
@@ -35,10 +37,10 @@ jobs:
         run: npm ci --omit=optional
 
       - name: Lint ${{ matrix.project }}
-        run: npm exec nx run ${{ matrix.project }}:lint
+        run: npm exec -- nx run ${{ matrix.project }}:lint --outputStyle=static
 
       - name: Build ${{ matrix.project }}
-        run: npm exec nx run ${{ matrix.project }}:build
+        run: npm exec -- nx run ${{ matrix.project }}:build --outputStyle=static
 
       - name: Test ${{ matrix.project }}
-        run: npm exec nx run ${{ matrix.project }}:test
+        run: npm exec -- nx run ${{ matrix.project }}:test --outputStyle=static
