@@ -10,13 +10,9 @@ permissions:
   contents: read
 
 jobs:
-  build-and-test:
-    name: ${{ matrix.project }}
+  affected:
+    name: Affected Projects
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        project: [api-gateway, auth-service, search-service, inventory-service, booking-service, payment-service, notification-service, partners-service, frontend, mobile]
 
     env:
       NX_DAEMON: 'false'
@@ -26,6 +22,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -36,11 +34,21 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Lint ${{ matrix.project }}
-        run: npm exec -- nx run ${{ matrix.project }}:lint --outputStyle=static
+      - name: Set Nx Base/Head
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "NX_BASE=origin/${{ github.base_ref }}" >> "$GITHUB_ENV"
+            echo "NX_HEAD=${{ github.sha }}" >> "$GITHUB_ENV"
+          else
+            echo "NX_BASE=${{ github.event.before }}" >> "$GITHUB_ENV"
+            echo "NX_HEAD=${{ github.sha }}" >> "$GITHUB_ENV"
+          fi
 
-      - name: Build ${{ matrix.project }}
-        run: npm exec -- nx run ${{ matrix.project }}:build --outputStyle=static
+      - name: Lint Affected
+        run: npm exec -- nx affected -t lint --base="$NX_BASE" --head="$NX_HEAD" --outputStyle=static
 
-      - name: Test ${{ matrix.project }}
-        run: npm exec -- nx run ${{ matrix.project }}:test --outputStyle=static
+      - name: Build Affected
+        run: npm exec -- nx affected -t build --base="$NX_BASE" --head="$NX_HEAD" --outputStyle=static
+
+      - name: Test Affected
+        run: npm exec -- nx affected -t test --base="$NX_BASE" --head="$NX_HEAD" --outputStyle=static
