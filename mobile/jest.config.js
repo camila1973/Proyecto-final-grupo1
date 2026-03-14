@@ -6,6 +6,7 @@ module.exports = {
     '^.+\\.[tj]sx?$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.spec.json' }],
   },
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
+  coverageProvider: 'v8',
   coverageDirectory: '../coverage/mobile',
   coverageReporters: ['lcov', 'text-summary'],
   collectCoverageFrom: [

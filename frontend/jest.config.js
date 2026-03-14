@@ -11,6 +11,7 @@ module.exports = {
     '\\.(svg|png|jpg|jpeg|gif|ico)$': '<rootDir>/__mocks__/fileMock.js',
     '\\.(css|less|scss|sass)$': '<rootDir>/__mocks__/fileMock.js',
   },
+  coverageProvider: 'v8',
   coverageDirectory: '../coverage/frontend',
   coverageReporters: ['lcov', 'text-summary'],
   collectCoverageFrom: ['src/**/*.{ts,tsx,js,jsx}'],
