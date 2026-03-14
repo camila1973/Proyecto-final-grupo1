@@ -1,27 +1,46 @@
-import { Controller, Get, Post, Body } from "@nestjs/common";
-import { AppService } from "./app.service";
+import { Body, Controller, Get, Post } from "@nestjs/common";
+import { AuthService } from "./auth/auth.service";
+import type {
+  LoginBody,
+  LoginMfaResponse,
+  LoginResponse,
+  MfaLoginBody,
+  RegisterBody,
+  RegisterResponse,
+  UserListResponse,
+} from "./auth/auth.types";
+
+type HealthResponse = {
+  status: "ok";
+  service: "auth-service";
+};
 
 @Controller()
 export class AppController {
-  constructor(private readonly appService: AppService) {}
+  constructor(private readonly authService: AuthService) {}
 
   @Get("health")
-  getHealth() {
-    return this.appService.getHealth();
+  getHealth(): HealthResponse {
+    return { status: "ok", service: "auth-service" };
   }
 
   @Post("register")
-  register(@Body() body: { email: string; password: string }) {
-    return this.appService.register(body);
+  async register(@Body() body: RegisterBody): Promise<RegisterResponse> {
+    return this.authService.register(body);
   }
 
   @Post("login")
-  login(@Body() body: { email: string; password: string }) {
-    return this.appService.login(body);
+  async login(@Body() body: LoginBody): Promise<LoginResponse> {
+    return this.authService.login(body);
+  }
+
+  @Post("login/mfa")
+  async loginMfa(@Body() body: MfaLoginBody): Promise<LoginMfaResponse> {
+    return this.authService.verifyMfaLogin(body);
   }
 
   @Get("users")
-  getUsers() {
-    return this.appService.getUsers();
+  async getUsers(): Promise<UserListResponse> {
+    return this.authService.getUsers();
   }
 }

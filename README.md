@@ -1,3 +1,4 @@
+[![codecov](https://codecov.io/github/camila1973/Proyecto-final-grupo1/graph/badge.svg?token=SOH7ECOANV)](https://codecov.io/github/camila1973/Proyecto-final-grupo1)
 # TravelHub Nx Monorepo
 
 This is a monorepo workspace managed by [Nx](https://nx.dev), containing three applications:

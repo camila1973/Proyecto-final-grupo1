@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: write
 
 jobs:
   affected:
@@ -18,6 +19,7 @@ jobs:
       NX_DAEMON: 'false'
       NX_TUI: 'false'
       HUSKY: '0'
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 
     steps:
       - name: Checkout
@@ -51,4 +53,12 @@ jobs:
         run: npm exec -- nx affected -t build --base="$NX_BASE" --head="$NX_HEAD" --outputStyle=static
 
       - name: Test Affected
-        run: npm exec -- nx affected -t test --base="$NX_BASE" --head="$NX_HEAD" --outputStyle=static
+        run: npm exec -- nx affected -t test --base="$NX_BASE" --head="$NX_HEAD" --outputStyle=static -- --coverage
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          directory: coverage/
+          flags: monorepo
+          fail_ci_if_error: false
