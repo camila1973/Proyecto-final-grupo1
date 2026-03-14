@@ -46,6 +46,9 @@ jobs:
             echo "NX_HEAD=${{ github.sha }}" >> "$GITHUB_ENV"
           fi
 
+      - name: Type Check
+        run: npm run typecheck
+
       - name: Lint Affected
         run: npm exec -- nx affected -t lint --base="$NX_BASE" --head="$NX_HEAD" --outputStyle=static
 
