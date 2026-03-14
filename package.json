@@ -6,11 +6,6 @@
   "engines": {
     "node": ">=24 <25"
   },
-  "lint-staged": {
-    "services/**/*.ts": "eslint --fix",
-    "frontend/src/**/*.{ts,tsx}": "eslint --fix",
-    "mobile/**/*.{ts,tsx}": "eslint --fix"
-  },
   "scripts": {
     "start": "nx run-many -t serve",
     "build": "nx run-many -t build",
@@ -62,6 +57,7 @@
     "expo-symbols": "~1.0.8",
     "expo-system-ui": "~6.0.9",
     "expo-web-browser": "~15.0.10",
+    "kysely": "^0.28.12",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-native": "0.81.5",
@@ -90,6 +86,7 @@
     "@types/express": "^5.0.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^24.10.1",
+    "@types/pg": "^8.18.0",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@types/supertest": "^6.0.2",
@@ -106,6 +103,7 @@
     "jest": "^30.0.0",
     "lint-staged": "^16.3.3",
     "nx": "^22.5.1",
+    "pg": "^8.20.0",
     "prettier": "^3.4.2",
     "source-map-support": "^0.5.21",
     "supertest": "^7.0.0",
