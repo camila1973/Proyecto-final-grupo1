@@ -1,7 +1,5 @@
-import { Colors } from '@/constants/theme';
-
+import { Colors } from '../constants/theme';
 import { useThemeColor } from './use-theme-color';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 
 jest.mock('react-native', () => ({
   Platform: {
@@ -14,7 +12,7 @@ jest.mock('@/hooks/use-color-scheme', () => ({
   useColorScheme: jest.fn().mockReturnValue('light'),
 }));
 
-const mockUseColorScheme = useColorScheme as jest.Mock;
+const mockUseColorScheme = jest.requireMock('@/hooks/use-color-scheme').useColorScheme as jest.Mock;
 
 describe('useThemeColor', () => {
   beforeEach(() => {
