@@ -1,7 +1,8 @@
 module.exports = {
   displayName: 'frontend',
   preset: '../jest.preset.js',
-  testEnvironment: 'node',
+  testEnvironment: 'jest-environment-jsdom',
+  setupFilesAfterEnv: ['<rootDir>/src/setupTests.ts'],
   transform: {
     '^.+\\.tsx?$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.spec.json' }],
   },
