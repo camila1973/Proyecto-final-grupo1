@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { LocaleProvider } from './context/LocaleContext';
 import Navbar from './components/Navbar';
 import HotelCard from './components/HotelCard';
 import Footer from './components/Footer';
@@ -17,6 +18,7 @@ export default function App() {
   const { t } = useTranslation();
 
   return (
+    <LocaleProvider>
     <div className="flex flex-col min-h-screen bg-[#f0f2f5]">
       <Navbar />
 
@@ -85,5 +87,6 @@ export default function App() {
 
       <Footer />
     </div>
+    </LocaleProvider>
   );
 }

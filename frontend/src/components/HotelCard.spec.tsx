@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import HotelCard from './HotelCard';
+import { LocaleProvider } from '../context/LocaleContext';
 import { setupTestI18n } from '../i18n/test-utils';
 import en from '../i18n/locales/en.json';
 import es from '../i18n/locales/es.json';
@@ -13,16 +14,18 @@ const defaultProps = {
   img: 'https://example.com/hotel.jpg',
 };
 
-function renderCard() {
-  return render(<HotelCard {...defaultProps} />);
+function renderCard(initialLanguage: 'es' | 'en' = 'es') {
+  i18n.changeLanguage(initialLanguage);
+  return render(
+    <LocaleProvider initialLanguage={initialLanguage}>
+      <HotelCard {...defaultProps} />
+    </LocaleProvider>,
+  );
 }
 
 describe('HotelCard', () => {
   describe('content', () => {
-    beforeEach(() => {
-      i18n.changeLanguage('es');
-      renderCard();
-    });
+    beforeEach(() => renderCard());
 
     it('renders the hotel name', () => {
       expect(screen.getByText('HOTEL NORTH PARK')).toBeInTheDocument();
@@ -42,10 +45,7 @@ describe('HotelCard', () => {
   });
 
   describe('Spanish', () => {
-    beforeEach(() => {
-      i18n.changeLanguage('es');
-      renderCard();
-    });
+    beforeEach(() => renderCard('es'));
 
     it('renders the per-night label in Spanish', () => {
       expect(screen.getByText(es.recommendations.per_night)).toBeInTheDocument();
@@ -57,10 +57,7 @@ describe('HotelCard', () => {
   });
 
   describe('English', () => {
-    beforeEach(() => {
-      i18n.changeLanguage('en');
-      renderCard();
-    });
+    beforeEach(() => renderCard('en'));
 
     it('renders the per-night label in English', () => {
       expect(screen.getByText(en.recommendations.per_night)).toBeInTheDocument();

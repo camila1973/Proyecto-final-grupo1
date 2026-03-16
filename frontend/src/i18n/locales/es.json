@@ -1,6 +1,6 @@
 {
   "nav": {
-    "language": "Español · COP",
+    "language": "Español",
     "register": "Registro",
     "login": "Iniciar sesion"
   },
@@ -24,7 +24,7 @@
     "copyright": "© 2026 TravelHub",
     "privacy": "Política de privacidad",
     "terms": "Terminos y condiciones",
-    "language": "Idioma: Español",
-    "currency": "Moneda: COP"
+    "language_label": "Idioma",
+    "currency_label": "Moneda"
   }
 }

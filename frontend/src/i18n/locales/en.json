@@ -1,6 +1,6 @@
 {
   "nav": {
-    "language": "English · USD",
+    "language": "English",
     "register": "Register",
     "login": "Sign in"
   },
@@ -24,7 +24,7 @@
     "copyright": "© 2026 TravelHub",
     "privacy": "Privacy policy",
     "terms": "Terms and conditions",
-    "language": "Language: English",
-    "currency": "Currency: USD"
+    "language_label": "Language",
+    "currency_label": "Currency"
   }
 }
