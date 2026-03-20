@@ -1,3 +1,4 @@
+[![CI](https://github.com/camila1973/Proyecto-final-grupo1/actions/workflows/ci.yml/badge.svg)](https://github.com/camila1973/Proyecto-final-grupo1/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/github/camila1973/Proyecto-final-grupo1/graph/badge.svg?token=SOH7ECOANV)](https://codecov.io/github/camila1973/Proyecto-final-grupo1)
 
 # TravelHub
