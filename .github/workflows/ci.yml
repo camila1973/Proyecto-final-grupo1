@@ -29,7 +29,14 @@ jobs:
         with:
           node-version-file: '.nvmrc'
           cache: pnpm
+      - name: Cache node_modules
+        id: cache-nm
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
       - run: pnpm install --frozen-lockfile
+        if: steps.cache-nm.outputs.cache-hit != 'true'
       - run: pnpm run typecheck
 
   lint:
@@ -44,7 +51,20 @@ jobs:
         with:
           node-version-file: '.nvmrc'
           cache: pnpm
+      - name: Cache node_modules
+        id: cache-nm
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
       - run: pnpm install --frozen-lockfile
+        if: steps.cache-nm.outputs.cache-hit != 'true'
+      - name: Cache Nx
+        uses: actions/cache@v4
+        with:
+          path: .nx/cache
+          key: nx-${{ runner.os }}-${{ github.sha }}
+          restore-keys: nx-${{ runner.os }}-
       - name: Set Nx Base/Head
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
@@ -68,7 +88,20 @@ jobs:
         with:
           node-version-file: '.nvmrc'
           cache: pnpm
+      - name: Cache node_modules
+        id: cache-nm
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
       - run: pnpm install --frozen-lockfile
+        if: steps.cache-nm.outputs.cache-hit != 'true'
+      - name: Cache Nx
+        uses: actions/cache@v4
+        with:
+          path: .nx/cache
+          key: nx-${{ runner.os }}-${{ github.sha }}
+          restore-keys: nx-${{ runner.os }}-
       - name: Set Nx Base/Head
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
@@ -93,7 +126,20 @@ jobs:
         with:
           node-version-file: '.nvmrc'
           cache: pnpm
+      - name: Cache node_modules
+        id: cache-nm
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
       - run: pnpm install --frozen-lockfile
+        if: steps.cache-nm.outputs.cache-hit != 'true'
+      - name: Cache Nx
+        uses: actions/cache@v4
+        with:
+          path: .nx/cache
+          key: nx-${{ runner.os }}-${{ github.sha }}
+          restore-keys: nx-${{ runner.os }}-
       - name: Set Nx Base/Head
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
