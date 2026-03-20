@@ -24,54 +24,54 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
-Always run tasks through `nx` commands, not underlying tools directly. Prefix with `npm exec nx` or use `nx` directly.
+Always run tasks through `nx` commands, not underlying tools directly. Prefix with `pnpm exec nx` or use `nx` directly.
 
 ### Development
 ```bash
-npm install                   # Install all dependencies
-npm start                     # Start all apps concurrently
-npm run serve:api-gateway     # API Gateway (port 3000)
-npm run serve:auth            # Auth service (port 3001)
-npm run serve:search          # Search service (port 3002)
-npm run serve:inventory       # Inventory service (port 3003)
-npm run serve:booking         # Booking service (port 3004)
-npm run serve:payment         # Payment service (port 3005)
-npm run serve:notification    # Notification service (port 3006)
-npm run serve:partners        # Partners service (port 3007)
-npm run serve:frontend        # Frontend only (Vite dev server)
-npm run start:mobile          # Mobile only (Expo)
-nx run-ios mobile             # iOS simulator
-nx run-android mobile         # Android emulator
+pnpm install                   # Install all dependencies
+pnpm start                     # Start all apps concurrently
+pnpm run serve:api-gateway     # API Gateway (port 3000)
+pnpm run serve:auth            # Auth service (port 3001)
+pnpm run serve:search          # Search service (port 3002)
+pnpm run serve:inventory       # Inventory service (port 3003)
+pnpm run serve:booking         # Booking service (port 3004)
+pnpm run serve:payment         # Payment service (port 3005)
+pnpm run serve:notification    # Notification service (port 3006)
+pnpm run serve:partners        # Partners service (port 3007)
+pnpm run serve:frontend        # Frontend only (Vite dev server)
+pnpm run start:mobile          # Mobile only (Expo)
+nx run-ios mobile              # iOS simulator
+nx run-android mobile          # Android emulator
 ```
 
 ### Build
 ```bash
-npm run build                 # Build all projects
-npm run build:services        # Build all 8 microservices
-npm run build:frontend        # Vite → dist/frontend/
-nx build mobile               # Expo export → dist/mobile/
-nx build auth-service         # Single service → dist/auth-service/
+pnpm run build                 # Build all projects
+pnpm run build:services        # Build all 8 microservices
+pnpm run build:frontend        # Vite → dist/frontend/
+nx build mobile                # Expo export → dist/mobile/
+nx build auth-service          # Single service → dist/auth-service/
 ```
 
 ### Testing
 ```bash
-npm test                          # Test all projects
-nx test auth-service              # Single service
-nx test auth-service --watch      # Watch mode
+pnpm test                          # Test all projects
+nx test auth-service               # Single service
+nx test auth-service --watch       # Watch mode
 nx test booking-service -- --coverage  # With coverage (output: coverage/<service>/)
 ```
 
 ### Lint
 ```bash
-npm run lint                  # Lint all projects
-nx lint auth-service          # Single service
+pnpm run lint                  # Lint all projects
+nx lint auth-service           # Single service
 ```
 
 ### Nx Utilities
 ```bash
-npm run affected:test     # Test only projects changed vs main branch
-npm run affected:build    # Build only changed projects
-npm run graph             # Open dependency graph in browser
+pnpm run affected:test     # Test only projects changed vs main branch
+pnpm run affected:build    # Build only changed projects
+pnpm run graph             # Open dependency graph in browser
 ```
 
 ## Architecture
@@ -123,4 +123,4 @@ Prettier settings: single quotes, trailing commas.
 
 ## CI
 
-`.github/workflows/ci.yml` runs on push to `main` and on pull requests. It uses `nx affected` for lint/build/test so only changed projects run in CI. Node is provided via `.nvmrc` (Node 24). `NX_DAEMON=false` and `NX_TUI=false` are set for CI stability. Uses `npm ci` for clean installs.
+`.github/workflows/ci.yml` runs on push to `main` and on pull requests. It uses `nx affected` for lint/build/test so only changed projects run in CI. Node is provided via `.nvmrc` (Node 24). `NX_DAEMON=false` and `NX_TUI=false` are set for CI stability. Uses `pnpm install --frozen-lockfile` for clean installs.

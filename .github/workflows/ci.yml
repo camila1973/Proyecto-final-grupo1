@@ -24,12 +24,13 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version-file: '.nvmrc'
-          cache: npm
-      - run: npm ci
-      - run: npm run typecheck
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run typecheck
 
   lint:
     name: Lint
@@ -38,11 +39,12 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version-file: '.nvmrc'
-          cache: npm
-      - run: npm ci
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
       - name: Set Nx Base/Head
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
@@ -52,7 +54,7 @@ jobs:
             echo "NX_BASE=${{ github.event.before }}" >> "$GITHUB_ENV"
             echo "NX_HEAD=${{ github.sha }}" >> "$GITHUB_ENV"
           fi
-      - run: npm exec -- nx affected -t lint --base="$NX_BASE" --head="$NX_HEAD" --outputStyle=static
+      - run: pnpm exec nx affected -t lint --base="$NX_BASE" --head="$NX_HEAD" --outputStyle=static
 
   build:
     name: Build
@@ -61,11 +63,12 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version-file: '.nvmrc'
-          cache: npm
-      - run: npm ci
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
       - name: Set Nx Base/Head
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
@@ -75,7 +78,7 @@ jobs:
             echo "NX_BASE=${{ github.event.before }}" >> "$GITHUB_ENV"
             echo "NX_HEAD=${{ github.sha }}" >> "$GITHUB_ENV"
           fi
-      - run: npm exec -- nx affected -t build --base="$NX_BASE" --head="$NX_HEAD" --outputStyle=static
+      - run: pnpm exec nx affected -t build --base="$NX_BASE" --head="$NX_HEAD" --outputStyle=static
 
   test:
     name: Test
@@ -85,11 +88,12 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version-file: '.nvmrc'
-          cache: npm
-      - run: npm ci
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
       - name: Set Nx Base/Head
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
@@ -99,7 +103,7 @@ jobs:
             echo "NX_BASE=${{ github.event.before }}" >> "$GITHUB_ENV"
             echo "NX_HEAD=${{ github.sha }}" >> "$GITHUB_ENV"
           fi
-      - run: npm exec -- nx run-many -t test --outputStyle=static -- --coverage
+      - run: pnpm exec nx run-many -t test --outputStyle=static -- --coverage
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
