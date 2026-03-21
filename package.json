@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "license": "UNLICENSED",
   "private": true,
+  "packageManager": "pnpm@10.0.0",
   "engines": {
     "node": ">=24 <25"
   },
@@ -31,12 +32,27 @@
     "typecheck": "tsc --noEmit -p services/api-gateway/tsconfig.json && tsc --noEmit -p services/auth-service/tsconfig.json && tsc --noEmit -p services/booking-service/tsconfig.json && tsc --noEmit -p services/inventory-service/tsconfig.json && tsc --noEmit -p services/notification-service/tsconfig.json && tsc --noEmit -p services/partners-service/tsconfig.json && tsc --noEmit -p services/payment-service/tsconfig.json && tsc --noEmit -p services/search-service/tsconfig.json && tsc --noEmit -p frontend/tsconfig.app.json && tsc --noEmit -p frontend/tsconfig.spec.json && tsc --noEmit -p mobile/tsconfig.json && tsc --noEmit -p mobile/tsconfig.spec.json",
     "docker:dev": "docker build -t travelhub-base -f docker/Dockerfile.base . && docker compose up --build",
     "docker:down": "docker compose down -v",
-    "infra:install": "cd pulumi && npm install",
+    "infra:install": "cd pulumi && pnpm install",
     "infra:preview": "cd pulumi && pulumi preview",
     "infra:up": "cd pulumi && pulumi up",
     "infra:down": "cd pulumi && pulumi destroy",
-    "deploy:frontend": "npm run build:frontend && aws s3 sync dist/frontend/ s3://$(cd pulumi && pulumi stack output frontendBucket)/ --delete && aws cloudfront create-invalidation --distribution-id $(cd pulumi && pulumi stack output cdnId 2>/dev/null || echo '') --paths '/*'",
+    "deploy:frontend": "pnpm run build:frontend && aws s3 sync dist/frontend/ s3://$(cd pulumi && pulumi stack output frontendBucket)/ --delete && aws cloudfront create-invalidation --distribution-id $(cd pulumi && pulumi stack output cdnId 2>/dev/null || echo '') --paths '/*'",
     "prepare": "husky"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@nestjs/core",
+      "@parcel/watcher",
+      "@pulumi/docker",
+      "@pulumi/docker-build",
+      "detox",
+      "dtrace-provider",
+      "esbuild",
+      "less",
+      "nx",
+      "protobufjs",
+      "unrs-resolver"
+    ]
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
@@ -58,9 +74,11 @@
     "expo-symbols": "~1.0.8",
     "expo-system-ui": "~6.0.9",
     "expo-web-browser": "~15.0.10",
+    "i18next": "^25.8.18",
     "kysely": "^0.28.12",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "react-i18next": "^16.5.8",
     "react-native": "0.81.5",
     "react-native-gesture-handler": "~2.28.0",
     "react-native-reanimated": "~4.1.1",
@@ -69,6 +87,7 @@
     "react-native-web": "~0.21.0",
     "react-native-worklets": "0.5.1",
     "reflect-metadata": "^0.2.2",
+    "tslib": "^2.8.1",
     "rxjs": "^7.8.1"
   },
   "devDependencies": {
@@ -84,6 +103,9 @@
     "@nx/react": "^22.5.1",
     "@nx/vite": "^22.5.1",
     "@nx/webpack": "^22.5.1",
+    "@tailwindcss/vite": "^4.2.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
     "@types/express": "^5.0.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^24.10.1",
@@ -102,12 +124,14 @@
     "globals": "^16.5.0",
     "husky": "^9.1.7",
     "jest": "^30.0.0",
+    "jest-environment-jsdom": "^30.3.0",
     "lint-staged": "^16.3.3",
     "nx": "^22.5.1",
     "pg": "^8.20.0",
     "prettier": "^3.4.2",
     "source-map-support": "^0.5.21",
     "supertest": "^7.0.0",
+    "tailwindcss": "^4.2.1",
     "ts-jest": "^29.2.5",
     "ts-loader": "^9.5.2",
     "ts-node": "^10.9.2",

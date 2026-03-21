@@ -1,7 +1,9 @@
 {
   "extends": "./tsconfig.app.json",
   "compilerOptions": {
-    "types": ["jest", "node"],
+    "types": ["jest", "node", "@testing-library/jest-dom"],
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
     "module": "CommonJS",
     "moduleResolution": "node",
     "verbatimModuleSyntax": false,

@@ -1,11 +1,36 @@
+import { render, screen } from '@testing-library/react';
 import App from './App';
+import { setupTestI18n } from './i18n/test-utils';
+import es from './i18n/locales/es.json';
+import en from './i18n/locales/en.json';
 
-describe('App', () => {
-  it('exports a function component', () => {
-    expect(typeof App).toBe('function');
+const i18n = setupTestI18n('es');
+
+describe('App (integration)', () => {
+  it('renders all four main sections in Spanish', () => {
+    i18n.changeLanguage('es');
+    render(<App />);
+
+    expect(screen.getByText('TravelHub')).toBeInTheDocument();
+    expect(screen.getByText(es.hero.title)).toBeInTheDocument();
+    expect(screen.getByText(es.recommendations.title)).toBeInTheDocument();
+    expect(screen.getByText(es.footer.copyright)).toBeInTheDocument();
   });
 
-  it('has the correct display name or name', () => {
-    expect(App.name).toBe('App');
+  it('renders all four main sections in English', () => {
+    i18n.changeLanguage('en');
+    render(<App />);
+
+    expect(screen.getByText('TravelHub')).toBeInTheDocument();
+    expect(screen.getByText(en.hero.title)).toBeInTheDocument();
+    expect(screen.getByText(en.recommendations.title)).toBeInTheDocument();
+    expect(screen.getByText(en.footer.copyright)).toBeInTheDocument();
+  });
+
+  it('renders 3 hotel cards', () => {
+    i18n.changeLanguage('es');
+    render(<App />);
+
+    expect(screen.getAllByText('HOTEL NORTH PARK')).toHaveLength(3);
   });
 });

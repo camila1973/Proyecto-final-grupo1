@@ -1,0 +1,30 @@
+{
+  "nav": {
+    "language": "English",
+    "register": "Register",
+    "login": "Sign in"
+  },
+  "hero": {
+    "title": "Find the perfect hotel for your vacation.",
+    "subtitle": "Explore more than 1200 options...",
+    "destination_label": "Where are you going?",
+    "destination_placeholder": "Select a destination",
+    "dates_label": "What dates?",
+    "dates_placeholder": "Select a destination",
+    "guests_label": "Who is traveling?",
+    "guests_placeholder": "2 adults · 1 Room",
+    "search": "Search"
+  },
+  "recommendations": {
+    "title": "Recommendations for you",
+    "per_night": "per night",
+    "book": "Book"
+  },
+  "footer": {
+    "copyright": "© 2026 TravelHub",
+    "privacy": "Privacy policy",
+    "terms": "Terms and conditions",
+    "language_label": "Language",
+    "currency_label": "Currency"
+  }
+}
