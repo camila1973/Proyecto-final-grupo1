@@ -27,7 +27,7 @@ export class AuthService {
   constructor(private readonly authRepository: AuthRepository) {}
 
   async register(body: RegisterBody): Promise<RegisterResponse> {
-    this.validateEmailAndPassword(body.email, body.password);
+    this.validateRegistrationFields(body);
 
     const normalizedEmail = body.email.trim().toLowerCase();
     const existingUser =
@@ -44,6 +44,8 @@ export class AuthService {
       id: userId,
       email: normalizedEmail,
       role: body.role ?? "guest",
+      firstName: body.firstName.trim(),
+      lastName: body.lastName.trim(),
       passwordHash: this.hashPassword(body.password),
       mfaSecret,
       createdAt,
@@ -53,6 +55,8 @@ export class AuthService {
       id: userId,
       email: normalizedEmail,
       role: body.role ?? "guest",
+      firstName: body.firstName.trim(),
+      lastName: body.lastName.trim(),
       createdAt,
       mfa: {
         required: true,
@@ -90,6 +94,8 @@ export class AuthService {
         id: user.id,
         email: user.email,
         role: user.role,
+        firstName: user.first_name,
+        lastName: user.last_name,
       },
     };
   }
@@ -129,6 +135,8 @@ export class AuthService {
         id: user.id,
         email: user.email,
         role: user.role,
+        firstName: user.first_name,
+        lastName: user.last_name,
       }),
       tokenType: "Bearer",
       expiresIn: 3600,
@@ -136,6 +144,8 @@ export class AuthService {
         id: user.id,
         email: user.email,
         role: user.role,
+        firstName: user.first_name,
+        lastName: user.last_name,
       },
     };
   }
@@ -146,6 +156,8 @@ export class AuthService {
       id: user.id,
       email: user.email,
       role: user.role,
+      firstName: user.first_name,
+      lastName: user.last_name,
       createdAt: user.created_at,
     }));
   }
@@ -194,6 +206,25 @@ export class AuthService {
     );
   }
 
+  private validateRegistrationFields(body: RegisterBody): void {
+    if (!body.firstName?.trim()) {
+      throw new BadRequestException("First name is required");
+    }
+
+    if (!body.lastName?.trim()) {
+      throw new BadRequestException("Last name is required");
+    }
+
+    this.validateEmailAndPassword(body.email, body.password);
+
+    if (
+      body.confirmPassword !== undefined &&
+      body.confirmPassword !== body.password
+    ) {
+      throw new BadRequestException("Passwords do not match");
+    }
+  }
+
   private validateEmailAndPassword(email: string, password: string): void {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email?.trim())) {
@@ -202,6 +233,28 @@ export class AuthService {
 
     if (!password || password.length < 8) {
       throw new BadRequestException("Password must have at least 8 characters");
+    }
+
+    if (password.length > 16) {
+      throw new BadRequestException("Password must not exceed 16 characters");
+    }
+
+    if (!/[a-zA-Z]/.test(password)) {
+      throw new BadRequestException(
+        "Password must contain at least one letter",
+      );
+    }
+
+    if (!/[0-9]/.test(password)) {
+      throw new BadRequestException(
+        "Password must contain at least one number",
+      );
+    }
+
+    if (!/[^a-zA-Z0-9]/.test(password)) {
+      throw new BadRequestException(
+        "Password must contain at least one special character",
+      );
     }
   }
 

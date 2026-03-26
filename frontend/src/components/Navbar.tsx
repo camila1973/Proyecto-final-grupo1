@@ -2,7 +2,11 @@ import { useRef, useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocale, LANGUAGES, type Language } from '../context/LocaleContext';
 
-export default function Navbar() {
+interface NavbarProps {
+  onNavigateRegister?: () => void;
+}
+
+export default function Navbar({ onNavigateRegister }: NavbarProps) {
   const { t } = useTranslation();
   const { language, currency, setLanguage } = useLocale();
   const [open, setOpen] = useState(false);
@@ -79,7 +83,13 @@ export default function Navbar() {
         </div>
 
         <nav className="flex items-center gap-6 text-sm text-gray-700">
-          <a href="#" className="hover:text-gray-900">{t('nav.register')}</a>
+          <button
+            type="button"
+            onClick={onNavigateRegister}
+            className="hover:text-gray-900 bg-transparent border-none cursor-pointer"
+          >
+            {t('nav.register')}
+          </button>
           <a href="#" className="hover:text-gray-900">{t('nav.login')}</a>
         </nav>
       </div>

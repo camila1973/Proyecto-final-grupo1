@@ -1,8 +1,11 @@
 export type UserRole = "guest" | "admin" | "partner";
 
 export type RegisterBody = {
+  firstName: string;
+  lastName: string;
   email: string;
   password: string;
+  confirmPassword?: string;
   role?: UserRole;
 };
 
@@ -20,6 +23,8 @@ export type PublicUser = {
   id: string;
   email: string;
   role: UserRole;
+  firstName: string;
+  lastName: string;
 };
 
 export type RegisterResponse = PublicUser & {
@@ -53,6 +58,8 @@ export type DbUser = {
   id: string;
   email: string;
   role: UserRole;
+  first_name: string;
+  last_name: string;
   password_hash: string;
   mfa_secret: string;
   created_at: string;

@@ -85,6 +85,8 @@ describe("AppController", () => {
         id: "usr_test",
         email: "new.user@travelhub.com",
         role: "guest",
+        firstName: "Juan",
+        lastName: "Pérez",
         createdAt: new Date().toISOString(),
         mfa: {
           required: true,
@@ -96,13 +98,17 @@ describe("AppController", () => {
       mockAuthService.register.mockResolvedValue(registration);
 
       const registerResult = await appController.register({
+        firstName: "Juan",
+        lastName: "Pérez",
         email: "new.user@travelhub.com",
-        password: "StrongPass123",
+        password: "StrongPass123!",
       });
 
       expect(registerResult.id).toBe("usr_test");
       expect(registerResult.email).toBe("new.user@travelhub.com");
       expect(registerResult.role).toBe("guest");
+      expect(registerResult.firstName).toBe("Juan");
+      expect(registerResult.lastName).toBe("Pérez");
       expect(registerResult.mfa.required).toBe(true);
       expect(registerResult.mfa.type).toBe("totp");
       expect(registerResult.mfa.secret.length).toBeGreaterThan(0);
@@ -117,13 +123,15 @@ describe("AppController", () => {
           id: "usr_test",
           email: "new.user@travelhub.com",
           role: "guest",
+          firstName: "Juan",
+          lastName: "Pérez",
         },
       };
       mockAuthService.login.mockResolvedValue(firstStepResponse);
 
       const firstStep = await appController.login({
         email: "new.user@travelhub.com",
-        password: "StrongPass123",
+        password: "StrongPass123!",
       });
 
       expect(firstStep.mfaRequired).toBe(true);
@@ -142,6 +150,8 @@ describe("AppController", () => {
           id: "usr_test",
           email: "new.user@travelhub.com",
           role: "guest",
+          firstName: "Juan",
+          lastName: "Pérez",
         },
       };
       mockAuthService.verifyMfaLogin.mockResolvedValue(secondStepResponse);

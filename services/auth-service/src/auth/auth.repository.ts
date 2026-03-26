@@ -12,6 +12,8 @@ type AuthUsersTable = {
   id: string;
   email: string;
   role: UserRole;
+  first_name: string;
+  last_name: string;
   password_hash: string;
   mfa_secret: string;
   created_at: string;
@@ -58,6 +60,8 @@ export class AuthRepository implements OnModuleInit, OnModuleDestroy {
     id: string;
     email: string;
     role: UserRole;
+    firstName: string;
+    lastName: string;
     passwordHash: string;
     mfaSecret: string;
     createdAt: string;
@@ -68,6 +72,8 @@ export class AuthRepository implements OnModuleInit, OnModuleDestroy {
         id: params.id,
         email: params.email,
         role: params.role,
+        first_name: params.firstName,
+        last_name: params.lastName,
         password_hash: params.passwordHash,
         mfa_secret: params.mfaSecret,
         created_at: params.createdAt,
@@ -147,6 +153,12 @@ export class AuthRepository implements OnModuleInit, OnModuleDestroy {
         .addColumn("id", "text", (column) => column.primaryKey())
         .addColumn("email", "text", (column) => column.notNull().unique())
         .addColumn("role", "text", (column) => column.notNull())
+        .addColumn("first_name", "text", (column) =>
+          column.notNull().defaultTo(""),
+        )
+        .addColumn("last_name", "text", (column) =>
+          column.notNull().defaultTo(""),
+        )
         .addColumn("password_hash", "text", (column) => column.notNull())
         .addColumn("mfa_secret", "text", (column) => column.notNull())
         .addColumn("created_at", "timestamptz", (column) => column.notNull())

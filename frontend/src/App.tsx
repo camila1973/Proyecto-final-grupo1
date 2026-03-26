@@ -1,9 +1,14 @@
 import { useTranslation } from 'react-i18next';
+import { useState } from 'react';
 import { LocaleProvider } from './context/LocaleContext';
 import Navbar from './components/Navbar';
 import HotelCard from './components/HotelCard';
 import Footer from './components/Footer';
+import RegisterPage from './pages/RegisterPage';
+import RegisterSuccess from './pages/RegisterSuccess';
 import './App.css';
+
+type Page = 'home' | 'register' | 'register-success';
 
 const HOTEL_IMAGE =
   'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400&h=220&fit=crop';
@@ -14,13 +19,12 @@ const recommendations = [
   { id: 3, name: 'HOTEL NORTH PARK', location: 'Bogotá, Colombia', price: '180,000', img: HOTEL_IMAGE },
 ];
 
-export default function App() {
+function HomePage({ onNavigateRegister }: { onNavigateRegister: () => void }) {
   const { t } = useTranslation();
 
   return (
-    <LocaleProvider>
     <div className="flex flex-col min-h-screen bg-[#f0f2f5]">
-      <Navbar />
+      <Navbar onNavigateRegister={onNavigateRegister} />
 
       <section className="bg-[#4a6fa5] py-12 px-6">
         <div className="max-w-6xl mx-auto">
@@ -87,6 +91,26 @@ export default function App() {
 
       <Footer />
     </div>
+  );
+}
+
+export default function App() {
+  const [page, setPage] = useState<Page>('home');
+
+  return (
+    <LocaleProvider>
+      {page === 'home' && (
+        <HomePage onNavigateRegister={() => setPage('register')} />
+      )}
+      {page === 'register' && (
+        <RegisterPage
+          onSuccess={() => setPage('register-success')}
+          onNavigateLogin={() => setPage('home')}
+        />
+      )}
+      {page === 'register-success' && (
+        <RegisterSuccess onExplore={() => setPage('home')} />
+      )}
     </LocaleProvider>
   );
 }
