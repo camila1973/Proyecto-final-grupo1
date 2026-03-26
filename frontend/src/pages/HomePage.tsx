@@ -1,31 +1,54 @@
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from '@tanstack/react-router';
+import { useQuery } from '@tanstack/react-query';
 import HotelCard from '../components/HotelCard';
 
-// Featured properties — IDs match the search-service seed data
-const recommendations = [
-  {
-    id: 'b1000000-0000-0000-0000-000000000001',
-    name: 'Gran Caribe Resort & Spa',
-    location: 'Zona Hotelera, Cancún',
-    price: '1,302,000',
-    img: 'https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=400&h=220&fit=crop',
-  },
-  {
-    id: 'b1000000-0000-0000-0000-000000000004',
-    name: 'Hotel Histórico Centro',
-    location: 'Centro Histórico, Ciudad de México',
-    price: '1,134,000',
-    img: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400&h=220&fit=crop',
-  },
-  {
-    id: 'b1000000-0000-0000-0000-000000000002',
-    name: 'Playa Azul Hotel',
-    location: 'Zona Hotelera, Cancún',
-    price: '567,000',
-    img: 'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=400&h=220&fit=crop',
-  },
+const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
+
+// Featured property IDs — match the search-service seed data
+const FEATURED_IDS = [
+  'b1000000-0000-0000-0000-000000000001',
+  'b1000000-0000-0000-0000-000000000004',
+  'b1000000-0000-0000-0000-000000000002',
 ];
+
+const CURRENCY_RATES: Record<string, number> = { USD: 1, COP: 4200, EUR: 0.92 };
+
+function formatPrice(usd: number): string {
+  const converted = Math.round(usd * CURRENCY_RATES['COP']);
+  return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(converted);
+}
+
+interface PropertySummary {
+  propertyId: string;
+  propertyName: string;
+  city: string;
+  neighborhood: string | null;
+  thumbnailUrl: string;
+  rooms: { basePriceUsd: number }[];
+}
+
+async function fetchProperty(id: string): Promise<PropertySummary> {
+  const res = await fetch(`${API_BASE}/api/search/properties/${id}`);
+  if (!res.ok) throw new Error(`Failed to fetch ${id}`);
+  return res.json();
+}
+
+function FeaturedCard({ id, onClick }: { id: string; onClick: () => void }) {
+  const { data } = useQuery({ queryKey: ['property', id], queryFn: () => fetchProperty(id) });
+  if (!data) return null;
+  const minPrice = Math.min(...data.rooms.map((r) => r.basePriceUsd));
+  return (
+    <HotelCard
+      id={data.propertyId}
+      name={data.propertyName}
+      location={`${data.neighborhood ?? data.city}, ${data.city}`}
+      price={formatPrice(minPrice)}
+      img={data.thumbnailUrl}
+      onClick={onClick}
+    />
+  );
+}
 
 export default function HomePage() {
   const { t } = useTranslation();
@@ -90,11 +113,11 @@ export default function HomePage() {
       <main className="flex-1 max-w-6xl mx-auto w-full px-6 py-10">
         <h2 className="text-xl font-bold text-gray-900 mb-6">{t('recommendations.title')}</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-          {recommendations.map((hotel) => (
-            <HotelCard
-              key={hotel.id}
-              {...hotel}
-              onClick={() => navigate({ to: '/properties/$propertyId', params: { propertyId: hotel.id } })}
+          {FEATURED_IDS.map((id) => (
+            <FeaturedCard
+              key={id}
+              id={id}
+              onClick={() => navigate({ to: '/properties/$propertyId', params: { propertyId: id } })}
             />
           ))}
         </div>
