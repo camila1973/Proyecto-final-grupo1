@@ -77,8 +77,8 @@ describe('PropertyDetailPage', () => {
     renderPage();
     expect(await screen.findByText('Hotel Test')).toBeInTheDocument();
     expect(screen.getByText('Chapinero, Bogotá, Colombia')).toBeInTheDocument();
-    expect(screen.getByText('wifi')).toBeInTheDocument();
-    expect(screen.getByText('pool')).toBeInTheDocument();
+    expect(screen.getByText('WiFi')).toBeInTheDocument();
+    expect(screen.getByText('Piscina')).toBeInTheDocument();
   });
 
   it('shows error state when fetch fails', async () => {
@@ -96,12 +96,12 @@ describe('PropertyDetailPage', () => {
     expect(await screen.findByText(es.property_detail.back)).toBeInTheDocument();
   });
 
-  it('renders room availability badge', async () => {
+  it('renders room card with book button', async () => {
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: true,
       json: () => Promise.resolve(mockProperty),
     });
     renderPage();
-    expect(await screen.findByText(es.property_detail.available)).toBeInTheDocument();
+    expect(await screen.findByText('Reservar')).toBeInTheDocument();
   });
 });
