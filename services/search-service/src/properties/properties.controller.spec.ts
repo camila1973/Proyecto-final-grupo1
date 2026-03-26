@@ -1,14 +1,17 @@
-import { BadRequestException } from "@nestjs/common";
+import { BadRequestException, NotFoundException } from "@nestjs/common";
 import { PropertiesController } from "./properties.controller.js";
 import type { PropertiesService } from "./properties.service.js";
 
 describe("PropertiesController", () => {
   let controller: PropertiesController;
-  let service: jest.Mocked<Pick<PropertiesService, "searchProperties">>;
+  let service: jest.Mocked<
+    Pick<PropertiesService, "searchProperties" | "getPropertyById">
+  >;
 
   beforeEach(() => {
     service = {
       searchProperties: jest.fn().mockResolvedValue({ results: [] }),
+      getPropertyById: jest.fn().mockResolvedValue(null),
     };
     controller = new PropertiesController(
       service as unknown as PropertiesService,
@@ -163,5 +166,39 @@ describe("PropertiesController", () => {
   it("returns the service response", async () => {
     const response = await controller.searchProperties({});
     expect(response).toEqual({ results: [] });
+  });
+
+  // ─── GET /properties/:id ────────────────────────────────────────────────────
+
+  describe("getProperty", () => {
+    const mockDetail = {
+      propertyId: "p1",
+      propertyName: "Hotel A",
+      city: "Lisbon",
+      country: "Portugal",
+      neighborhood: null,
+      lat: 38.7,
+      lon: -9.14,
+      stars: 4,
+      rating: 4.0,
+      reviewCount: 10,
+      thumbnailUrl: "",
+      amenities: ["wifi"],
+      rooms: [],
+    };
+
+    it("returns property detail when found", async () => {
+      (service.getPropertyById as jest.Mock).mockResolvedValue(mockDetail);
+      const result = await controller.getProperty("p1");
+      expect(result).toEqual(mockDetail);
+      expect(service.getPropertyById).toHaveBeenCalledWith("p1");
+    });
+
+    it("throws NotFoundException when property not found", async () => {
+      (service.getPropertyById as jest.Mock).mockResolvedValue(null);
+      await expect(controller.getProperty("missing")).rejects.toThrow(
+        NotFoundException,
+      );
+    });
   });
 });

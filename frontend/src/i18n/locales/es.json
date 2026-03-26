@@ -20,6 +20,27 @@
     "per_night": "por noche",
     "book": "Reservar"
   },
+  "property_detail": {
+    "back": "Volver a resultados",
+    "per_night": "por noche",
+    "book_now": "Reservar ahora",
+    "amenities": "Comodidades",
+    "rooms": "Habitaciones disponibles",
+    "reviews": "Reseñas",
+    "rating_label": "Calificación",
+    "stars_label": "estrellas",
+    "location": "Ubicación",
+    "capacity": "Capacidad",
+    "guests": "huéspedes",
+    "room_type": "Tipo de habitación",
+    "bed_type": "Tipo de cama",
+    "view_type": "Vista",
+    "availability": "Verificando disponibilidad...",
+    "available": "Disponible",
+    "unavailable": "No disponible",
+    "loading": "Cargando detalles de la propiedad...",
+    "error": "No se pudieron cargar los detalles de la propiedad."
+  },
   "footer": {
     "copyright": "© 2026 TravelHub",
     "privacy": "Política de privacidad",
