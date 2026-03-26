@@ -2,8 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import HotelCard from '../components/HotelCard';
-
-const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
+import { API_BASE } from '../env';
 
 // Featured property IDs — match the search-service seed data
 const FEATURED_IDS = [

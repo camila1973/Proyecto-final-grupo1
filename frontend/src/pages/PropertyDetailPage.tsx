@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useParams, useNavigate } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { useLocale } from '../context/LocaleContext';
+import { API_BASE } from '../env';
 
 interface Room {
   roomId: string;
@@ -44,8 +45,6 @@ function formatPrice(usd: number, currency: string): string {
     maximumFractionDigits: 0,
   }).format(converted);
 }
-
-const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
 
 async function fetchProperty(propertyId: string): Promise<PropertyDetail> {
   const res = await fetch(`${API_BASE}/api/search/properties/${propertyId}`);
