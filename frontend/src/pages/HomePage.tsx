@@ -2,13 +2,29 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from '@tanstack/react-router';
 import HotelCard from '../components/HotelCard';
 
-const HOTEL_IMAGE =
-  'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400&h=220&fit=crop';
-
+// Featured properties — IDs match the search-service seed data
 const recommendations = [
-  { id: 'prop_001', name: 'HOTEL NORTH PARK', location: 'Bogotá, Colombia', price: '180,000', img: HOTEL_IMAGE },
-  { id: 'prop_002', name: 'HOTEL NORTH PARK', location: 'Bogotá, Colombia', price: '180,000', img: HOTEL_IMAGE },
-  { id: 'prop_003', name: 'HOTEL NORTH PARK', location: 'Bogotá, Colombia', price: '180,000', img: HOTEL_IMAGE },
+  {
+    id: 'b1000000-0000-0000-0000-000000000001',
+    name: 'Gran Caribe Resort & Spa',
+    location: 'Zona Hotelera, Cancún',
+    price: '1,302,000',
+    img: 'https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=400&h=220&fit=crop',
+  },
+  {
+    id: 'b1000000-0000-0000-0000-000000000004',
+    name: 'Hotel Histórico Centro',
+    location: 'Centro Histórico, Ciudad de México',
+    price: '1,134,000',
+    img: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400&h=220&fit=crop',
+  },
+  {
+    id: 'b1000000-0000-0000-0000-000000000002',
+    name: 'Playa Azul Hotel',
+    location: 'Zona Hotelera, Cancún',
+    price: '567,000',
+    img: 'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=400&h=220&fit=crop',
+  },
 ];
 
 export default function HomePage() {
