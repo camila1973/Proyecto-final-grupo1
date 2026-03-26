@@ -45,8 +45,10 @@ function formatPrice(usd: number, currency: string): string {
   }).format(converted);
 }
 
+const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
+
 async function fetchProperty(propertyId: string): Promise<PropertyDetail> {
-  const res = await fetch(`http://localhost:3002/properties/${propertyId}`);
+  const res = await fetch(`${API_BASE}/api/search/properties/${propertyId}`);
   if (!res.ok) throw new Error(`Failed to fetch property ${propertyId}`);
   return res.json() as Promise<PropertyDetail>;
 }
