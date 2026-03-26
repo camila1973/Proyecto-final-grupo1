@@ -25,31 +25,31 @@ Nx 22 monorepo for the TravelHub platform — a hotel and travel booking system 
 ## Prerequisites
 
 - Node.js 24
-- npm
+- pnpm
 - For mobile: iOS Simulator or Android Emulator
 
 ## Getting Started
 
 ```bash
-npm install
+pnpm install
 ```
 
 ## Development
 
 ```bash
-npm start                     # Start all apps concurrently
+pnpm start                     # Start all apps concurrently
 
 # Individual services
-npm run serve:api-gateway     # API Gateway     (port 3000)
-npm run serve:auth            # Auth service    (port 3001)
-npm run serve:search          # Search service  (port 3002)
-npm run serve:inventory       # Inventory       (port 3003)
-npm run serve:booking         # Booking         (port 3004)
-npm run serve:payment         # Payment         (port 3005)
-npm run serve:notification    # Notification    (port 3006)
-npm run serve:partners        # Partners        (port 3007)
-npm run serve:frontend        # Frontend        (port 4200)
-npm run start:mobile          # Mobile (Expo)   (port 8081)
+pnpm run serve:api-gateway     # API Gateway     (port 3000)
+pnpm run serve:auth            # Auth service    (port 3001)
+pnpm run serve:search          # Search service  (port 3002)
+pnpm run serve:inventory       # Inventory       (port 3003)
+pnpm run serve:booking         # Booking         (port 3004)
+pnpm run serve:payment         # Payment         (port 3005)
+pnpm run serve:notification    # Notification    (port 3006)
+pnpm run serve:partners        # Partners        (port 3007)
+pnpm run serve:frontend        # Frontend        (port 4200)
+pnpm run start:mobile          # Mobile (Expo)   (port 8081)
 
 # Mobile simulators
 nx run-ios mobile             # iOS simulator
@@ -59,40 +59,33 @@ nx run-android mobile         # Android emulator
 ## Testing
 
 ```bash
-npm test                               # Test all projects
-nx test auth-service                   # Single service
-nx test auth-service --watch           # Watch mode
-nx test auth-service -- --coverage     # With coverage
-npm run affected:test                  # Only changed projects
+pnpm test                                          # Test all projects
+nx test auth-service                               # Single service
+nx test auth-service --watch                       # Watch mode
+nx test booking-service -- --coverage              # With coverage
+pnpm run affected:test                             # Only changed projects
 ```
 
 ## Linting
 
 ```bash
-npm run lint                  # Lint all projects
-npm run lint:fix              # Lint and auto-fix
-npm run affected:lint         # Only changed projects
-```
-
-## Type Checking
-
-```bash
-npm run typecheck             # Type check all projects
+pnpm run lint                 # Lint all projects
+nx lint auth-service          # Single service
 ```
 
 ## Building
 
 ```bash
-npm run build                 # Build all projects
-npm run build:services        # Build all 8 microservices
-npm run build:frontend        # Build frontend → dist/frontend/
-npm run affected:build        # Only changed projects
+pnpm run build                 # Build all projects
+pnpm run build:services        # Build all 8 microservices
+pnpm run build:frontend        # Build frontend → dist/frontend/
+pnpm run affected:build        # Only changed projects
 ```
 
 ## Dependency Graph
 
 ```bash
-npm run graph
+pnpm run graph
 ```
 
 ## CI
