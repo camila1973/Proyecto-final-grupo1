@@ -23,6 +23,22 @@
       "executor": "@nx/jest:jest",
       "outputs": ["{workspaceRoot}/coverage/search-service"],
       "options": { "jestConfig": "services/search-service/jest.config.js", "passWithNoTests": true }
+    },
+    "migrate": {
+      "executor": "nx:run-commands",
+      "options": { "command": "pnpm exec kysely migrate:latest", "cwd": "services/search-service" }
+    },
+    "migrate-down": {
+      "executor": "nx:run-commands",
+      "options": { "command": "pnpm exec kysely migrate:down", "cwd": "services/search-service" }
+    },
+    "migrate-make": {
+      "executor": "nx:run-commands",
+      "options": { "command": "pnpm exec kysely migrate:make", "cwd": "services/search-service" }
+    },
+    "seed": {
+      "executor": "nx:run-commands",
+      "options": { "command": "../../node_modules/.bin/ts-node --esm --project tsconfig.json scripts/seed.ts", "cwd": "services/search-service" }
     }
   }
 }

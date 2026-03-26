@@ -1,4 +1,5 @@
 FROM node:24-alpine
+RUN corepack enable && corepack prepare pnpm@10.0.0 --activate
 WORKDIR /workspace
-COPY package.json package-lock.json tsconfig.base.json nx.json jest.preset.js ./
-RUN npm ci --ignore-scripts
+COPY package.json pnpm-lock.yaml tsconfig.base.json nx.json jest.preset.js ./
+RUN pnpm install --frozen-lockfile --ignore-scripts

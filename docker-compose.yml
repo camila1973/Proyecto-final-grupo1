@@ -20,6 +20,8 @@ volumes:
   payment_pg_data:
   notification_pg_data:
   partners_pg_data:
+  redis_data:
+  rabbitmq_data:
 
 services:
   # ─── Frontend ────────────────────────────────────────────────────────────────
@@ -96,13 +98,45 @@ services:
       auth-db:
         condition: service_healthy
 
+  # ─── Shared infrastructure (Redis + RabbitMQ) ────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+    networks:
+      - travelhub
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "15672:15672"   # management UI (optional, for local debugging)
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - travelhub
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
   # ─── Search Service ───────────────────────────────────────────────────────────
   search-db:
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: travelhub
+      POSTGRES_DB: search_service
+    ports:
+      - "5433:5432"
     volumes:
       - search_pg_data:/var/lib/postgresql/data
     networks:
@@ -123,9 +157,16 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3002
-      DATABASE_URL: postgres://postgres:postgres@search-db:5432/travelhub
+      DATABASE_URL: postgres://postgres:postgres@search-db:5432/search_service
+      REDIS_URL: redis://redis:6379
+      MESSAGE_BROKER_URL: amqp://guest:guest@rabbitmq:5672
+      MESSAGE_BROKER_TYPE: rabbitmq
     depends_on:
       search-db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
 
   # ─── Inventory Service ────────────────────────────────────────────────────────
