@@ -13,8 +13,9 @@ ENV NODE_ENV=production
 ENV PORT=${SERVICE_PORT}
 ENV SERVICE_NAME=${SERVICE_NAME}
 WORKDIR /app
-COPY package.json package-lock.json ./
-RUN npm ci --omit=dev --ignore-scripts
+RUN corepack enable && corepack prepare pnpm@10.0.0 --activate
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --prod --frozen-lockfile --ignore-scripts
 COPY --from=builder /workspace/dist/${SERVICE_NAME}/ ./dist/${SERVICE_NAME}/
 EXPOSE ${SERVICE_PORT}
 CMD ["sh", "-c", "node dist/$SERVICE_NAME/main.js"]

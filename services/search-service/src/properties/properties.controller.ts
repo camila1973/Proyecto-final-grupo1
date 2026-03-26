@@ -1,0 +1,69 @@
+import { BadRequestException, Controller, Get, Query } from "@nestjs/common";
+import { PropertiesService } from "./properties.service.js";
+import type {
+  SearchPropertiesDto,
+  SortOption,
+} from "./dto/search-properties.dto.js";
+
+const VALID_SORTS: SortOption[] = [
+  "price_asc",
+  "price_desc",
+  "stars_desc",
+  "relevance",
+];
+
+@Controller()
+export class PropertiesController {
+  constructor(private readonly propertiesService: PropertiesService) {}
+
+  @Get("properties")
+  searchProperties(@Query() query: Record<string, string>) {
+    const dto = this.parseQuery(query);
+    return this.propertiesService.searchProperties(dto);
+  }
+
+  private parseQuery(query: Record<string, string>): SearchPropertiesDto {
+    const { city, checkIn, checkOut, guests, page, limit, sort } = query;
+
+    if (checkIn && isNaN(new Date(checkIn).getTime())) {
+      throw new BadRequestException("checkIn must be a valid ISO 8601 date");
+    }
+    if (checkOut && isNaN(new Date(checkOut).getTime())) {
+      throw new BadRequestException("checkOut must be a valid ISO 8601 date");
+    }
+    if (checkIn && checkOut && new Date(checkOut) <= new Date(checkIn)) {
+      throw new BadRequestException("checkOut must be after checkIn");
+    }
+
+    const guestsNum = guests ? parseInt(guests, 10) : 1;
+    if (isNaN(guestsNum) || guestsNum < 1) {
+      throw new BadRequestException("guests must be a positive integer");
+    }
+
+    const resolvedSort = (sort as SortOption) ?? "relevance";
+    if (sort && !VALID_SORTS.includes(resolvedSort)) {
+      throw new BadRequestException(
+        `sort must be one of: ${VALID_SORTS.join(", ")}`,
+      );
+    }
+
+    return {
+      city: city?.trim() ?? "",
+      checkIn: checkIn ?? "",
+      checkOut: checkOut ?? "",
+      guests: guestsNum,
+      page: page ? Math.max(1, parseInt(page, 10)) : 1,
+      pageSize: limit ? Math.min(100, Math.max(1, parseInt(limit, 10))) : 20,
+      sort: resolvedSort,
+      amenities: query["amenities"]?.split(",").filter(Boolean),
+      stars: query["stars"]
+        ?.split(",")
+        .map(Number)
+        .filter((n) => !isNaN(n)),
+      priceMin:
+        query["priceMin"] != null ? parseFloat(query["priceMin"]) : undefined,
+      priceMax:
+        query["priceMax"] != null ? parseFloat(query["priceMax"]) : undefined,
+    };
+  }
+}

@@ -1,0 +1,167 @@
+import { BadRequestException } from "@nestjs/common";
+import { PropertiesController } from "./properties.controller.js";
+import type { PropertiesService } from "./properties.service.js";
+
+describe("PropertiesController", () => {
+  let controller: PropertiesController;
+  let service: jest.Mocked<Pick<PropertiesService, "searchProperties">>;
+
+  beforeEach(() => {
+    service = {
+      searchProperties: jest.fn().mockResolvedValue({ results: [] }),
+    };
+    controller = new PropertiesController(
+      service as unknown as PropertiesService,
+    );
+  });
+
+  // Access the private parseQuery for unit-level testing
+  const parse = (ctrl: PropertiesController, query: Record<string, string>) =>
+    (ctrl as any).parseQuery(query);
+
+  // ─── valid parsing ──────────────────────────────────────────────────────────
+
+  it("parses all valid fields correctly", () => {
+    const dto = parse(controller, {
+      city: " Lisbon ",
+      checkIn: "2026-04-01",
+      checkOut: "2026-04-05",
+      guests: "3",
+      page: "2",
+      limit: "10",
+      sort: "price_asc",
+      amenities: "wifi,pool",
+      stars: "4,5",
+      priceMin: "100",
+      priceMax: "500",
+    });
+
+    expect(dto.city).toBe("Lisbon"); // trimmed
+    expect(dto.checkIn).toBe("2026-04-01");
+    expect(dto.checkOut).toBe("2026-04-05");
+    expect(dto.guests).toBe(3);
+    expect(dto.page).toBe(2);
+    expect(dto.pageSize).toBe(10);
+    expect(dto.sort).toBe("price_asc");
+    expect(dto.amenities).toEqual(["wifi", "pool"]);
+    expect(dto.stars).toEqual([4, 5]);
+    expect(dto.priceMin).toBe(100);
+    expect(dto.priceMax).toBe(500);
+  });
+
+  it("defaults to page 1, pageSize 20, guests 1, sort relevance when omitted", () => {
+    const dto = parse(controller, {});
+    expect(dto.page).toBe(1);
+    expect(dto.pageSize).toBe(20);
+    expect(dto.guests).toBe(1);
+    expect(dto.sort).toBe("relevance");
+  });
+
+  it("defaults city and checkIn/checkOut to empty strings when omitted", () => {
+    const dto = parse(controller, {});
+    expect(dto.city).toBe("");
+    expect(dto.checkIn).toBe("");
+    expect(dto.checkOut).toBe("");
+  });
+
+  it("clamps pageSize to 100 maximum", () => {
+    const dto = parse(controller, { limit: "9999" });
+    expect(dto.pageSize).toBe(100);
+  });
+
+  it("clamps pageSize to 1 minimum", () => {
+    const dto = parse(controller, { limit: "0" });
+    expect(dto.pageSize).toBe(1);
+  });
+
+  it("clamps page to 1 minimum", () => {
+    const dto = parse(controller, { page: "-5" });
+    expect(dto.page).toBe(1);
+  });
+
+  it("leaves priceMin/priceMax undefined when not provided", () => {
+    const dto = parse(controller, {});
+    expect(dto.priceMin).toBeUndefined();
+    expect(dto.priceMax).toBeUndefined();
+  });
+
+  it("filters out NaN values from stars array", () => {
+    const dto = parse(controller, { stars: "4,abc,5" });
+    expect(dto.stars).toEqual([4, 5]);
+  });
+
+  it("filters empty strings from amenities array", () => {
+    const dto = parse(controller, { amenities: "wifi,,pool," });
+    expect(dto.amenities).toEqual(["wifi", "pool"]);
+  });
+
+  it("accepts all valid sort options", () => {
+    for (const sort of ["price_asc", "price_desc", "stars_desc", "relevance"]) {
+      expect(() => parse(controller, { sort })).not.toThrow();
+    }
+  });
+
+  // ─── validation errors ──────────────────────────────────────────────────────
+
+  it("throws BadRequestException for invalid checkIn date", () => {
+    expect(() => parse(controller, { checkIn: "not-a-date" })).toThrow(
+      BadRequestException,
+    );
+  });
+
+  it("throws BadRequestException for invalid checkOut date", () => {
+    expect(() => parse(controller, { checkOut: "not-a-date" })).toThrow(
+      BadRequestException,
+    );
+  });
+
+  it("throws BadRequestException when checkOut equals checkIn", () => {
+    expect(() =>
+      parse(controller, { checkIn: "2026-04-01", checkOut: "2026-04-01" }),
+    ).toThrow(BadRequestException);
+  });
+
+  it("throws BadRequestException when checkOut is before checkIn", () => {
+    expect(() =>
+      parse(controller, { checkIn: "2026-04-05", checkOut: "2026-04-01" }),
+    ).toThrow(BadRequestException);
+  });
+
+  it("throws BadRequestException for non-numeric guests", () => {
+    expect(() => parse(controller, { guests: "abc" })).toThrow(
+      BadRequestException,
+    );
+  });
+
+  it("throws BadRequestException for guests = 0", () => {
+    expect(() => parse(controller, { guests: "0" })).toThrow(
+      BadRequestException,
+    );
+  });
+
+  it("throws BadRequestException for negative guests", () => {
+    expect(() => parse(controller, { guests: "-1" })).toThrow(
+      BadRequestException,
+    );
+  });
+
+  it("throws BadRequestException for unknown sort value", () => {
+    expect(() => parse(controller, { sort: "cheapest_first" })).toThrow(
+      BadRequestException,
+    );
+  });
+
+  // ─── HTTP endpoint ──────────────────────────────────────────────────────────
+
+  it("searchProperties delegates to service", async () => {
+    await controller.searchProperties({ city: "Cancún" });
+    expect(service.searchProperties).toHaveBeenCalledWith(
+      expect.objectContaining({ city: "Cancún" }),
+    );
+  });
+
+  it("returns the service response", async () => {
+    const response = await controller.searchProperties({});
+    expect(response).toEqual({ results: [] });
+  });
+});
