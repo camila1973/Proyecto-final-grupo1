@@ -1,4 +1,11 @@
-import { BadRequestException, Controller, Get, Query } from "@nestjs/common";
+import {
+  BadRequestException,
+  Controller,
+  Get,
+  NotFoundException,
+  Param,
+  Query,
+} from "@nestjs/common";
 import { PropertiesService } from "./properties.service.js";
 import type {
   SearchPropertiesDto,
@@ -20,6 +27,15 @@ export class PropertiesController {
   searchProperties(@Query() query: Record<string, string>) {
     const dto = this.parseQuery(query);
     return this.propertiesService.searchProperties(dto);
+  }
+
+  @Get("properties/:id")
+  async getProperty(@Param("id") id: string) {
+    const result = await this.propertiesService.getPropertyById(id);
+    if (!result) {
+      throw new NotFoundException(`Property ${id} not found`);
+    }
+    return result;
   }
 
   private parseQuery(query: Record<string, string>): SearchPropertiesDto {

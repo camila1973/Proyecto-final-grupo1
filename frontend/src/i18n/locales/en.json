@@ -20,6 +20,27 @@
     "per_night": "per night",
     "book": "Book"
   },
+  "property_detail": {
+    "back": "Back to results",
+    "per_night": "per night",
+    "book_now": "Book now",
+    "amenities": "Amenities",
+    "rooms": "Available rooms",
+    "reviews": "Reviews",
+    "rating_label": "Rating",
+    "stars_label": "stars",
+    "location": "Location",
+    "capacity": "Capacity",
+    "guests": "guests",
+    "room_type": "Room type",
+    "bed_type": "Bed type",
+    "view_type": "View",
+    "availability": "Checking availability...",
+    "available": "Available",
+    "unavailable": "Unavailable",
+    "loading": "Loading property details...",
+    "error": "Could not load property details."
+  },
   "footer": {
     "copyright": "© 2026 TravelHub",
     "privacy": "Privacy policy",

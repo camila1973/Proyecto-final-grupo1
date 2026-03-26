@@ -61,6 +61,82 @@ export class PropertiesService {
     return response;
   }
 
+  async getPropertyById(propertyId: string) {
+    const cacheKey = `search:property:${propertyId}`;
+    const cached = await this.cache.get(cacheKey);
+    if (cached) {
+      return JSON.parse(cached) as object;
+    }
+
+    const rows = await this.db.db
+      .selectFrom("room_search_index as rsi")
+      .leftJoin("room_availability as ra", "ra.room_id", "rsi.room_id")
+      .select([
+        "rsi.room_id",
+        "rsi.property_id",
+        "rsi.property_name",
+        "rsi.city",
+        "rsi.country",
+        "rsi.neighborhood",
+        "rsi.lat",
+        "rsi.lon",
+        "rsi.stars",
+        "rsi.rating",
+        "rsi.review_count",
+        "rsi.thumbnail_url",
+        "rsi.amenities",
+        "rsi.room_type",
+        "rsi.bed_type",
+        "rsi.view_type",
+        "rsi.capacity",
+        "rsi.base_price_usd",
+        "ra.price_usd as avail_price_usd",
+        "ra.from_date as avail_from",
+        "ra.to_date as avail_to",
+      ])
+      .where("rsi.property_id", "=", propertyId)
+      .where("rsi.is_active", "=", true)
+      .execute();
+
+    if (rows.length === 0) {
+      return null;
+    }
+
+    const first = rows[0];
+    const allAmenities = [...new Set(rows.flatMap((r) => r.amenities))];
+    const rooms = rows.map((r) => ({
+      roomId: r.room_id,
+      roomType: r.room_type,
+      bedType: r.bed_type,
+      viewType: r.view_type,
+      capacity: r.capacity,
+      basePriceUsd: parseFloat(r.base_price_usd),
+      priceUsd:
+        r.avail_price_usd != null ? parseFloat(r.avail_price_usd) : null,
+      availabilityFrom: r.avail_from ?? null,
+      availabilityTo: r.avail_to ?? null,
+    }));
+
+    const response = {
+      propertyId: first.property_id,
+      propertyName: first.property_name,
+      city: first.city,
+      country: first.country,
+      neighborhood: first.neighborhood ?? null,
+      lat: first.lat,
+      lon: first.lon,
+      stars: first.stars,
+      rating: parseFloat(first.rating),
+      reviewCount: first.review_count,
+      thumbnailUrl: first.thumbnail_url,
+      amenities: allAmenities,
+      rooms,
+    };
+
+    await this.cache.set(cacheKey, JSON.stringify(response), CACHE_TTL);
+    return response;
+  }
+
   async invalidateCityCache(city: string): Promise<void> {
     const pattern = `search:properties:${this.normalizeCity(city)}:*`;
     await this.cache.scanDel(pattern);

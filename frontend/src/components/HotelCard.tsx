@@ -1,17 +1,25 @@
 import { useTranslation } from 'react-i18next';
 
 export interface HotelCardProps {
+  id?: string;
   name: string;
   location: string;
   price: string;
   img: string;
+  onClick?: () => void;
 }
 
-export default function HotelCard({ name, location, price, img }: HotelCardProps) {
+export default function HotelCard({ name, location, price, img, onClick }: HotelCardProps) {
   const { t } = useTranslation();
 
   return (
-    <div className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+    <div
+      className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') onClick(); } : undefined}
+    >
       <img src={img} alt={name} className="w-full h-44 object-cover" />
       <div className="p-4">
         <p className="font-bold text-sm text-gray-900">{name}</p>
