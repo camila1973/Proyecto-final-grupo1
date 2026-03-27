@@ -1,8 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { AvailabilityRecord, AvailabilityStore } from './availability.store.js';
-import { HotelbedsWebhookDto } from './dto/hotelbeds-webhook.dto.js';
-import { TravelClickWebhookDto } from './dto/travelclick-webhook.dto.js';
-import { RoomRaccoonWebhookDto } from './dto/roomraccoon-webhook.dto.js';
+import { Injectable, Logger } from "@nestjs/common";
+import { AvailabilityRecord, AvailabilityStore } from "./availability.store.js";
+import { HotelbedsWebhookDto } from "./dto/hotelbeds-webhook.dto.js";
+import { TravelClickWebhookDto } from "./dto/travelclick-webhook.dto.js";
+import { RoomRaccoonWebhookDto } from "./dto/roomraccoon-webhook.dto.js";
 
 export interface WebhookResult {
   processed: number;
@@ -41,7 +41,7 @@ export class WebhooksService {
       currency: room.currency,
       stopSell: room.stopSell,
       updatedAt: new Date(payload.timestamp),
-      source: 'hotelbeds',
+      source: "hotelbeds",
     }));
 
     this.store.upsertBatch(records);
@@ -70,7 +70,7 @@ export class WebhooksService {
           currency: roomType.currencyCode,
           stopSell: roomType.closed,
           updatedAt: new Date(payload.createdAt),
-          source: 'travelclick',
+          source: "travelclick",
         });
       }
     }
@@ -96,7 +96,7 @@ export class WebhooksService {
       currency: item.currency,
       stopSell: !item.available,
       updatedAt: new Date(payload.occurredAt),
-      source: 'roomraccoon',
+      source: "roomraccoon",
     }));
 
     this.store.upsertBatch(records);

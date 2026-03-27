@@ -5,39 +5,39 @@ import {
   HttpCode,
   HttpStatus,
   BadRequestException,
-} from '@nestjs/common';
-import { WebhooksService } from './webhooks.service.js';
-import type { HotelbedsWebhookDto } from './dto/hotelbeds-webhook.dto.js';
-import type { TravelClickWebhookDto } from './dto/travelclick-webhook.dto.js';
-import type { RoomRaccoonWebhookDto } from './dto/roomraccoon-webhook.dto.js';
+} from "@nestjs/common";
+import { WebhooksService } from "./webhooks.service.js";
+import type { HotelbedsWebhookDto } from "./dto/hotelbeds-webhook.dto.js";
+import type { TravelClickWebhookDto } from "./dto/travelclick-webhook.dto.js";
+import type { RoomRaccoonWebhookDto } from "./dto/roomraccoon-webhook.dto.js";
 
-@Controller('webhooks')
+@Controller("webhooks")
 export class WebhooksController {
   constructor(private readonly webhooksService: WebhooksService) {}
 
-  @Post('hotelbeds')
+  @Post("hotelbeds")
   @HttpCode(HttpStatus.OK)
   hotelbeds(@Body() payload: HotelbedsWebhookDto) {
     if (!payload?.hotelCode || !Array.isArray(payload.rooms)) {
-      throw new BadRequestException('Invalid Hotelbeds payload');
+      throw new BadRequestException("Invalid Hotelbeds payload");
     }
     return this.webhooksService.processHotelbeds(payload);
   }
 
-  @Post('travelclick')
+  @Post("travelclick")
   @HttpCode(HttpStatus.OK)
   travelclick(@Body() payload: TravelClickWebhookDto) {
     if (!payload?.propertyCode || !Array.isArray(payload.roomTypes)) {
-      throw new BadRequestException('Invalid TravelClick payload');
+      throw new BadRequestException("Invalid TravelClick payload");
     }
     return this.webhooksService.processTravelClick(payload);
   }
 
-  @Post('roomraccoon')
+  @Post("roomraccoon")
   @HttpCode(HttpStatus.OK)
   roomraccoon(@Body() payload: RoomRaccoonWebhookDto) {
     if (!payload?.hotelId || !Array.isArray(payload.availability)) {
-      throw new BadRequestException('Invalid RoomRaccoon payload');
+      throw new BadRequestException("Invalid RoomRaccoon payload");
     }
     return this.webhooksService.processRoomRaccoon(payload);
   }

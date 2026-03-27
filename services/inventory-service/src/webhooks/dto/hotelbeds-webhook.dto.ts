@@ -9,7 +9,7 @@ export interface HotelbedsRoomAvailability {
 
 export interface HotelbedsWebhookDto {
   hotelCode: string;
-  provider: 'hotelbeds';
+  provider: "hotelbeds";
   timestamp: string; // ISO 8601
   rooms: HotelbedsRoomAvailability[];
 }

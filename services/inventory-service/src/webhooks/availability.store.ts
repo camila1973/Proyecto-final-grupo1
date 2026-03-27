@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable } from "@nestjs/common";
 
 export interface AvailabilityRecord {
   skuId: string; // `${propertyId}:${roomId}:${date}`

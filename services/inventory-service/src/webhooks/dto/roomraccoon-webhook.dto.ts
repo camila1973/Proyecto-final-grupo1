@@ -8,7 +8,7 @@ export interface RoomRaccoonAvailabilityUpdate {
 
 export interface RoomRaccoonWebhookDto {
   hotelId: string;
-  provider: 'roomraccoon';
+  provider: "roomraccoon";
   eventType: string;
   occurredAt: string; // ISO 8601
   availability: RoomRaccoonAvailabilityUpdate[];

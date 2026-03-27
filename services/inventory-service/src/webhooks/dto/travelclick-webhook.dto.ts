@@ -10,7 +10,7 @@ export interface TravelClickRoomType {
 
 export interface TravelClickWebhookDto {
   propertyCode: string;
-  provider: 'travelclick';
+  provider: "travelclick";
   transactionId: string;
   createdAt: string; // ISO 8601
   roomTypes: TravelClickRoomType[];
