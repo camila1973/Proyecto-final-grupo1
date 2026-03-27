@@ -276,11 +276,13 @@ describe("PropertiesService", () => {
 
     it("skips booked-ranges filter when no dates provided", async () => {
       const { service, queryChain } = makeServices();
-      await service.searchProperties({
-        ...baseDto,
-        checkIn: undefined,
-        checkOut: undefined,
-      });
+      await service.searchProperties(
+        Object.fromEntries(
+          Object.entries(baseDto).filter(
+            ([k]) => k !== "checkIn" && k !== "checkOut",
+          ),
+        ) as SearchPropertiesDto,
+      );
       const ifCalls = queryChain.$if.mock.calls;
       expect(ifCalls[1][0]).toBe(false);
     });
