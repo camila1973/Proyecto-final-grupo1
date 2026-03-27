@@ -171,11 +171,45 @@ describe("PropertiesService", () => {
         ...baseDto,
         stars: [4, 5],
         priceMax: 400,
+        exact: true,
       });
       expect(mockFacets.applyFilters).toHaveBeenCalledWith(
         expect.anything(),
         expect.objectContaining({ stars: [4, 5], priceMax: 400 }),
       );
+    });
+
+    it("passes only price filters to applyFilters when exact=false", async () => {
+      const { service, mockFacets } = makeServices();
+      await service.searchProperties({
+        ...baseDto,
+        roomType: ["suite"],
+        stars: [5],
+        exact: false,
+      });
+      expect(mockFacets.applyFilters).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ roomType: undefined, stars: undefined }),
+      );
+    });
+
+    it("passes only price filters to applyFilters when exact is undefined", async () => {
+      const { service, mockFacets } = makeServices();
+      await service.searchProperties({ ...baseDto, roomType: ["suite"] });
+      expect(mockFacets.applyFilters).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ roomType: undefined }),
+      );
+    });
+
+    it("produces different cache keys for exact=true vs exact=false", async () => {
+      const { service, cache } = makeServices();
+      await service.searchProperties({ ...baseDto, exact: true });
+      await service.searchProperties({ ...baseDto, exact: false });
+      const keys = (cache.set as jest.Mock).mock.calls.map(
+        (c) => c[0] as string,
+      );
+      expect(keys[0]).not.toBe(keys[1]);
     });
 
     it("computes facets from unfiltered candidates", async () => {

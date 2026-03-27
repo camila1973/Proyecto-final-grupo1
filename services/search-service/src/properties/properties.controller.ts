@@ -63,6 +63,10 @@ export class PropertiesController {
       );
     }
 
+    const q = query as Record<string, string | string[]>;
+    const starsRaw = this.parseArrayParam(q, "stars");
+    const starsNums = starsRaw?.map(Number).filter((n) => !isNaN(n));
+
     return {
       city: city?.trim() ?? "",
       checkIn: checkIn ?? "",
@@ -71,15 +75,29 @@ export class PropertiesController {
       page: page ? Math.max(1, parseInt(page, 10)) : 1,
       pageSize: limit ? Math.min(100, Math.max(1, parseInt(limit, 10))) : 20,
       sort: resolvedSort,
-      amenities: query["amenities"]?.split(",").filter(Boolean),
-      stars: query["stars"]
-        ?.split(",")
-        .map(Number)
-        .filter((n) => !isNaN(n)),
+      amenities: this.parseArrayParam(q, "amenities"),
+      stars: starsNums?.length ? starsNums : undefined,
       priceMin:
         query["priceMin"] != null ? parseFloat(query["priceMin"]) : undefined,
       priceMax:
         query["priceMax"] != null ? parseFloat(query["priceMax"]) : undefined,
+      roomType: this.parseArrayParam(q, "roomType"),
+      bedType: this.parseArrayParam(q, "bedType"),
+      viewType: this.parseArrayParam(q, "viewType"),
+      exact: query["exact"] === "true",
     };
+  }
+
+  private parseArrayParam(
+    query: Record<string, string | string[]>,
+    key: string,
+  ): string[] | undefined {
+    const raw = query[key] ?? query[`${key}[]`];
+    if (raw == null) return undefined;
+    const arr = Array.isArray(raw)
+      ? raw.flatMap((v) => v.split(","))
+      : raw.split(",");
+    const result = arr.filter(Boolean);
+    return result.length ? result : undefined;
   }
 }

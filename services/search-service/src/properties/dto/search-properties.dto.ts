@@ -19,4 +19,5 @@ export interface SearchPropertiesDto {
   stars?: number[];
   priceMin?: number;
   priceMax?: number;
+  exact?: boolean;
 }

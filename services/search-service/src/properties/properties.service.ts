@@ -28,11 +28,11 @@ export class PropertiesService {
     const candidates = await this.fetchCandidates(dto);
 
     const filtered = this.facets.applyFilters(candidates, {
-      roomType: dto.roomType,
-      bedType: dto.bedType,
-      viewType: dto.viewType,
-      amenities: dto.amenities,
-      stars: dto.stars,
+      roomType: dto.exact ? dto.roomType : undefined,
+      bedType: dto.exact ? dto.bedType : undefined,
+      viewType: dto.exact ? dto.viewType : undefined,
+      amenities: dto.exact ? dto.amenities : undefined,
+      stars: dto.exact ? dto.stars : undefined,
       priceMin: dto.priceMin,
       priceMax: dto.priceMax,
     });
@@ -209,6 +209,7 @@ export class PropertiesService {
           stars: dto.stars?.slice().sort(),
           priceMin: dto.priceMin,
           priceMax: dto.priceMax,
+          exact: dto.exact,
           page: dto.page,
           pageSize: dto.pageSize,
         }),
