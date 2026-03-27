@@ -28,11 +28,11 @@ export class PropertiesService {
     const candidates = await this.fetchCandidates(dto);
 
     const filtered = this.facets.applyFilters(candidates, {
-      roomType: dto.roomType,
-      bedType: dto.bedType,
-      viewType: dto.viewType,
-      amenities: dto.amenities,
-      stars: dto.stars,
+      roomType: dto.exact ? dto.roomType : undefined,
+      bedType: dto.exact ? dto.bedType : undefined,
+      viewType: dto.exact ? dto.viewType : undefined,
+      amenities: dto.exact ? dto.amenities : undefined,
+      stars: dto.exact ? dto.stars : undefined,
       priceMin: dto.priceMin,
       priceMax: dto.priceMax,
     });
@@ -70,7 +70,6 @@ export class PropertiesService {
 
     const rows = await this.db.db
       .selectFrom("room_search_index as rsi")
-      .leftJoin("room_availability as ra", "ra.room_id", "rsi.room_id")
       .select([
         "rsi.room_id",
         "rsi.property_id",
@@ -90,9 +89,6 @@ export class PropertiesService {
         "rsi.view_type",
         "rsi.capacity",
         "rsi.base_price_usd",
-        "ra.price_usd as avail_price_usd",
-        "ra.from_date as avail_from",
-        "ra.to_date as avail_to",
       ])
       .where("rsi.property_id", "=", propertyId)
       .where("rsi.is_active", "=", true)
@@ -111,10 +107,6 @@ export class PropertiesService {
       viewType: r.view_type,
       capacity: r.capacity,
       basePriceUsd: parseFloat(r.base_price_usd),
-      priceUsd:
-        r.avail_price_usd != null ? parseFloat(r.avail_price_usd) : null,
-      availabilityFrom: r.avail_from ?? null,
-      availabilityTo: r.avail_to ?? null,
     }));
 
     const response = {
@@ -152,15 +144,6 @@ export class PropertiesService {
 
     const rows = await this.db.db
       .selectFrom("room_search_index as rsi")
-      .leftJoin("room_availability as ra", (join) => {
-        let j = join.onRef("ra.room_id", "=", "rsi.room_id");
-        if (hasDates) {
-          j = j
-            .on(sql`ra.from_date <= ${dto.checkIn}::date`)
-            .on(sql`ra.to_date >= ${dto.checkOut}::date`);
-        }
-        return j;
-      })
       .select([
         "rsi.room_id",
         "rsi.property_id",
@@ -177,15 +160,32 @@ export class PropertiesService {
         "rsi.view_type",
         "rsi.capacity",
         "rsi.base_price_usd",
-        "ra.price_usd as avail_price_usd",
-        "ra.from_date as avail_from",
-        "ra.to_date as avail_to",
+        // Seasonal price: pick the first matching period, fall back to base price
+        sql<string | null>`(
+          SELECT rpp.price_usd::text
+          FROM room_price_periods rpp
+          WHERE rpp.room_id = rsi.room_id
+            AND rpp.from_date <= ${dto.checkIn ?? "9999-12-31"}::date
+            AND rpp.to_date   >= ${dto.checkOut ?? "0001-01-01"}::date
+          LIMIT 1
+        )`.as("avail_price_usd"),
       ])
       .where("rsi.is_active", "=", true)
       .where("rsi.capacity", ">=", dto.guests)
       .$if(hasCity, (qb) =>
         qb.where(
           sql<SqlBool>`(rsi.city % ${dto.city} OR rsi.property_name % ${dto.city})`,
+        ),
+      )
+      .$if(hasDates, (qb) =>
+        qb.where(
+          sql<SqlBool>`NOT EXISTS (
+            SELECT 1
+            FROM room_booked_ranges rbr
+            WHERE rbr.room_id  = rsi.room_id
+              AND rbr.from_date < ${dto.checkOut}::date
+              AND rbr.to_date   > ${dto.checkIn}::date
+          )`,
         ),
       )
       .execute();
@@ -209,6 +209,7 @@ export class PropertiesService {
           stars: dto.stars?.slice().sort(),
           priceMin: dto.priceMin,
           priceMax: dto.priceMax,
+          exact: dto.exact,
           page: dto.page,
           pageSize: dto.pageSize,
         }),

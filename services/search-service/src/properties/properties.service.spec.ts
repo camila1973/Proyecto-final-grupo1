@@ -23,8 +23,6 @@ const mockRoom = {
   capacity: 2,
   base_price_usd: "200",
   avail_price_usd: "180",
-  avail_from: "2026-04-01",
-  avail_to: "2026-04-30",
 };
 
 const mockProperty = {
@@ -43,8 +41,6 @@ const mockProperty = {
     capacity: 2,
     basePriceUsd: 200,
     priceUsd: 180,
-    availabilityFrom: "2026-04-01",
-    availabilityTo: "2026-04-30",
   },
 };
 
@@ -63,17 +59,6 @@ const baseDto: SearchPropertiesDto = {
 function makeQueryChain(rows: unknown[]) {
   const chain: Record<string, jest.Mock> = {} as any;
 
-  // Mock join builder — returned to the leftJoin callback
-  const joinBuilder: Record<string, jest.Mock> = {} as any;
-  joinBuilder.onRef = jest.fn().mockReturnValue(joinBuilder as any);
-  joinBuilder.on = jest.fn().mockReturnValue(joinBuilder as any);
-
-  chain.leftJoin = jest
-    .fn()
-    .mockImplementation((_table: string, fn: (j: any) => any) => {
-      fn(joinBuilder); // execute the callback so lines inside are covered
-      return chain;
-    });
   chain.select = jest.fn().mockReturnValue(chain);
   chain.where = jest.fn().mockReturnValue(chain);
   chain.$if = jest
@@ -171,11 +156,45 @@ describe("PropertiesService", () => {
         ...baseDto,
         stars: [4, 5],
         priceMax: 400,
+        exact: true,
       });
       expect(mockFacets.applyFilters).toHaveBeenCalledWith(
         expect.anything(),
         expect.objectContaining({ stars: [4, 5], priceMax: 400 }),
       );
+    });
+
+    it("passes only price filters to applyFilters when exact=false", async () => {
+      const { service, mockFacets } = makeServices();
+      await service.searchProperties({
+        ...baseDto,
+        roomType: ["suite"],
+        stars: [5],
+        exact: false,
+      });
+      expect(mockFacets.applyFilters).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ roomType: undefined, stars: undefined }),
+      );
+    });
+
+    it("passes only price filters to applyFilters when exact is undefined", async () => {
+      const { service, mockFacets } = makeServices();
+      await service.searchProperties({ ...baseDto, roomType: ["suite"] });
+      expect(mockFacets.applyFilters).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ roomType: undefined }),
+      );
+    });
+
+    it("produces different cache keys for exact=true vs exact=false", async () => {
+      const { service, cache } = makeServices();
+      await service.searchProperties({ ...baseDto, exact: true });
+      await service.searchProperties({ ...baseDto, exact: false });
+      const keys = (cache.set as jest.Mock).mock.calls.map(
+        (c) => c[0] as string,
+      );
+      expect(keys[0]).not.toBe(keys[1]);
     });
 
     it("computes facets from unfiltered candidates", async () => {
@@ -227,17 +246,7 @@ describe("PropertiesService", () => {
   });
 
   describe("fetchCandidates conditional clauses", () => {
-    // Dates are handled via a regular if() inside the leftJoin callback, not Kysely's $if.
-    // City filter uses Kysely's $if.
-
-    it("calls leftJoin with the availability table", async () => {
-      const { service, queryChain } = makeServices();
-      await service.searchProperties(baseDto);
-      expect(queryChain.leftJoin).toHaveBeenCalledWith(
-        "room_availability as ra",
-        expect.any(Function),
-      );
-    });
+    // City filter is the first $if call; date (booked-ranges) filter is the second.
 
     it("uses $if with hasCity=true when city is provided", async () => {
       const { service, queryChain } = makeServices();
@@ -253,22 +262,29 @@ describe("PropertiesService", () => {
       expect(ifCalls[0][0]).toBe(false);
     });
 
-    it("executes the join callback (covers leftJoin body)", async () => {
+    it("applies NOT EXISTS booked-ranges filter when hasDates=true", async () => {
       const { service, queryChain } = makeServices();
-      await service.searchProperties(baseDto);
-      expect(queryChain.leftJoin).toHaveBeenCalled();
+      await service.searchProperties({
+        ...baseDto,
+        checkIn: "2026-04-01",
+        checkOut: "2026-04-05",
+      });
+      const ifCalls = queryChain.$if.mock.calls;
+      // second $if call is the hasDates branch
+      expect(ifCalls[1][0]).toBe(true);
     });
 
-    it("adds date conditions to join when hasDates=true", async () => {
-      const { service } = makeServices();
-      // Should not throw — verifies hasDates=true branch inside leftJoin callback
-      await expect(
-        service.searchProperties({
-          ...baseDto,
-          checkIn: "2026-04-01",
-          checkOut: "2026-04-05",
-        }),
-      ).resolves.toBeDefined();
+    it("skips booked-ranges filter when no dates provided", async () => {
+      const { service, queryChain } = makeServices();
+      await service.searchProperties(
+        Object.fromEntries(
+          Object.entries(baseDto).filter(
+            ([k]) => k !== "checkIn" && k !== "checkOut",
+          ),
+        ) as SearchPropertiesDto,
+      );
+      const ifCalls = queryChain.$if.mock.calls;
+      expect(ifCalls[1][0]).toBe(false);
     });
   });
 
@@ -300,7 +316,6 @@ describe("PropertiesService", () => {
 
     function makeDetailQueryChain(rows: unknown[]) {
       const chain: Record<string, jest.Mock> = {} as any;
-      chain.leftJoin = jest.fn().mockReturnValue(chain);
       chain.select = jest.fn().mockReturnValue(chain);
       chain.where = jest.fn().mockReturnValue(chain);
       chain.execute = jest.fn().mockResolvedValue(rows);

@@ -20,8 +20,6 @@ function makeRoom(overrides: Partial<CandidateRoom> = {}): CandidateRoom {
     capacity: 2,
     base_price_usd: "150.00",
     avail_price_usd: null,
-    avail_from: null,
-    avail_to: null,
     ...overrides,
   };
 }
@@ -339,8 +337,6 @@ describe("FacetsService", () => {
         capacity: 2,
         basePriceUsd: price,
         priceUsd: price,
-        availabilityFrom: null,
-        availabilityTo: null,
       },
     });
 

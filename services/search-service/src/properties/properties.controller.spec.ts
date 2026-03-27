@@ -104,6 +104,48 @@ describe("PropertiesController", () => {
     }
   });
 
+  it("parses roomType from comma-delimited string", () => {
+    expect(parse(controller, { roomType: "suite,deluxe" }).roomType).toEqual([
+      "suite",
+      "deluxe",
+    ]);
+  });
+
+  it("parses bedType from comma-delimited string", () => {
+    expect(parse(controller, { bedType: "king" }).bedType).toEqual(["king"]);
+  });
+
+  it("parses viewType from comma-delimited string", () => {
+    expect(parse(controller, { viewType: "ocean,city" }).viewType).toEqual([
+      "ocean",
+      "city",
+    ]);
+  });
+
+  it("parses amenities from bracket key (amenities[])", () => {
+    expect(parse(controller, { "amenities[]": "wifi,pool" }).amenities).toEqual(
+      ["wifi", "pool"],
+    );
+  });
+
+  it("parses roomType from bracket key (roomType[])", () => {
+    expect(parse(controller, { "roomType[]": "suite" }).roomType).toEqual([
+      "suite",
+    ]);
+  });
+
+  it('sets exact=true when query["exact"] is "true"', () => {
+    expect(parse(controller, { exact: "true" }).exact).toBe(true);
+  });
+
+  it('sets exact=false when query["exact"] is absent', () => {
+    expect(parse(controller, {}).exact).toBe(false);
+  });
+
+  it('sets exact=false when query["exact"] is "false"', () => {
+    expect(parse(controller, { exact: "false" }).exact).toBe(false);
+  });
+
   // ─── validation errors ──────────────────────────────────────────────────────
 
   it("throws BadRequestException for invalid checkIn date", () => {

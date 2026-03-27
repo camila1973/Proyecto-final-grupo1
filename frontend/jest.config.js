@@ -16,6 +16,7 @@ module.exports = {
     '\\.(css|less|scss|sass)$': '<rootDir>/__mocks__/fileMock.js',
     '^../env$': '<rootDir>/__mocks__/env.ts',
     '^./env$': '<rootDir>/__mocks__/env.ts',
+    '^../../env$': '<rootDir>/__mocks__/env.ts',
   },
   coverageDirectory: '../coverage/frontend',
   coverageReporters: ['lcov', 'text-summary'],

@@ -3,6 +3,7 @@ import { LocaleProvider } from './context/LocaleContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import HomePage from './pages/HomePage';
+import SearchPage from './pages/search';
 import PropertyDetailPage from './pages/PropertyDetailPage';
 
 const rootRoute = createRootRoute({
@@ -23,13 +24,25 @@ const homeRoute = createRoute({
   component: HomePage,
 });
 
+const searchRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/search',
+  validateSearch: (search: Record<string, unknown>) => ({
+    city: (search.city as string) ?? '',
+    checkIn: (search.checkIn as string) ?? '',
+    checkOut: (search.checkOut as string) ?? '',
+    guests: Number(search.guests ?? 2),
+  }),
+  component: SearchPage,
+});
+
 const propertyRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/properties/$propertyId',
   component: PropertyDetailPage,
 });
 
-const routeTree = rootRoute.addChildren([homeRoute, propertyRoute]);
+const routeTree = rootRoute.addChildren([homeRoute, searchRoute, propertyRoute]);
 
 export function createAppRouter() {
   return createRouter({ routeTree });

@@ -41,6 +41,27 @@
     "loading": "Cargando detalles de la propiedad...",
     "error": "No se pudieron cargar los detalles de la propiedad."
   },
+  "search": {
+    "loading": "Buscando hoteles...",
+    "error": "Error al buscar hoteles. Por favor intenta de nuevo.",
+    "empty": "No se encontraron hoteles con estos criterios.",
+    "results_count": "{{count}} hoteles",
+    "results_city": "encontrados en {{city}}",
+    "filters": {
+      "title": "Filtros",
+      "clear": "Borrar filtros",
+      "price_label": "PRECIO POR NOCHE (COP)",
+      "price_from": "DESDE",
+      "price_to": "HASTA"
+    },
+    "card": {
+      "nights_one": "por noche",
+      "nights_other": "por {{count}} noches",
+      "guests_one": "huésped",
+      "guests_other": "huéspedes",
+      "book": "Reservar"
+    }
+  },
   "footer": {
     "copyright": "© 2026 TravelHub",
     "privacy": "Política de privacidad",

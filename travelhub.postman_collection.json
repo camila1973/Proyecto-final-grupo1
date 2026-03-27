@@ -21,8 +21,12 @@
             "method": "GET",
             "url": {
               "raw": "{{base_url}}/health",
-              "host": ["{{base_url}}"],
-              "path": ["health"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "health"
+              ]
             }
           }
         }
@@ -37,8 +41,14 @@
             "method": "GET",
             "url": {
               "raw": "{{base_url}}/api/auth/health",
-              "host": ["{{base_url}}"],
-              "path": ["api", "auth", "health"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "health"
+              ]
             }
           }
         },
@@ -48,8 +58,14 @@
             "method": "GET",
             "url": {
               "raw": "{{base_url}}/api/auth/users",
-              "host": ["{{base_url}}"],
-              "path": ["api", "auth", "users"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "users"
+              ]
             }
           }
         },
@@ -59,10 +75,21 @@
             "method": "POST",
             "url": {
               "raw": "{{base_url}}/api/auth/register",
-              "host": ["{{base_url}}"],
-              "path": ["api", "auth", "register"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
             },
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"test@travelhub.com\",\n  \"password\": \"secret123\"\n}"
@@ -75,10 +102,21 @@
             "method": "POST",
             "url": {
               "raw": "{{base_url}}/api/auth/login",
-              "host": ["{{base_url}}"],
-              "path": ["api", "auth", "login"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
             },
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"alice@travelhub.com\",\n  \"password\": \"secret123\"\n}"
@@ -96,8 +134,14 @@
             "method": "GET",
             "url": {
               "raw": "{{base_url}}/api/search/health",
-              "host": ["{{base_url}}"],
-              "path": ["api", "search", "health"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "search",
+                "health"
+              ]
             }
           },
           "response": [
@@ -105,8 +149,13 @@
               "name": "200 OK",
               "status": "OK",
               "code": 200,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"status\": \"ok\",\n  \"service\": \"search-service\"\n}"
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\"status\": \"ok\", \"service\": \"search-service\"}"
             }
           ]
         },
@@ -116,8 +165,14 @@
             "method": "GET",
             "url": {
               "raw": "{{base_url}}/api/search/taxonomies",
-              "host": ["{{base_url}}"],
-              "path": ["api", "search", "taxonomies"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "search",
+                "taxonomies"
+              ]
             }
           },
           "response": [
@@ -125,8 +180,13 @@
               "name": "200 OK",
               "status": "OK",
               "code": 200,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"categories\": [\n    {\n      \"id\": \"uuid\",\n      \"code\": \"room_type\",\n      \"label\": \"Room Type\",\n      \"filterType\": \"checkbox\",\n      \"displayOrder\": 1,\n      \"values\": [\n        { \"id\": \"uuid\", \"code\": \"suite\", \"label\": \"Suite\", \"displayOrder\": 1 },\n        { \"id\": \"uuid\", \"code\": \"standard\", \"label\": \"Standard\", \"displayOrder\": 2 }\n      ]\n    }\n  ]\n}"
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\"categories\": [{\"id\": \"uuid\", \"code\": \"room_type\", \"label\": \"Room Type\", \"filterType\": \"checkbox\", \"displayOrder\": 1, \"values\": [{\"id\": \"uuid\", \"code\": \"suite\", \"label\": \"Suite\", \"displayOrder\": 1}, {\"id\": \"uuid\", \"code\": \"standard\", \"label\": \"Standard\", \"displayOrder\": 2}]}]}"
             }
           ]
         },
@@ -136,8 +196,14 @@
             "method": "GET",
             "url": {
               "raw": "{{base_url}}/api/search/properties",
-              "host": ["{{base_url}}"],
-              "path": ["api", "search", "properties"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "search",
+                "properties"
+              ]
             }
           },
           "response": [
@@ -145,8 +211,13 @@
               "name": "200 OK",
               "status": "OK",
               "code": 200,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"meta\": {\n    \"total\": 5,\n    \"page\": 1,\n    \"pageSize\": 20,\n    \"totalPages\": 1,\n    \"searchId\": \"uuid\"\n  },\n  \"results\": [\n    {\n      \"propertyId\": \"uuid\",\n      \"propertyName\": \"Hotel Example\",\n      \"city\": \"Cancún\",\n      \"stars\": 5,\n      \"rating\": 4.8,\n      \"reviewCount\": 320,\n      \"thumbnailUrl\": \"https://example.com/img.jpg\",\n      \"amenities\": [\"wifi\", \"pool\", \"gym\"],\n      \"bestRoom\": {\n        \"roomId\": \"uuid\",\n        \"roomType\": \"suite\",\n        \"bedType\": \"king\",\n        \"capacity\": 2,\n        \"basePriceUsd\": 350,\n        \"priceUsd\": 280,\n        \"availabilityFrom\": \"2026-04-01\",\n        \"availabilityTo\": \"2026-06-30\"\n      }\n    }\n  ],\n  \"facets\": {\n    \"roomTypes\": [{ \"id\": \"suite\", \"count\": 3 }, { \"id\": \"standard\", \"count\": 2 }],\n    \"bedTypes\": [{ \"id\": \"king\", \"count\": 4 }, { \"id\": \"twin\", \"count\": 1 }],\n    \"viewTypes\": [{ \"id\": \"ocean\", \"count\": 2 }, { \"id\": \"city\", \"count\": 3 }],\n    \"amenities\": [{ \"id\": \"wifi\", \"count\": 5 }, { \"id\": \"pool\", \"count\": 3 }],\n    \"stars\": [{ \"id\": 5, \"count\": 2 }, { \"id\": 4, \"count\": 3 }],\n    \"priceRange\": { \"min\": 120, \"max\": 650, \"currency\": \"USD\" }\n  }\n}"
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\"meta\": {\"total\": 5, \"page\": 1, \"pageSize\": 20, \"totalPages\": 1, \"searchId\": \"uuid\"}, \"results\": [{\"propertyId\": \"uuid\", \"propertyName\": \"Hotel Example\", \"city\": \"Cancún\", \"stars\": 5, \"rating\": 4.8, \"reviewCount\": 320, \"thumbnailUrl\": \"https://example.com/img.jpg\", \"amenities\": [\"wifi\", \"pool\", \"gym\"], \"bestRoom\": {\"roomId\": \"uuid\", \"roomType\": \"suite\", \"bedType\": \"king\", \"capacity\": 2, \"basePriceUsd\": 350, \"priceUsd\": 280}}], \"facets\": {\"roomTypes\": [{\"id\": \"suite\", \"count\": 3}, {\"id\": \"standard\", \"count\": 2}], \"bedTypes\": [{\"id\": \"king\", \"count\": 4}, {\"id\": \"twin\", \"count\": 1}], \"viewTypes\": [{\"id\": \"ocean\", \"count\": 2}, {\"id\": \"city\", \"count\": 3}], \"amenities\": [{\"id\": \"wifi\", \"count\": 5}, {\"id\": \"pool\", \"count\": 3}], \"stars\": [{\"id\": 5, \"count\": 2}, {\"id\": 4, \"count\": 3}], \"priceRange\": {\"min\": 120, \"max\": 650, \"currency\": \"USD\"}}}"
             }
           ]
         },
@@ -156,13 +227,31 @@
             "method": "GET",
             "url": {
               "raw": "{{base_url}}/api/search/properties?city=Cancún&checkIn=2026-04-10&checkOut=2026-04-15&guests=2",
-              "host": ["{{base_url}}"],
-              "path": ["api", "search", "properties"],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "search",
+                "properties"
+              ],
               "query": [
-                { "key": "city", "value": "Cancún" },
-                { "key": "checkIn", "value": "2026-04-10" },
-                { "key": "checkOut", "value": "2026-04-15" },
-                { "key": "guests", "value": "2" }
+                {
+                  "key": "city",
+                  "value": "Cancún"
+                },
+                {
+                  "key": "checkIn",
+                  "value": "2026-04-10"
+                },
+                {
+                  "key": "checkOut",
+                  "value": "2026-04-15"
+                },
+                {
+                  "key": "guests",
+                  "value": "2"
+                }
               ]
             }
           },
@@ -171,8 +260,13 @@
               "name": "200 OK",
               "status": "OK",
               "code": 200,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"meta\": {\n    \"total\": 3,\n    \"page\": 1,\n    \"pageSize\": 20,\n    \"totalPages\": 1,\n    \"searchId\": \"uuid\"\n  },\n  \"results\": [\n    {\n      \"propertyId\": \"uuid\",\n      \"propertyName\": \"Grand Cancún Palace\",\n      \"city\": \"Cancún\",\n      \"stars\": 5,\n      \"rating\": 4.8,\n      \"reviewCount\": 320,\n      \"thumbnailUrl\": \"https://example.com/cancun1.jpg\",\n      \"amenities\": [\"wifi\", \"pool\", \"gym\", \"spa\"],\n      \"bestRoom\": {\n        \"roomId\": \"uuid\",\n        \"roomType\": \"suite\",\n        \"bedType\": \"king\",\n        \"capacity\": 2,\n        \"basePriceUsd\": 350,\n        \"priceUsd\": 280,\n        \"availabilityFrom\": \"2026-04-01\",\n        \"availabilityTo\": \"2026-06-30\"\n      }\n    }\n  ],\n  \"facets\": {\n    \"roomTypes\": [{ \"id\": \"suite\", \"count\": 2 }, { \"id\": \"standard\", \"count\": 1 }],\n    \"bedTypes\": [{ \"id\": \"king\", \"count\": 2 }, { \"id\": \"twin\", \"count\": 1 }],\n    \"viewTypes\": [{ \"id\": \"ocean\", \"count\": 2 }, { \"id\": \"city\", \"count\": 1 }],\n    \"amenities\": [{ \"id\": \"wifi\", \"count\": 3 }, { \"id\": \"pool\", \"count\": 2 }],\n    \"stars\": [{ \"id\": 5, \"count\": 1 }, { \"id\": 4, \"count\": 2 }],\n    \"priceRange\": { \"min\": 180, \"max\": 350, \"currency\": \"USD\" }\n  }\n}"
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\"meta\": {\"total\": 3, \"page\": 1, \"pageSize\": 20, \"totalPages\": 1, \"searchId\": \"uuid\"}, \"results\": [{\"propertyId\": \"uuid\", \"propertyName\": \"Grand Cancún Palace\", \"city\": \"Cancún\", \"stars\": 5, \"rating\": 4.8, \"reviewCount\": 320, \"thumbnailUrl\": \"https://example.com/cancun1.jpg\", \"amenities\": [\"wifi\", \"pool\", \"gym\", \"spa\"], \"bestRoom\": {\"roomId\": \"uuid\", \"roomType\": \"suite\", \"bedType\": \"king\", \"capacity\": 2, \"basePriceUsd\": 350, \"priceUsd\": 280}}], \"facets\": {\"roomTypes\": [{\"id\": \"suite\", \"count\": 2}, {\"id\": \"standard\", \"count\": 1}], \"bedTypes\": [{\"id\": \"king\", \"count\": 2}, {\"id\": \"twin\", \"count\": 1}], \"viewTypes\": [{\"id\": \"ocean\", \"count\": 2}, {\"id\": \"city\", \"count\": 1}], \"amenities\": [{\"id\": \"wifi\", \"count\": 3}, {\"id\": \"pool\", \"count\": 2}], \"stars\": [{\"id\": 5, \"count\": 1}, {\"id\": 4, \"count\": 2}], \"priceRange\": {\"min\": 180, \"max\": 350, \"currency\": \"USD\"}}}"
             }
           ]
         },
@@ -182,20 +276,59 @@
             "method": "GET",
             "url": {
               "raw": "{{base_url}}/api/search/properties?city=Cancún&checkIn=2026-04-10&checkOut=2026-04-15&guests=2&amenities=pool,wifi&stars=4,5&priceMin=100&priceMax=500&sort=price_asc&page=1&limit=10",
-              "host": ["{{base_url}}"],
-              "path": ["api", "search", "properties"],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "search",
+                "properties"
+              ],
               "query": [
-                { "key": "city", "value": "Cancún" },
-                { "key": "checkIn", "value": "2026-04-10" },
-                { "key": "checkOut", "value": "2026-04-15" },
-                { "key": "guests", "value": "2" },
-                { "key": "amenities", "value": "pool,wifi" },
-                { "key": "stars", "value": "4,5" },
-                { "key": "priceMin", "value": "100" },
-                { "key": "priceMax", "value": "500" },
-                { "key": "sort", "value": "price_asc" },
-                { "key": "page", "value": "1" },
-                { "key": "limit", "value": "10" }
+                {
+                  "key": "city",
+                  "value": "Cancún"
+                },
+                {
+                  "key": "checkIn",
+                  "value": "2026-04-10"
+                },
+                {
+                  "key": "checkOut",
+                  "value": "2026-04-15"
+                },
+                {
+                  "key": "guests",
+                  "value": "2"
+                },
+                {
+                  "key": "amenities",
+                  "value": "pool,wifi"
+                },
+                {
+                  "key": "stars",
+                  "value": "4,5"
+                },
+                {
+                  "key": "priceMin",
+                  "value": "100"
+                },
+                {
+                  "key": "priceMax",
+                  "value": "500"
+                },
+                {
+                  "key": "sort",
+                  "value": "price_asc"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
               ]
             }
           },
@@ -204,8 +337,13 @@
               "name": "200 OK — filtered by amenities, stars, price",
               "status": "OK",
               "code": 200,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"meta\": {\n    \"total\": 2,\n    \"page\": 1,\n    \"pageSize\": 10,\n    \"totalPages\": 1,\n    \"searchId\": \"uuid\"\n  },\n  \"results\": [\n    {\n      \"propertyId\": \"uuid\",\n      \"propertyName\": \"Cancún Beach Resort\",\n      \"city\": \"Cancún\",\n      \"stars\": 4,\n      \"rating\": 4.5,\n      \"reviewCount\": 210,\n      \"thumbnailUrl\": \"https://example.com/cancun2.jpg\",\n      \"amenities\": [\"wifi\", \"pool\", \"restaurant\"],\n      \"bestRoom\": {\n        \"roomId\": \"uuid\",\n        \"roomType\": \"standard\",\n        \"bedType\": \"queen\",\n        \"capacity\": 2,\n        \"basePriceUsd\": 220,\n        \"priceUsd\": 195,\n        \"availabilityFrom\": \"2026-04-01\",\n        \"availabilityTo\": \"2026-05-31\"\n      }\n    }\n  ],\n  \"facets\": {\n    \"roomTypes\": [{ \"id\": \"standard\", \"count\": 1 }, { \"id\": \"suite\", \"count\": 1 }],\n    \"bedTypes\": [{ \"id\": \"queen\", \"count\": 1 }, { \"id\": \"king\", \"count\": 1 }],\n    \"viewTypes\": [{ \"id\": \"ocean\", \"count\": 2 }],\n    \"amenities\": [{ \"id\": \"wifi\", \"count\": 2 }, { \"id\": \"pool\", \"count\": 2 }],\n    \"stars\": [{ \"id\": 5, \"count\": 1 }, { \"id\": 4, \"count\": 1 }],\n    \"priceRange\": { \"min\": 180, \"max\": 490, \"currency\": \"USD\" }\n  }\n}"
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\"meta\": {\"total\": 2, \"page\": 1, \"pageSize\": 10, \"totalPages\": 1, \"searchId\": \"uuid\"}, \"results\": [{\"propertyId\": \"uuid\", \"propertyName\": \"Cancún Beach Resort\", \"city\": \"Cancún\", \"stars\": 4, \"rating\": 4.5, \"reviewCount\": 210, \"thumbnailUrl\": \"https://example.com/cancun2.jpg\", \"amenities\": [\"wifi\", \"pool\", \"restaurant\"], \"bestRoom\": {\"roomId\": \"uuid\", \"roomType\": \"standard\", \"bedType\": \"queen\", \"capacity\": 2, \"basePriceUsd\": 220, \"priceUsd\": 195}}], \"facets\": {\"roomTypes\": [{\"id\": \"standard\", \"count\": 1}, {\"id\": \"suite\", \"count\": 1}], \"bedTypes\": [{\"id\": \"queen\", \"count\": 1}, {\"id\": \"king\", \"count\": 1}], \"viewTypes\": [{\"id\": \"ocean\", \"count\": 2}], \"amenities\": [{\"id\": \"wifi\", \"count\": 2}, {\"id\": \"pool\", \"count\": 2}], \"stars\": [{\"id\": 5, \"count\": 1}, {\"id\": 4, \"count\": 1}], \"priceRange\": {\"min\": 180, \"max\": 490, \"currency\": \"USD\"}}}"
             }
           ]
         },
@@ -215,14 +353,35 @@
             "method": "GET",
             "url": {
               "raw": "{{base_url}}/api/search/properties?city=Cancún&checkIn=2026-04-10&checkOut=2026-04-15&guests=2&sort=stars_desc",
-              "host": ["{{base_url}}"],
-              "path": ["api", "search", "properties"],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "search",
+                "properties"
+              ],
               "query": [
-                { "key": "city", "value": "Cancún" },
-                { "key": "checkIn", "value": "2026-04-10" },
-                { "key": "checkOut", "value": "2026-04-15" },
-                { "key": "guests", "value": "2" },
-                { "key": "sort", "value": "stars_desc" }
+                {
+                  "key": "city",
+                  "value": "Cancún"
+                },
+                {
+                  "key": "checkIn",
+                  "value": "2026-04-10"
+                },
+                {
+                  "key": "checkOut",
+                  "value": "2026-04-15"
+                },
+                {
+                  "key": "guests",
+                  "value": "2"
+                },
+                {
+                  "key": "sort",
+                  "value": "stars_desc"
+                }
               ]
             }
           },
@@ -231,8 +390,13 @@
               "name": "200 OK — sorted by stars descending",
               "status": "OK",
               "code": 200,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"meta\": {\n    \"total\": 3,\n    \"page\": 1,\n    \"pageSize\": 20,\n    \"totalPages\": 1,\n    \"searchId\": \"uuid\"\n  },\n  \"results\": [\n    {\n      \"propertyId\": \"uuid\",\n      \"propertyName\": \"Grand Cancún Palace\",\n      \"city\": \"Cancún\",\n      \"stars\": 5,\n      \"rating\": 4.8,\n      \"reviewCount\": 320,\n      \"thumbnailUrl\": \"https://example.com/cancun1.jpg\",\n      \"amenities\": [\"wifi\", \"pool\", \"gym\", \"spa\"],\n      \"bestRoom\": {\n        \"roomId\": \"uuid\",\n        \"roomType\": \"suite\",\n        \"bedType\": \"king\",\n        \"capacity\": 2,\n        \"basePriceUsd\": 350,\n        \"priceUsd\": 280,\n        \"availabilityFrom\": \"2026-04-01\",\n        \"availabilityTo\": \"2026-06-30\"\n      }\n    }\n  ],\n  \"facets\": {\n    \"roomTypes\": [{ \"id\": \"suite\", \"count\": 2 }, { \"id\": \"standard\", \"count\": 1 }],\n    \"bedTypes\": [{ \"id\": \"king\", \"count\": 2 }, { \"id\": \"queen\", \"count\": 1 }],\n    \"viewTypes\": [{ \"id\": \"ocean\", \"count\": 2 }, { \"id\": \"city\", \"count\": 1 }],\n    \"amenities\": [{ \"id\": \"wifi\", \"count\": 3 }, { \"id\": \"pool\", \"count\": 2 }],\n    \"stars\": [{ \"id\": 5, \"count\": 1 }, { \"id\": 4, \"count\": 2 }],\n    \"priceRange\": { \"min\": 180, \"max\": 350, \"currency\": \"USD\" }\n  }\n}"
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\"meta\": {\"total\": 3, \"page\": 1, \"pageSize\": 20, \"totalPages\": 1, \"searchId\": \"uuid\"}, \"results\": [{\"propertyId\": \"uuid\", \"propertyName\": \"Grand Cancún Palace\", \"city\": \"Cancún\", \"stars\": 5, \"rating\": 4.8, \"reviewCount\": 320, \"thumbnailUrl\": \"https://example.com/cancun1.jpg\", \"amenities\": [\"wifi\", \"pool\", \"gym\", \"spa\"], \"bestRoom\": {\"roomId\": \"uuid\", \"roomType\": \"suite\", \"bedType\": \"king\", \"capacity\": 2, \"basePriceUsd\": 350, \"priceUsd\": 280}}], \"facets\": {\"roomTypes\": [{\"id\": \"suite\", \"count\": 2}, {\"id\": \"standard\", \"count\": 1}], \"bedTypes\": [{\"id\": \"king\", \"count\": 2}, {\"id\": \"queen\", \"count\": 1}], \"viewTypes\": [{\"id\": \"ocean\", \"count\": 2}, {\"id\": \"city\", \"count\": 1}], \"amenities\": [{\"id\": \"wifi\", \"count\": 3}, {\"id\": \"pool\", \"count\": 2}], \"stars\": [{\"id\": 5, \"count\": 1}, {\"id\": 4, \"count\": 2}], \"priceRange\": {\"min\": 180, \"max\": 350, \"currency\": \"USD\"}}}"
             }
           ]
         }
@@ -247,8 +411,14 @@
             "method": "GET",
             "url": {
               "raw": "{{base_url}}/api/inventory/health",
-              "host": ["{{base_url}}"],
-              "path": ["api", "inventory", "health"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "inventory",
+                "health"
+              ]
             }
           }
         },
@@ -258,8 +428,14 @@
             "method": "GET",
             "url": {
               "raw": "{{base_url}}/api/inventory/rooms",
-              "host": ["{{base_url}}"],
-              "path": ["api", "inventory", "rooms"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "inventory",
+                "rooms"
+              ]
             }
           }
         },
@@ -269,9 +445,20 @@
             "method": "GET",
             "url": {
               "raw": "{{base_url}}/api/inventory/rooms?propertyId=prop_001",
-              "host": ["{{base_url}}"],
-              "path": ["api", "inventory", "rooms"],
-              "query": [{ "key": "propertyId", "value": "prop_001" }]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "inventory",
+                "rooms"
+              ],
+              "query": [
+                {
+                  "key": "propertyId",
+                  "value": "prop_001"
+                }
+              ]
             }
           }
         },
@@ -281,12 +468,27 @@
             "method": "GET",
             "url": {
               "raw": "{{base_url}}/api/inventory/availability?propertyId=prop_001&checkIn=2026-04-10&checkOut=2026-04-15",
-              "host": ["{{base_url}}"],
-              "path": ["api", "inventory", "availability"],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "inventory",
+                "availability"
+              ],
               "query": [
-                { "key": "propertyId", "value": "prop_001" },
-                { "key": "checkIn", "value": "2026-04-10" },
-                { "key": "checkOut", "value": "2026-04-15" }
+                {
+                  "key": "propertyId",
+                  "value": "prop_001"
+                },
+                {
+                  "key": "checkIn",
+                  "value": "2026-04-10"
+                },
+                {
+                  "key": "checkOut",
+                  "value": "2026-04-15"
+                }
               ]
             }
           }
@@ -302,8 +504,14 @@
             "method": "GET",
             "url": {
               "raw": "{{base_url}}/api/booking/health",
-              "host": ["{{base_url}}"],
-              "path": ["api", "booking", "health"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "booking",
+                "health"
+              ]
             }
           }
         },
@@ -313,8 +521,14 @@
             "method": "GET",
             "url": {
               "raw": "{{base_url}}/api/booking/reservations",
-              "host": ["{{base_url}}"],
-              "path": ["api", "booking", "reservations"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "booking",
+                "reservations"
+              ]
             }
           }
         },
@@ -324,8 +538,15 @@
             "method": "GET",
             "url": {
               "raw": "{{base_url}}/api/booking/reservations/res_001",
-              "host": ["{{base_url}}"],
-              "path": ["api", "booking", "reservations", "res_001"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "booking",
+                "reservations",
+                "res_001"
+              ]
             }
           }
         },
@@ -335,10 +556,21 @@
             "method": "POST",
             "url": {
               "raw": "{{base_url}}/api/booking/reservations",
-              "host": ["{{base_url}}"],
-              "path": ["api", "booking", "reservations"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "booking",
+                "reservations"
+              ]
             },
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"propertyId\": \"prop_001\",\n  \"roomId\": \"room_001\",\n  \"guestId\": \"usr_002\",\n  \"checkIn\": \"2026-04-10\",\n  \"checkOut\": \"2026-04-15\"\n}"
@@ -356,8 +588,14 @@
             "method": "GET",
             "url": {
               "raw": "{{base_url}}/api/payment/health",
-              "host": ["{{base_url}}"],
-              "path": ["api", "payment", "health"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "payment",
+                "health"
+              ]
             }
           }
         },
@@ -367,8 +605,14 @@
             "method": "GET",
             "url": {
               "raw": "{{base_url}}/api/payment/transactions",
-              "host": ["{{base_url}}"],
-              "path": ["api", "payment", "transactions"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "payment",
+                "transactions"
+              ]
             }
           }
         },
@@ -378,10 +622,21 @@
             "method": "POST",
             "url": {
               "raw": "{{base_url}}/api/payment/charge",
-              "host": ["{{base_url}}"],
-              "path": ["api", "payment", "charge"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "payment",
+                "charge"
+              ]
             },
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"reservationId\": \"res_001\",\n  \"amount\": 1750,\n  \"currency\": \"USD\",\n  \"provider\": \"stripe\"\n}"
@@ -399,8 +654,14 @@
             "method": "GET",
             "url": {
               "raw": "{{base_url}}/api/notifications/health",
-              "host": ["{{base_url}}"],
-              "path": ["api", "notifications", "health"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "health"
+              ]
             }
           }
         },
@@ -410,8 +671,14 @@
             "method": "GET",
             "url": {
               "raw": "{{base_url}}/api/notifications/notifications",
-              "host": ["{{base_url}}"],
-              "path": ["api", "notifications", "notifications"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "notifications"
+              ]
             }
           }
         },
@@ -421,10 +688,22 @@
             "method": "POST",
             "url": {
               "raw": "{{base_url}}/api/notifications/notifications/send",
-              "host": ["{{base_url}}"],
-              "path": ["api", "notifications", "notifications", "send"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "notifications",
+                "send"
+              ]
             },
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"userId\": \"usr_002\",\n  \"channel\": \"email\",\n  \"subject\": \"Booking Confirmed\",\n  \"message\": \"Your reservation res_001 has been confirmed.\"\n}"
@@ -442,8 +721,14 @@
             "method": "GET",
             "url": {
               "raw": "{{base_url}}/api/partners/health",
-              "host": ["{{base_url}}"],
-              "path": ["api", "partners", "health"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "partners",
+                "health"
+              ]
             }
           }
         },
@@ -453,8 +738,14 @@
             "method": "GET",
             "url": {
               "raw": "{{base_url}}/api/partners/hotels",
-              "host": ["{{base_url}}"],
-              "path": ["api", "partners", "hotels"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "partners",
+                "hotels"
+              ]
             }
           }
         },
@@ -464,8 +755,16 @@
             "method": "GET",
             "url": {
               "raw": "{{base_url}}/api/partners/hotels/hotel_001/revenue",
-              "host": ["{{base_url}}"],
-              "path": ["api", "partners", "hotels", "hotel_001", "revenue"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "partners",
+                "hotels",
+                "hotel_001",
+                "revenue"
+              ]
             }
           }
         },
@@ -475,8 +774,14 @@
             "method": "GET",
             "url": {
               "raw": "{{base_url}}/api/partners/revenue",
-              "host": ["{{base_url}}"],
-              "path": ["api", "partners", "revenue"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "partners",
+                "revenue"
+              ]
             }
           }
         }
