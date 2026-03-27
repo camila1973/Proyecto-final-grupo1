@@ -11,9 +11,6 @@ interface Room {
   viewType: string;
   capacity: number;
   basePriceUsd: number;
-  priceUsd: number | null;
-  availabilityFrom: string | null;
-  availabilityTo: string | null;
 }
 
 interface PropertyDetail {
@@ -108,7 +105,7 @@ export default function PropertyDetailPage() {
   }
 
   const address = [data.neighborhood, data.city, data.country].filter(Boolean).join(', ');
-  const availableRooms = data.rooms.filter((r) => r.availabilityFrom);
+  const availableRooms = data.rooms;
 
   return (
     <main className="flex-1 max-w-6xl mx-auto w-full px-6 py-8">
@@ -203,7 +200,7 @@ export default function PropertyDetailPage() {
           {/* Room list */}
           <div className="flex-1 flex flex-col gap-4">
             {data.rooms.map((room) => {
-              const pricePerNight = room.priceUsd ?? room.basePriceUsd;
+              const pricePerNight = room.basePriceUsd;
               const nights = 8;
               const totalPrice = pricePerNight * nights;
               const roomLabel = ROOM_TYPE_LABELS[room.roomType] ?? room.roomType;

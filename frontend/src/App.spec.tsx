@@ -19,7 +19,7 @@ const mockProperty = (id: string, name: string) => ({
   reviewCount: 100,
   thumbnailUrl: 'https://placehold.co/400x300',
   amenities: ['wifi'],
-  rooms: [{ roomId: 'r1', roomType: 'deluxe', bedType: 'king', viewType: 'ocean', capacity: 2, basePriceUsd: 300, priceUsd: null, availabilityFrom: null, availabilityTo: null }],
+  rooms: [{ roomId: 'r1', roomType: 'deluxe', bedType: 'king', viewType: 'ocean', capacity: 2, basePriceUsd: 300 }],
 });
 
 beforeEach(() => {

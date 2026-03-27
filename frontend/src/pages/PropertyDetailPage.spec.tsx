@@ -29,9 +29,6 @@ const mockProperty = {
       viewType: 'city',
       capacity: 2,
       basePriceUsd: 150,
-      priceUsd: 130,
-      availabilityFrom: '2026-04-01',
-      availabilityTo: '2026-04-30',
     },
   ],
 };

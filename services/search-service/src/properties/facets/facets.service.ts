@@ -20,8 +20,6 @@ export interface CandidateRoom {
   capacity: number;
   base_price_usd: string;
   avail_price_usd: string | null;
-  avail_from: string | null;
-  avail_to: string | null;
 }
 
 export interface PropertyResult {
@@ -40,8 +38,6 @@ export interface PropertyResult {
     capacity: number;
     basePriceUsd: number;
     priceUsd: number | null;
-    availabilityFrom: string | null;
-    availabilityTo: string | null;
   };
 }
 
@@ -197,8 +193,6 @@ export class FacetsService {
             best.avail_price_usd != null
               ? parseFloat(best.avail_price_usd)
               : null,
-          availabilityFrom: best.avail_from,
-          availabilityTo: best.avail_to,
         },
       });
     }

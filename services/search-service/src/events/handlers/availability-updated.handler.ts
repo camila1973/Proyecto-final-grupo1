@@ -3,13 +3,16 @@ import { sql } from "kysely";
 import { DatabaseService } from "../../database/database.service.js";
 import { PropertiesService } from "../../properties/properties.service.js";
 
+export interface PricePeriod {
+  from_date: string;
+  to_date: string;
+  price_usd: number;
+}
+
 export interface AvailabilityUpdatedPayload {
   room_id: string;
-  ranges: Array<{
-    from_date: string;
-    to_date: string;
-    price_usd: number;
-  }>;
+  /** Seasonal price periods to replace for this room. */
+  price_periods: PricePeriod[];
 }
 
 @Injectable()
@@ -22,18 +25,19 @@ export class AvailabilityUpdatedHandler {
   ) {}
 
   async handle(payload: AvailabilityUpdatedPayload): Promise<void> {
+    // Replace all price periods for this room atomically.
     await sql`
-      DELETE FROM room_availability WHERE room_id = ${payload.room_id}::uuid
+      DELETE FROM room_price_periods WHERE room_id = ${payload.room_id}::uuid
     `.execute(this.db.db);
 
-    for (const range of payload.ranges) {
+    for (const period of payload.price_periods) {
       await sql`
-        INSERT INTO room_availability (room_id, from_date, to_date, price_usd)
+        INSERT INTO room_price_periods (room_id, from_date, to_date, price_usd)
         VALUES (
           ${payload.room_id}::uuid,
-          ${range.from_date}::date,
-          ${range.to_date}::date,
-          ${range.price_usd}
+          ${period.from_date}::date,
+          ${period.to_date}::date,
+          ${period.price_usd}
         )
       `.execute(this.db.db);
     }
@@ -49,7 +53,7 @@ export class AvailabilityUpdatedHandler {
     }
 
     this.logger.debug(
-      `Updated availability for room ${payload.room_id} (${payload.ranges.length} ranges)`,
+      `Updated price periods for room ${payload.room_id} (${payload.price_periods.length} periods)`,
     );
   }
 }

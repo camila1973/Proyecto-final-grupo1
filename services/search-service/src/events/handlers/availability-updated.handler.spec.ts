@@ -45,12 +45,12 @@ describe("AvailabilityUpdatedHandler", () => {
     );
   });
 
-  it("inserts each range and invalidates city cache", async () => {
+  it("inserts each price period and invalidates city cache", async () => {
     const payload = {
       room_id: "550e8400-e29b-41d4-a716-446655440000",
-      ranges: [
-        { from_date: "2026-04-01", to_date: "2026-04-30", price_usd: 200 },
-        { from_date: "2026-05-01", to_date: "2026-05-31", price_usd: 180 },
+      price_periods: [
+        { from_date: "2026-04-01", to_date: "2026-06-30", price_usd: 200 },
+        { from_date: "2026-07-01", to_date: "2026-08-31", price_usd: 240 },
       ],
     };
 
@@ -64,10 +64,10 @@ describe("AvailabilityUpdatedHandler", () => {
     );
   });
 
-  it("handles empty ranges array (only deletes)", async () => {
+  it("handles empty price_periods array (only deletes)", async () => {
     const payload = {
       room_id: "550e8400-e29b-41d4-a716-446655440000",
-      ranges: [],
+      price_periods: [],
     };
 
     await handler.handle(payload);
@@ -81,7 +81,7 @@ describe("AvailabilityUpdatedHandler", () => {
 
     await handler.handle({
       room_id: "550e8400-e29b-41d4-a716-446655440000",
-      ranges: [],
+      price_periods: [],
     });
 
     expect(propertiesService.invalidateCityCache).not.toHaveBeenCalled();
