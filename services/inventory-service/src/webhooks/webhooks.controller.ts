@@ -7,9 +7,9 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { WebhooksService } from './webhooks.service.js';
-import { HotelbedsWebhookDto } from './dto/hotelbeds-webhook.dto.js';
-import { TravelClickWebhookDto } from './dto/travelclick-webhook.dto.js';
-import { RoomRaccoonWebhookDto } from './dto/roomraccoon-webhook.dto.js';
+import type { HotelbedsWebhookDto } from './dto/hotelbeds-webhook.dto.js';
+import type { TravelClickWebhookDto } from './dto/travelclick-webhook.dto.js';
+import type { RoomRaccoonWebhookDto } from './dto/roomraccoon-webhook.dto.js';
 
 @Controller('webhooks')
 export class WebhooksController {
