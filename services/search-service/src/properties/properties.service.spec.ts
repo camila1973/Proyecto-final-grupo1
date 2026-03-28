@@ -29,6 +29,7 @@ const mockProperty = {
   propertyId: "p1",
   propertyName: "Hotel A",
   city: "Lisbon",
+  country: "PT",
   stars: 4,
   rating: 4.0,
   reviewCount: 10,
@@ -393,6 +394,54 @@ describe("PropertiesService", () => {
         expect.any(String),
         300,
       );
+    });
+  });
+
+  describe("getCitySuggestions", () => {
+    it("returns suggestions whose names start with the query (case-insensitive, accent-folded)", () => {
+      const { service } = makeServices();
+      const result = service.getCitySuggestions("can");
+      expect(result.suggestions.length).toBeGreaterThan(0);
+      const stripAccents = (s: string) =>
+        s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      for (const s of result.suggestions) {
+        expect(stripAccents(s.city.toLowerCase())).toMatch(/^can/);
+      }
+    });
+
+    it("respects the limit parameter", () => {
+      const { service } = makeServices();
+      const result = service.getCitySuggestions("a", 3);
+      expect(result.suggestions.length).toBeLessThanOrEqual(3);
+    });
+
+    it("returns empty suggestions for a query with no matches", () => {
+      const { service } = makeServices();
+      const result = service.getCitySuggestions("zzzzzzzzz");
+      expect(result.suggestions).toEqual([]);
+    });
+
+    it("matches accented city names when querying without accents", () => {
+      const { service } = makeServices();
+      const result = service.getCitySuggestions("Cancun");
+      const cities = result.suggestions.map((s) => s.city);
+      expect(cities).toContain("Cancún");
+    });
+
+    it("matches non-accented city names when querying with accents", () => {
+      const { service } = makeServices();
+      const result = service.getCitySuggestions("Cancún");
+      const cities = result.suggestions.map((s) => s.city);
+      expect(cities.length).toBeGreaterThan(0);
+    });
+
+    it("returns city and country fields for each suggestion", () => {
+      const { service } = makeServices();
+      const result = service.getCitySuggestions("Paris");
+      for (const s of result.suggestions) {
+        expect(typeof s.city).toBe("string");
+        expect(typeof s.country).toBe("string");
+      }
     });
   });
 

@@ -1,27 +1,28 @@
-import { useRef, useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocale, LANGUAGES, type Language } from '../context/LocaleContext';
+import Button from '@mui/material/Button';
 
 export default function Navbar() {
   const { t } = useTranslation();
   const { language, currency, setLanguage } = useLocale();
   const [open, setOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const handleSelect = (lang: Language) => {
     setLanguage(lang);
     setOpen(false);
   };
+
+  useEffect(() => {
+    const handleMouseDown = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleMouseDown);
+    return () => document.removeEventListener('mousedown', handleMouseDown);
+  }, []);
 
   return (
     <header className="bg-white border-b border-gray-200">
@@ -29,36 +30,55 @@ export default function Navbar() {
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
             <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-              <circle cx="14" cy="14" r="14" fill="#4a6fa5" />
+              <circle cx="14" cy="14" r="14" fill="#3a608f" />
               <path d="M8 14c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke="white" strokeWidth="2" fill="none" strokeLinecap="round"/>
               <circle cx="14" cy="17" r="2.5" fill="white" />
             </svg>
             <span className="font-bold text-lg text-gray-900">TravelHub</span>
           </div>
 
-          {/* Language dropdown */}
-          <div ref={dropdownRef} className="relative ml-2">
-            <button
-              onClick={() => setOpen((o) => !o)}
-              aria-haspopup="listbox"
-              aria-expanded={open}
+          <div ref={containerRef} style={{ position: 'relative' }}>
+            <Button
+              size="small"
               aria-label="select language"
-              className="flex items-center gap-1 border border-gray-300 rounded-full px-3 py-1 text-sm text-gray-700 hover:bg-gray-50"
+              onClick={() => setOpen((prev) => !prev)}
+              endIcon={
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                  <path d="M3 4.5l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              }
+              sx={{
+                ml: 1,
+                borderRadius: 99,
+                border: '1px solid',
+                borderColor: 'grey.300',
+                color: 'text.secondary',
+                textTransform: 'none',
+                fontSize: '0.875rem',
+                px: 1.5,
+                py: 0.5,
+              }}
             >
-              <svg
-                width="12" height="12" viewBox="0 0 12 12" fill="none"
-                className={`mr-0.5 transition-transform duration-150 ${open ? 'rotate-180' : ''}`}
-              >
-                <path d="M3 4.5l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
               {t('nav.language')} · {currency}
-            </button>
+            </Button>
 
             {open && (
               <ul
                 role="listbox"
-                aria-label="language options"
-                className="absolute left-0 top-full mt-1 w-36 bg-white border border-gray-200 rounded-lg shadow-md z-10 py-1"
+                style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  marginTop: 4,
+                  minWidth: 144,
+                  background: '#fff',
+                  border: '1px solid #e0e0e0',
+                  borderRadius: 4,
+                  padding: 0,
+                  listStyle: 'none',
+                  zIndex: 1300,
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                }}
               >
                 {LANGUAGES.map((lang) => (
                   <li
@@ -66,9 +86,12 @@ export default function Navbar() {
                     role="option"
                     aria-selected={language === lang.value}
                     onClick={() => handleSelect(lang.value)}
-                    className={`px-4 py-2 text-sm cursor-pointer hover:bg-gray-50 ${
-                      language === lang.value ? 'font-semibold text-[#4a6fa5]' : 'text-gray-700'
-                    }`}
+                    style={{
+                      padding: '8px 16px',
+                      fontSize: '0.875rem',
+                      cursor: 'pointer',
+                      background: language === lang.value ? '#f5f5f5' : 'transparent',
+                    }}
                   >
                     {lang.label}
                   </li>

@@ -11,6 +11,8 @@
     "destination_placeholder": "Selecciona un destino",
     "dates_label": "¿En qué fechas?",
     "dates_placeholder": "Selecciona un destino",
+    "check_in_label": "Llegada",
+    "check_out_label": "Salida",
     "guests_label": "¿Quienes viajan?",
     "guests_placeholder": "2 adultos · 1 Habitación",
     "search": "Buscar"
@@ -50,7 +52,7 @@
     "filters": {
       "title": "Filtros",
       "clear": "Borrar filtros",
-      "price_label": "PRECIO POR NOCHE (COP)",
+      "price_label": "PRECIO POR NOCHE ({{currency}})",
       "price_from": "DESDE",
       "price_to": "HASTA"
     },

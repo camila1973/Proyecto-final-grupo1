@@ -1,6 +1,6 @@
 import {
-  COP_RATE,
-  formatCOP,
+  CURRENCY_RATES,
+  formatPrice,
   getNights,
   resolveLabel,
   buildLabelMap,
@@ -10,11 +10,19 @@ import {
 } from './utils';
 import type { TaxonomyCategory } from './types';
 
-// ─── COP_RATE ────────────────────────────────────────────────────────────────
+// ─── CURRENCY_RATES ──────────────────────────────────────────────────────────
 
-describe('COP_RATE', () => {
-  it('is 4200', () => {
-    expect(COP_RATE).toBe(4200);
+describe('CURRENCY_RATES', () => {
+  it('COP rate is 4200', () => {
+    expect(CURRENCY_RATES.COP).toBe(4200);
+  });
+
+  it('USD rate is 1', () => {
+    expect(CURRENCY_RATES.USD).toBe(1);
+  });
+
+  it('EUR rate is 0.92', () => {
+    expect(CURRENCY_RATES.EUR).toBe(0.92);
   });
 });
 
@@ -50,31 +58,41 @@ describe('offsetDateISO', () => {
   });
 });
 
-// ─── formatCOP ───────────────────────────────────────────────────────────────
+// ─── formatPrice ─────────────────────────────────────────────────────────────
 
-describe('formatCOP', () => {
-  it('converts USD to COP at COP_RATE', () => {
+describe('formatPrice', () => {
+  it('converts USD to COP at CURRENCY_RATES.COP', () => {
     // 100 USD × 4200 = 420,000 COP
-    const result = formatCOP(100);
+    const result = formatPrice(100, 'COP');
     expect(result).toContain('420');
   });
 
-  it('formats as Colombian peso currency', () => {
-    const result = formatCOP(1);
-    // Should contain the COP symbol or currency code
+  it('formats COP as Colombian peso currency', () => {
+    const result = formatPrice(1, 'COP');
     expect(result).toMatch(/\$|COP/);
   });
 
-  it('rounds fractional USD amounts', () => {
+  it('rounds fractional USD amounts for COP', () => {
     // 1.5 USD × 4200 = 6300 COP — no fractional cents expected in the output
-    const result = formatCOP(1.5);
+    const result = formatPrice(1.5, 'COP');
     expect(result).toContain('6');
     expect(result).toContain('300');
   });
 
   it('handles zero', () => {
-    const result = formatCOP(0);
+    const result = formatPrice(0, 'COP');
     expect(result).toContain('0');
+  });
+
+  it('returns USD amount unchanged for USD currency', () => {
+    const result = formatPrice(100, 'USD');
+    expect(result).toContain('100');
+  });
+
+  it('converts USD to EUR', () => {
+    // 100 USD × 0.92 = 92 EUR
+    const result = formatPrice(100, 'EUR');
+    expect(result).toContain('92');
   });
 });
 
@@ -165,6 +183,8 @@ describe('buildLabelMap', () => {
     expect(buildLabelMap(categories, 'amenity')).toEqual({
       wifi: 'WiFi',
       pool: 'Piscina',
+      v1: 'WiFi',
+      v2: 'Piscina',
     });
   });
 
@@ -172,6 +192,8 @@ describe('buildLabelMap', () => {
     expect(buildLabelMap(categories, 'room_type')).toEqual({
       suite: 'Suite',
       standard: 'Estándar',
+      v3: 'Suite',
+      v4: 'Estándar',
     });
   });
 

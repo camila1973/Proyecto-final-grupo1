@@ -9,7 +9,7 @@ import PropertyDetailPage from './pages/PropertyDetailPage';
 const rootRoute = createRootRoute({
   component: () => (
     <LocaleProvider>
-      <div className="flex flex-col min-h-screen bg-[#f0f2f5]">
+      <div className="flex flex-col min-h-screen bg-[#f8f9ff]">
         <Navbar />
         <Outlet />
         <Footer />

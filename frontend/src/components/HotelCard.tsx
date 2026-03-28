@@ -1,39 +1,51 @@
 import { useTranslation } from 'react-i18next';
+import { useLocale } from '../context/LocaleContext';
+import { formatPrice } from '../utils/currency';
+import Card from '@mui/material/Card';
+import CardMedia from '@mui/material/CardMedia';
+import CardContent from '@mui/material/CardContent';
+import CardActions from '@mui/material/CardActions';
+import Button from '@mui/material/Button';
+import BookmarkIcon from '@mui/icons-material/Bookmark';
+import Typography from '@mui/material/Typography';
 
 export interface HotelCardProps {
   id?: string;
   name: string;
   location: string;
-  price: string;
+  price: number;
   img: string;
   onClick?: () => void;
 }
 
 export default function HotelCard({ name, location, price, img, onClick }: HotelCardProps) {
   const { t } = useTranslation();
+  const { currency } = useLocale();
 
   return (
-    <div
-      className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+    <Card
       onClick={onClick}
-      role={onClick ? 'button' : undefined}
-      tabIndex={onClick ? 0 : undefined}
-      onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') onClick(); } : undefined}
     >
-      <img src={img} alt={name} className="w-full h-44 object-cover" />
-      <div className="p-4">
-        <p className="font-bold text-sm text-gray-900">{name}</p>
-        <p className="text-sm text-gray-500 mb-3">{location}</p>
-        <p className="text-lg font-bold text-gray-900">COP {price}</p>
-        <p className="text-xs text-gray-400 mb-4">{t('recommendations.per_night')}</p>
-        <button className="w-full flex items-center justify-center gap-2 bg-[#e8c84a] hover:bg-[#d4b53a] text-gray-900 font-semibold text-sm py-2.5 rounded-lg transition-colors">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <rect x="1" y="3" width="12" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.5"/>
-            <path d="M4 3V2M10 3V2M1 6h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-          </svg>
+      <CardMedia component="img" height={176} image={img} alt={name} />
+      <CardContent>
+        <Typography variant="subtitle2" fontWeight="bold" color="text.primary">{name}</Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>{location}</Typography>
+        <Typography variant="h6" fontWeight="bold" color="text.primary">{formatPrice(price, currency)}</Typography>
+        <Typography variant="caption" color="text.secondary">{t('recommendations.per_night')}</Typography>
+      </CardContent>
+      <CardActions sx={{ px: 2, pb: 2, pt: 1 }}>
+        <Button
+          fullWidth
+          variant="contained"
+          color="warning"
+          startIcon={
+            <BookmarkIcon fontSize="small" />
+          }
+          sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 2 }}
+        >
           {t('recommendations.book')}
-        </button>
-      </div>
-    </div>
+        </Button>
+      </CardActions>
+    </Card>
   );
 }

@@ -3,6 +3,7 @@ import { setupTestI18n } from '../../i18n/test-utils';
 import FilterSidebar from './FilterSidebar';
 import type { SearchResponse } from './types';
 import es from '../../i18n/locales/es.json';
+import { LocaleProvider } from '../../context/LocaleContext';
 
 setupTestI18n('es');
 
@@ -28,8 +29,8 @@ function renderSidebar(overrides: Partial<Parameters<typeof FilterSidebar>[0]> =
     roomTypeLabels,
     amenityCategoryLabel: 'Amenidades',
     roomTypeCategoryLabel: 'Tipo de Habitación',
-    priceMinCOP: '',
-    priceMaxCOP: '',
+    priceMin: '',
+    priceMax: '',
     selectedAmenities: [] as string[],
     selectedRoomTypes: [] as string[],
     hasActiveFilters: false,
@@ -40,7 +41,11 @@ function renderSidebar(overrides: Partial<Parameters<typeof FilterSidebar>[0]> =
     onClearFilters: jest.fn(),
     ...overrides,
   };
-  return render(<FilterSidebar {...defaults} />);
+  return render(
+    <LocaleProvider>
+      <FilterSidebar {...defaults} />
+    </LocaleProvider>,
+  );
 }
 
 describe('FilterSidebar', () => {

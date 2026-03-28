@@ -26,6 +26,7 @@ export interface PropertyResult {
   propertyId: string;
   propertyName: string;
   city: string;
+  country: string;
   stars: number;
   rating: number;
   reviewCount: number;
@@ -178,6 +179,7 @@ export class FacetsService {
         propertyId: best.property_id,
         propertyName: best.property_name,
         city: best.city,
+        country: best.country,
         stars: best.stars,
         rating: parseFloat(best.rating),
         reviewCount: best.review_count,

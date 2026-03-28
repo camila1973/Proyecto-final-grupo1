@@ -348,6 +348,55 @@
           ]
         },
         {
+          "name": "City Suggestions",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/search/cities?q=Cancun",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "search",
+                "cities"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "Cancun"
+                }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\"suggestions\": [{\"city\": \"Cancún\", \"country\": \"MX\"}, {\"city\": \"Cancun\", \"country\": \"MX\"}]}"
+            },
+            {
+              "name": "400 Bad Request — missing q",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\"statusCode\": 400, \"message\": \"q is required\", \"error\": \"Bad Request\"}"
+            }
+          ]
+        },
+        {
           "name": "Search sorted by Stars",
           "request": {
             "method": "GET",

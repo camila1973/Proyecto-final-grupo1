@@ -10,7 +10,7 @@ const i18n = setupTestI18n('es');
 const defaultProps = {
   name: 'HOTEL NORTH PARK',
   location: 'Bogotá, Colombia',
-  price: '180,000',
+  price: 100,
   img: 'https://example.com/hotel.jpg',
 };
 
@@ -36,7 +36,8 @@ describe('HotelCard', () => {
     });
 
     it('renders the price', () => {
-      expect(screen.getByText('COP 180,000')).toBeInTheDocument();
+      // 100 USD × 4200 = 420,000 COP — match the formatted number regardless of symbol/space variant
+      expect(screen.getByText(/420\.000/)).toBeInTheDocument();
     });
 
     it('renders the hotel image with the name as alt text', () => {
