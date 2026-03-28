@@ -325,6 +325,7 @@ describe("FacetsService", () => {
       propertyId: id,
       propertyName: `Hotel ${id}`,
       city: "Lisbon",
+      country: "PT",
       stars,
       rating,
       reviewCount: 10,

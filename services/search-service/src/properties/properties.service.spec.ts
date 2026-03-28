@@ -29,6 +29,7 @@ const mockProperty = {
   propertyId: "p1",
   propertyName: "Hotel A",
   city: "Lisbon",
+  country: "PT",
   stars: 4,
   rating: 4.0,
   reviewCount: 10,
