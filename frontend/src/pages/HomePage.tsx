@@ -12,13 +12,6 @@ const FEATURED_IDS = [
   'b1000000-0000-0000-0000-000000000002',
 ];
 
-const CURRENCY_RATES: Record<string, number> = { USD: 1, COP: 4200, EUR: 0.92 };
-
-function formatPrice(usd: number): string {
-  const converted = Math.round(usd * CURRENCY_RATES['COP']);
-  return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(converted);
-}
-
 interface PropertySummary {
   propertyId: string;
   propertyName: string;
@@ -43,7 +36,7 @@ function FeaturedCard({ id, onClick }: { id: string; onClick: () => void }) {
       id={data.propertyId}
       name={data.propertyName}
       location={`${data.neighborhood ?? data.city}, ${data.city}`}
-      price={formatPrice(minPrice)}
+      price={minPrice}
       img={data.thumbnailUrl}
       onClick={onClick}
     />

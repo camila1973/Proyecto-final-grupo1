@@ -52,7 +52,7 @@
     "filters": {
       "title": "Filters",
       "clear": "Clear filters",
-      "price_label": "PRICE PER NIGHT (COP)",
+      "price_label": "PRICE PER NIGHT ({{currency}})",
       "price_from": "FROM",
       "price_to": "TO"
     },

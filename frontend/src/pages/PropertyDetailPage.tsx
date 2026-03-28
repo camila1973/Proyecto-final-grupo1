@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useParams, useNavigate } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { useLocale } from '../context/LocaleContext';
+import { formatPrice } from '../utils/currency';
 import { API_BASE } from '../env';
 import dayjs, { type Dayjs } from 'dayjs';
 import Button from '@mui/material/Button';
@@ -37,22 +38,6 @@ interface PropertyDetail {
   thumbnailUrl: string;
   amenities: string[];
   rooms: Room[];
-}
-
-const CURRENCY_RATES: Record<string, number> = {
-  USD: 1,
-  COP: 4200,
-  EUR: 0.92,
-};
-
-function formatPrice(usd: number, currency: string): string {
-  const rate = CURRENCY_RATES[currency] ?? 1;
-  const converted = Math.round(usd * rate);
-  return new Intl.NumberFormat('es-CO', {
-    style: 'currency',
-    currency,
-    maximumFractionDigits: 0,
-  }).format(converted);
 }
 
 async function fetchProperty(propertyId: string): Promise<PropertyDetail> {

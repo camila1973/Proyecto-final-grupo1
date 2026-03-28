@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
+import { useLocale } from '../../context/LocaleContext';
 import type { SearchResult, LabelMap } from './types';
-import { formatCOP, resolveLabel } from './utils';
+import { formatPrice, resolveLabel } from './utils';
 import Button from '@mui/material/Button';
 import BookmarkIcon from '@mui/icons-material/Bookmark';
 import Card from '@mui/material/Card';
@@ -27,6 +28,7 @@ export default function ResultCard({
 }: ResultCardProps) {
   console.log(result)
   const { t } = useTranslation();
+  const { currency } = useLocale();
   const effectiveNights = nights > 0 ? nights : 1;
   const totalPriceUsd = (result.bestRoom.priceUsd ?? result.bestRoom.basePriceUsd) * effectiveNights;
   const nightsLabel = t('search.card.nights', { count: nights || 1 });
@@ -106,7 +108,7 @@ export default function ResultCard({
       >
         <Box textAlign="right">
           <Typography variant="h6" fontWeight={700} lineHeight={1.2} color="text.primary">
-            {formatCOP(totalPriceUsd)}
+            {formatPrice(totalPriceUsd, currency)}
           </Typography>
           <Typography variant="caption" color="text.secondary">
             {nightsLabel}

@@ -2,15 +2,17 @@ import { useState } from 'react';
 import { useSearch, useNavigate } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { useLocale } from '../../context/LocaleContext';
 import { API_BASE } from '../../env';
 import SearchBarForm from '../../components/SearchBarForm';
 import ResultCard from './ResultCard';
 import FilterSidebar from './FilterSidebar';
-import { COP_RATE, getNights, buildLabelMap, fetchTaxonomies } from './utils';
+import { CURRENCY_RATES, getNights, buildLabelMap, fetchTaxonomies } from './utils';
 import type { SearchResponse, TaxonomyResponse, LabelMap } from './types';
 
 export default function SearchPage() {
   const { t } = useTranslation();
+  const { currency } = useLocale();
   const navigate = useNavigate();
 
   const {
@@ -39,8 +41,8 @@ export default function SearchPage() {
     taxonomyData?.categories.find((c) => c.code === 'room_type')?.label ?? 'TIPO DE HABITACIÓN';
 
   // Filter state
-  const [priceMinCOP, setPriceMinCOP] = useState('');
-  const [priceMaxCOP, setPriceMaxCOP] = useState('');
+  const [priceMin, setPriceMin] = useState('');
+  const [priceMax, setPriceMax] = useState('');
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
   const [selectedRoomTypes, setSelectedRoomTypes] = useState<string[]>([]);
 
@@ -50,8 +52,8 @@ export default function SearchPage() {
   if (urlCheckIn) queryParams.set('checkIn', urlCheckIn);
   if (urlCheckOut) queryParams.set('checkOut', urlCheckOut);
   if (urlGuests) queryParams.set('guests', String(urlGuests));
-  const priceMinNum = priceMinCOP ? Number(priceMinCOP) / COP_RATE : null;
-  const priceMaxNum = priceMaxCOP ? Number(priceMaxCOP) / COP_RATE : null;
+  const priceMinNum = priceMin ? Number(priceMin) / CURRENCY_RATES[currency] : null;
+  const priceMaxNum = priceMax ? Number(priceMax) / CURRENCY_RATES[currency] : null;
   if (priceMinNum != null && !isNaN(priceMinNum)) queryParams.set('priceMin', String(priceMinNum));
   if (priceMaxNum != null && !isNaN(priceMaxNum)) queryParams.set('priceMax', String(priceMaxNum));
   if (selectedAmenities.length > 0) queryParams.set('amenities', selectedAmenities.join(','));
@@ -65,8 +67,9 @@ export default function SearchPage() {
       urlCheckIn,
       urlCheckOut,
       urlGuests,
-      priceMinCOP,
-      priceMaxCOP,
+      priceMin,
+      priceMax,
+      currency,
       selectedAmenities,
       selectedRoomTypes,
     ],
@@ -82,7 +85,7 @@ export default function SearchPage() {
   const total = data?.meta.total ?? 0;
   const facets = data?.facets ?? null;
   const hasActiveFilters =
-    !!priceMinCOP || !!priceMaxCOP || selectedAmenities.length > 0 || selectedRoomTypes.length > 0;
+    !!priceMin || !!priceMax || selectedAmenities.length > 0 || selectedRoomTypes.length > 0;
 
   function toggleAmenity(id: string) {
     setSelectedAmenities((prev) =>
@@ -97,8 +100,8 @@ export default function SearchPage() {
   }
 
   function clearFilters() {
-    setPriceMinCOP('');
-    setPriceMaxCOP('');
+    setPriceMin('');
+    setPriceMax('');
     setSelectedAmenities([]);
     setSelectedRoomTypes([]);
   }
@@ -126,13 +129,13 @@ export default function SearchPage() {
           roomTypeLabels={roomTypeLabels}
           amenityCategoryLabel={amenityCategoryLabel}
           roomTypeCategoryLabel={roomTypeCategoryLabel}
-          priceMinCOP={priceMinCOP}
-          priceMaxCOP={priceMaxCOP}
+          priceMin={priceMin}
+          priceMax={priceMax}
           selectedAmenities={selectedAmenities}
           selectedRoomTypes={selectedRoomTypes}
           hasActiveFilters={hasActiveFilters}
-          onPriceMinChange={setPriceMinCOP}
-          onPriceMaxChange={setPriceMaxCOP}
+          onPriceMinChange={setPriceMin}
+          onPriceMaxChange={setPriceMax}
           onToggleAmenity={toggleAmenity}
           onToggleRoomType={toggleRoomType}
           onClearFilters={clearFilters}

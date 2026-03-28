@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { useLocale } from '../../context/LocaleContext';
 import type { FacetItem, LabelMap, SearchResponse } from './types';
 import { resolveLabel } from './utils';
 import Button from '@mui/material/Button';
@@ -12,8 +13,8 @@ interface FilterSidebarProps {
   roomTypeLabels: LabelMap;
   amenityCategoryLabel: string;
   roomTypeCategoryLabel: string;
-  priceMinCOP: string;
-  priceMaxCOP: string;
+  priceMin: string;
+  priceMax: string;
   selectedAmenities: string[];
   selectedRoomTypes: string[];
   hasActiveFilters: boolean;
@@ -30,8 +31,8 @@ export default function FilterSidebar({
   roomTypeLabels,
   amenityCategoryLabel,
   roomTypeCategoryLabel,
-  priceMinCOP,
-  priceMaxCOP,
+  priceMin,
+  priceMax,
   selectedAmenities,
   selectedRoomTypes,
   hasActiveFilters,
@@ -42,6 +43,7 @@ export default function FilterSidebar({
   onClearFilters,
 }: FilterSidebarProps) {
   const { t } = useTranslation();
+  const { currency } = useLocale();
   return (
     <aside className="w-64 flex-shrink-0">
       <div className="flex items-center justify-between mb-6">
@@ -61,13 +63,13 @@ export default function FilterSidebar({
       {/* Price Range */}
       <div className="mb-6">
         <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide mb-3">
-          {t('search.filters.price_label')}
+          {t('search.filters.price_label', { currency })}
         </p>
         <div className="flex gap-3">
           <TextField
             type="number"
             label={t('search.filters.price_from')}
-            value={priceMinCOP}
+            value={priceMin}
             onChange={(e) => onPriceMinChange(e.target.value)}
             placeholder="0"
             size="small"
@@ -78,7 +80,7 @@ export default function FilterSidebar({
           <TextField
             type="number"
             label={t('search.filters.price_to')}
-            value={priceMaxCOP}
+            value={priceMax}
             onChange={(e) => onPriceMaxChange(e.target.value)}
             placeholder="—"
             size="small"

@@ -1,10 +1,16 @@
+import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { setupTestI18n } from '../../i18n/test-utils';
+import { LocaleProvider } from '../../context/LocaleContext';
 import ResultCard from './ResultCard';
 import type { SearchResult } from './types';
 import es from '../../i18n/locales/es.json';
 
 setupTestI18n('es');
+
+function renderCard(ui: React.ReactElement) {
+  return render(<LocaleProvider>{ui}</LocaleProvider>);
+}
 
 const amenityLabels = { wifi: 'WiFi', pool: 'Piscina', spa: 'Spa', gym: 'Gimnasio' };
 const roomTypeLabels = { suite: 'Suite', standard: 'Estándar', deluxe: 'Deluxe' };
@@ -35,7 +41,7 @@ function makeResult(overrides: Partial<SearchResult> = {}): SearchResult {
 
 describe('ResultCard', () => {
   it('renders the property name', () => {
-    render(
+    renderCard(
       <ResultCard
         result={makeResult()}
         nights={4}
@@ -48,7 +54,7 @@ describe('ResultCard', () => {
   });
 
   it('renders city and country', () => {
-    render(
+    renderCard(
       <ResultCard
         result={makeResult()}
         nights={4}
@@ -62,7 +68,7 @@ describe('ResultCard', () => {
   });
 
   it('renders neighborhood when present', () => {
-    render(
+    renderCard(
       <ResultCard
         result={makeResult({ neighborhood: 'Zona Hotelera' })}
         nights={4}
@@ -76,7 +82,7 @@ describe('ResultCard', () => {
 
   it('uses priceUsd for price calculation when available', () => {
     // 280 USD × 4 nights × 4200 COP/USD = 4,704,000 COP
-    render(
+    renderCard(
       <ResultCard
         result={makeResult({ bestRoom: { roomId: 'r1', roomType: 'suite', bedType: 'king', capacity: 2, basePriceUsd: 320, priceUsd: 280 } })}
         nights={4}
@@ -91,7 +97,7 @@ describe('ResultCard', () => {
 
   it('falls back to basePriceUsd when priceUsd is null', () => {
     // 320 USD × 3 nights × 4200 = 4,032,000 COP — look for "032"
-    render(
+    renderCard(
       <ResultCard
         result={makeResult({ bestRoom: { roomId: 'r1', roomType: 'suite', bedType: 'king', capacity: 2, basePriceUsd: 320, priceUsd: null } })}
         nights={3}
@@ -105,7 +111,7 @@ describe('ResultCard', () => {
 
   it('uses 1 as effective nights when nights is 0', () => {
     // 280 USD × 1 night × 4200 = 1,176,000 COP — look for "176"
-    render(
+    renderCard(
       <ResultCard
         result={makeResult()}
         nights={0}
@@ -118,7 +124,7 @@ describe('ResultCard', () => {
   });
 
   it('shows at most 3 amenities', () => {
-    render(
+    renderCard(
       <ResultCard
         result={makeResult({ amenities: ['wifi', 'pool', 'spa', 'gym'] })}
         nights={2}
@@ -135,7 +141,7 @@ describe('ResultCard', () => {
   });
 
   it('resolves amenity labels via the label map', () => {
-    render(
+    renderCard(
       <ResultCard
         result={makeResult({ amenities: ['pool'] })}
         nights={2}
@@ -148,7 +154,7 @@ describe('ResultCard', () => {
   });
 
   it('falls back to code when amenity label is not in map', () => {
-    render(
+    renderCard(
       <ResultCard
         result={makeResult({ amenities: ['beach_access'] })}
         nights={2}
@@ -161,7 +167,7 @@ describe('ResultCard', () => {
   });
 
   it('resolves room type from label map', () => {
-    render(
+    renderCard(
       <ResultCard
         result={makeResult()}
         nights={2}
@@ -175,7 +181,7 @@ describe('ResultCard', () => {
 
   it('calls onBook when the book button is clicked', () => {
     const onBook = jest.fn();
-    render(
+    renderCard(
       <ResultCard
         result={makeResult()}
         nights={3}
@@ -189,7 +195,7 @@ describe('ResultCard', () => {
   });
 
   it('renders the book button', () => {
-    render(
+    renderCard(
       <ResultCard
         result={makeResult()}
         nights={2}
@@ -202,7 +208,7 @@ describe('ResultCard', () => {
   });
 
   it('shows capacity in guest label', () => {
-    render(
+    renderCard(
       <ResultCard
         result={makeResult()}
         nights={2}

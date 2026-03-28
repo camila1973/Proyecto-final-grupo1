@@ -1,7 +1,6 @@
 import { API_BASE } from '../../env';
 import type { TaxonomyCategory, TaxonomyResponse, LabelMap } from './types';
-
-export const COP_RATE = 4200;
+export { formatPrice, CURRENCY_RATES } from '../../utils/currency';
 
 export function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
@@ -11,14 +10,6 @@ export function offsetDateISO(days: number): string {
   const d = new Date();
   d.setDate(d.getDate() + days);
   return d.toISOString().slice(0, 10);
-}
-
-export function formatCOP(usd: number): string {
-  return new Intl.NumberFormat('es-CO', {
-    style: 'currency',
-    currency: 'COP',
-    maximumFractionDigits: 0,
-  }).format(Math.round(usd * COP_RATE));
 }
 
 export function getNights(checkIn: string, checkOut: string): number {
