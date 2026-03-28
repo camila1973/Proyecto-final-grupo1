@@ -5,13 +5,17 @@ import type { PropertiesService } from "./properties.service.js";
 describe("PropertiesController", () => {
   let controller: PropertiesController;
   let service: jest.Mocked<
-    Pick<PropertiesService, "searchProperties" | "getPropertyById">
+    Pick<
+      PropertiesService,
+      "searchProperties" | "getPropertyById" | "getCitySuggestions"
+    >
   >;
 
   beforeEach(() => {
     service = {
       searchProperties: jest.fn().mockResolvedValue({ results: [] }),
       getPropertyById: jest.fn().mockResolvedValue(null),
+      getCitySuggestions: jest.fn().mockReturnValue({ suggestions: [] }),
     };
     controller = new PropertiesController(
       service as unknown as PropertiesService,
@@ -240,6 +244,37 @@ describe("PropertiesController", () => {
       (service.getPropertyById as jest.Mock).mockResolvedValue(null);
       await expect(controller.getProperty("missing")).rejects.toThrow(
         NotFoundException,
+      );
+    });
+  });
+
+  describe("GET cities", () => {
+    it("delegates to service and returns suggestions", () => {
+      const mockResult = {
+        suggestions: [{ city: "Cancún", country: "MX" }],
+      };
+      (service.getCitySuggestions as jest.Mock).mockReturnValue(mockResult);
+
+      const result = controller.getCitySuggestions("Cancun");
+
+      expect(service.getCitySuggestions).toHaveBeenCalledWith("Cancun");
+      expect(result).toEqual(mockResult);
+    });
+
+    it("trims whitespace from q before delegating", () => {
+      controller.getCitySuggestions("  Paris  ");
+      expect(service.getCitySuggestions).toHaveBeenCalledWith("Paris");
+    });
+
+    it("throws BadRequestException when q is missing", () => {
+      expect(() => controller.getCitySuggestions(undefined as any)).toThrow(
+        BadRequestException,
+      );
+    });
+
+    it("throws BadRequestException when q is whitespace-only", () => {
+      expect(() => controller.getCitySuggestions("   ")).toThrow(
+        BadRequestException,
       );
     });
   });

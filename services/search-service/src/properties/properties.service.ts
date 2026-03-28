@@ -7,6 +7,12 @@ import { FacetsService } from "./facets/facets.service.js";
 import type { CandidateRoom } from "./facets/facets.service.js";
 import type { SearchPropertiesDto } from "./dto/search-properties.dto.js";
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const allCities = require("cities.json") as {
+  name: string;
+  country: string;
+}[];
+
 const CACHE_TTL = 60 * 5; // 5 minutes
 
 @Injectable()
@@ -129,6 +135,23 @@ export class PropertiesService {
     return response;
   }
 
+  getCitySuggestions(
+    q: string,
+    limit = 8,
+  ): { suggestions: { city: string; country: string }[] } {
+    const normalized = this.stripAccents(q.toLowerCase());
+    const suggestions: { city: string; country: string }[] = [];
+
+    for (const entry of allCities) {
+      if (this.stripAccents(entry.name.toLowerCase()).startsWith(normalized)) {
+        suggestions.push({ city: entry.name, country: entry.country });
+        if (suggestions.length === limit) break;
+      }
+    }
+
+    return { suggestions };
+  }
+
   async invalidateCityCache(city: string): Promise<void> {
     const pattern = `search:properties:${this.normalizeCity(city)}:*`;
     await this.cache.scanDel(pattern);
@@ -222,5 +245,9 @@ export class PropertiesService {
 
   private normalizeCity(city: string): string {
     return city.toLowerCase().trim().replace(/\s+/g, "_");
+  }
+
+  private stripAccents(str: string): string {
+    return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   }
 }

@@ -3,7 +3,7 @@ import { useSearch, useNavigate } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { API_BASE } from '../../env';
-import SearchBarForm from './SearchBarForm';
+import SearchBarForm from '../../components/SearchBarForm';
 import ResultCard from './ResultCard';
 import FilterSidebar from './FilterSidebar';
 import { COP_RATE, getNights, buildLabelMap, fetchTaxonomies } from './utils';
@@ -28,13 +28,13 @@ export default function SearchPage() {
   });
 
   const amenityLabels: LabelMap = taxonomyData
-    ? buildLabelMap(taxonomyData.categories, 'amenity')
+    ? buildLabelMap(taxonomyData.categories, 'amenities')
     : {};
   const roomTypeLabels: LabelMap = taxonomyData
     ? buildLabelMap(taxonomyData.categories, 'room_type')
     : {};
   const amenityCategoryLabel =
-    taxonomyData?.categories.find((c) => c.code === 'amenity')?.label ?? 'AMENIDADES';
+    taxonomyData?.categories.find((c) => c.code === 'amenities')?.label ?? 'AMENIDADES';
   const roomTypeCategoryLabel =
     taxonomyData?.categories.find((c) => c.code === 'room_type')?.label ?? 'TIPO DE HABITACIÓN';
 

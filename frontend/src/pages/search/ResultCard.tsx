@@ -1,6 +1,14 @@
 import { useTranslation } from 'react-i18next';
 import type { SearchResult, LabelMap } from './types';
 import { formatCOP, resolveLabel } from './utils';
+import Button from '@mui/material/Button';
+import BookmarkIcon from '@mui/icons-material/Bookmark';
+import Card from '@mui/material/Card';
+import CardMedia from '@mui/material/CardMedia';
+import CardContent from '@mui/material/CardContent';
+import Chip from '@mui/material/Chip';
+import Typography from '@mui/material/Typography';
+import Box from '@mui/material/Box';
 
 interface ResultCardProps {
   result: SearchResult;
@@ -17,6 +25,7 @@ export default function ResultCard({
   roomTypeLabels,
   onBook,
 }: ResultCardProps) {
+  console.log(result)
   const { t } = useTranslation();
   const effectiveNights = nights > 0 ? nights : 1;
   const totalPriceUsd = (result.bestRoom.priceUsd ?? result.bestRoom.basePriceUsd) * effectiveNights;
@@ -24,67 +33,95 @@ export default function ResultCard({
   const topAmenities = result.amenities.slice(0, 3);
 
   return (
-    <div className="bg-white rounded-xl shadow-sm flex overflow-hidden mb-4">
-      <div className="w-44 flex-shrink-0">
-        <img
-          src={result.thumbnailUrl || 'https://placehold.co/176x140?text=Hotel'}
-          alt={result.propertyName}
-          className="w-full h-full object-cover"
-          onError={(e) => {
-            (e.currentTarget as HTMLImageElement).src =
-              'https://placehold.co/176x140?text=Hotel';
-          }}
-        />
-      </div>
+    <Card
+      variant="outlined"
+      sx={{ display: 'flex', height: 170, borderRadius: 3, mb: 2, overflow: 'hidden' }}
+    >
+      <CardMedia
+        component="img"
+        image={result.thumbnailUrl || 'https://placehold.co/224x170?text=Hotel'}
+        alt={result.propertyName}
+        sx={{ width: '27%', flexShrink: 0, objectFit: 'cover' }}
+        onError={(e) => {
+          (e.currentTarget as HTMLImageElement).src = 'https://placehold.co/224x170?text=Hotel';
+        }}
+      />
 
-      <div className="flex-1 p-4 flex flex-col justify-between min-w-0">
-        <div>
-          <h3 className="font-bold text-gray-900 text-sm uppercase tracking-wide truncate">
+      <CardContent
+        sx={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          minWidth: 0,
+          overflow: 'hidden',
+          py: 2,
+          px: 2.5,
+          '&:last-child': { pb: 2 },
+        }}
+      >
+        <Box>
+          <Typography
+            variant="subtitle1"
+            fontWeight={600}
+            textTransform="uppercase"
+            letterSpacing="0.05em"
+            noWrap
+            color="text.primary"
+          >
             {result.propertyName}
-          </h3>
-          <p className="text-xs text-gray-500 mt-0.5">
+          </Typography>
+          <Typography variant="caption" color="text.secondary" display="block" mt={0.5}>
             {result.neighborhood ? `${result.neighborhood}, ` : ''}
             {result.city}, {result.country}
-          </p>
-          <p className="text-xs text-gray-600 mt-1">
+          </Typography>
+          <Typography variant="caption" color="text.secondary" display="block" mt={0.5}>
             {resolveLabel(roomTypeLabels, result.bestRoom.roomType)} · {result.bestRoom.capacity}{' '}
             {t('search.card.guests', { count: result.bestRoom.capacity })}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2 mt-3">
+          </Typography>
+        </Box>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
           {topAmenities.map((a) => (
-            <span
+            <Chip
               key={a}
-              className="border border-gray-300 rounded-md text-xs px-2 py-0.5 text-gray-600 whitespace-nowrap"
-            >
-              {resolveLabel(amenityLabels, a)}
-            </span>
-          ))}
-        </div>
-      </div>
-
-      <div className="flex flex-col items-end justify-between p-4 flex-shrink-0">
-        <div className="text-right">
-          <div className="text-xl font-bold text-gray-900">{formatCOP(totalPriceUsd)}</div>
-          <div className="text-xs text-gray-500">{nightsLabel}</div>
-        </div>
-        <button
-          onClick={onBook}
-          className="flex items-center gap-2 bg-[#e8c84a] hover:bg-[#d4b53a] text-gray-900 font-semibold text-sm px-5 py-2 rounded-lg transition-colors mt-4"
-        >
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <rect x="1" y="2" width="12" height="11" rx="1" stroke="currentColor" strokeWidth="1.5" />
-            <path d="M1 6h12" stroke="currentColor" strokeWidth="1.5" />
-            <path
-              d="M4 1v3M10 1v3"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
+              label={resolveLabel(amenityLabels, a)}
+              size="small"
+              variant="outlined"
+              sx={{ fontSize: '0.75rem', borderRadius: 1 }}
             />
-          </svg>
+          ))}
+        </Box>
+      </CardContent>
+
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'flex-end',
+          justifyContent: 'space-between',
+          px: 2.5,
+          py: 2,
+          flexShrink: 0,
+        }}
+      >
+        <Box textAlign="right">
+          <Typography variant="h6" fontWeight={700} lineHeight={1.2} color="text.primary">
+            {formatCOP(totalPriceUsd)}
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            {nightsLabel}
+          </Typography>
+        </Box>
+        <Button
+          variant="contained"
+          color="warning"
+          onClick={onBook}
+          startIcon={<BookmarkIcon fontSize="small" />}
+          sx={{ textTransform: 'none', fontWeight: 600, whiteSpace: 'nowrap', borderRadius: 1 }}
+        >
           {t('search.card.book')}
-        </button>
-      </div>
-    </div>
+        </Button>
+      </Box>
+    </Card>
   );
 }

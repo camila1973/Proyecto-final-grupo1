@@ -38,6 +38,14 @@ export class PropertiesController {
     return result;
   }
 
+  @Get("cities")
+  getCitySuggestions(@Query("q") q: string) {
+    if (!q?.trim()) {
+      throw new BadRequestException("q is required");
+    }
+    return this.propertiesService.getCitySuggestions(q.trim());
+  }
+
   private parseQuery(query: Record<string, string>): SearchPropertiesDto {
     const { city, checkIn, checkOut, guests, page, limit, sort } = query;
 
