@@ -1,5 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { createMemoryHistory, createRouter, createRootRoute, createRoute, RouterProvider } from '@tanstack/react-router';
 import { LocaleProvider } from '../context/LocaleContext';
 import { setupTestI18n } from '../i18n/test-utils';
@@ -45,9 +47,11 @@ function renderPage(propertyId = 'prop_001') {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const router = makeRouter(propertyId);
   return render(
-    <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-    </QueryClientProvider>,
+    <LocalizationProvider dateAdapter={AdapterDayjs}>
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>
+    </LocalizationProvider>,
   );
 }
 

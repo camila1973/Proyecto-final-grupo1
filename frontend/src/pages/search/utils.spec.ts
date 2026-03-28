@@ -165,6 +165,8 @@ describe('buildLabelMap', () => {
     expect(buildLabelMap(categories, 'amenity')).toEqual({
       wifi: 'WiFi',
       pool: 'Piscina',
+      v1: 'WiFi',
+      v2: 'Piscina',
     });
   });
 
@@ -172,6 +174,8 @@ describe('buildLabelMap', () => {
     expect(buildLabelMap(categories, 'room_type')).toEqual({
       suite: 'Suite',
       standard: 'Estándar',
+      v3: 'Suite',
+      v4: 'Estándar',
     });
   });
 

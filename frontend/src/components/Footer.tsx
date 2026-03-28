@@ -3,7 +3,6 @@ import { useLocale, LANGUAGES, CURRENCIES, type Language, type Currency } from '
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import Select from '@mui/material/Select';
-import MenuItem from '@mui/material/MenuItem';
 
 export default function Footer() {
   const { t } = useTranslation();
@@ -23,15 +22,15 @@ export default function Footer() {
           <FormControl size="small" variant="outlined" sx={{ minWidth: 110 }}>
             <InputLabel sx={{ fontSize: '0.75rem' }}>{t('footer.language_label')}</InputLabel>
             <Select
+              native
               value={language}
               label={t('footer.language_label')}
+              inputProps={{ 'aria-label': t('footer.language_label') }}
               onChange={(e) => setLanguage(e.target.value as Language)}
               sx={{ fontSize: '0.75rem' }}
             >
               {LANGUAGES.map((lang) => (
-                <MenuItem key={lang.value} value={lang.value} sx={{ fontSize: '0.75rem' }}>
-                  {lang.label}
-                </MenuItem>
+                <option key={lang.value} value={lang.value}>{lang.label}</option>
               ))}
             </Select>
           </FormControl>
@@ -39,15 +38,15 @@ export default function Footer() {
           <FormControl size="small" variant="outlined" sx={{ minWidth: 90 }}>
             <InputLabel sx={{ fontSize: '0.75rem' }}>{t('footer.currency_label')}</InputLabel>
             <Select
+              native
               value={currency}
               label={t('footer.currency_label')}
+              inputProps={{ 'aria-label': t('footer.currency_label') }}
               onChange={(e) => setCurrency(e.target.value as Currency)}
               sx={{ fontSize: '0.75rem' }}
             >
               {CURRENCIES.map((c) => (
-                <MenuItem key={c} value={c} sx={{ fontSize: '0.75rem' }}>
-                  {c}
-                </MenuItem>
+                <option key={c} value={c}>{c}</option>
               ))}
             </Select>
           </FormControl>

@@ -1,19 +1,28 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocale, LANGUAGES, type Language } from '../context/LocaleContext';
 import Button from '@mui/material/Button';
-import Menu from '@mui/material/Menu';
-import MenuItem from '@mui/material/MenuItem';
 
 export default function Navbar() {
   const { t } = useTranslation();
   const { language, currency, setLanguage } = useLocale();
-  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const handleSelect = (lang: Language) => {
     setLanguage(lang);
-    setAnchorEl(null);
+    setOpen(false);
   };
+
+  useEffect(() => {
+    const handleMouseDown = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleMouseDown);
+    return () => document.removeEventListener('mousedown', handleMouseDown);
+  }, []);
 
   return (
     <header className="bg-white border-b border-gray-200">
@@ -28,46 +37,68 @@ export default function Navbar() {
             <span className="font-bold text-lg text-gray-900">TravelHub</span>
           </div>
 
-          <Button
-            size="small"
-            onClick={(e) => setAnchorEl(e.currentTarget)}
-            endIcon={
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                <path d="M3 4.5l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            }
-            sx={{
-              ml: 1,
-              borderRadius: 99,
-              border: '1px solid',
-              borderColor: 'grey.300',
-              color: 'text.secondary',
-              textTransform: 'none',
-              fontSize: '0.875rem',
-              px: 1.5,
-              py: 0.5,
-            }}
-          >
-            {t('nav.language')} · {currency}
-          </Button>
+          <div ref={containerRef} style={{ position: 'relative' }}>
+            <Button
+              size="small"
+              aria-label="select language"
+              onClick={() => setOpen((prev) => !prev)}
+              endIcon={
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                  <path d="M3 4.5l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              }
+              sx={{
+                ml: 1,
+                borderRadius: 99,
+                border: '1px solid',
+                borderColor: 'grey.300',
+                color: 'text.secondary',
+                textTransform: 'none',
+                fontSize: '0.875rem',
+                px: 1.5,
+                py: 0.5,
+              }}
+            >
+              {t('nav.language')} · {currency}
+            </Button>
 
-          <Menu
-            anchorEl={anchorEl}
-            open={Boolean(anchorEl)}
-            onClose={() => setAnchorEl(null)}
-            slotProps={{ paper: { sx: { mt: 0.5, minWidth: 144 } } }}
-          >
-            {LANGUAGES.map((lang) => (
-              <MenuItem
-                key={lang.value}
-                selected={language === lang.value}
-                onClick={() => handleSelect(lang.value)}
-                sx={{ fontSize: '0.875rem' }}
+            {open && (
+              <ul
+                role="listbox"
+                style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  marginTop: 4,
+                  minWidth: 144,
+                  background: '#fff',
+                  border: '1px solid #e0e0e0',
+                  borderRadius: 4,
+                  padding: 0,
+                  listStyle: 'none',
+                  zIndex: 1300,
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                }}
               >
-                {lang.label}
-              </MenuItem>
-            ))}
-          </Menu>
+                {LANGUAGES.map((lang) => (
+                  <li
+                    key={lang.value}
+                    role="option"
+                    aria-selected={language === lang.value}
+                    onClick={() => handleSelect(lang.value)}
+                    style={{
+                      padding: '8px 16px',
+                      fontSize: '0.875rem',
+                      cursor: 'pointer',
+                      background: language === lang.value ? '#f5f5f5' : 'transparent',
+                    }}
+                  >
+                    {lang.label}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
 
         <nav className="flex items-center gap-6 text-sm text-gray-700">

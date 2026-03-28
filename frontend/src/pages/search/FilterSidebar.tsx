@@ -53,7 +53,7 @@ export default function FilterSidebar({
             color="primary"
             sx={{ textTransform: 'none', fontSize: '0.875rem', minWidth: 0, p: 0 }}
           >
-            × {t('search.filters.clear')}
+            {t('search.filters.clear')}
           </Button>
         )}
       </div>

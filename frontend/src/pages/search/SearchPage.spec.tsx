@@ -1,5 +1,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocaleProvider } from '../../context/LocaleContext';
 import { setupTestI18n } from '../../i18n/test-utils';
 import es from '../../i18n/locales/es.json';
@@ -66,11 +68,13 @@ function makeFetchMock(searchResponse: unknown) {
 function renderPage() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
-    <LocaleProvider>
-      <QueryClientProvider client={qc}>
-        <SearchPage />
-      </QueryClientProvider>
-    </LocaleProvider>,
+    <LocalizationProvider dateAdapter={AdapterDayjs}>
+      <LocaleProvider>
+        <QueryClientProvider client={qc}>
+          <SearchPage />
+        </QueryClientProvider>
+      </LocaleProvider>
+    </LocalizationProvider>,
   );
   return qc;
 }

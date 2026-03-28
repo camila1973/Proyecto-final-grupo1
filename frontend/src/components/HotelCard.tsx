@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { useLocale } from '../context/LocaleContext';
 import Card from '@mui/material/Card';
 import CardMedia from '@mui/material/CardMedia';
 import CardContent from '@mui/material/CardContent';
@@ -18,6 +19,7 @@ export interface HotelCardProps {
 
 export default function HotelCard({ name, location, price, img, onClick }: HotelCardProps) {
   const { t } = useTranslation();
+  const { currency } = useLocale();
 
   return (
     <Card
@@ -27,7 +29,7 @@ export default function HotelCard({ name, location, price, img, onClick }: Hotel
       <CardContent>
         <Typography variant="subtitle2" fontWeight="bold" color="text.primary">{name}</Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>{location}</Typography>
-        <Typography variant="h6" fontWeight="bold" color="text.primary">{price}</Typography>
+        <Typography variant="h6" fontWeight="bold" color="text.primary">{currency} {price}</Typography>
         <Typography variant="caption" color="text.secondary">{t('recommendations.per_night')}</Typography>
       </CardContent>
       <CardActions sx={{ px: 2, pb: 2, pt: 1 }}>
