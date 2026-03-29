@@ -109,6 +109,36 @@ describe("WebhooksController", () => {
         process.env.WEBHOOK_SECRET_HOTELBEDS = savedSecret;
       }
     });
+
+    it("should throw UnauthorizedException when signature is missing and secret is set", () => {
+      const savedSecret = process.env.WEBHOOK_SECRET_HOTELBEDS;
+      process.env.WEBHOOK_SECRET_HOTELBEDS = "test-secret";
+      try {
+        expect(() =>
+          controller.hotelbeds(undefined, HOTELBEDS_PAYLOAD as any),
+        ).toThrow(UnauthorizedException);
+      } finally {
+        process.env.WEBHOOK_SECRET_HOTELBEDS = savedSecret;
+      }
+    });
+
+    it("should pass through when HMAC signature is valid", async () => {
+      const { createHmac } = await import("crypto");
+      const secret = "test-secret";
+      const body = JSON.stringify(HOTELBEDS_PAYLOAD);
+      const sig = createHmac("sha256", secret).update(body).digest("hex");
+      const savedSecret = process.env.WEBHOOK_SECRET_HOTELBEDS;
+      process.env.WEBHOOK_SECRET_HOTELBEDS = secret;
+      try {
+        const result = await controller.hotelbeds(
+          sig,
+          HOTELBEDS_PAYLOAD as any,
+        );
+        expect(result).toEqual(MOCK_RESULT);
+      } finally {
+        process.env.WEBHOOK_SECRET_HOTELBEDS = savedSecret;
+      }
+    });
   });
 
   describe("POST /webhooks/travelclick", () => {

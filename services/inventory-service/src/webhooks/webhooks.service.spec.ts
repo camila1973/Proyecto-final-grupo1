@@ -140,6 +140,109 @@ describe("WebhooksService", () => {
       );
     });
 
+    it("should skip room when not found in DB", async () => {
+      const service = makeService({
+        propertiesRepo: { findByName: jest.fn().mockResolvedValue(PROPERTY) },
+        roomsRepo: { findByPropertyAndType: jest.fn().mockResolvedValue(null) },
+      });
+      const result = await service.processHotelbeds({
+        hotelCode: "HB001",
+        provider: "hotelbeds",
+        timestamp: "2026-04-01T00:00:00Z",
+        rooms: [
+          {
+            roomCode: "UNKNOWN",
+            date: "2026-04-01",
+            allotment: 5,
+            rate: 100,
+            currency: "USD",
+            stopSell: false,
+          },
+        ],
+      });
+      expect(result.skipped).toBe(1);
+    });
+
+    it("falls back to lowercased code for unknown room type", async () => {
+      const findByPropertyAndType = jest.fn().mockResolvedValue(ROOM);
+      const service = makeService({
+        propertiesRepo: { findByName: jest.fn().mockResolvedValue(PROPERTY) },
+        roomsRepo: { findByPropertyAndType },
+      });
+
+      await service.processHotelbeds({
+        hotelCode: "HB001",
+        provider: "hotelbeds",
+        timestamp: "2026-04-01T00:00:00Z",
+        rooms: [
+          {
+            roomCode: "PENTHOUSE",
+            date: "2026-04-01",
+            allotment: 1,
+            rate: 500,
+            currency: "USD",
+            stopSell: false,
+          },
+        ],
+      });
+
+      expect(findByPropertyAndType).toHaveBeenCalledWith("prop-1", "penthouse");
+    });
+
+    it("does not create rate when stopSell=false but rate is 0", async () => {
+      const create = jest.fn().mockResolvedValue({});
+      const service = makeService({
+        propertiesRepo: { findByName: jest.fn().mockResolvedValue(PROPERTY) },
+        roomsRepo: { findByPropertyAndType: jest.fn().mockResolvedValue(ROOM) },
+        ratesService: { create },
+      });
+
+      await service.processHotelbeds({
+        hotelCode: "HB001",
+        provider: "hotelbeds",
+        timestamp: "2026-04-01T00:00:00Z",
+        rooms: [
+          {
+            roomCode: "DBL",
+            date: "2026-04-01",
+            allotment: 5,
+            stopSell: false,
+            // rate is undefined — condition is false
+          },
+        ],
+      });
+
+      expect(create).not.toHaveBeenCalled();
+    });
+
+    it("swallows rate create errors (overlap is non-fatal)", async () => {
+      const service = makeService({
+        propertiesRepo: { findByName: jest.fn().mockResolvedValue(PROPERTY) },
+        roomsRepo: { findByPropertyAndType: jest.fn().mockResolvedValue(ROOM) },
+        ratesService: {
+          create: jest.fn().mockRejectedValue(new Error("overlap")),
+        },
+      });
+
+      const result = await service.processHotelbeds({
+        hotelCode: "HB001",
+        provider: "hotelbeds",
+        timestamp: "2026-04-01T00:00:00Z",
+        rooms: [
+          {
+            roomCode: "DBL",
+            date: "2026-04-01",
+            allotment: 5,
+            rate: 150,
+            currency: "USD",
+            stopSell: false,
+          },
+        ],
+      });
+
+      expect(result.processed).toBe(1);
+    });
+
     it("should normalise room type codes (DBL → double, SGL → single)", async () => {
       const findByPropertyAndType = jest.fn().mockResolvedValue(ROOM);
       const service = makeService({
@@ -260,6 +363,62 @@ describe("WebhooksService", () => {
     });
   });
 
+  describe("processTravelClick", () => {
+    it("should process room and unblock when not closed", async () => {
+      const unblockDates = jest.fn().mockResolvedValue(undefined);
+      const service = makeService({
+        propertiesRepo: { findByName: jest.fn().mockResolvedValue(PROPERTY) },
+        roomsRepo: { findByPropertyAndType: jest.fn().mockResolvedValue(ROOM) },
+        availabilityRepo: {
+          blockDates: jest.fn().mockResolvedValue(undefined),
+          unblockDates,
+        },
+      });
+      const result = await service.processTravelClick({
+        propertyCode: "TC001",
+        provider: "travelclick",
+        transactionId: "txn",
+        createdAt: "2026-04-01T00:00:00Z",
+        roomTypes: [
+          {
+            roomTypeCode: "SGL",
+            startDate: "2026-04-01",
+            endDate: "2026-04-03",
+            availableCount: 3,
+            rateAmount: 200,
+            currencyCode: "USD",
+            closed: false,
+          },
+        ],
+      });
+      expect(result.processed).toBe(1);
+      expect(unblockDates).toHaveBeenCalled();
+    });
+
+    it("should skip room when not found in DB", async () => {
+      const service = makeService({
+        propertiesRepo: { findByName: jest.fn().mockResolvedValue(PROPERTY) },
+        roomsRepo: { findByPropertyAndType: jest.fn().mockResolvedValue(null) },
+      });
+      const result = await service.processTravelClick({
+        propertyCode: "TC001",
+        provider: "travelclick",
+        transactionId: "txn",
+        createdAt: "2026-04-01T00:00:00Z",
+        roomTypes: [
+          {
+            roomTypeCode: "UNKNOWN",
+            startDate: "2026-04-01",
+            endDate: "2026-04-03",
+            availableCount: 0,
+            closed: true,
+          },
+        ],
+      });
+      expect(result.skipped).toBe(1);
+    });
+  });
+
   describe("processRoomRaccoon", () => {
     it("should skip when property not found", async () => {
       const service = makeService();
@@ -280,6 +439,49 @@ describe("WebhooksService", () => {
       });
       expect(result.processed).toBe(0);
       expect(result.skipped).toBe(1);
+    });
+
+    it("should skip room when not found in DB", async () => {
+      const service = makeService({
+        propertiesRepo: { findByName: jest.fn().mockResolvedValue(PROPERTY) },
+        roomsRepo: { findByPropertyAndType: jest.fn().mockResolvedValue(null) },
+      });
+      const result = await service.processRoomRaccoon({
+        hotelId: "RR001",
+        provider: "roomraccoon",
+        eventType: "availability.updated",
+        occurredAt: "2026-04-01T00:00:00Z",
+        availability: [
+          { roomId: "unknown_room", date: "2026-04-01", available: true },
+        ],
+      });
+      expect(result.skipped).toBe(1);
+    });
+
+    it("should block dates when room is not available", async () => {
+      const blockDates = jest.fn().mockResolvedValue(undefined);
+      const service = makeService({
+        propertiesRepo: { findByName: jest.fn().mockResolvedValue(PROPERTY) },
+        roomsRepo: { findByPropertyAndType: jest.fn().mockResolvedValue(ROOM) },
+        availabilityRepo: {
+          blockDates,
+          unblockDates: jest.fn().mockResolvedValue(undefined),
+        },
+      });
+      await service.processRoomRaccoon({
+        hotelId: "RR001",
+        provider: "roomraccoon",
+        eventType: "availability.updated",
+        occurredAt: "2026-04-01T00:00:00Z",
+        availability: [
+          { roomId: "studio_01", date: "2026-04-01", available: false },
+        ],
+      });
+      expect(blockDates).toHaveBeenCalledWith(
+        "room-1",
+        "2026-04-01",
+        "2026-04-02",
+      );
     });
 
     it("should process available room and unblock dates", async () => {
