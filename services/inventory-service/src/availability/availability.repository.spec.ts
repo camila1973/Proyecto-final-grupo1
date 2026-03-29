@@ -132,7 +132,7 @@ describe("AvailabilityRepository", () => {
   describe("hold", () => {
     it("runs within a transaction", async () => {
       const { repo, db } = makeRepo();
-      const sqlMock = sql as jest.Mock;
+      const sqlMock = sql as unknown as jest.Mock;
       sqlMock.mockReturnValue({
         execute: jest
           .fn()
@@ -146,7 +146,7 @@ describe("AvailabilityRepository", () => {
 
     it("throws ConflictException when remaining < 0", async () => {
       const { repo } = makeRepo();
-      const sqlMock = sql as jest.Mock;
+      const sqlMock = sql as unknown as jest.Mock;
       sqlMock.mockReturnValue({
         execute: jest
           .fn()
@@ -159,7 +159,7 @@ describe("AvailabilityRepository", () => {
 
     it("throws ConflictException when room is blocked", async () => {
       const { repo } = makeRepo();
-      const sqlMock = sql as jest.Mock;
+      const sqlMock = sql as unknown as jest.Mock;
       sqlMock.mockReturnValue({
         execute: jest
           .fn()
@@ -174,7 +174,7 @@ describe("AvailabilityRepository", () => {
   describe("unhold", () => {
     it("decrements held_rooms in a transaction and cleans up", async () => {
       const { repo, db } = makeRepo();
-      const sqlMock = sql as jest.Mock;
+      const sqlMock = sql as unknown as jest.Mock;
       sqlMock.mockReturnValue({
         execute: jest.fn().mockResolvedValue({ rows: [] }),
       });
@@ -188,7 +188,7 @@ describe("AvailabilityRepository", () => {
   describe("confirm", () => {
     it("moves held to reserved in a transaction", async () => {
       const { repo, db } = makeRepo();
-      const sqlMock = sql as jest.Mock;
+      const sqlMock = sql as unknown as jest.Mock;
       sqlMock.mockReturnValue({
         execute: jest.fn().mockResolvedValue({ rows: [] }),
       });
@@ -202,7 +202,7 @@ describe("AvailabilityRepository", () => {
   describe("release", () => {
     it("decrements reserved_rooms in a transaction and cleans up", async () => {
       const { repo, db } = makeRepo();
-      const sqlMock = sql as jest.Mock;
+      const sqlMock = sql as unknown as jest.Mock;
       sqlMock.mockReturnValue({
         execute: jest.fn().mockResolvedValue({ rows: [] }),
       });
@@ -225,7 +225,7 @@ describe("AvailabilityRepository", () => {
   describe("getAvailability", () => {
     it("returns mapped availability days from SQL result", async () => {
       const { repo } = makeRepo();
-      const sqlMock = sql as jest.Mock;
+      const sqlMock = sql as unknown as jest.Mock;
       sqlMock.mockReturnValueOnce({
         execute: jest.fn().mockResolvedValue({
           rows: [
@@ -258,7 +258,7 @@ describe("AvailabilityRepository", () => {
 
     it("returns empty array when no rows", async () => {
       const { repo } = makeRepo();
-      const sqlMock = sql as jest.Mock;
+      const sqlMock = sql as unknown as jest.Mock;
       sqlMock.mockReturnValueOnce({
         execute: jest.fn().mockResolvedValue({ rows: [] }),
       });
@@ -280,7 +280,7 @@ describe("AvailabilityRepository", () => {
 
     it("returns availability results mapped from SQL", async () => {
       const { repo } = makeRepo();
-      const sqlMock = sql as jest.Mock;
+      const sqlMock = sql as unknown as jest.Mock;
       sqlMock.mockReturnValueOnce({
         execute: jest.fn().mockResolvedValue({
           rows: [
