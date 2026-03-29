@@ -71,6 +71,8 @@
     "@tanstack/react-router": "^1.168.5",
     "amqplib": "^0.10.8",
     "cities.json": "^1.1.50",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.15.1",
     "dayjs": "^1.11.20",
     "expo": "~54.0.33",
     "expo-constants": "~18.0.13",

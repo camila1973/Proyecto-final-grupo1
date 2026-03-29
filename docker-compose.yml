@@ -176,6 +176,8 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: travelhub
+    ports:
+      - "5434:5432"
     volumes:
       - inventory_pg_data:/var/lib/postgresql/data
     networks:
@@ -197,8 +199,11 @@ services:
       NODE_ENV: production
       PORT: 3003
       DATABASE_URL: postgres://postgres:postgres@inventory-db:5432/travelhub
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
     depends_on:
       inventory-db:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
 
   # ─── Booking Service ──────────────────────────────────────────────────────────

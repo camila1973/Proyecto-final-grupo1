@@ -16,6 +16,8 @@ export class ProxyService {
     };
     if (req.headers.authorization)
       headers["authorization"] = req.headers.authorization;
+    if (req.headers["x-partner-id"])
+      headers["x-partner-id"] = req.headers["x-partner-id"] as string;
 
     this.logger.log(`→ ${method} ${targetUrl}`);
 
