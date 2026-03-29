@@ -6,5 +6,9 @@ module.exports = {
   moduleFileExtensions: ['ts', 'js', 'html'],
   coverageDirectory: '../../coverage/inventory-service',
   coverageReporters: ['lcov', 'text-summary'],
-  collectCoverageFrom: ['**/*.(t|j)s'],
+  collectCoverageFrom: [
+    '**/*.(t|j)s',
+    '!migrations/**',
+    '!scripts/**',
+  ],
 };

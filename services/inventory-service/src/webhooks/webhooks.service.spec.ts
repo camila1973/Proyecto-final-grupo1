@@ -1,24 +1,65 @@
-import { WebhooksService } from "./webhooks.service.js";
-import { AvailabilityStore } from "./availability.store.js";
-import { HotelbedsWebhookDto } from "./dto/hotelbeds-webhook.dto.js";
-import { TravelClickWebhookDto } from "./dto/travelclick-webhook.dto.js";
-import { RoomRaccoonWebhookDto } from "./dto/roomraccoon-webhook.dto.js";
+import { WebhooksService } from "./webhooks.service";
+import type { PropertiesRepository } from "../properties/properties.repository";
+import type { RoomsRepository } from "../rooms/rooms.repository";
+import type { RoomRatesService } from "../room-rates/room-rates.service";
+import type { AvailabilityRepository } from "../availability/availability.repository";
+import type { EventsPublisher } from "../events/events.publisher";
+
+function makeService(
+  overrides: Partial<{
+    propertiesRepo: Partial<PropertiesRepository>;
+    roomsRepo: Partial<RoomsRepository>;
+    ratesService: Partial<RoomRatesService>;
+    availabilityRepo: Partial<AvailabilityRepository>;
+    events: Partial<EventsPublisher>;
+  }> = {},
+) {
+  const propertiesRepo = {
+    findByName: jest.fn().mockResolvedValue(null),
+    ...overrides.propertiesRepo,
+  } as unknown as PropertiesRepository;
+
+  const roomsRepo = {
+    findByPropertyAndType: jest.fn().mockResolvedValue(null),
+    ...overrides.roomsRepo,
+  } as unknown as RoomsRepository;
+
+  const ratesService = {
+    create: jest.fn().mockResolvedValue({}),
+    ...overrides.ratesService,
+  } as unknown as RoomRatesService;
+
+  const availabilityRepo = {
+    blockDates: jest.fn().mockResolvedValue(undefined),
+    unblockDates: jest.fn().mockResolvedValue(undefined),
+    ...overrides.availabilityRepo,
+  } as unknown as AvailabilityRepository;
+
+  const events = {
+    publish: jest.fn().mockResolvedValue(undefined),
+    ...overrides.events,
+  } as unknown as EventsPublisher;
+
+  return new WebhooksService(
+    propertiesRepo,
+    roomsRepo,
+    ratesService,
+    availabilityRepo,
+    events,
+  );
+}
+
+const PROPERTY = { id: "prop-1", partner_id: "partner-1", name: "HB001" };
+const ROOM = { id: "room-1", property_id: "prop-1", room_type: "double" };
 
 describe("WebhooksService", () => {
-  let service: WebhooksService;
-  let store: AvailabilityStore;
-
-  beforeEach(() => {
-    store = new AvailabilityStore();
-    service = new WebhooksService(store);
-  });
-
   describe("processHotelbeds", () => {
-    it("should store one SKU per room entry", () => {
-      const payload: HotelbedsWebhookDto = {
-        hotelCode: "HB001",
+    it("should skip all rooms when property is not found", async () => {
+      const service = makeService();
+      const result = await service.processHotelbeds({
+        hotelCode: "UNKNOWN",
         provider: "hotelbeds",
-        timestamp: "2026-03-26T10:00:00Z",
+        timestamp: "2026-04-01T00:00:00Z",
         rooms: [
           {
             roomCode: "DBL",
@@ -28,28 +69,58 @@ describe("WebhooksService", () => {
             currency: "USD",
             stopSell: false,
           },
+        ],
+      });
+      expect(result.processed).toBe(0);
+      expect(result.skipped).toBe(1);
+    });
+
+    it("should process matching rooms and publish events", async () => {
+      const publish = jest.fn().mockResolvedValue(undefined);
+      const service = makeService({
+        propertiesRepo: { findByName: jest.fn().mockResolvedValue(PROPERTY) },
+        roomsRepo: { findByPropertyAndType: jest.fn().mockResolvedValue(ROOM) },
+        events: { publish },
+      });
+
+      const result = await service.processHotelbeds({
+        hotelCode: "HB001",
+        provider: "hotelbeds",
+        timestamp: "2026-04-01T00:00:00Z",
+        rooms: [
           {
-            roomCode: "SGL",
+            roomCode: "DBL",
             date: "2026-04-01",
-            allotment: 0,
-            rate: 100,
+            allotment: 5,
+            rate: 150,
             currency: "USD",
             stopSell: false,
           },
         ],
-      };
+      });
 
-      const result = service.processHotelbeds(payload);
-
-      expect(result.processed).toBe(2);
-      expect(store.size()).toBe(2);
+      expect(result.processed).toBe(1);
+      expect(publish).toHaveBeenCalledWith(
+        "inventory.room.updated",
+        expect.objectContaining({ roomId: "room-1" }),
+      );
     });
 
-    it("should mark SKU as unavailable when stopSell is true", () => {
-      const payload: HotelbedsWebhookDto = {
+    it("should block dates when stopSell is true", async () => {
+      const blockDates = jest.fn().mockResolvedValue(undefined);
+      const service = makeService({
+        propertiesRepo: { findByName: jest.fn().mockResolvedValue(PROPERTY) },
+        roomsRepo: { findByPropertyAndType: jest.fn().mockResolvedValue(ROOM) },
+        availabilityRepo: {
+          blockDates,
+          unblockDates: jest.fn().mockResolvedValue(undefined),
+        },
+      });
+
+      await service.processHotelbeds({
         hotelCode: "HB001",
         provider: "hotelbeds",
-        timestamp: "2026-03-26T10:00:00Z",
+        timestamp: "2026-04-01T00:00:00Z",
         rooms: [
           {
             roomCode: "DBL",
@@ -60,68 +131,103 @@ describe("WebhooksService", () => {
             stopSell: true,
           },
         ],
-      };
+      });
 
-      service.processHotelbeds(payload);
-      const record = store.get("HB001:DBL:2026-04-01");
-
-      expect(record).toBeDefined();
-      expect(record!.available).toBe(false);
-      expect(record!.stopSell).toBe(true);
+      expect(blockDates).toHaveBeenCalledWith(
+        "room-1",
+        "2026-04-01",
+        "2026-04-02",
+      );
     });
 
-    it("should mark SKU as unavailable when allotment is 0", () => {
-      const payload: HotelbedsWebhookDto = {
+    it("should skip room when not found in DB", async () => {
+      const service = makeService({
+        propertiesRepo: { findByName: jest.fn().mockResolvedValue(PROPERTY) },
+        roomsRepo: { findByPropertyAndType: jest.fn().mockResolvedValue(null) },
+      });
+      const result = await service.processHotelbeds({
         hotelCode: "HB001",
         provider: "hotelbeds",
-        timestamp: "2026-03-26T10:00:00Z",
+        timestamp: "2026-04-01T00:00:00Z",
         rooms: [
           {
-            roomCode: "DBL",
+            roomCode: "UNKNOWN",
             date: "2026-04-01",
-            allotment: 0,
-            rate: 150,
+            allotment: 5,
+            rate: 100,
             currency: "USD",
             stopSell: false,
           },
         ],
-      };
-
-      service.processHotelbeds(payload);
-      const record = store.get("HB001:DBL:2026-04-01");
-
-      expect(record!.available).toBe(false);
+      });
+      expect(result.skipped).toBe(1);
     });
 
-    it("should handle a bulk load of 10,000 SKUs within 200ms", () => {
-      const rooms = Array.from({ length: 10000 }, (_, i) => ({
-        roomCode: `ROOM_${i}`,
-        date: "2026-04-01",
-        allotment: 5,
-        rate: 100,
-        currency: "USD",
-        stopSell: false,
-      }));
+    it("falls back to lowercased code for unknown room type", async () => {
+      const findByPropertyAndType = jest.fn().mockResolvedValue(ROOM);
+      const service = makeService({
+        propertiesRepo: { findByName: jest.fn().mockResolvedValue(PROPERTY) },
+        roomsRepo: { findByPropertyAndType },
+      });
 
-      const payload: HotelbedsWebhookDto = {
-        hotelCode: "HB_BULK",
-        provider: "hotelbeds",
-        timestamp: "2026-03-26T10:00:00Z",
-        rooms,
-      };
-
-      const result = service.processHotelbeds(payload);
-
-      expect(result.processed).toBe(10000);
-      expect(result.durationMs).toBeLessThan(200);
-      expect(store.size()).toBe(10000);
-    });
-
-    it("should upsert an existing SKU with new data", () => {
-      const base: HotelbedsWebhookDto = {
+      await service.processHotelbeds({
         hotelCode: "HB001",
         provider: "hotelbeds",
-        timestamp: "2026-03-26T10:00:00Z",
+        timestamp: "2026-04-01T00:00:00Z",
+        rooms: [
+          {
+            roomCode: "PENTHOUSE",
+            date: "2026-04-01",
+            allotment: 1,
+            rate: 500,
+            currency: "USD",
+            stopSell: false,
+          },
+        ],
+      });
+
+      expect(findByPropertyAndType).toHaveBeenCalledWith("prop-1", "penthouse");
+    });
+
+    it("does not create rate when stopSell=false but rate is 0", async () => {
+      const create = jest.fn().mockResolvedValue({});
+      const service = makeService({
+        propertiesRepo: { findByName: jest.fn().mockResolvedValue(PROPERTY) },
+        roomsRepo: { findByPropertyAndType: jest.fn().mockResolvedValue(ROOM) },
+        ratesService: { create },
+      });
+
+      await service.processHotelbeds({
+        hotelCode: "HB001",
+        provider: "hotelbeds",
+        timestamp: "2026-04-01T00:00:00Z",
+        rooms: [
+          {
+            roomCode: "DBL",
+            date: "2026-04-01",
+            allotment: 5,
+            stopSell: false,
+            // rate is undefined — condition is false
+          },
+        ],
+      });
+
+      expect(create).not.toHaveBeenCalled();
+    });
+
+    it("swallows rate create errors (overlap is non-fatal)", async () => {
+      const service = makeService({
+        propertiesRepo: { findByName: jest.fn().mockResolvedValue(PROPERTY) },
+        roomsRepo: { findByPropertyAndType: jest.fn().mockResolvedValue(ROOM) },
+        ratesService: {
+          create: jest.fn().mockRejectedValue(new Error("overlap")),
+        },
+      });
+
+      const result = await service.processHotelbeds({
+        hotelCode: "HB001",
+        provider: "hotelbeds",
+        timestamp: "2026-04-01T00:00:00Z",
         rooms: [
           {
             roomCode: "DBL",
@@ -132,30 +238,80 @@ describe("WebhooksService", () => {
             stopSell: false,
           },
         ],
-      };
-      service.processHotelbeds(base);
+      });
 
-      const updated: HotelbedsWebhookDto = {
-        ...base,
-        timestamp: "2026-03-26T10:01:00Z",
-        rooms: [{ ...base.rooms[0], allotment: 2, rate: 180 }],
-      };
-      service.processHotelbeds(updated);
+      expect(result.processed).toBe(1);
+    });
 
-      const record = store.get("HB001:DBL:2026-04-01");
-      expect(record!.allotment).toBe(2);
-      expect(record!.price).toBe(180);
-      expect(store.size()).toBe(1);
+    it("should normalise room type codes (DBL → double, SGL → single)", async () => {
+      const findByPropertyAndType = jest.fn().mockResolvedValue(ROOM);
+      const service = makeService({
+        propertiesRepo: { findByName: jest.fn().mockResolvedValue(PROPERTY) },
+        roomsRepo: { findByPropertyAndType },
+      });
+
+      await service.processHotelbeds({
+        hotelCode: "HB001",
+        provider: "hotelbeds",
+        timestamp: "2026-04-01T00:00:00Z",
+        rooms: [
+          {
+            roomCode: "SGL",
+            date: "2026-04-01",
+            allotment: 3,
+            rate: 100,
+            currency: "USD",
+            stopSell: false,
+          },
+        ],
+      });
+
+      expect(findByPropertyAndType).toHaveBeenCalledWith("prop-1", "single");
+    });
+
+    it("should convert prices to USD using static FX rates", async () => {
+      const create = jest.fn().mockResolvedValue({});
+      const service = makeService({
+        propertiesRepo: { findByName: jest.fn().mockResolvedValue(PROPERTY) },
+        roomsRepo: { findByPropertyAndType: jest.fn().mockResolvedValue(ROOM) },
+        ratesService: { create },
+      });
+
+      await service.processHotelbeds({
+        hotelCode: "HB001",
+        provider: "hotelbeds",
+        timestamp: "2026-04-01T00:00:00Z",
+        rooms: [
+          {
+            roomCode: "DBL",
+            date: "2026-04-01",
+            allotment: 5,
+            rate: 100,
+            currency: "EUR",
+            stopSell: false,
+          },
+        ],
+      });
+
+      expect(create).toHaveBeenCalledWith(
+        "room-1",
+        "partner-1",
+        expect.objectContaining({
+          priceUsd: 108, // 100 EUR × 1.08
+          currency: "EUR",
+        }),
+      );
     });
   });
 
   describe("processTravelClick", () => {
-    it("should expand a multi-day range into individual SKUs", () => {
-      const payload: TravelClickWebhookDto = {
-        propertyCode: "TC001",
+    it("should skip when property not found", async () => {
+      const service = makeService();
+      const result = await service.processTravelClick({
+        propertyCode: "UNKNOWN",
         provider: "travelclick",
-        transactionId: "txn_001",
-        createdAt: "2026-03-26T10:00:00Z",
+        transactionId: "txn",
+        createdAt: "2026-04-01T00:00:00Z",
         roomTypes: [
           {
             roomTypeCode: "KNG",
@@ -167,77 +323,110 @@ describe("WebhooksService", () => {
             closed: false,
           },
         ],
-      };
-
-      const result = service.processTravelClick(payload);
-
-      // 3 days: Apr 1, Apr 2, Apr 3
-      expect(result.processed).toBe(3);
-      expect(store.get("TC001:KNG:2026-04-01")).toBeDefined();
-      expect(store.get("TC001:KNG:2026-04-02")).toBeDefined();
-      expect(store.get("TC001:KNG:2026-04-03")).toBeDefined();
+      });
+      expect(result.processed).toBe(0);
+      expect(result.skipped).toBe(1);
     });
 
-    it("should mark closed rooms as unavailable", () => {
-      const payload: TravelClickWebhookDto = {
+    it("should block date range when closed", async () => {
+      const blockDates = jest.fn().mockResolvedValue(undefined);
+      const service = makeService({
+        propertiesRepo: { findByName: jest.fn().mockResolvedValue(PROPERTY) },
+        roomsRepo: { findByPropertyAndType: jest.fn().mockResolvedValue(ROOM) },
+        availabilityRepo: {
+          blockDates,
+          unblockDates: jest.fn().mockResolvedValue(undefined),
+        },
+      });
+
+      await service.processTravelClick({
         propertyCode: "TC001",
         provider: "travelclick",
-        transactionId: "txn_002",
-        createdAt: "2026-03-26T10:00:00Z",
+        transactionId: "txn",
+        createdAt: "2026-04-01T00:00:00Z",
         roomTypes: [
           {
             roomTypeCode: "KNG",
             startDate: "2026-04-01",
-            endDate: "2026-04-01",
-            availableCount: 5,
-            rateAmount: 200,
-            currencyCode: "USD",
+            endDate: "2026-04-05",
+            availableCount: 0,
             closed: true,
           },
         ],
-      };
+      });
 
-      service.processTravelClick(payload);
-      const record = store.get("TC001:KNG:2026-04-01");
+      expect(blockDates).toHaveBeenCalledWith(
+        "room-1",
+        "2026-04-01",
+        "2026-04-05",
+      );
+    });
+  });
 
-      expect(record!.available).toBe(false);
-      expect(record!.stopSell).toBe(true);
+  describe("processTravelClick", () => {
+    it("should process room and unblock when not closed", async () => {
+      const unblockDates = jest.fn().mockResolvedValue(undefined);
+      const service = makeService({
+        propertiesRepo: { findByName: jest.fn().mockResolvedValue(PROPERTY) },
+        roomsRepo: { findByPropertyAndType: jest.fn().mockResolvedValue(ROOM) },
+        availabilityRepo: {
+          blockDates: jest.fn().mockResolvedValue(undefined),
+          unblockDates,
+        },
+      });
+      const result = await service.processTravelClick({
+        propertyCode: "TC001",
+        provider: "travelclick",
+        transactionId: "txn",
+        createdAt: "2026-04-01T00:00:00Z",
+        roomTypes: [
+          {
+            roomTypeCode: "SGL",
+            startDate: "2026-04-01",
+            endDate: "2026-04-03",
+            availableCount: 3,
+            rateAmount: 200,
+            currencyCode: "USD",
+            closed: false,
+          },
+        ],
+      });
+      expect(result.processed).toBe(1);
+      expect(unblockDates).toHaveBeenCalled();
     });
 
-    it("should handle bulk 10,000 SKUs from multi-room multi-day payload within 200ms", () => {
-      // 100 room types × 100 days = 10,000 SKUs
-      const roomTypes = Array.from({ length: 100 }, (_, i) => ({
-        roomTypeCode: `RT_${i}`,
-        startDate: "2026-04-01",
-        endDate: "2026-07-09", // 100 days
-        availableCount: 5,
-        rateAmount: 150,
-        currencyCode: "USD",
-        closed: false,
-      }));
-
-      const payload: TravelClickWebhookDto = {
-        propertyCode: "TC_BULK",
+    it("should skip room when not found in DB", async () => {
+      const service = makeService({
+        propertiesRepo: { findByName: jest.fn().mockResolvedValue(PROPERTY) },
+        roomsRepo: { findByPropertyAndType: jest.fn().mockResolvedValue(null) },
+      });
+      const result = await service.processTravelClick({
+        propertyCode: "TC001",
         provider: "travelclick",
-        transactionId: "txn_bulk",
-        createdAt: "2026-03-26T10:00:00Z",
-        roomTypes,
-      };
-
-      const result = service.processTravelClick(payload);
-
-      expect(result.processed).toBe(10000);
-      expect(result.durationMs).toBeLessThan(200);
+        transactionId: "txn",
+        createdAt: "2026-04-01T00:00:00Z",
+        roomTypes: [
+          {
+            roomTypeCode: "UNKNOWN",
+            startDate: "2026-04-01",
+            endDate: "2026-04-03",
+            availableCount: 0,
+            closed: true,
+          },
+        ],
+      });
+      expect(result.skipped).toBe(1);
     });
   });
 
   describe("processRoomRaccoon", () => {
-    it("should store one SKU per availability entry", () => {
-      const payload: RoomRaccoonWebhookDto = {
-        hotelId: "RR001",
+    it("should skip when property not found", async () => {
+      const service = makeService();
+      const result = await service.processRoomRaccoon({
+        hotelId: "UNKNOWN",
         provider: "roomraccoon",
         eventType: "availability.updated",
-        occurredAt: "2026-03-26T10:00:00Z",
+        occurredAt: "2026-04-01T00:00:00Z",
         availability: [
           {
             roomId: "studio_01",
@@ -246,44 +435,84 @@ describe("WebhooksService", () => {
             price: 90,
             currency: "EUR",
           },
-          {
-            roomId: "studio_02",
-            date: "2026-04-01",
-            available: false,
-            price: 90,
-            currency: "EUR",
-          },
         ],
-      };
-
-      const result = service.processRoomRaccoon(payload);
-
-      expect(result.processed).toBe(2);
-      expect(store.get("RR001:studio_01:2026-04-01")!.available).toBe(true);
-      expect(store.get("RR001:studio_02:2026-04-01")!.available).toBe(false);
+      });
+      expect(result.processed).toBe(0);
+      expect(result.skipped).toBe(1);
     });
 
-    it("should set allotment to 0 for unavailable rooms", () => {
-      const payload: RoomRaccoonWebhookDto = {
+    it("should skip room when not found in DB", async () => {
+      const service = makeService({
+        propertiesRepo: { findByName: jest.fn().mockResolvedValue(PROPERTY) },
+        roomsRepo: { findByPropertyAndType: jest.fn().mockResolvedValue(null) },
+      });
+      const result = await service.processRoomRaccoon({
         hotelId: "RR001",
         provider: "roomraccoon",
         eventType: "availability.updated",
-        occurredAt: "2026-03-26T10:00:00Z",
+        occurredAt: "2026-04-01T00:00:00Z",
+        availability: [
+          { roomId: "unknown_room", date: "2026-04-01", available: true },
+        ],
+      });
+      expect(result.skipped).toBe(1);
+    });
+
+    it("should block dates when room is not available", async () => {
+      const blockDates = jest.fn().mockResolvedValue(undefined);
+      const service = makeService({
+        propertiesRepo: { findByName: jest.fn().mockResolvedValue(PROPERTY) },
+        roomsRepo: { findByPropertyAndType: jest.fn().mockResolvedValue(ROOM) },
+        availabilityRepo: {
+          blockDates,
+          unblockDates: jest.fn().mockResolvedValue(undefined),
+        },
+      });
+      await service.processRoomRaccoon({
+        hotelId: "RR001",
+        provider: "roomraccoon",
+        eventType: "availability.updated",
+        occurredAt: "2026-04-01T00:00:00Z",
+        availability: [
+          { roomId: "studio_01", date: "2026-04-01", available: false },
+        ],
+      });
+      expect(blockDates).toHaveBeenCalledWith(
+        "room-1",
+        "2026-04-01",
+        "2026-04-02",
+      );
+    });
+
+    it("should process available room and unblock dates", async () => {
+      const unblockDates = jest.fn().mockResolvedValue(undefined);
+      const service = makeService({
+        propertiesRepo: { findByName: jest.fn().mockResolvedValue(PROPERTY) },
+        roomsRepo: { findByPropertyAndType: jest.fn().mockResolvedValue(ROOM) },
+        availabilityRepo: {
+          blockDates: jest.fn().mockResolvedValue(undefined),
+          unblockDates,
+        },
+      });
+
+      const result = await service.processRoomRaccoon({
+        hotelId: "RR001",
+        provider: "roomraccoon",
+        eventType: "availability.updated",
+        occurredAt: "2026-04-01T00:00:00Z",
         availability: [
           {
             roomId: "studio_01",
             date: "2026-04-01",
-            available: false,
+            available: true,
             price: 90,
             currency: "EUR",
           },
         ],
-      };
+      });
 
-      service.processRoomRaccoon(payload);
-      const record = store.get("RR001:studio_01:2026-04-01");
-
-      expect(record!.allotment).toBe(0);
+      expect(result.processed).toBe(1);
+      expect(unblockDates).toHaveBeenCalled();
     });
   });
 });

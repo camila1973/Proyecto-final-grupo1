@@ -23,6 +23,22 @@
       "executor": "@nx/jest:jest",
       "outputs": ["{workspaceRoot}/coverage/inventory-service"],
       "options": { "jestConfig": "services/inventory-service/jest.config.js", "passWithNoTests": true }
+    },
+    "migrate": {
+      "executor": "nx:run-commands",
+      "options": { "command": "pnpm exec kysely migrate:latest", "cwd": "services/inventory-service" }
+    },
+    "migrate-down": {
+      "executor": "nx:run-commands",
+      "options": { "command": "pnpm exec kysely migrate:down", "cwd": "services/inventory-service" }
+    },
+    "migrate-make": {
+      "executor": "nx:run-commands",
+      "options": { "command": "pnpm exec kysely migrate:make", "cwd": "services/inventory-service" }
+    },
+    "seed": {
+      "executor": "nx:run-commands",
+      "options": { "command": "npx tsx scripts/seed.ts", "cwd": "services/inventory-service" }
     }
   }
 }

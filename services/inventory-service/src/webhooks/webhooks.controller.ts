@@ -1,15 +1,36 @@
 import {
-  Controller,
-  Post,
+  BadRequestException,
   Body,
+  Controller,
+  Headers,
   HttpCode,
   HttpStatus,
-  BadRequestException,
+  Post,
+  UnauthorizedException,
 } from "@nestjs/common";
-import { WebhooksService } from "./webhooks.service.js";
-import type { HotelbedsWebhookDto } from "./dto/hotelbeds-webhook.dto.js";
-import type { TravelClickWebhookDto } from "./dto/travelclick-webhook.dto.js";
-import type { RoomRaccoonWebhookDto } from "./dto/roomraccoon-webhook.dto.js";
+import { createHmac, timingSafeEqual } from "crypto";
+import { WebhooksService } from "./webhooks.service";
+import type {
+  HotelbedsWebhookDto,
+  TravelClickWebhookDto,
+  RoomRaccoonWebhookDto,
+} from "./webhooks.types";
+
+function verifyHmac(
+  rawBody: string,
+  signature: string | undefined,
+  secret: string | undefined,
+): void {
+  if (!secret) return; // secret not configured — skip validation
+  if (!signature)
+    throw new UnauthorizedException("Missing X-Webhook-Signature");
+  const expected = createHmac("sha256", secret).update(rawBody).digest("hex");
+  const sigBuf = Buffer.from(signature);
+  const expBuf = Buffer.from(expected);
+  if (sigBuf.length !== expBuf.length || !timingSafeEqual(sigBuf, expBuf)) {
+    throw new UnauthorizedException("Invalid webhook signature");
+  }
+}
 
 @Controller("webhooks")
 export class WebhooksController {
@@ -17,7 +38,15 @@ export class WebhooksController {
 
   @Post("hotelbeds")
   @HttpCode(HttpStatus.OK)
-  hotelbeds(@Body() payload: HotelbedsWebhookDto) {
+  hotelbeds(
+    @Headers("x-webhook-signature") sig: string | undefined,
+    @Body() payload: HotelbedsWebhookDto,
+  ) {
+    verifyHmac(
+      JSON.stringify(payload),
+      sig,
+      process.env.WEBHOOK_SECRET_HOTELBEDS,
+    );
     if (!payload?.hotelCode || !Array.isArray(payload.rooms)) {
       throw new BadRequestException("Invalid Hotelbeds payload");
     }
@@ -26,7 +55,15 @@ export class WebhooksController {
 
   @Post("travelclick")
   @HttpCode(HttpStatus.OK)
-  travelclick(@Body() payload: TravelClickWebhookDto) {
+  travelclick(
+    @Headers("x-webhook-signature") sig: string | undefined,
+    @Body() payload: TravelClickWebhookDto,
+  ) {
+    verifyHmac(
+      JSON.stringify(payload),
+      sig,
+      process.env.WEBHOOK_SECRET_TRAVELCLICK,
+    );
     if (!payload?.propertyCode || !Array.isArray(payload.roomTypes)) {
       throw new BadRequestException("Invalid TravelClick payload");
     }
@@ -35,7 +72,15 @@ export class WebhooksController {
 
   @Post("roomraccoon")
   @HttpCode(HttpStatus.OK)
-  roomraccoon(@Body() payload: RoomRaccoonWebhookDto) {
+  roomraccoon(
+    @Headers("x-webhook-signature") sig: string | undefined,
+    @Body() payload: RoomRaccoonWebhookDto,
+  ) {
+    verifyHmac(
+      JSON.stringify(payload),
+      sig,
+      process.env.WEBHOOK_SECRET_ROOMRACCOON,
+    );
     if (!payload?.hotelId || !Array.isArray(payload.availability)) {
       throw new BadRequestException("Invalid RoomRaccoon payload");
     }
