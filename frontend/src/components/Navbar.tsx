@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from '@tanstack/react-router';
 import { useLocale, LANGUAGES, type Language } from '../context/LocaleContext';
 import Button from '@mui/material/Button';
 
@@ -102,7 +103,7 @@ export default function Navbar() {
         </div>
 
         <nav className="flex items-center gap-6 text-sm text-gray-700">
-          <a href="#" className="hover:text-gray-900">{t('nav.register')}</a>
+          <Link to="/register" className="hover:text-gray-900">{t('nav.register')}</Link>
           <a href="#" className="hover:text-gray-900">{t('nav.login')}</a>
         </nav>
       </div>

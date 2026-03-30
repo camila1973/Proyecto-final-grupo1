@@ -73,6 +73,8 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: travelhub
+    ports:
+      - "5432:5432"
     volumes:
       - auth_pg_data:/var/lib/postgresql/data
     networks:

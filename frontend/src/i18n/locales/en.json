@@ -64,6 +64,43 @@
       "book": "Book"
     }
   },
+  "register": {
+    "title": "Create your account",
+    "already_have_account": "Already have an account?",
+    "login_link": "Sign in here",
+    "name_label": "FIRST NAME",
+    "last_name_label": "LAST NAME",
+    "email_label": "EMAIL ADDRESS",
+    "phone_label": "PHONE",
+    "country_label": "COUNTRY",
+    "country_placeholder": "Select your country",
+    "password_label": "PASSWORD",
+    "confirm_password_label": "CONFIRM PASSWORD",
+    "terms": "I accept the",
+    "terms_link": "Terms and conditions",
+    "terms_and": "and the",
+    "privacy_link": "Privacy policy",
+    "terms_suffix": "of TravelHub.",
+    "submit": "Create account",
+    "success_title": "Account created successfully!",
+    "success_message": "Your account has been created. You can now explore and book hotels.",
+    "success_cta": "Explore destinations",
+    "errors": {
+      "name_required": "First name is required",
+      "last_name_required": "Last name is required",
+      "email_required": "Email address is required",
+      "email_invalid": "Invalid email format",
+      "password_required": "Password is required",
+      "password_min": "Password must be at least 8 characters",
+      "password_max": "Password must be at most 16 characters",
+      "password_complexity": "Password must include letters, numbers and special characters",
+      "confirm_required": "Please confirm your password",
+      "confirm_mismatch": "Passwords do not match",
+      "terms_required": "You must accept the terms and conditions",
+      "email_taken": "This email is already registered",
+      "generic": "Something went wrong. Please try again."
+    }
+  },
   "footer": {
     "copyright": "© 2026 TravelHub",
     "privacy": "Privacy policy",
