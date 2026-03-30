@@ -64,6 +64,43 @@
       "book": "Reservar"
     }
   },
+  "register": {
+    "title": "Crea tu cuenta",
+    "already_have_account": "¿Ya tienes una cuenta?",
+    "login_link": "Inicia sesión aquí",
+    "name_label": "NOMBRE",
+    "last_name_label": "APELLIDO",
+    "email_label": "CORREO ELECTRÓNICO",
+    "phone_label": "TELÉFONO",
+    "country_label": "PAÍS",
+    "country_placeholder": "Selecciona tu país",
+    "password_label": "CONTRASEÑA",
+    "confirm_password_label": "CONFIRMAR CONTRASEÑA",
+    "terms": "Acepto los",
+    "terms_link": "Términos y condiciones",
+    "terms_and": "y la",
+    "privacy_link": "Política de privacidad",
+    "terms_suffix": "de TravelHub.",
+    "submit": "Crear usuario",
+    "success_title": "¡Cuenta creada exitosamente!",
+    "success_message": "Ya eres parte de TravelHub. Tu próxima aventura comienza aquí.",
+    "success_cta": "Explorar destinos",
+    "errors": {
+      "name_required": "El nombre es requerido",
+      "last_name_required": "El apellido es requerido",
+      "email_required": "El correo electrónico es requerido",
+      "email_invalid": "Formato de correo inválido",
+      "password_required": "La contraseña es requerida",
+      "password_min": "La contraseña debe tener mínimo 8 caracteres",
+      "password_max": "La contraseña debe tener máximo 16 caracteres",
+      "password_complexity": "La contraseña debe incluir letras, números y caracteres especiales",
+      "confirm_required": "Confirma tu contraseña",
+      "confirm_mismatch": "Las contraseñas no coinciden",
+      "terms_required": "Debes aceptar los términos y condiciones",
+      "email_taken": "Este correo ya está registrado",
+      "generic": "Ocurrió un error. Intenta de nuevo."
+    }
+  },
   "footer": {
     "copyright": "© 2026 TravelHub",
     "privacy": "Política de privacidad",

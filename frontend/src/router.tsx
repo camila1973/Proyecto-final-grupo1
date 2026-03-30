@@ -5,6 +5,8 @@ import Footer from './components/Footer';
 import HomePage from './pages/HomePage';
 import SearchPage from './pages/search';
 import PropertyDetailPage from './pages/PropertyDetailPage';
+import RegisterPage from './pages/RegisterPage';
+import RegisterSuccess from './pages/RegisterSuccess';
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -42,7 +44,19 @@ const propertyRoute = createRoute({
   component: PropertyDetailPage,
 });
 
-const routeTree = rootRoute.addChildren([homeRoute, searchRoute, propertyRoute]);
+const registerRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/register',
+  component: RegisterPage,
+});
+
+const registerSuccessRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/register-success',
+  component: RegisterSuccess,
+});
+
+const routeTree = rootRoute.addChildren([homeRoute, searchRoute, propertyRoute, registerRoute, registerSuccessRoute]);
 
 export function createAppRouter() {
   return createRouter({ routeTree });

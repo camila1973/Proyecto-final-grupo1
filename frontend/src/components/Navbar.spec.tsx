@@ -1,4 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
+import { createMemoryHistory, createRouter, createRootRoute, RouterProvider } from '@tanstack/react-router';
 import Navbar from './Navbar';
 import { LocaleProvider } from '../context/LocaleContext';
 import { setupTestI18n } from '../i18n/test-utils';
@@ -9,80 +10,88 @@ const i18n = setupTestI18n('es');
 
 function renderNavbar(initialLanguage: 'es' | 'en' = 'es') {
   i18n.changeLanguage(initialLanguage);
-  return render(
-    <LocaleProvider initialLanguage={initialLanguage}>
-      <Navbar />
-    </LocaleProvider>,
-  );
+  const rootRoute = createRootRoute({
+    component: () => (
+      <LocaleProvider initialLanguage={initialLanguage}>
+        <Navbar />
+      </LocaleProvider>
+    ),
+  });
+  const router = createRouter({
+    routeTree: rootRoute,
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+  });
+  return render(<RouterProvider router={router} />);
 }
 
 describe('Navbar', () => {
   describe('branding', () => {
-    it('renders the TravelHub brand name', () => {
+    it('renders the TravelHub brand name', async () => {
       renderNavbar();
-      expect(screen.getByText('TravelHub')).toBeInTheDocument();
+      expect(await screen.findByText('TravelHub')).toBeInTheDocument();
     });
   });
 
   describe('Spanish', () => {
-    beforeEach(() => renderNavbar('es'));
-
-    it('shows the Spanish language name and currency in the trigger button', () => {
-      expect(screen.getByRole('button', { name: /select language/i })).toHaveTextContent(
+    it('shows the Spanish language name and currency in the trigger button', async () => {
+      renderNavbar('es');
+      expect(await screen.findByRole('button', { name: /select language/i })).toHaveTextContent(
         `${es.nav.language} · COP`,
       );
     });
 
-    it('renders register and login links in Spanish', () => {
-      expect(screen.getByText(es.nav.register)).toBeInTheDocument();
+    it('renders register and login links in Spanish', async () => {
+      renderNavbar('es');
+      expect(await screen.findByText(es.nav.register)).toBeInTheDocument();
       expect(screen.getByText(es.nav.login)).toBeInTheDocument();
     });
   });
 
   describe('English', () => {
-    beforeEach(() => renderNavbar('en'));
-
-    it('shows the English language name in the trigger button', () => {
-      expect(screen.getByRole('button', { name: /select language/i })).toHaveTextContent(
+    it('shows the English language name in the trigger button', async () => {
+      renderNavbar('en');
+      expect(await screen.findByRole('button', { name: /select language/i })).toHaveTextContent(
         en.nav.language,
       );
     });
 
-    it('renders register and login links in English', () => {
-      expect(screen.getByText(en.nav.register)).toBeInTheDocument();
+    it('renders register and login links in English', async () => {
+      renderNavbar('en');
+      expect(await screen.findByText(en.nav.register)).toBeInTheDocument();
       expect(screen.getByText(en.nav.login)).toBeInTheDocument();
     });
   });
 
   describe('dropdown', () => {
-    it('is closed by default', () => {
+    it('is closed by default', async () => {
       renderNavbar('es');
+      await screen.findByText('TravelHub');
       expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
     });
 
-    it('opens when the trigger button is clicked', () => {
+    it('opens when the trigger button is clicked', async () => {
       renderNavbar('es');
-      fireEvent.click(screen.getByRole('button', { name: /select language/i }));
+      fireEvent.click(await screen.findByRole('button', { name: /select language/i }));
       expect(screen.getByRole('listbox')).toBeInTheDocument();
     });
 
-    it('lists all available languages', () => {
+    it('lists all available languages', async () => {
       renderNavbar('es');
-      fireEvent.click(screen.getByRole('button', { name: /select language/i }));
+      fireEvent.click(await screen.findByRole('button', { name: /select language/i }));
       expect(screen.getByRole('option', { name: 'Español' })).toBeInTheDocument();
       expect(screen.getByRole('option', { name: 'English' })).toBeInTheDocument();
     });
 
-    it('marks the current language as selected', () => {
+    it('marks the current language as selected', async () => {
       renderNavbar('es');
-      fireEvent.click(screen.getByRole('button', { name: /select language/i }));
+      fireEvent.click(await screen.findByRole('button', { name: /select language/i }));
       expect(screen.getByRole('option', { name: 'Español' })).toHaveAttribute('aria-selected', 'true');
       expect(screen.getByRole('option', { name: 'English' })).toHaveAttribute('aria-selected', 'false');
     });
 
-    it('switches to English and closes the dropdown when English is selected', () => {
+    it('switches to English and closes the dropdown when English is selected', async () => {
       renderNavbar('es');
-      fireEvent.click(screen.getByRole('button', { name: /select language/i }));
+      fireEvent.click(await screen.findByRole('button', { name: /select language/i }));
       fireEvent.click(screen.getByRole('option', { name: 'English' }));
 
       expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
@@ -91,9 +100,9 @@ describe('Navbar', () => {
       );
     });
 
-    it('closes when clicking outside', () => {
+    it('closes when clicking outside', async () => {
       renderNavbar('es');
-      fireEvent.click(screen.getByRole('button', { name: /select language/i }));
+      fireEvent.click(await screen.findByRole('button', { name: /select language/i }));
       expect(screen.getByRole('listbox')).toBeInTheDocument();
 
       fireEvent.mouseDown(document.body);
