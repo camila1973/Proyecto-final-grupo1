@@ -1,0 +1,65 @@
+# Configuration for fgerthoffert/actions-project-activity
+# https://github.com/marketplace/actions/project-activity-metrics
+#
+# Adjust `fields.points` to match the exact name of the story-points field
+# in your GitHub Project, then define streams and groups below.
+
+fields:
+  points: Story Points
+
+# Rolling average window used in velocity trend lines
+movingWindow: 6
+
+groups:
+  - name: Overall Velocity
+    description: All issues and PRs completed each week
+    category: Velocity
+    defaultMetric: nodes
+    streams:
+      - name: Features
+        description: New features and enhancements
+        query: { labels: { $elemMatch: { $eq: 'feat' } } }
+      - name: Bug Fixes
+        description: Bug reports that were resolved
+        query: { labels: { $elemMatch: { $eq: 'bug' } } }
+      - name: Other
+        description: Everything else (chores, docs, refactors)
+        query: {}
+
+  - name: Velocity by Points
+    description: Effort completed per week measured in story points
+    category: Velocity
+    defaultMetric: points
+    streams:
+      - name: Features
+        query: { labels: { $elemMatch: { $eq: 'feat' } } }
+      - name: Bug Fixes
+        query: { labels: { $elemMatch: { $eq: 'bug' } } }
+      - name: Other
+        query: {}
+
+  - name: Velocity by Service
+    description: Work breakdown across TravelHub microservices
+    category: Breakdown
+    defaultMetric: nodes
+    streams:
+      - name: API Gateway
+        query: { labels: { $elemMatch: { $eq: 'api-gateway' } } }
+      - name: Auth
+        query: { labels: { $elemMatch: { $eq: 'auth-service' } } }
+      - name: Search
+        query: { labels: { $elemMatch: { $eq: 'search-service' } } }
+      - name: Inventory
+        query: { labels: { $elemMatch: { $eq: 'inventory-service' } } }
+      - name: Booking
+        query: { labels: { $elemMatch: { $eq: 'booking-service' } } }
+      - name: Payment
+        query: { labels: { $elemMatch: { $eq: 'payment-service' } } }
+      - name: Notifications
+        query: { labels: { $elemMatch: { $eq: 'notification-service' } } }
+      - name: Partners
+        query: { labels: { $elemMatch: { $eq: 'partners-service' } } }
+      - name: Frontend / Mobile
+        query: { labels: { $elemMatch: { $in: ['frontend', 'mobile'] } } }
+      - name: Other
+        query: {}

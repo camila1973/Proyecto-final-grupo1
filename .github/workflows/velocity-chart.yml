@@ -1,0 +1,106 @@
+name: Velocity Chart
+
+on:
+  workflow_dispatch:
+    inputs:
+      project_number:
+        description: 'GitHub Project number to analyze'
+        required: true
+        type: number
+      weeks:
+        description: 'Moving average window (weeks)'
+        required: false
+        default: '6'
+        type: number
+
+permissions:
+  contents: write
+
+env:
+  HUSKY: '0'
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
+jobs:
+  generate-velocity-chart:
+    name: Generate Velocity Chart
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Generate project activity metrics
+        uses: fgerthoffert/actions-project-activity@main
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          config: '.github/project-activity.yml'
+          github_org_name: ${{ github.repository_owner }}
+          github_project_number: ${{ inputs.project_number }}
+          views_output_path: './reports/'
+
+      - name: Upload reports as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: velocity-reports
+          path: ./reports/
+          retention-days: 30
+
+      - name: Clone wiki
+        run: |
+          git clone \
+            "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.wiki.git" \
+            wiki
+
+      - name: Copy reports into wiki
+        run: |
+          mkdir -p wiki/velocity-reports
+          cp -r reports/. wiki/velocity-reports/
+
+      - name: Update wiki index page
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          PROJECT_NUMBER: ${{ inputs.project_number }}
+        run: |
+          GENERATED=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+          # Build a list of report links from generated HTML files
+          LINKS=""
+          for f in reports/*.html; do
+            [ -f "$f" ] || continue
+            name=$(basename "$f" .html)
+            LINKS="${LINKS}"$'\n'"- [${name}](velocity-reports/${name}.html)"
+          done
+
+          cat > wiki/Velocity-Chart.md << MDEOF
+          # Velocity Chart
+
+          > Generated on **${GENERATED}** for project **#${PROJECT_NUMBER}** · [workflow run](${RUN_URL})
+
+          The reports below are interactive HTML dashboards produced by
+          [project-activity-metrics](https://github.com/marketplace/actions/project-activity-metrics).
+          Open any file to explore velocity, completion trends, and effort breakdown with Chart.js charts.
+
+          ## Reports
+          ${LINKS}
+
+          ## Configuration
+
+          The metrics are driven by \`.github/project-activity.yml\` in this repository.
+          Edit that file to add streams, adjust the moving-average window, or track new initiatives.
+
+          ## Regenerate
+
+          Run the **Velocity Chart** workflow manually from the
+          [Actions tab](${{ github.server_url }}/${{ github.repository }}/actions/workflows/velocity-chart.yml).
+          You will be prompted for the GitHub Project number and the moving-average window.
+          MDEOF
+
+      - name: Commit and push to wiki
+        run: |
+          cd wiki
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add velocity-reports/ Velocity-Chart.md
+          git diff --cached --quiet && echo "No changes to commit" && exit 0
+          git commit -m "chore: update velocity chart $(date -u +%Y-%m-%d)"
+          git push
