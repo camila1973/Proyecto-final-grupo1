@@ -124,7 +124,7 @@ describe("EventsService", () => {
         ([, , rk]: [string, string, string]) => rk,
       );
       expect(routingKeys).toContain("inventory.room.upserted");
-      expect(routingKeys).toContain("inventory.availability.updated");
+      expect(routingKeys).toContain("price.updated");
       expect(routingKeys).toContain("taxonomy.updated");
     });
   });

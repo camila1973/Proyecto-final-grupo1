@@ -6,8 +6,8 @@ export type SortOption =
 
 export interface SearchPropertiesDto {
   city: string;
-  checkIn: string;
-  checkOut: string;
+  checkIn?: string;
+  checkOut?: string;
   guests: number;
   page: number;
   pageSize: number;

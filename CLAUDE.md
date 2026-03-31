@@ -67,6 +67,32 @@ pnpm run lint                  # Lint all projects
 nx lint auth-service           # Single service
 ```
 
+### Database (Migrations & Seed)
+
+Each service with a database has `migrate` and `seed` nx targets. The local DB ports differ from the in-container defaults, so always pass `DATABASE_URL` explicitly.
+
+| Service | Local port | DB name |
+|---|---|---|
+| `search-service` | 5433 | `search_service` |
+| `inventory-service` | 5434 | `travelhub` |
+
+```bash
+# Search service
+DATABASE_URL=postgres://postgres:postgres@localhost:5433/search_service pnpm exec nx run search-service:migrate
+DATABASE_URL=postgres://postgres:postgres@localhost:5433/search_service pnpm exec nx run search-service:seed
+
+# Inventory service
+DATABASE_URL=postgres://postgres:postgres@localhost:5434/travelhub pnpm exec nx run inventory-service:migrate
+DATABASE_URL=postgres://postgres:postgres@localhost:5434/travelhub pnpm exec nx run inventory-service:seed
+```
+
+To fully reset and reseed from scratch:
+```bash
+docker compose down -v          # stop containers and delete volumes
+docker compose up -d            # recreate containers (DBs will be empty)
+# then run migrate + seed for each service above
+```
+
 ### Nx Utilities
 ```bash
 pnpm run affected:test     # Test only projects changed vs main branch

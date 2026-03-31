@@ -91,7 +91,6 @@ export class PropertiesRepository {
   }
 
   async findCandidates(dto: SearchPropertiesDto): Promise<CandidateRoom[]> {
-    const hasDates = !!dto.checkIn && !!dto.checkOut;
     const hasCity = !!dto.city;
 
     const rows = await this.db
@@ -128,14 +127,13 @@ export class PropertiesRepository {
           sql<SqlBool>`(rsi.city % ${dto.city} OR rsi.property_name % ${dto.city})`,
         ),
       )
-      .$if(hasDates, (qb) =>
+      .$if(!!dto.checkIn && !!dto.checkOut, (qb) =>
         qb.where(
-          sql<SqlBool>`NOT EXISTS (
-            SELECT 1
-            FROM room_booked_ranges rbr
-            WHERE rbr.room_id  = rsi.room_id
-              AND rbr.from_date < ${dto.checkOut}::date
-              AND rbr.to_date   > ${dto.checkIn}::date
+          sql<SqlBool>`EXISTS (
+            SELECT 1 FROM room_price_periods rpp
+            WHERE rpp.room_id = rsi.room_id
+              AND rpp.from_date <= ${dto.checkIn}::date
+              AND rpp.to_date   >= ${dto.checkOut}::date
           )`,
         ),
       )

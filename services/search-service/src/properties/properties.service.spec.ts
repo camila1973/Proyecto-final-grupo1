@@ -2,6 +2,7 @@ import { PropertiesService } from "./properties.service.js";
 import type { PropertiesRepository } from "./properties.repository.js";
 import type { CacheService } from "../cache/cache.service.js";
 import type { FacetsService } from "./facets/facets.service.js";
+import type { InventoryClientService } from "../inventory/inventory-client.service.js";
 import type { SearchPropertiesDto } from "./dto/search-properties.dto.js";
 
 // ─── fixtures ─────────────────────────────────────────────────────────────────
@@ -95,12 +96,21 @@ function makeServices(
     sortProperties: jest.fn().mockReturnValue([mockProperty]),
   } as any;
 
+  const inventoryClient: jest.Mocked<
+    Pick<InventoryClientService, "checkAvailability">
+  > = {
+    checkAvailability: jest
+      .fn()
+      .mockResolvedValue(candidateRows.map((r) => ({ roomId: r.room_id }))),
+  };
+
   const service = new PropertiesService(
     repo as unknown as PropertiesRepository,
     cache as unknown as CacheService,
     mockFacets,
+    inventoryClient as unknown as InventoryClientService,
   );
-  return { service, repo, cache, mockFacets };
+  return { service, repo, cache, mockFacets, inventoryClient };
 }
 
 // ─── tests ────────────────────────────────────────────────────────────────────
@@ -206,6 +216,51 @@ describe("PropertiesService", () => {
       const result = (await service.searchProperties(baseDto)) as any;
       expect(result.facets).toBeDefined();
       expect(result.facets.priceRange.currency).toBe("USD");
+    });
+  });
+
+  describe("inventory availability filtering", () => {
+    it("calls inventoryClient with candidate room IDs and dates", async () => {
+      const { service, inventoryClient } = makeServices();
+      await service.searchProperties(baseDto);
+      expect(inventoryClient.checkAvailability).toHaveBeenCalledWith({
+        roomIds: [mockRoom.room_id],
+        fromDate: baseDto.checkIn,
+        toDate: baseDto.checkOut,
+      });
+    });
+
+    it("skips inventory call when no dates are provided", async () => {
+      const { service, inventoryClient } = makeServices();
+      await service.searchProperties({
+        ...baseDto,
+        checkIn: undefined,
+        checkOut: undefined,
+      });
+      expect(inventoryClient.checkAvailability).not.toHaveBeenCalled();
+    });
+
+    it("skips inventory call when candidate list is empty", async () => {
+      const { service, inventoryClient } = makeServices([]);
+      await service.searchProperties(baseDto);
+      expect(inventoryClient.checkAvailability).not.toHaveBeenCalled();
+    });
+
+    it("filters out rooms not returned by inventory", async () => {
+      const roomA = { ...mockRoom, room_id: "rA" };
+      const roomB = { ...mockRoom, room_id: "rB" };
+      const { service, inventoryClient, mockFacets } = makeServices([
+        roomA,
+        roomB,
+      ]);
+      inventoryClient.checkAvailability.mockResolvedValue([{ roomId: "rA" }]);
+
+      await service.searchProperties(baseDto);
+
+      expect(mockFacets.applyFilters).toHaveBeenCalledWith(
+        [roomA],
+        expect.anything(),
+      );
     });
   });
 

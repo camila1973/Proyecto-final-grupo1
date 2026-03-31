@@ -66,9 +66,9 @@ export class EventsService implements OnModuleInit, OnModuleDestroy {
       );
 
       await this.subscribe(
-        "search.inventory.availability.updated",
+        "search.price.updated",
         exchange,
-        "inventory.availability.updated",
+        "price.updated",
         (p) => this.availabilityUpdated.handle(p as AvailabilityUpdatedPayload),
       );
 

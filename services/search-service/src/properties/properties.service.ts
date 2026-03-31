@@ -3,6 +3,7 @@ import { createHash, randomUUID } from "crypto";
 import { PropertiesRepository } from "./properties.repository.js";
 import { CacheService } from "../cache/cache.service.js";
 import { FacetsService } from "./facets/facets.service.js";
+import { InventoryClientService } from "../inventory/inventory-client.service.js";
 import type { SearchPropertiesDto } from "./dto/search-properties.dto.js";
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -19,6 +20,7 @@ export class PropertiesService {
     private readonly repo: PropertiesRepository,
     private readonly cache: CacheService,
     private readonly facets: FacetsService,
+    private readonly inventoryClient: InventoryClientService,
   ) {}
 
   async searchProperties(dto: SearchPropertiesDto) {
@@ -31,7 +33,19 @@ export class PropertiesService {
 
     const candidates = await this.repo.findCandidates(dto);
 
-    const filtered = this.facets.applyFilters(candidates, {
+    let available = candidates;
+    if (dto.checkIn && dto.checkOut && candidates.length > 0) {
+      const candidateIds = candidates.map((r) => r.room_id);
+      const availableRooms = await this.inventoryClient.checkAvailability({
+        roomIds: candidateIds,
+        fromDate: dto.checkIn,
+        toDate: dto.checkOut,
+      });
+      const availableIds = new Set(availableRooms.map((r) => r.roomId));
+      available = candidates.filter((r) => availableIds.has(r.room_id));
+    }
+
+    const filtered = this.facets.applyFilters(available, {
       roomType: dto.exact ? dto.roomType : undefined,
       bedType: dto.exact ? dto.bedType : undefined,
       viewType: dto.exact ? dto.viewType : undefined,
@@ -41,7 +55,7 @@ export class PropertiesService {
       priceMax: dto.priceMax,
     });
 
-    const facetData = this.facets.computeFacets(candidates, dto);
+    const facetData = this.facets.computeFacets(available, dto);
     const properties = this.facets.selectBestRoomPerProperty(filtered);
     const sorted = this.facets.sortProperties(properties, dto.sort);
 

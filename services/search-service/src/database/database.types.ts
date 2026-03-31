@@ -44,13 +44,6 @@ export type RoomSearchIndexTable = {
   last_synced_at: Generated<string>;
 };
 
-export type RoomBookedRangesTable = {
-  id: Generated<string>;
-  room_id: string;
-  from_date: string;
-  to_date: string;
-};
-
 export type RoomPricePeriodsTable = {
   id: Generated<string>;
   room_id: string;
@@ -63,6 +56,5 @@ export type SearchDatabase = {
   taxonomy_categories: TaxonomyCategoryTable;
   taxonomy_values: TaxonomyValueTable;
   room_search_index: RoomSearchIndexTable;
-  room_booked_ranges: RoomBookedRangesTable;
   room_price_periods: RoomPricePeriodsTable;
 };

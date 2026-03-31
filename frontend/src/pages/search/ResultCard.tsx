@@ -26,7 +26,6 @@ export default function ResultCard({
   roomTypeLabels,
   onBook,
 }: ResultCardProps) {
-  console.log(result)
   const { t } = useTranslation();
   const { currency } = useLocale();
   const effectiveNights = nights > 0 ? nights : 1;

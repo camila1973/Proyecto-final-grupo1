@@ -61,29 +61,6 @@ describe("PropertiesRepository", () => {
       const ifCalls = queryChain.$if.mock.calls;
       expect(ifCalls[0][0]).toBe(false);
     });
-
-    it("applies date filter when checkIn and checkOut provided", async () => {
-      const { repo, queryChain } = makeRepo();
-      await repo.findCandidates({
-        ...baseDto,
-        checkIn: "2026-04-01",
-        checkOut: "2026-04-05",
-      });
-      const ifCalls = queryChain.$if.mock.calls;
-      expect(ifCalls[1][0]).toBe(true);
-    });
-
-    it("skips date filter when no dates provided", async () => {
-      const { repo, queryChain } = makeRepo();
-      const {
-        checkIn: _checkIn,
-        checkOut: _checkOut,
-        ...noDateDto
-      } = baseDto as any;
-      await repo.findCandidates(noDateDto as SearchPropertiesDto);
-      const ifCalls = queryChain.$if.mock.calls;
-      expect(ifCalls[1][0]).toBe(false);
-    });
   });
 
   describe("upsertRoom", () => {
