@@ -1,0 +1,185 @@
+import { Inject, Injectable } from "@nestjs/common";
+import { Kysely, sql, type SqlBool } from "kysely";
+import type { Selectable } from "kysely";
+import type {
+  SearchDatabase,
+  RoomSearchIndexTable,
+} from "../database/database.types.js";
+import { KYSELY } from "../database/database.provider.js";
+import type { CandidateRoom } from "./facets/facets.service.js";
+import type { SearchPropertiesDto } from "./dto/search-properties.dto.js";
+
+export interface RoomIndexRecord {
+  room_id: string;
+  property_id: string;
+  partner_id: string;
+  property_name: string;
+  city: string;
+  country: string;
+  neighborhood: string | null;
+  lat: number;
+  lon: number;
+  room_type: string;
+  bed_type: string;
+  view_type: string;
+  capacity: number;
+  amenities: string[];
+  base_price_usd: number;
+  stars: number;
+  rating: number;
+  review_count: number;
+  thumbnail_url: string;
+  is_active: boolean;
+}
+
+@Injectable()
+export class PropertiesRepository {
+  constructor(@Inject(KYSELY) private readonly db: Kysely<SearchDatabase>) {}
+
+  async upsertRoom(r: RoomIndexRecord): Promise<void> {
+    await sql`
+      INSERT INTO room_search_index (
+        room_id, property_id, partner_id, property_name, city, country,
+        neighborhood, lat, lon, room_type, bed_type, view_type, capacity,
+        amenities, base_price_usd, stars, rating, review_count,
+        thumbnail_url, is_active, last_synced_at
+      ) VALUES (
+        ${r.room_id}::uuid,
+        ${r.property_id}::uuid,
+        ${r.partner_id}::uuid,
+        ${r.property_name},
+        ${r.city},
+        ${r.country},
+        ${r.neighborhood ?? null},
+        ${r.lat},
+        ${r.lon},
+        ${r.room_type},
+        ${r.bed_type},
+        ${r.view_type},
+        ${r.capacity},
+        ${sql.raw(`ARRAY[${r.amenities.map((a) => `'${a.replace(/'/g, "''")}'`).join(",")}]`)}::text[],
+        ${r.base_price_usd},
+        ${r.stars},
+        ${r.rating},
+        ${r.review_count},
+        ${r.thumbnail_url},
+        ${r.is_active},
+        NOW()
+      )
+      ON CONFLICT (room_id) DO UPDATE SET
+        property_id    = EXCLUDED.property_id,
+        partner_id     = EXCLUDED.partner_id,
+        property_name  = EXCLUDED.property_name,
+        city           = EXCLUDED.city,
+        country        = EXCLUDED.country,
+        neighborhood   = EXCLUDED.neighborhood,
+        lat            = EXCLUDED.lat,
+        lon            = EXCLUDED.lon,
+        room_type      = EXCLUDED.room_type,
+        bed_type       = EXCLUDED.bed_type,
+        view_type      = EXCLUDED.view_type,
+        capacity       = EXCLUDED.capacity,
+        amenities      = EXCLUDED.amenities,
+        base_price_usd = EXCLUDED.base_price_usd,
+        stars          = EXCLUDED.stars,
+        rating         = EXCLUDED.rating,
+        review_count   = EXCLUDED.review_count,
+        thumbnail_url  = EXCLUDED.thumbnail_url,
+        is_active      = EXCLUDED.is_active,
+        last_synced_at = NOW()
+    `.execute(this.db);
+  }
+
+  async findCandidates(dto: SearchPropertiesDto): Promise<CandidateRoom[]> {
+    const hasDates = !!dto.checkIn && !!dto.checkOut;
+    const hasCity = !!dto.city;
+
+    const rows = await this.db
+      .selectFrom("room_search_index as rsi")
+      .select([
+        "rsi.room_id",
+        "rsi.property_id",
+        "rsi.property_name",
+        "rsi.city",
+        "rsi.country",
+        "rsi.stars",
+        "rsi.rating",
+        "rsi.review_count",
+        "rsi.thumbnail_url",
+        "rsi.amenities",
+        "rsi.room_type",
+        "rsi.bed_type",
+        "rsi.view_type",
+        "rsi.capacity",
+        "rsi.base_price_usd",
+        sql<string | null>`(
+          SELECT rpp.price_usd::text
+          FROM room_price_periods rpp
+          WHERE rpp.room_id = rsi.room_id
+            AND rpp.from_date <= ${dto.checkIn ?? "9999-12-31"}::date
+            AND rpp.to_date   >= ${dto.checkOut ?? "0001-01-01"}::date
+          LIMIT 1
+        )`.as("avail_price_usd"),
+      ])
+      .where("rsi.is_active", "=", true)
+      .where("rsi.capacity", ">=", dto.guests)
+      .$if(hasCity, (qb) =>
+        qb.where(
+          sql<SqlBool>`(rsi.city % ${dto.city} OR rsi.property_name % ${dto.city})`,
+        ),
+      )
+      .$if(hasDates, (qb) =>
+        qb.where(
+          sql<SqlBool>`NOT EXISTS (
+            SELECT 1
+            FROM room_booked_ranges rbr
+            WHERE rbr.room_id  = rsi.room_id
+              AND rbr.from_date < ${dto.checkOut}::date
+              AND rbr.to_date   > ${dto.checkIn}::date
+          )`,
+        ),
+      )
+      .execute();
+
+    return rows as CandidateRoom[];
+  }
+
+  async findByPropertyId(
+    propertyId: string,
+  ): Promise<Selectable<RoomSearchIndexTable>[]> {
+    return this.db
+      .selectFrom("room_search_index as rsi")
+      .select([
+        "rsi.room_id",
+        "rsi.property_id",
+        "rsi.property_name",
+        "rsi.city",
+        "rsi.country",
+        "rsi.neighborhood",
+        "rsi.lat",
+        "rsi.lon",
+        "rsi.stars",
+        "rsi.rating",
+        "rsi.review_count",
+        "rsi.thumbnail_url",
+        "rsi.amenities",
+        "rsi.room_type",
+        "rsi.bed_type",
+        "rsi.view_type",
+        "rsi.capacity",
+        "rsi.base_price_usd",
+      ])
+      .where("rsi.property_id", "=", propertyId)
+      .where("rsi.is_active", "=", true)
+      .execute() as Promise<Selectable<RoomSearchIndexTable>[]>;
+  }
+
+  async findRoomCity(roomId: string): Promise<string | undefined> {
+    const row = await this.db
+      .selectFrom("room_search_index")
+      .select("city")
+      .where("room_id", "=", roomId)
+      .executeTakeFirst();
+    return row?.city;
+  }
+}

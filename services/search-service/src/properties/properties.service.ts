@@ -1,10 +1,8 @@
 import { Injectable } from "@nestjs/common";
-import { sql, type SqlBool } from "kysely";
 import { createHash, randomUUID } from "crypto";
-import { DatabaseService } from "../database/database.service.js";
+import { PropertiesRepository } from "./properties.repository.js";
 import { CacheService } from "../cache/cache.service.js";
 import { FacetsService } from "./facets/facets.service.js";
-import type { CandidateRoom } from "./facets/facets.service.js";
 import type { SearchPropertiesDto } from "./dto/search-properties.dto.js";
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -18,7 +16,7 @@ const CACHE_TTL = 60 * 5; // 5 minutes
 @Injectable()
 export class PropertiesService {
   constructor(
-    private readonly db: DatabaseService,
+    private readonly repo: PropertiesRepository,
     private readonly cache: CacheService,
     private readonly facets: FacetsService,
   ) {}
@@ -31,7 +29,7 @@ export class PropertiesService {
       return JSON.parse(cached) as object;
     }
 
-    const candidates = await this.fetchCandidates(dto);
+    const candidates = await this.repo.findCandidates(dto);
 
     const filtered = this.facets.applyFilters(candidates, {
       roomType: dto.exact ? dto.roomType : undefined,
@@ -74,31 +72,7 @@ export class PropertiesService {
       return JSON.parse(cached) as object;
     }
 
-    const rows = await this.db.db
-      .selectFrom("room_search_index as rsi")
-      .select([
-        "rsi.room_id",
-        "rsi.property_id",
-        "rsi.property_name",
-        "rsi.city",
-        "rsi.country",
-        "rsi.neighborhood",
-        "rsi.lat",
-        "rsi.lon",
-        "rsi.stars",
-        "rsi.rating",
-        "rsi.review_count",
-        "rsi.thumbnail_url",
-        "rsi.amenities",
-        "rsi.room_type",
-        "rsi.bed_type",
-        "rsi.view_type",
-        "rsi.capacity",
-        "rsi.base_price_usd",
-      ])
-      .where("rsi.property_id", "=", propertyId)
-      .where("rsi.is_active", "=", true)
-      .execute();
+    const rows = await this.repo.findByPropertyId(propertyId);
 
     if (rows.length === 0) {
       return null;
@@ -158,63 +132,6 @@ export class PropertiesService {
   }
 
   // ─── private helpers ──────────────────────────────────────────────────────
-
-  private async fetchCandidates(
-    dto: SearchPropertiesDto,
-  ): Promise<CandidateRoom[]> {
-    const hasDates = !!dto.checkIn && !!dto.checkOut;
-    const hasCity = !!dto.city;
-
-    const rows = await this.db.db
-      .selectFrom("room_search_index as rsi")
-      .select([
-        "rsi.room_id",
-        "rsi.property_id",
-        "rsi.property_name",
-        "rsi.city",
-        "rsi.country",
-        "rsi.stars",
-        "rsi.rating",
-        "rsi.review_count",
-        "rsi.thumbnail_url",
-        "rsi.amenities",
-        "rsi.room_type",
-        "rsi.bed_type",
-        "rsi.view_type",
-        "rsi.capacity",
-        "rsi.base_price_usd",
-        // Seasonal price: pick the first matching period, fall back to base price
-        sql<string | null>`(
-          SELECT rpp.price_usd::text
-          FROM room_price_periods rpp
-          WHERE rpp.room_id = rsi.room_id
-            AND rpp.from_date <= ${dto.checkIn ?? "9999-12-31"}::date
-            AND rpp.to_date   >= ${dto.checkOut ?? "0001-01-01"}::date
-          LIMIT 1
-        )`.as("avail_price_usd"),
-      ])
-      .where("rsi.is_active", "=", true)
-      .where("rsi.capacity", ">=", dto.guests)
-      .$if(hasCity, (qb) =>
-        qb.where(
-          sql<SqlBool>`(rsi.city % ${dto.city} OR rsi.property_name % ${dto.city})`,
-        ),
-      )
-      .$if(hasDates, (qb) =>
-        qb.where(
-          sql<SqlBool>`NOT EXISTS (
-            SELECT 1
-            FROM room_booked_ranges rbr
-            WHERE rbr.room_id  = rsi.room_id
-              AND rbr.from_date < ${dto.checkOut}::date
-              AND rbr.to_date   > ${dto.checkIn}::date
-          )`,
-        ),
-      )
-      .execute();
-
-    return rows as CandidateRoom[];
-  }
 
   private buildCacheKey(dto: SearchPropertiesDto): string {
     const city = this.normalizeCity(dto.city);

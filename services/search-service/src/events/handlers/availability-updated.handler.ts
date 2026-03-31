@@ -1,13 +1,12 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { sql } from "kysely";
-import { DatabaseService } from "../../database/database.service.js";
+import { PropertiesRepository } from "../../properties/properties.repository.js";
+import {
+  PricePeriodsRepository,
+  type PricePeriod,
+} from "../../properties/price-periods.repository.js";
 import { PropertiesService } from "../../properties/properties.service.js";
 
-export interface PricePeriod {
-  from_date: string;
-  to_date: string;
-  price_usd: number;
-}
+export type { PricePeriod };
 
 export interface AvailabilityUpdatedPayload {
   room_id: string;
@@ -20,36 +19,20 @@ export class AvailabilityUpdatedHandler {
   private readonly logger = new Logger(AvailabilityUpdatedHandler.name);
 
   constructor(
-    private readonly db: DatabaseService,
+    private readonly propertiesRepo: PropertiesRepository,
+    private readonly pricePeriodsRepo: PricePeriodsRepository,
     private readonly properties: PropertiesService,
   ) {}
 
   async handle(payload: AvailabilityUpdatedPayload): Promise<void> {
-    // Replace all price periods for this room atomically.
-    await sql`
-      DELETE FROM room_price_periods WHERE room_id = ${payload.room_id}::uuid
-    `.execute(this.db.db);
+    await this.pricePeriodsRepo.replaceForRoom(
+      payload.room_id,
+      payload.price_periods,
+    );
 
-    for (const period of payload.price_periods) {
-      await sql`
-        INSERT INTO room_price_periods (room_id, from_date, to_date, price_usd)
-        VALUES (
-          ${payload.room_id}::uuid,
-          ${period.from_date}::date,
-          ${period.to_date}::date,
-          ${period.price_usd}
-        )
-      `.execute(this.db.db);
-    }
-
-    const row = await this.db.db
-      .selectFrom("room_search_index")
-      .select("city")
-      .where("room_id", "=", payload.room_id)
-      .executeTakeFirst();
-
-    if (row) {
-      await this.properties.invalidateCityCache(row.city);
+    const city = await this.propertiesRepo.findRoomCity(payload.room_id);
+    if (city) {
+      await this.properties.invalidateCityCache(city);
     }
 
     this.logger.debug(

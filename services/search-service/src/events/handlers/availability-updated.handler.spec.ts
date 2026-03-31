@@ -1,51 +1,37 @@
 import { AvailabilityUpdatedHandler } from "./availability-updated.handler.js";
-import type { DatabaseService } from "../../database/database.service.js";
+import type { PropertiesRepository } from "../../properties/properties.repository.js";
+import type { PricePeriodsRepository } from "../../properties/price-periods.repository.js";
 import type { PropertiesService } from "../../properties/properties.service.js";
-
-// Mock kysely so that raw sql().execute() doesn't try a real DB connection
-jest.mock("kysely", () => {
-  const execute = jest.fn().mockResolvedValue({ rows: [] });
-  const sqlTag = jest.fn().mockReturnValue({ execute });
-  (sqlTag as any).raw = jest.fn().mockReturnValue({ sql: "" });
-  return { sql: sqlTag, __mocks__: { execute } };
-});
 
 describe("AvailabilityUpdatedHandler", () => {
   let handler: AvailabilityUpdatedHandler;
-  let dbSelectChain: Record<string, jest.Mock>;
-  let mockDb: { executeQuery: jest.Mock; selectFrom: jest.Mock };
+  let propertiesRepo: jest.Mocked<Pick<PropertiesRepository, "findRoomCity">>;
+  let pricePeriodsRepo: jest.Mocked<
+    Pick<PricePeriodsRepository, "replaceForRoom">
+  >;
   let propertiesService: jest.Mocked<
     Pick<PropertiesService, "invalidateCityCache">
   >;
 
   beforeEach(() => {
-    jest.clearAllMocks();
-
-    dbSelectChain = {
-      select: jest.fn().mockReturnThis(),
-      where: jest.fn().mockReturnThis(),
-      executeTakeFirst: jest.fn().mockResolvedValue({ city: "Cancún" }),
-    } as any;
-    dbSelectChain.select.mockReturnValue(dbSelectChain);
-    dbSelectChain.where.mockReturnValue(dbSelectChain);
-
-    mockDb = {
-      executeQuery: jest.fn().mockResolvedValue({ rows: [] }),
-      selectFrom: jest.fn().mockReturnValue(dbSelectChain),
+    propertiesRepo = {
+      findRoomCity: jest.fn().mockResolvedValue("Cancún"),
     };
-
+    pricePeriodsRepo = {
+      replaceForRoom: jest.fn().mockResolvedValue(undefined),
+    };
     propertiesService = {
       invalidateCityCache: jest.fn().mockResolvedValue(undefined),
     };
 
-    const db = { db: mockDb } as unknown as DatabaseService;
     handler = new AvailabilityUpdatedHandler(
-      db,
+      propertiesRepo as unknown as PropertiesRepository,
+      pricePeriodsRepo as unknown as PricePeriodsRepository,
       propertiesService as unknown as PropertiesService,
     );
   });
 
-  it("inserts each price period and invalidates city cache", async () => {
+  it("replaces price periods and invalidates city cache", async () => {
     const payload = {
       room_id: "550e8400-e29b-41d4-a716-446655440000",
       price_periods: [
@@ -56,28 +42,29 @@ describe("AvailabilityUpdatedHandler", () => {
 
     await handler.handle(payload);
 
-    // DELETE + 2 INSERTs = 3 raw sql calls
-    const { sql } = await import("kysely");
-    expect(sql).toHaveBeenCalledTimes(3);
+    expect(pricePeriodsRepo.replaceForRoom).toHaveBeenCalledWith(
+      payload.room_id,
+      payload.price_periods,
+    );
     expect(propertiesService.invalidateCityCache).toHaveBeenCalledWith(
       "Cancún",
     );
   });
 
-  it("handles empty price_periods array (only deletes)", async () => {
-    const payload = {
+  it("handles empty price_periods array", async () => {
+    await handler.handle({
       room_id: "550e8400-e29b-41d4-a716-446655440000",
       price_periods: [],
-    };
+    });
 
-    await handler.handle(payload);
-
-    const { sql } = await import("kysely");
-    expect(sql).toHaveBeenCalledTimes(1); // only DELETE
+    expect(pricePeriodsRepo.replaceForRoom).toHaveBeenCalledWith(
+      "550e8400-e29b-41d4-a716-446655440000",
+      [],
+    );
   });
 
   it("does not call invalidateCityCache when room is not found in index", async () => {
-    dbSelectChain.executeTakeFirst.mockResolvedValue(undefined);
+    propertiesRepo.findRoomCity.mockResolvedValue(undefined);
 
     await handler.handle({
       room_id: "550e8400-e29b-41d4-a716-446655440000",

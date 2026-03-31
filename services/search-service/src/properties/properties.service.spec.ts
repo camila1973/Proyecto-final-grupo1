@@ -1,5 +1,5 @@
 import { PropertiesService } from "./properties.service.js";
-import type { DatabaseService } from "../database/database.service.js";
+import type { PropertiesRepository } from "./properties.repository.js";
 import type { CacheService } from "../cache/cache.service.js";
 import type { FacetsService } from "./facets/facets.service.js";
 import type { SearchPropertiesDto } from "./dto/search-properties.dto.js";
@@ -23,6 +23,13 @@ const mockRoom = {
   capacity: 2,
   base_price_usd: "200",
   avail_price_usd: "180",
+};
+
+const mockDetailRow = {
+  ...mockRoom,
+  neighborhood: "Centro",
+  lat: 38.7,
+  lon: -9.14,
 };
 
 const mockProperty = {
@@ -57,26 +64,16 @@ const baseDto: SearchPropertiesDto = {
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
-function makeQueryChain(rows: unknown[]) {
-  const chain: Record<string, jest.Mock> = {} as any;
-
-  chain.select = jest.fn().mockReturnValue(chain);
-  chain.where = jest.fn().mockReturnValue(chain);
-  chain.$if = jest
-    .fn()
-    .mockImplementation((cond: boolean, fn: (qb: any) => any) => {
-      if (cond) fn(chain);
-      return chain;
-    });
-  chain.execute = jest.fn().mockResolvedValue(rows);
-  return chain;
-}
-
-function makeServices(rows = [mockRoom]) {
-  const queryChain = makeQueryChain(rows);
-  const db = {
-    db: { selectFrom: jest.fn().mockReturnValue(queryChain) },
-  } as unknown as DatabaseService;
+function makeServices(
+  candidateRows = [mockRoom],
+  detailRows = [mockDetailRow],
+) {
+  const repo: jest.Mocked<
+    Pick<PropertiesRepository, "findCandidates" | "findByPropertyId">
+  > = {
+    findCandidates: jest.fn().mockResolvedValue(candidateRows),
+    findByPropertyId: jest.fn().mockResolvedValue(detailRows),
+  };
 
   const cache: jest.Mocked<Pick<CacheService, "get" | "set" | "scanDel">> = {
     get: jest.fn().mockResolvedValue(null),
@@ -99,11 +96,11 @@ function makeServices(rows = [mockRoom]) {
   } as any;
 
   const service = new PropertiesService(
-    db,
+    repo as unknown as PropertiesRepository,
     cache as unknown as CacheService,
     mockFacets,
   );
-  return { service, db, cache, mockFacets, queryChain };
+  return { service, repo, cache, mockFacets };
 }
 
 // ─── tests ────────────────────────────────────────────────────────────────────
@@ -111,14 +108,14 @@ function makeServices(rows = [mockRoom]) {
 describe("PropertiesService", () => {
   describe("searchProperties — cache hit", () => {
     it("returns cached response without querying the DB", async () => {
-      const { service, cache, db } = makeServices();
+      const { service, cache, repo } = makeServices();
       const cached = { meta: { total: 0 }, results: [], facets: {} };
       (cache.get as jest.Mock).mockResolvedValue(JSON.stringify(cached));
 
       const result = await service.searchProperties(baseDto);
 
       expect(result).toEqual(cached);
-      expect(db.db.selectFrom).not.toHaveBeenCalled();
+      expect(repo.findCandidates).not.toHaveBeenCalled();
     });
   });
 
@@ -246,49 +243,6 @@ describe("PropertiesService", () => {
     });
   });
 
-  describe("fetchCandidates conditional clauses", () => {
-    // City filter is the first $if call; date (booked-ranges) filter is the second.
-
-    it("uses $if with hasCity=true when city is provided", async () => {
-      const { service, queryChain } = makeServices();
-      await service.searchProperties({ ...baseDto, city: "Lisbon" });
-      const ifCalls = queryChain.$if.mock.calls;
-      expect(ifCalls[0][0]).toBe(true);
-    });
-
-    it("uses $if with hasCity=false when city is empty", async () => {
-      const { service, queryChain } = makeServices();
-      await service.searchProperties({ ...baseDto, city: "" });
-      const ifCalls = queryChain.$if.mock.calls;
-      expect(ifCalls[0][0]).toBe(false);
-    });
-
-    it("applies NOT EXISTS booked-ranges filter when hasDates=true", async () => {
-      const { service, queryChain } = makeServices();
-      await service.searchProperties({
-        ...baseDto,
-        checkIn: "2026-04-01",
-        checkOut: "2026-04-05",
-      });
-      const ifCalls = queryChain.$if.mock.calls;
-      // second $if call is the hasDates branch
-      expect(ifCalls[1][0]).toBe(true);
-    });
-
-    it("skips booked-ranges filter when no dates provided", async () => {
-      const { service, queryChain } = makeServices();
-      await service.searchProperties(
-        Object.fromEntries(
-          Object.entries(baseDto).filter(
-            ([k]) => k !== "checkIn" && k !== "checkOut",
-          ),
-        ) as SearchPropertiesDto,
-      );
-      const ifCalls = queryChain.$if.mock.calls;
-      expect(ifCalls[1][0]).toBe(false);
-    });
-  });
-
   describe("invalidateCityCache", () => {
     it("calls scanDel with normalised city pattern", async () => {
       const { service, cache } = makeServices();
@@ -308,54 +262,15 @@ describe("PropertiesService", () => {
   });
 
   describe("getPropertyById", () => {
-    const mockDetailRow = {
-      ...mockRoom,
-      neighborhood: "Centro",
-      lat: 38.7,
-      lon: -9.14,
-    };
-
-    function makeDetailQueryChain(rows: unknown[]) {
-      const chain: Record<string, jest.Mock> = {} as any;
-      chain.select = jest.fn().mockReturnValue(chain);
-      chain.where = jest.fn().mockReturnValue(chain);
-      chain.execute = jest.fn().mockResolvedValue(rows);
-      return chain;
-    }
-
-    function makeDetailServices(rows = [mockDetailRow]) {
-      const queryChain = makeDetailQueryChain(rows);
-      const db = {
-        db: { selectFrom: jest.fn().mockReturnValue(queryChain) },
-      } as unknown as DatabaseService;
-      const cache: jest.Mocked<Pick<CacheService, "get" | "set" | "scanDel">> =
-        {
-          get: jest.fn().mockResolvedValue(null),
-          set: jest.fn().mockResolvedValue(undefined),
-          scanDel: jest.fn().mockResolvedValue(undefined),
-        };
-      const mockFacets = {
-        applyFilters: jest.fn(),
-        computeFacets: jest.fn(),
-        selectBestRoomPerProperty: jest.fn(),
-        sortProperties: jest.fn(),
-      } as any;
-      const service = new PropertiesService(
-        db,
-        cache as unknown as CacheService,
-        mockFacets,
-      );
-      return { service, cache, db };
-    }
-
     it("returns null when no rows found", async () => {
-      const { service } = makeDetailServices([]);
+      const { service, repo } = makeServices([mockRoom], []);
+      repo.findByPropertyId.mockResolvedValue([]);
       const result = await service.getPropertyById("unknown");
       expect(result).toBeNull();
     });
 
     it("returns property detail with rooms when rows found", async () => {
-      const { service } = makeDetailServices();
+      const { service } = makeServices();
       const result = (await service.getPropertyById("p1")) as any;
       expect(result).not.toBeNull();
       expect(result.propertyId).toBe("p1");
@@ -365,11 +280,11 @@ describe("PropertiesService", () => {
     });
 
     it("deduplicates amenities across rooms", async () => {
-      const rows = [
+      const { service, repo } = makeServices();
+      repo.findByPropertyId.mockResolvedValue([
         { ...mockDetailRow, amenities: ["wifi", "pool"] },
         { ...mockDetailRow, room_id: "r2", amenities: ["wifi", "spa"] },
-      ];
-      const { service } = makeDetailServices(rows);
+      ] as any);
       const result = (await service.getPropertyById("p1")) as any;
       expect(result.amenities).toContain("wifi");
       expect(result.amenities.filter((a: string) => a === "wifi")).toHaveLength(
@@ -378,16 +293,16 @@ describe("PropertiesService", () => {
     });
 
     it("returns cached response on cache hit", async () => {
-      const { service, cache, db } = makeDetailServices();
+      const { service, cache, repo } = makeServices();
       const cached = { propertyId: "p1", cached: true };
       (cache.get as jest.Mock).mockResolvedValue(JSON.stringify(cached));
       const result = await service.getPropertyById("p1");
       expect(result).toEqual(cached);
-      expect(db.db.selectFrom).not.toHaveBeenCalled();
+      expect(repo.findByPropertyId).not.toHaveBeenCalled();
     });
 
     it("stores response in cache with 5-minute TTL", async () => {
-      const { service, cache } = makeDetailServices();
+      const { service, cache } = makeServices();
       await service.getPropertyById("p1");
       expect(cache.set).toHaveBeenCalledWith(
         "search:property:p1",

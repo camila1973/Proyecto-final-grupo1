@@ -1,15 +1,7 @@
 import { RoomUpsertedHandler } from "./room-upserted.handler.js";
-import type { DatabaseService } from "../../database/database.service.js";
+import type { PropertiesRepository } from "../../properties/properties.repository.js";
 import type { PropertiesService } from "../../properties/properties.service.js";
 import type { RoomUpsertedPayload } from "./room-upserted.handler.js";
-
-// Mock kysely so raw sql().execute() doesn't need a real DB
-jest.mock("kysely", () => {
-  const execute = jest.fn().mockResolvedValue({ rows: [] });
-  const sqlTag = jest.fn().mockReturnValue({ execute });
-  (sqlTag as any).raw = jest.fn().mockReturnValue({ sql: "" });
-  return { sql: sqlTag };
-});
 
 const makePayload = (
   overrides: Partial<RoomUpsertedPayload> = {},
@@ -39,35 +31,28 @@ const makePayload = (
 
 describe("RoomUpsertedHandler", () => {
   let handler: RoomUpsertedHandler;
-  let mockExecuteQuery: jest.Mock;
+  let repo: jest.Mocked<Pick<PropertiesRepository, "upsertRoom">>;
   let propertiesService: jest.Mocked<
     Pick<PropertiesService, "invalidateCityCache">
   >;
 
   beforeEach(() => {
-    jest.clearAllMocks();
-
-    mockExecuteQuery = jest.fn().mockResolvedValue({ rows: [] });
-    const db = {
-      db: { executeQuery: mockExecuteQuery },
-    } as unknown as DatabaseService;
+    repo = { upsertRoom: jest.fn().mockResolvedValue(undefined) };
     propertiesService = {
       invalidateCityCache: jest.fn().mockResolvedValue(undefined),
     };
 
     handler = new RoomUpsertedHandler(
-      db,
+      repo as unknown as PropertiesRepository,
       propertiesService as unknown as PropertiesService,
     );
   });
 
-  it("executes an upsert SQL and invalidates the city cache", async () => {
+  it("calls repo.upsertRoom and invalidates the city cache", async () => {
     const payload = makePayload();
-
     await handler.handle(payload);
 
-    const { sql } = await import("kysely");
-    expect(sql).toHaveBeenCalledTimes(1);
+    expect(repo.upsertRoom).toHaveBeenCalledWith(payload);
     expect(propertiesService.invalidateCityCache).toHaveBeenCalledWith(
       "Cancún",
     );
@@ -79,13 +64,13 @@ describe("RoomUpsertedHandler", () => {
     ).resolves.not.toThrow();
   });
 
-  it("handles amenities with single quotes safely (SQL injection prevention)", async () => {
+  it("handles amenities with single quotes without throwing", async () => {
     await expect(
       handler.handle(makePayload({ amenities: ["O'Brien suite", "pool"] })),
     ).resolves.not.toThrow();
   });
 
-  it("handles empty amenities array", async () => {
+  it("handles empty amenities array without throwing", async () => {
     await expect(
       handler.handle(makePayload({ amenities: [] })),
     ).resolves.not.toThrow();

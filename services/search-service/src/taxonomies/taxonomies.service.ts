@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { DatabaseService } from "../database/database.service.js";
+import { TaxonomiesRepository } from "./taxonomies.repository.js";
 import { CacheService } from "../cache/cache.service.js";
 
 const CACHE_KEY = "search:taxonomies";
@@ -8,7 +8,7 @@ const CACHE_TTL = 60 * 60 * 24; // 24 hours
 @Injectable()
 export class TaxonomiesService {
   constructor(
-    private readonly db: DatabaseService,
+    private readonly repo: TaxonomiesRepository,
     private readonly cache: CacheService,
   ) {}
 
@@ -18,19 +18,8 @@ export class TaxonomiesService {
       return JSON.parse(cached) as object;
     }
 
-    const categories = await this.db.db
-      .selectFrom("taxonomy_categories")
-      .selectAll()
-      .where("is_active", "=", true)
-      .orderBy("display_order", "asc")
-      .execute();
-
-    const values = await this.db.db
-      .selectFrom("taxonomy_values")
-      .selectAll()
-      .where("is_active", "=", true)
-      .orderBy("display_order", "asc")
-      .execute();
+    const categories = await this.repo.findActiveCategories();
+    const values = await this.repo.findActiveValues();
 
     const valuesByCategory = new Map<string, typeof values>();
     for (const v of values) {

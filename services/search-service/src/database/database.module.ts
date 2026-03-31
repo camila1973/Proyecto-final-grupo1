@@ -1,9 +1,16 @@
 import { Global, Module } from "@nestjs/common";
-import { DatabaseService } from "./database.service.js";
+import { DatabaseProvider, KYSELY } from "./database.provider.js";
 
 @Global()
 @Module({
-  providers: [DatabaseService],
-  exports: [DatabaseService],
+  providers: [
+    DatabaseProvider,
+    {
+      provide: KYSELY,
+      useFactory: (provider: DatabaseProvider) => provider.db,
+      inject: [DatabaseProvider],
+    },
+  ],
+  exports: [KYSELY],
 })
 export class DatabaseModule {}
