@@ -24,7 +24,7 @@ export class RoomRatesService {
     fromDate?: string,
     toDate?: string,
   ): Promise<PublicRoomRate[]> {
-    await this.roomsService.findOne(roomId, partnerId);
+    await this.roomsService.findOne(roomId);
     const rows = await this.repo.findByRoom(roomId, fromDate, toDate);
     return rows.map((r) => this.toPublic(r));
   }
@@ -34,7 +34,7 @@ export class RoomRatesService {
     partnerId: string,
     dto: CreateRoomRateDto,
   ): Promise<PublicRoomRate> {
-    await this.roomsService.findOne(roomId, partnerId);
+    await this.roomsService.findOne(roomId);
     await this.splitOnOverlap(roomId, dto.fromDate, dto.toDate);
     const rate = await this.repo.create({
       room_id: roomId,
@@ -74,15 +74,15 @@ export class RoomRatesService {
   ): Promise<PublicRoomRate> {
     const existing = await this.repo.findById(rateId);
     if (!existing) throw new NotFoundException(`Rate ${rateId} not found`);
-    await this.roomsService.findOne(existing.room_id, partnerId);
+    await this.roomsService.findOne(existing.room_id);
     await this.repo.delete(rateId);
     return this.create(existing.room_id, partnerId, dto);
   }
 
-  async remove(rateId: string, partnerId: string): Promise<void> {
+  async remove(rateId: string): Promise<void> {
     const rate = await this.repo.findById(rateId);
     if (!rate) throw new NotFoundException(`Rate ${rateId} not found`);
-    await this.roomsService.findOne(rate.room_id, partnerId);
+    await this.roomsService.findOne(rate.room_id);
     await this.repo.delete(rateId);
   }
 

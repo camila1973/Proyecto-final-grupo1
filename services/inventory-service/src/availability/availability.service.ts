@@ -22,7 +22,7 @@ export class AvailabilityService {
     fromDate: string,
     toDate: string,
   ): Promise<AvailabilityDayDto[]> {
-    await this.roomsService.findOne(roomId, partnerId);
+    await this.roomsService.findOne(roomId);
     return this.repo.getAvailability(roomId, fromDate, toDate);
   }
 
@@ -55,7 +55,7 @@ export class AvailabilityService {
     partnerId: string,
     dto: ReduceCapacityDto,
   ): Promise<void> {
-    await this.roomsService.findOne(dto.roomId, partnerId);
+    await this.roomsService.findOne(dto.roomId);
     await this.repo.reduceCapacity(
       dto.roomId,
       dto.fromDate,
@@ -69,7 +69,7 @@ export class AvailabilityService {
     partnerId: string,
     dto: BlockDatesDto,
   ): Promise<void> {
-    await this.roomsService.findOne(roomId, partnerId);
+    await this.roomsService.findOne(roomId);
     await this.repo.blockDates(roomId, dto.fromDate, dto.toDate);
   }
 
@@ -78,7 +78,7 @@ export class AvailabilityService {
     partnerId: string,
     dto: BlockDatesDto,
   ): Promise<void> {
-    await this.roomsService.findOne(roomId, partnerId);
+    await this.roomsService.findOne(roomId);
     await this.repo.unblockDates(roomId, dto.fromDate, dto.toDate);
   }
 

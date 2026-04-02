@@ -119,7 +119,7 @@ describe("RoomsService", () => {
   describe("findOne", () => {
     it("returns the room when found", async () => {
       const service = makeService();
-      const result = await service.findOne("room-1", "partner-1");
+      const result = await service.findOne("room-1");
       expect(result.id).toBe("room-1");
     });
 
@@ -127,7 +127,7 @@ describe("RoomsService", () => {
       const service = makeService({
         repo: { findById: jest.fn().mockResolvedValue(undefined) },
       });
-      await expect(service.findOne("missing", "partner-1")).rejects.toThrow(
+      await expect(service.findOne("missing")).rejects.toThrow(
         NotFoundException,
       );
     });
@@ -181,7 +181,7 @@ describe("RoomsService", () => {
         repo: { softDelete },
         events: { publish },
       });
-      await service.remove("room-1", "partner-1");
+      await service.remove("room-1");
       expect(softDelete).toHaveBeenCalledWith("room-1");
       expect(publish).toHaveBeenCalledWith(
         "inventory.room.deleted",

@@ -45,7 +45,7 @@ export class RoomRatesController {
 
   @Delete(":id")
   @HttpCode(204)
-  remove(@Param("id") id: string, @Query("partnerId") partnerId: string) {
-    return this.service.remove(id, partnerId);
+  remove(@Param("id") id: string) {
+    return this.service.remove(id);
   }
 }

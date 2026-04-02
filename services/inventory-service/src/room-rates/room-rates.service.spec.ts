@@ -260,7 +260,7 @@ describe("RoomRatesService", () => {
     it("deletes the rate", async () => {
       const del = jest.fn().mockResolvedValue(undefined);
       const service = makeService({ repo: { delete: del } });
-      await service.remove("rate-1", "partner-1");
+      await service.remove("rate-1");
       expect(del).toHaveBeenCalledWith("rate-1");
     });
 
@@ -268,7 +268,7 @@ describe("RoomRatesService", () => {
       const service = makeService({
         repo: { findById: jest.fn().mockResolvedValue(undefined) },
       });
-      await expect(service.remove("missing", "partner-1")).rejects.toThrow(
+      await expect(service.remove("missing")).rejects.toThrow(
         NotFoundException,
       );
     });

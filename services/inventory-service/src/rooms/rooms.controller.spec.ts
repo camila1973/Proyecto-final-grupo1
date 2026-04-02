@@ -60,8 +60,8 @@ describe("RoomsController", () => {
   describe("findOne", () => {
     it("delegates to service.findOne", async () => {
       const { controller, service } = makeController();
-      const result = await controller.findOne("partner-1", "room-1");
-      expect(service.findOne).toHaveBeenCalledWith("room-1", "partner-1");
+      const result = await controller.findOne("room-1");
+      expect(service.findOne).toHaveBeenCalledWith("room-1");
       expect(result.id).toBe("room-1");
     });
   });
@@ -79,8 +79,8 @@ describe("RoomsController", () => {
   describe("remove", () => {
     it("delegates to service.remove", async () => {
       const { controller, service } = makeController();
-      await controller.remove("partner-1", "room-1");
-      expect(service.remove).toHaveBeenCalledWith("room-1", "partner-1");
+      await controller.remove("room-1");
+      expect(service.remove).toHaveBeenCalledWith("room-1");
     });
   });
 });
