@@ -17,7 +17,8 @@ Nx 22 monorepo for the TravelHub platform — a hotel and travel booking system 
 │   ├── booking-service/      # Port 3004 — reservations, cart, fare calculation
 │   ├── payment-service/      # Port 3005 — Stripe/MercadoPago/PayPal, fraud detection
 │   ├── notification-service/ # Port 3006 — email and push notifications
-│   └── partners-service/     # Port 3007 — hotel/agency portal and dashboards
+│   ├── partners-service/     # Port 3007 — hotel/agency portal and dashboards
+│   └── integration-service/  # Port 3008 — PMS webhooks, CSV imports, external ID mapping
 ├── frontend/                 # React 19 + Vite SPA (port 4200)
 └── mobile/                   # Expo 54 + React Native app (port 8081)
 ```
@@ -48,6 +49,7 @@ pnpm run serve:booking         # Booking         (port 3004)
 pnpm run serve:payment         # Payment         (port 3005)
 pnpm run serve:notification    # Notification    (port 3006)
 pnpm run serve:partners        # Partners        (port 3007)
+pnpm run serve:integration     # Integration     (port 3008)
 pnpm run serve:frontend        # Frontend        (port 4200)
 pnpm run start:mobile          # Mobile (Expo)   (port 8081)
 
@@ -77,7 +79,7 @@ nx lint auth-service          # Single service
 
 ```bash
 pnpm run build                 # Build all projects
-pnpm run build:services        # Build all 8 microservices
+pnpm run build:services        # Build all 9 microservices
 pnpm run build:frontend        # Build frontend → dist/frontend/
 pnpm run affected:build        # Only changed projects
 ```

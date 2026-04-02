@@ -11,7 +11,19 @@
       "enabled": true
     },
     {
+      "key": "integration_url",
+      "value": "http://localhost:3008",
+      "type": "string",
+      "enabled": true
+    },
+    {
       "key": "partner_id",
+      "value": "a1000000-0000-0000-0000-000000000001",
+      "type": "string",
+      "enabled": true
+    },
+    {
+      "key": "pms_partner_id",
       "value": "a1000000-0000-0000-0000-000000000001",
       "type": "string",
       "enabled": true
@@ -31,6 +43,12 @@
     {
       "key": "rate_id",
       "value": "004ca352-a49e-424d-98e9-ab9476d5a255",
+      "type": "string",
+      "enabled": true
+    },
+    {
+      "key": "job_id",
+      "value": "",
       "type": "string",
       "enabled": true
     }
@@ -1174,105 +1192,9 @@
           ]
         },
         {
-          "name": "Webhooks",
-          "item": [
-            {
-              "name": "Hotelbeds",
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  },
-                  {
-                    "key": "x-webhook-signature",
-                    "value": ""
-                  }
-                ],
-                "url": {
-                  "raw": "{{base_url}}/api/inventory/webhooks/hotelbeds",
-                  "host": [
-                    "{{base_url}}"
-                  ],
-                  "path": [
-                    "api",
-                    "inventory",
-                    "webhooks",
-                    "hotelbeds"
-                  ]
-                },
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"hotelCode\": \"HB001\",\n  \"rooms\": [\n    {\n      \"roomCode\": \"STD\",\n      \"date\": \"2026-06-01\",\n      \"allotment\": 5,\n      \"rate\": 150,\n      \"currency\": \"USD\",\n      \"stopSell\": false\n    }\n  ]\n}"
-                }
-              }
-            },
-            {
-              "name": "TravelClick",
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  },
-                  {
-                    "key": "x-webhook-signature",
-                    "value": ""
-                  }
-                ],
-                "url": {
-                  "raw": "{{base_url}}/api/inventory/webhooks/travelclick",
-                  "host": [
-                    "{{base_url}}"
-                  ],
-                  "path": [
-                    "api",
-                    "inventory",
-                    "webhooks",
-                    "travelclick"
-                  ]
-                },
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"propertyCode\": \"TC001\",\n  \"roomTypes\": [\n    {\n      \"roomTypeCode\": \"SUITE\",\n      \"startDate\": \"2026-06-01\",\n      \"endDate\": \"2026-06-15\",\n      \"availableCount\": 2,\n      \"rateAmount\": 350,\n      \"currencyCode\": \"USD\",\n      \"closed\": false\n    }\n  ]\n}"
-                }
-              }
-            },
-            {
-              "name": "RoomRaccoon",
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  },
-                  {
-                    "key": "x-webhook-signature",
-                    "value": ""
-                  }
-                ],
-                "url": {
-                  "raw": "{{base_url}}/api/inventory/webhooks/roomraccoon",
-                  "host": [
-                    "{{base_url}}"
-                  ],
-                  "path": [
-                    "api",
-                    "inventory",
-                    "webhooks",
-                    "roomraccoon"
-                  ]
-                },
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"hotelId\": \"RR001\",\n  \"availability\": [\n    {\n      \"roomId\": \"standard\",\n      \"date\": \"2026-06-01\",\n      \"available\": true,\n      \"price\": 120,\n      \"currency\": \"USD\"\n    }\n  ]\n}"
-                }
-              }
-            }
-          ]
+          "name": "Webhooks (moved to integration-service)",
+          "description": "These endpoints have moved to integration-service (port 3008). See the Integration folder.",
+          "item": []
         }
       ]
     },
@@ -1490,6 +1412,264 @@
               "raw": "{\n  \"userId\": \"usr_002\",\n  \"channel\": \"email\",\n  \"subject\": \"Booking Confirmed\",\n  \"message\": \"Your reservation res_001 has been confirmed.\"\n}"
             }
           }
+        }
+      ]
+    },
+    {
+      "name": "Integration",
+      "description": "integration-service — port 3008. Single entry point for all external partner data (webhooks + CSV imports).",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{integration_url}}/health",
+              "host": ["{{integration_url}}"],
+              "path": ["health"]
+            }
+          }
+        },
+        {
+          "name": "Webhooks",
+          "item": [
+            {
+              "name": "Generic — Send Event",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "X-TravelHub-Signature", "value": "" }
+                ],
+                "url": {
+                  "raw": "{{integration_url}}/webhooks/{{pms_partner_id}}/events",
+                  "host": ["{{integration_url}}"],
+                  "path": ["webhooks", "{{pms_partner_id}}", "events"]
+                },
+                "description": "Creates a new property via webhook. Partner 1 signing secret: 'secret-partner-1'.\nCompute HMAC: echo -n '<body>' | openssl dgst -sha256 -hmac 'secret-partner-1'\nLeave X-TravelHub-Signature empty to get a 401, or fill in the correct HMAC hex.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"eventId\": \"evt-001\",\n  \"eventType\": \"property.created\",\n  \"occurredAt\": \"2026-04-01T10:00:00Z\",\n  \"data\": {\n    \"externalId\": \"new-property-webhook-test\",\n    \"name\": \"Webhook Test Hotel\",\n    \"type\": \"hotel\",\n    \"city\": \"Cancún\",\n    \"countryCode\": \"MX\",\n    \"stars\": 4\n  }\n}"
+                }
+              }
+            },
+            {
+              "name": "Generic — Duplicate Event (idempotency check)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "X-TravelHub-Signature", "value": "" }
+                ],
+                "url": {
+                  "raw": "{{integration_url}}/webhooks/{{pms_partner_id}}/events",
+                  "host": ["{{integration_url}}"],
+                  "path": ["webhooks", "{{pms_partner_id}}", "events"]
+                },
+                "description": "Re-send evt-001 with the same eventId — expect {\"status\":\"duplicate\"}.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"eventId\": \"evt-001\",\n  \"eventType\": \"property.created\",\n  \"occurredAt\": \"2026-04-01T10:00:00Z\",\n  \"data\": {\n    \"externalId\": \"new-property-webhook-test\",\n    \"name\": \"Webhook Test Hotel\",\n    \"type\": \"hotel\",\n    \"city\": \"Cancún\",\n    \"countryCode\": \"MX\",\n    \"stars\": 4\n  }\n}"
+                }
+              }
+            },
+            {
+              "name": "Generic — Room Created",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "X-TravelHub-Signature", "value": "" }
+                ],
+                "url": {
+                  "raw": "{{integration_url}}/webhooks/{{pms_partner_id}}/events",
+                  "host": ["{{integration_url}}"],
+                  "path": ["webhooks", "{{pms_partner_id}}", "events"]
+                },
+                "description": "Creates a room under the property created by evt-001. Run after evt-001 succeeds.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"eventId\": \"evt-002\",\n  \"eventType\": \"room.created\",\n  \"occurredAt\": \"2026-04-01T10:01:00Z\",\n  \"data\": {\n    \"externalId\": \"new-room-webhook-test\",\n    \"externalPropertyId\": \"new-property-webhook-test\",\n    \"roomType\": \"standard\",\n    \"capacity\": 2,\n    \"totalRooms\": 5,\n    \"basePriceUsd\": 130\n  }\n}"
+                }
+              }
+            },
+            {
+              "name": "Generic — Price Updated (COP)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "X-TravelHub-Signature", "value": "" }
+                ],
+                "url": {
+                  "raw": "{{integration_url}}/webhooks/{{pms_partner_id}}/events",
+                  "host": ["{{integration_url}}"],
+                  "path": ["webhooks", "{{pms_partner_id}}", "events"]
+                },
+                "description": "Updates price for a seeded room (gran-caribe-deluxe-king-ocean, already in external_id_map). FX_MOCK=true passes amount through unchanged.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"eventId\": \"evt-003\",\n  \"eventType\": \"room.price.updated\",\n  \"occurredAt\": \"2026-04-01T10:02:00Z\",\n  \"data\": {\n    \"externalRoomId\": \"gran-caribe-deluxe-king-ocean\",\n    \"fromDate\": \"2027-06-01\",\n    \"toDate\": \"2027-06-30\",\n    \"amount\": 600000,\n    \"currency\": \"COP\"\n  }\n}"
+                }
+              }
+            },
+            {
+              "name": "Generic — Availability Updated",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "X-TravelHub-Signature", "value": "" }
+                ],
+                "url": {
+                  "raw": "{{integration_url}}/webhooks/{{pms_partner_id}}/events",
+                  "host": ["{{integration_url}}"],
+                  "path": ["webhooks", "{{pms_partner_id}}", "events"]
+                },
+                "description": "Marks gran-caribe-deluxe-king-ocean as unavailable on 2027-06-10 (already in external_id_map).",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"eventId\": \"evt-004\",\n  \"eventType\": \"room.availability.updated\",\n  \"occurredAt\": \"2026-04-01T10:03:00Z\",\n  \"data\": {\n    \"externalRoomId\": \"gran-caribe-deluxe-king-ocean\",\n    \"date\": \"2027-06-10\",\n    \"available\": false\n  }\n}"
+                }
+              }
+            },
+            {
+              "name": "Generic — Invalid HMAC (expect 401)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "X-TravelHub-Signature", "value": "invalid-sig" }
+                ],
+                "url": {
+                  "raw": "{{integration_url}}/webhooks/{{pms_partner_id}}/events",
+                  "host": ["{{integration_url}}"],
+                  "path": ["webhooks", "{{pms_partner_id}}", "events"]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"eventId\": \"evt-bad\",\n  \"eventType\": \"property.created\",\n  \"occurredAt\": \"2026-04-01T10:00:00Z\",\n  \"data\": {}\n}"
+                }
+              }
+            },
+            {
+              "name": "Hotelbeds",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "x-webhook-signature", "value": "" }
+                ],
+                "url": {
+                  "raw": "{{integration_url}}/webhooks/hotelbeds",
+                  "host": ["{{integration_url}}"],
+                  "path": ["webhooks", "hotelbeds"]
+                },
+                "description": "hotelCode = pms_partner_id (Partner 1). roomCode must match an external_id_map entry (entity_type=room) for that partner. WEBHOOK_SECRET_HOTELBEDS is unset in Docker so signature check is skipped.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"hotelCode\": \"a1000000-0000-0000-0000-000000000001\",\n  \"provider\": \"hotelbeds\",\n  \"timestamp\": \"2026-04-01T10:00:00Z\",\n  \"rooms\": [\n    {\n      \"roomCode\": \"gran-caribe-deluxe-king-ocean\",\n      \"date\": \"2027-07-01\",\n      \"allotment\": 3,\n      \"rate\": 350,\n      \"currency\": \"USD\",\n      \"stopSell\": false\n    },\n    {\n      \"roomCode\": \"playa-azul-deluxe-king-ocean\",\n      \"date\": \"2027-07-01\",\n      \"allotment\": 2,\n      \"rate\": 195,\n      \"currency\": \"USD\",\n      \"stopSell\": false\n    }\n  ]\n}"
+                }
+              }
+            },
+            {
+              "name": "TravelClick",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "x-webhook-signature", "value": "" }
+                ],
+                "url": {
+                  "raw": "{{integration_url}}/webhooks/travelclick",
+                  "host": ["{{integration_url}}"],
+                  "path": ["webhooks", "travelclick"]
+                },
+                "description": "propertyCode = pms_partner_id (Partner 1). roomTypeCode must match external_id_map. WEBHOOK_SECRET_TRAVELCLICK is unset so signature check is skipped.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"propertyCode\": \"a1000000-0000-0000-0000-000000000001\",\n  \"provider\": \"travelclick\",\n  \"transactionId\": \"txn-001\",\n  \"createdAt\": \"2026-04-01T10:00:00Z\",\n  \"roomTypes\": [\n    {\n      \"roomTypeCode\": \"gran-caribe-suite-king-ocean\",\n      \"startDate\": \"2027-07-01\",\n      \"endDate\": \"2027-07-31\",\n      \"availableCount\": 2,\n      \"rateAmount\": 580,\n      \"currencyCode\": \"USD\",\n      \"closed\": false\n    }\n  ]\n}"
+                }
+              }
+            },
+            {
+              "name": "RoomRaccoon",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "x-webhook-signature", "value": "" }
+                ],
+                "url": {
+                  "raw": "{{integration_url}}/webhooks/roomraccoon",
+                  "host": ["{{integration_url}}"],
+                  "path": ["webhooks", "roomraccoon"]
+                },
+                "description": "hotelId = pms_partner_id (Partner 1). roomId must match external_id_map. WEBHOOK_SECRET_ROOMRACCOON is unset so signature check is skipped.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"hotelId\": \"a1000000-0000-0000-0000-000000000001\",\n  \"provider\": \"roomraccoon\",\n  \"eventType\": \"availability.updated\",\n  \"occurredAt\": \"2026-04-01T10:00:00Z\",\n  \"availability\": [\n    {\n      \"roomId\": \"playa-azul-standard-queen-pool\",\n      \"date\": \"2027-07-01\",\n      \"available\": true,\n      \"price\": 135,\n      \"currency\": \"USD\"\n    },\n    {\n      \"roomId\": \"playa-azul-junior-suite-king-ocean\",\n      \"date\": \"2027-07-01\",\n      \"available\": false\n    }\n  ]\n}"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "CSV Import",
+          "item": [
+            {
+              "name": "Upload CSV (properties)",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{integration_url}}/import/csv",
+                  "host": ["{{integration_url}}"],
+                  "path": ["import", "csv"]
+                },
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    { "key": "partnerId", "value": "{{pms_partner_id}}", "type": "text" },
+                    { "key": "type", "value": "properties", "type": "text" },
+                    { "key": "file", "type": "file", "src": "" }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Upload CSV (rooms)",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{integration_url}}/import/csv",
+                  "host": ["{{integration_url}}"],
+                  "path": ["import", "csv"]
+                },
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    { "key": "partnerId", "value": "{{pms_partner_id}}", "type": "text" },
+                    { "key": "type", "value": "rooms", "type": "text" },
+                    { "key": "file", "type": "file", "src": "" }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Get Job Status",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{integration_url}}/import/csv/jobs/{{job_id}}",
+                  "host": ["{{integration_url}}"],
+                  "path": ["import", "csv", "jobs", "{{job_id}}"]
+                }
+              }
+            }
+          ]
         }
       ]
     },
