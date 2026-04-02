@@ -35,7 +35,7 @@ const featuredResponse = {
 
 beforeEach(() => {
   global.fetch = jest.fn((url: string) => {
-    if (String(url).includes('/search/properties')) return Promise.resolve({ ok: true, json: () => Promise.resolve(featuredResponse) });
+    if (String(url).includes('/search/featured')) return Promise.resolve({ ok: true, json: () => Promise.resolve(featuredResponse) });
     return Promise.resolve({ ok: false, json: () => Promise.resolve({}) });
   }) as jest.Mock;
 });

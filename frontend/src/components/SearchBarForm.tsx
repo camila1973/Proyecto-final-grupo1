@@ -38,6 +38,7 @@ async function fetchCitySuggestions(query: string): Promise<CitySuggestion[]> {
 
 interface CityAutocompleteProps {
   onChange: (city: string, countryCode?: string) => void;
+  onKeyDown?: (e: React.KeyboardEvent) => void;
   value?: CitySuggestion;
   error?: boolean;
   helperText?: string;
@@ -46,6 +47,7 @@ interface CityAutocompleteProps {
 
 function CityAutocomplete({
   onChange,
+  onKeyDown,
   value,
   error,
   helperText,
@@ -94,6 +96,7 @@ function CityAutocomplete({
           placeholder={placeholder}
           error={error}
           helperText={helperText}
+          onKeyDown={onKeyDown}
           sx={{
             ...fieldSx,
             '& .MuiInput-underline:before': { display: 'none' },
@@ -170,6 +173,7 @@ export default function SearchBarForm({
         </label>
         <CityAutocomplete
           onChange={(val, code) => { setCity(val); setCountryCode(code ?? ''); }}
+          onKeyDown={(e) => { if (e.key === 'Enter') handleSearch(); }}
           value={{ id: '', city, country: countryCode }} // for correct option highlighting
           error={!!cityError}
           helperText={cityError}
