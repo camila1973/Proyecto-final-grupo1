@@ -11,7 +11,7 @@
     "start": "nx run-many -t serve",
     "build": "nx run-many -t build",
     "build:frontend": "nx build frontend",
-    "build:services": "nx run-many -t build --projects=api-gateway,auth-service,search-service,inventory-service,booking-service,payment-service,notification-service,partners-service",
+    "build:services": "nx run-many -t build --projects=api-gateway,auth-service,search-service,inventory-service,booking-service,payment-service,notification-service,partners-service,integration-service",
     "serve:api-gateway": "nx serve api-gateway",
     "serve:auth": "nx serve auth-service",
     "serve:search": "nx serve search-service",

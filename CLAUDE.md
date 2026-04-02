@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project Overview
 
 **TravelHub** is an Nx 22.5.1 monorepo with three applications sharing a single `node_modules/`:
-- **services/** — 8 independent NestJS 11 microservices (see port map below)
+- **services/** — 9 independent NestJS 11 microservices (see port map below)
 - **frontend** — React 19 + Vite 7 SPA (port 4200, preview on 4300)
 - **mobile** — Expo 54 + React Native 0.81 app (port 8081)
 
@@ -21,6 +21,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `payment-service` | 3005 | Multi-provider (Stripe/MercadoPago/PayPal), tokenization, fraud detection, reconciliation |
 | `notification-service` | 3006 | Email, push notifications, alerts (async, called by other services) |
 | `partners-service` | 3007 | Hotel/agency portal: dashboards, revenue reports, rate management |
+| `integration-service` | 3008 | Single entry point for external partner data: PMS webhooks (generic + Hotelbeds/TravelClick/RoomRaccoon), CSV bulk import, external↔internal ID mapping |
 
 ## Commands
 
@@ -38,6 +39,7 @@ pnpm run serve:booking         # Booking service (port 3004)
 pnpm run serve:payment         # Payment service (port 3005)
 pnpm run serve:notification    # Notification service (port 3006)
 pnpm run serve:partners        # Partners service (port 3007)
+pnpm run serve:integration     # Integration service (port 3008)
 pnpm run serve:frontend        # Frontend only (Vite dev server)
 pnpm run start:mobile          # Mobile only (Expo)
 nx run-ios mobile              # iOS simulator
@@ -47,7 +49,7 @@ nx run-android mobile          # Android emulator
 ### Build
 ```bash
 pnpm run build                 # Build all projects
-pnpm run build:services        # Build all 8 microservices
+pnpm run build:services        # Build all 9 microservices
 pnpm run build:frontend        # Vite → dist/frontend/
 nx build mobile                # Expo export → dist/mobile/
 nx build auth-service          # Single service → dist/auth-service/
@@ -75,6 +77,7 @@ Each service with a database has `migrate` and `seed` nx targets. The local DB p
 |---|---|---|
 | `search-service` | 5433 | `search_service` |
 | `inventory-service` | 5434 | `travelhub` |
+| `integration-service` | 5435 | `integration_service` |
 
 ```bash
 # Search service
@@ -84,6 +87,10 @@ DATABASE_URL=postgres://postgres:postgres@localhost:5433/search_service pnpm exe
 # Inventory service
 DATABASE_URL=postgres://postgres:postgres@localhost:5434/travelhub pnpm exec nx run inventory-service:migrate
 DATABASE_URL=postgres://postgres:postgres@localhost:5434/travelhub pnpm exec nx run inventory-service:seed
+
+# Integration service
+pnpm exec nx run integration-service:migrate
+pnpm exec nx run integration-service:seed
 ```
 
 To fully reset and reseed from scratch:
@@ -113,7 +120,8 @@ pnpm run graph             # Open dependency graph in browser
 │   ├── booking-service/      # NestJS microservice (port 3004)
 │   ├── payment-service/      # NestJS microservice (port 3005)
 │   ├── notification-service/ # NestJS microservice (port 3006)
-│   └── partners-service/     # NestJS microservice (port 3007)
+│   ├── partners-service/     # NestJS microservice (port 3007)
+│   └── integration-service/  # NestJS microservice (port 3008)
 ├── frontend/src/             # React source (components, assets)
 ├── mobile/
 │   ├── app/                  # Expo Router file-based routes
