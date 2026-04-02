@@ -1,4 +1,4 @@
-import { ForbiddenException, NotFoundException } from "@nestjs/common";
+import { NotFoundException } from "@nestjs/common";
 import { PropertiesService } from "./properties.service";
 import type { PropertiesRepository } from "./properties.repository";
 
@@ -22,12 +22,16 @@ function makeService(overrides: Partial<PropertiesRepository> = {}) {
     create: jest.fn().mockResolvedValue(PROPERTY_ROW),
     findAll: jest.fn().mockResolvedValue([PROPERTY_ROW]),
     findById: jest.fn().mockResolvedValue(PROPERTY_ROW),
+    findByIdWithRooms: jest
+      .fn()
+      .mockResolvedValue({ property: PROPERTY_ROW, rooms: [] }),
     findByName: jest.fn().mockResolvedValue(PROPERTY_ROW),
     update: jest.fn().mockResolvedValue(PROPERTY_ROW),
     softDelete: jest.fn().mockResolvedValue(undefined),
     ...overrides,
   } as unknown as PropertiesRepository;
-  return new PropertiesService(repo);
+  const events = { publish: jest.fn() } as any;
+  return new PropertiesService(repo, events);
 }
 
 describe("PropertiesService", () => {
@@ -35,6 +39,7 @@ describe("PropertiesService", () => {
     it("creates a property and returns the public shape", async () => {
       const service = makeService();
       const result = await service.create("partner-1", {
+        partnerId: "partner-1",
         name: "Hotel Sol",
         type: "hotel",
         city: "Cancún",
@@ -63,9 +68,9 @@ describe("PropertiesService", () => {
   });
 
   describe("findOne", () => {
-    it("returns the property when found and owner matches", async () => {
+    it("returns the property when found", async () => {
       const service = makeService();
-      const result = await service.findOne("prop-1", "partner-1");
+      const result = await service.findOne("prop-1");
       expect(result.id).toBe("prop-1");
     });
 
@@ -73,15 +78,8 @@ describe("PropertiesService", () => {
       const service = makeService({
         findById: jest.fn().mockResolvedValue(undefined),
       });
-      await expect(service.findOne("missing", "partner-1")).rejects.toThrow(
+      await expect(service.findOne("missing")).rejects.toThrow(
         NotFoundException,
-      );
-    });
-
-    it("throws ForbiddenException when partner does not own the property", async () => {
-      const service = makeService();
-      await expect(service.findOne("prop-1", "other-partner")).rejects.toThrow(
-        ForbiddenException,
       );
     });
   });
@@ -92,9 +90,7 @@ describe("PropertiesService", () => {
       const service = makeService({
         update: jest.fn().mockResolvedValue(updated),
       });
-      const result = await service.update("prop-1", "partner-1", {
-        city: "CDMX",
-      });
+      const result = await service.update("prop-1", { city: "CDMX" });
       expect(result.city).toBe("CDMX");
     });
 
@@ -102,16 +98,9 @@ describe("PropertiesService", () => {
       const service = makeService({
         update: jest.fn().mockResolvedValue(undefined),
       });
-      await expect(
-        service.update("prop-1", "partner-1", { city: "CDMX" }),
-      ).rejects.toThrow(NotFoundException);
-    });
-
-    it("throws ForbiddenException when partner does not own the property", async () => {
-      const service = makeService();
-      await expect(
-        service.update("prop-1", "other-partner", { city: "CDMX" }),
-      ).rejects.toThrow(ForbiddenException);
+      await expect(service.update("prop-1", { city: "CDMX" })).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -119,15 +108,8 @@ describe("PropertiesService", () => {
     it("soft-deletes the property", async () => {
       const softDelete = jest.fn().mockResolvedValue(undefined);
       const service = makeService({ softDelete });
-      await service.remove("prop-1", "partner-1");
+      await service.remove("prop-1");
       expect(softDelete).toHaveBeenCalledWith("prop-1");
-    });
-
-    it("throws ForbiddenException when partner does not own the property", async () => {
-      const service = makeService();
-      await expect(service.remove("prop-1", "other-partner")).rejects.toThrow(
-        ForbiddenException,
-      );
     });
   });
 });

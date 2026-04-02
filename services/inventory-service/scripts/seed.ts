@@ -60,6 +60,22 @@ async function seed() {
         country_code: "MX",
         stars: 5,
         partner_id: PARTNER_1,
+        neighborhood: "Zona Hotelera",
+        lat: 21.1619,
+        lon: -86.8515,
+        rating: "4.7",
+        review_count: 842,
+        thumbnail_url: "https://placehold.co/400x300?text=Gran+Caribe",
+        amenities: [
+          "pool",
+          "wifi",
+          "spa",
+          "restaurant",
+          "breakfast",
+          "ac",
+          "beach_access",
+          "gym",
+        ],
       },
       {
         id: PROP_CANCUN_2,
@@ -69,6 +85,21 @@ async function seed() {
         country_code: "MX",
         stars: 4,
         partner_id: PARTNER_1,
+        neighborhood: "Zona Hotelera",
+        lat: 21.1502,
+        lon: -86.8437,
+        rating: "4.2",
+        review_count: 519,
+        thumbnail_url: "https://placehold.co/400x300?text=Playa+Azul",
+        amenities: [
+          "pool",
+          "wifi",
+          "ac",
+          "restaurant",
+          "parking",
+          "beach_access",
+          "spa",
+        ],
       },
       {
         id: PROP_CANCUN_3,
@@ -78,6 +109,13 @@ async function seed() {
         country_code: "MX",
         stars: 3,
         partner_id: PARTNER_2,
+        neighborhood: "Downtown",
+        lat: 21.1743,
+        lon: -86.8466,
+        rating: "3.8",
+        review_count: 204,
+        thumbnail_url: "https://placehold.co/400x300?text=Hostal+Sol",
+        amenities: ["wifi", "ac", "parking"],
       },
       {
         id: PROP_CDMX_1,
@@ -87,6 +125,22 @@ async function seed() {
         country_code: "MX",
         stars: 5,
         partner_id: PARTNER_2,
+        neighborhood: "Centro Histórico",
+        lat: 19.4326,
+        lon: -99.1332,
+        rating: "4.6",
+        review_count: 631,
+        thumbnail_url: "https://placehold.co/400x300?text=Hotel+Historico",
+        amenities: [
+          "wifi",
+          "gym",
+          "spa",
+          "restaurant",
+          "breakfast",
+          "ac",
+          "parking",
+          "pet_friendly",
+        ],
       },
       {
         id: PROP_CDMX_2,
@@ -96,6 +150,13 @@ async function seed() {
         country_code: "MX",
         stars: 4,
         partner_id: PARTNER_2,
+        neighborhood: "Condesa",
+        lat: 19.4118,
+        lon: -99.1718,
+        rating: "4.4",
+        review_count: 387,
+        thumbnail_url: "https://placehold.co/400x300?text=Condesa+Inn",
+        amenities: ["wifi", "breakfast", "ac", "pet_friendly"],
       },
     ])
     .execute();
@@ -110,6 +171,8 @@ async function seed() {
         id: ROOM(1),
         property_id: PROP_CANCUN_1,
         room_type: "deluxe",
+        bed_type: "king",
+        view_type: "ocean",
         capacity: 2,
         total_rooms: 3,
         base_price_usd: "320.00",
@@ -118,6 +181,8 @@ async function seed() {
         id: ROOM(2),
         property_id: PROP_CANCUN_1,
         room_type: "suite",
+        bed_type: "king",
+        view_type: "ocean",
         capacity: 4,
         total_rooms: 2,
         base_price_usd: "580.00",
@@ -127,6 +192,8 @@ async function seed() {
         id: ROOM(3),
         property_id: PROP_CANCUN_2,
         room_type: "standard",
+        bed_type: "queen",
+        view_type: "pool",
         capacity: 2,
         total_rooms: 5,
         base_price_usd: "145.00",
@@ -135,6 +202,8 @@ async function seed() {
         id: ROOM(4),
         property_id: PROP_CANCUN_2,
         room_type: "deluxe",
+        bed_type: "king",
+        view_type: "ocean",
         capacity: 2,
         total_rooms: 3,
         base_price_usd: "195.00",
@@ -143,6 +212,8 @@ async function seed() {
         id: ROOM(5),
         property_id: PROP_CANCUN_2,
         room_type: "junior_suite",
+        bed_type: "king",
+        view_type: "ocean",
         capacity: 3,
         total_rooms: 2,
         base_price_usd: "265.00",
@@ -152,6 +223,8 @@ async function seed() {
         id: ROOM(6),
         property_id: PROP_CANCUN_3,
         room_type: "standard",
+        bed_type: "double",
+        view_type: "city",
         capacity: 2,
         total_rooms: 4,
         base_price_usd: "65.00",
@@ -160,6 +233,8 @@ async function seed() {
         id: ROOM(7),
         property_id: PROP_CANCUN_3,
         room_type: "standard",
+        bed_type: "twin",
+        view_type: "garden",
         capacity: 2,
         total_rooms: 4,
         base_price_usd: "55.00",
@@ -169,6 +244,8 @@ async function seed() {
         id: ROOM(8),
         property_id: PROP_CDMX_1,
         room_type: "deluxe",
+        bed_type: "king",
+        view_type: "city",
         capacity: 2,
         total_rooms: 3,
         base_price_usd: "280.00",
@@ -177,6 +254,8 @@ async function seed() {
         id: ROOM(9),
         property_id: PROP_CDMX_1,
         room_type: "penthouse",
+        bed_type: "king",
+        view_type: "city",
         capacity: 4,
         total_rooms: 1,
         base_price_usd: "650.00",
@@ -186,6 +265,8 @@ async function seed() {
         id: ROOM(10),
         property_id: PROP_CDMX_2,
         room_type: "standard",
+        bed_type: "queen",
+        view_type: "garden",
         capacity: 2,
         total_rooms: 5,
         base_price_usd: "110.00",
@@ -198,7 +279,6 @@ async function seed() {
   await db
     .insertInto("inv_room_rates")
     .values([
-      // ROOM 1 – Gran Caribe Resort & Spa, deluxe
       {
         room_id: ROOM(1),
         from_date: new Date("2027-01-01"),
@@ -217,7 +297,6 @@ async function seed() {
         to_date: new Date("2027-12-31"),
         price_usd: "330.00",
       },
-      // ROOM 2 – Gran Caribe Resort & Spa, suite
       {
         room_id: ROOM(2),
         from_date: new Date("2027-01-01"),
@@ -236,14 +315,12 @@ async function seed() {
         to_date: new Date("2027-12-31"),
         price_usd: "590.00",
       },
-      // ROOM 3 – Playa Azul Hotel, standard
       {
         room_id: ROOM(3),
         from_date: new Date("2027-01-01"),
         to_date: new Date("2027-12-31"),
         price_usd: "135.00",
       },
-      // ROOM 4 – Playa Azul Hotel, deluxe
       {
         room_id: ROOM(4),
         from_date: new Date("2027-01-01"),
@@ -262,28 +339,24 @@ async function seed() {
         to_date: new Date("2027-12-31"),
         price_usd: "195.00",
       },
-      // ROOM 5 – Playa Azul Hotel, junior_suite
       {
         room_id: ROOM(5),
         from_date: new Date("2027-01-01"),
         to_date: new Date("2027-12-31"),
         price_usd: "250.00",
       },
-      // ROOM 6 – Hostal Sol Cancún, standard double
       {
         room_id: ROOM(6),
         from_date: new Date("2027-01-01"),
         to_date: new Date("2027-12-31"),
         price_usd: "60.00",
       },
-      // ROOM 7 – Hostal Sol Cancún, standard twin
       {
         room_id: ROOM(7),
         from_date: new Date("2027-01-01"),
         to_date: new Date("2027-12-31"),
         price_usd: "50.00",
       },
-      // ROOM 8 – Hotel Histórico Centro, deluxe
       {
         room_id: ROOM(8),
         from_date: new Date("2027-01-01"),
@@ -302,14 +375,12 @@ async function seed() {
         to_date: new Date("2027-12-31"),
         price_usd: "285.00",
       },
-      // ROOM 9 – Hotel Histórico Centro, penthouse
       {
         room_id: ROOM(9),
         from_date: new Date("2027-01-01"),
         to_date: new Date("2027-12-31"),
         price_usd: "620.00",
       },
-      // ROOM 10 – Condesa Inn, standard
       {
         room_id: ROOM(10),
         from_date: new Date("2027-01-01"),
@@ -319,17 +390,14 @@ async function seed() {
     ])
     .execute();
 
-  // ── Availability — fully books each room type so availability checks
-  // correctly exclude them. reserved_rooms must equal total_rooms so that
-  // total_rooms - reserved_rooms - held_rooms = 0 (unavailable).
+  // ── Availability ──────────────────────────────────────────────────────────
   console.log("Seeding inv_availability...");
   const bookedRanges: Array<{
     room_id: string;
     from_date: string;
     to_date: string;
-    total_rooms: number; // must match inv_rooms.total_rooms to fill capacity
+    total_rooms: number;
   }> = [
-    // ROOM 1 – Gran Caribe Resort & Spa, deluxe (total_rooms: 3)
     {
       room_id: ROOM(1),
       from_date: "2027-03-25",
@@ -342,28 +410,24 @@ async function seed() {
       to_date: "2027-04-15",
       total_rooms: 3,
     },
-    // ROOM 2 – Gran Caribe Resort & Spa, suite (total_rooms: 2)
     {
       room_id: ROOM(2),
       from_date: "2027-04-02",
       to_date: "2027-04-07",
       total_rooms: 2,
     },
-    // ROOM 4 – Playa Azul Hotel, deluxe (total_rooms: 3)
     {
       room_id: ROOM(4),
       from_date: "2027-03-30",
       to_date: "2027-04-05",
       total_rooms: 3,
     },
-    // ROOM 5 – Playa Azul Hotel, junior suite (total_rooms: 2)
     {
       room_id: ROOM(5),
       from_date: "2027-05-01",
       to_date: "2027-05-08",
       total_rooms: 2,
     },
-    // ROOM 8 – Hotel Histórico Centro, deluxe (total_rooms: 3)
     {
       room_id: ROOM(8),
       from_date: "2027-03-27",
@@ -376,7 +440,6 @@ async function seed() {
       to_date: "2027-07-22",
       total_rooms: 3,
     },
-    // ROOM 9 – Hotel Histórico Centro, penthouse (total_rooms: 1)
     {
       room_id: ROOM(9),
       from_date: "2027-04-01",

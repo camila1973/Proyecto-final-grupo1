@@ -19,7 +19,7 @@ describe("EventsPublisher", () => {
       (publisher as any).channel = { publish: channelPublish };
       publisher.publish("inventory.room.updated", { roomId: "room-1" });
       expect(channelPublish).toHaveBeenCalledWith(
-        "inventory",
+        "travelhub",
         "inventory.room.updated",
         expect.any(Buffer),
         { persistent: true },

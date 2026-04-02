@@ -33,28 +33,31 @@ describe("AvailabilityUpdatedHandler", () => {
 
   it("replaces price periods and invalidates city cache", async () => {
     const payload = {
-      room_id: "550e8400-e29b-41d4-a716-446655440000",
-      price_periods: [
-        { from_date: "2026-04-01", to_date: "2026-06-30", price_usd: 200 },
-        { from_date: "2026-07-01", to_date: "2026-08-31", price_usd: 240 },
+      roomId: "550e8400-e29b-41d4-a716-446655440000",
+      pricePeriods: [
+        { fromDate: "2026-04-01", toDate: "2026-06-30", priceUsd: 200 },
+        { fromDate: "2026-07-01", toDate: "2026-08-31", priceUsd: 240 },
       ],
     };
 
     await handler.handle(payload);
 
     expect(pricePeriodsRepo.replaceForRoom).toHaveBeenCalledWith(
-      payload.room_id,
-      payload.price_periods,
+      payload.roomId,
+      [
+        { from_date: "2026-04-01", to_date: "2026-06-30", price_usd: 200 },
+        { from_date: "2026-07-01", to_date: "2026-08-31", price_usd: 240 },
+      ],
     );
     expect(propertiesService.invalidateCityCache).toHaveBeenCalledWith(
       "Cancún",
     );
   });
 
-  it("handles empty price_periods array", async () => {
+  it("handles empty pricePeriods array", async () => {
     await handler.handle({
-      room_id: "550e8400-e29b-41d4-a716-446655440000",
-      price_periods: [],
+      roomId: "550e8400-e29b-41d4-a716-446655440000",
+      pricePeriods: [],
     });
 
     expect(pricePeriodsRepo.replaceForRoom).toHaveBeenCalledWith(
@@ -67,8 +70,8 @@ describe("AvailabilityUpdatedHandler", () => {
     propertiesRepo.findRoomCity.mockResolvedValue(undefined);
 
     await handler.handle({
-      room_id: "550e8400-e29b-41d4-a716-446655440000",
-      price_periods: [],
+      roomId: "550e8400-e29b-41d4-a716-446655440000",
+      pricePeriods: [],
     });
 
     expect(propertiesService.invalidateCityCache).not.toHaveBeenCalled();

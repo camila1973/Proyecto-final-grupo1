@@ -1,7 +1,7 @@
 import { EventsService } from "./events.service.js";
 import type { RoomUpsertedHandler } from "./handlers/room-upserted.handler.js";
 import type { AvailabilityUpdatedHandler } from "./handlers/availability-updated.handler.js";
-import type { TaxonomyUpdatedHandler } from "./handlers/taxonomy-updated.handler.js";
+import type { RoomDeletedHandler } from "./handlers/room-deleted.handler.js";
 
 // ─── amqplib mock ─────────────────────────────────────────────────────────────
 // jest.mock is hoisted before variable declarations, so define mocks inside the factory
@@ -54,11 +54,11 @@ function makeHandlers() {
     handle: jest.fn().mockResolvedValue(undefined),
   } as unknown as jest.Mocked<AvailabilityUpdatedHandler>;
 
-  const taxonomyUpdated = {
+  const roomDeleted = {
     handle: jest.fn().mockResolvedValue(undefined),
-  } as unknown as jest.Mocked<TaxonomyUpdatedHandler>;
+  } as unknown as jest.Mocked<RoomDeletedHandler>;
 
-  return { roomUpserted, availabilityUpdated, taxonomyUpdated };
+  return { roomUpserted, availabilityUpdated, roomDeleted };
 }
 
 // ─── tests ────────────────────────────────────────────────────────────────────
@@ -76,7 +76,7 @@ describe("EventsService", () => {
     service = new EventsService(
       handlers.roomUpserted,
       handlers.availabilityUpdated,
-      handlers.taxonomyUpdated,
+      handlers.roomDeleted,
     );
   });
 
@@ -124,8 +124,8 @@ describe("EventsService", () => {
         ([, , rk]: [string, string, string]) => rk,
       );
       expect(routingKeys).toContain("inventory.room.upserted");
-      expect(routingKeys).toContain("price.updated");
-      expect(routingKeys).toContain("taxonomy.updated");
+      expect(routingKeys).toContain("inventory.price.updated");
+      expect(routingKeys).toContain("inventory.room.deleted");
     });
   });
 
@@ -166,7 +166,9 @@ describe("EventsService", () => {
 
     it("acks message after successful room.upserted handler", async () => {
       const cb = getConsumeCallback(0);
-      const msg = { content: Buffer.from(JSON.stringify({ room_id: "r1" })) };
+      const msg = {
+        content: Buffer.from(JSON.stringify({ snapshot: { roomId: "r1" } })),
+      };
       cb(msg);
       await new Promise((resolve) => setTimeout(resolve, 20));
       expect(mockChannel.ack).toHaveBeenCalledWith(msg);
@@ -175,19 +177,25 @@ describe("EventsService", () => {
     it("dispatches to availability handler (covers queue callback)", async () => {
       const cb = getConsumeCallback(1);
       const msg = {
-        content: Buffer.from(JSON.stringify({ room_id: "r1", ranges: [] })),
+        content: Buffer.from(
+          JSON.stringify({ roomId: "r1", pricePeriods: [] }),
+        ),
       };
       cb(msg);
       await new Promise((resolve) => setTimeout(resolve, 20));
       expect(handlers.availabilityUpdated.handle).toHaveBeenCalled();
     });
 
-    it("dispatches to taxonomy handler (covers queue callback)", async () => {
+    it("dispatches to room.deleted handler (covers queue callback)", async () => {
       const cb = getConsumeCallback(2);
-      const msg = { content: Buffer.from(JSON.stringify({})) };
+      const msg = {
+        content: Buffer.from(
+          JSON.stringify({ roomId: "r1", propertyId: "p1" }),
+        ),
+      };
       cb(msg);
       await new Promise((resolve) => setTimeout(resolve, 20));
-      expect(handlers.taxonomyUpdated.handle).toHaveBeenCalled();
+      expect(handlers.roomDeleted.handle).toHaveBeenCalled();
     });
 
     it("nacks message with requeue=true when handler throws", async () => {

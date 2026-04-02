@@ -122,6 +122,30 @@ describe("PropertiesRepository", () => {
     });
   });
 
+  describe("deactivateRoom", () => {
+    it("executes an update to set is_active=false for the given room", async () => {
+      const execute = jest.fn().mockResolvedValue(undefined);
+      const updateChain = {
+        set: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        execute,
+      };
+      const db = {
+        updateTable: jest.fn().mockReturnValue(updateChain),
+      } as unknown as import("kysely").Kysely<
+        import("../database/database.types.js").SearchDatabase
+      >;
+      const repo = new PropertiesRepository(db);
+
+      await repo.deactivateRoom("room-1");
+
+      expect(db.updateTable).toHaveBeenCalledWith("room_search_index");
+      expect(updateChain.set).toHaveBeenCalledWith({ is_active: false });
+      expect(updateChain.where).toHaveBeenCalledWith("room_id", "=", "room-1");
+      expect(execute).toHaveBeenCalled();
+    });
+  });
+
   describe("findRoomCity", () => {
     it("returns city when room is found", async () => {
       const chain = makeQueryChain([{ city: "Lisbon" }]);

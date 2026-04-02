@@ -26,18 +26,11 @@ const mockRoom = {
   avail_price_usd: "180",
 };
 
-const mockDetailRow = {
-  ...mockRoom,
-  neighborhood: "Centro",
-  lat: 38.7,
-  lon: -9.14,
-};
-
 const mockProperty = {
-  propertyId: "p1",
-  propertyName: "Hotel A",
+  id: "p1",
+  name: "Hotel A",
   city: "Lisbon",
-  country: "PT",
+  countryCode: "PT",
   stars: 4,
   rating: 4.0,
   reviewCount: 10,
@@ -65,15 +58,9 @@ const baseDto: SearchPropertiesDto = {
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
-function makeServices(
-  candidateRows = [mockRoom],
-  detailRows = [mockDetailRow],
-) {
-  const repo: jest.Mocked<
-    Pick<PropertiesRepository, "findCandidates" | "findByPropertyId">
-  > = {
+function makeServices(candidateRows = [mockRoom]) {
+  const repo: jest.Mocked<Pick<PropertiesRepository, "findCandidates">> = {
     findCandidates: jest.fn().mockResolvedValue(candidateRows),
-    findByPropertyId: jest.fn().mockResolvedValue(detailRows),
   };
 
   const cache: jest.Mocked<Pick<CacheService, "get" | "set" | "scanDel">> = {
@@ -269,7 +256,7 @@ describe("PropertiesService", () => {
       const { service, mockFacets } = makeServices();
       const props = Array.from({ length: 7 }, (_, i) => ({
         ...mockProperty,
-        propertyId: `p${i}`,
+        id: `p${i}`,
       }));
       mockFacets.sortProperties.mockReturnValue(props);
 
@@ -280,7 +267,7 @@ describe("PropertiesService", () => {
       })) as any;
 
       expect(result.results).toHaveLength(3);
-      expect(result.results[0].propertyId).toBe("p3");
+      expect(result.results[0].id).toBe("p3");
       expect(result.meta.total).toBe(7);
       expect(result.meta.totalPages).toBe(3);
     });
@@ -312,57 +299,6 @@ describe("PropertiesService", () => {
       await service.invalidateCityCache("São Paulo");
       expect(cache.scanDel).toHaveBeenCalledWith(
         expect.stringMatching(/^search:properties:.*:/),
-      );
-    });
-  });
-
-  describe("getPropertyById", () => {
-    it("returns null when no rows found", async () => {
-      const { service, repo } = makeServices([mockRoom], []);
-      repo.findByPropertyId.mockResolvedValue([]);
-      const result = await service.getPropertyById("unknown");
-      expect(result).toBeNull();
-    });
-
-    it("returns property detail with rooms when rows found", async () => {
-      const { service } = makeServices();
-      const result = (await service.getPropertyById("p1")) as any;
-      expect(result).not.toBeNull();
-      expect(result.propertyId).toBe("p1");
-      expect(result.propertyName).toBe("Hotel A");
-      expect(result.rooms).toHaveLength(1);
-      expect(result.rooms[0].roomId).toBe("r1");
-    });
-
-    it("deduplicates amenities across rooms", async () => {
-      const { service, repo } = makeServices();
-      repo.findByPropertyId.mockResolvedValue([
-        { ...mockDetailRow, amenities: ["wifi", "pool"] },
-        { ...mockDetailRow, room_id: "r2", amenities: ["wifi", "spa"] },
-      ] as any);
-      const result = (await service.getPropertyById("p1")) as any;
-      expect(result.amenities).toContain("wifi");
-      expect(result.amenities.filter((a: string) => a === "wifi")).toHaveLength(
-        1,
-      );
-    });
-
-    it("returns cached response on cache hit", async () => {
-      const { service, cache, repo } = makeServices();
-      const cached = { propertyId: "p1", cached: true };
-      (cache.get as jest.Mock).mockResolvedValue(JSON.stringify(cached));
-      const result = await service.getPropertyById("p1");
-      expect(result).toEqual(cached);
-      expect(repo.findByPropertyId).not.toHaveBeenCalled();
-    });
-
-    it("stores response in cache with 5-minute TTL", async () => {
-      const { service, cache } = makeServices();
-      await service.getPropertyById("p1");
-      expect(cache.set).toHaveBeenCalledWith(
-        "search:property:p1",
-        expect.any(String),
-        300,
       );
     });
   });

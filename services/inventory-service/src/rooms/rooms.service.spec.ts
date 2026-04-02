@@ -85,8 +85,8 @@ describe("RoomsService", () => {
       });
       expect(result.id).toBe("room-1");
       expect(publish).toHaveBeenCalledWith(
-        "inventory.room.updated",
-        expect.objectContaining({ routingKey: "inventory.room.updated" }),
+        "inventory.room.upserted",
+        expect.objectContaining({ routingKey: "inventory.room.upserted" }),
       );
     });
 
@@ -110,7 +110,7 @@ describe("RoomsService", () => {
   describe("findByProperty", () => {
     it("returns rooms for a given property", async () => {
       const service = makeService();
-      const result = await service.findByProperty("prop-1", "partner-1");
+      const result = await service.findByProperty("prop-1");
       expect(result).toHaveLength(1);
       expect(result[0].propertyId).toBe("prop-1");
     });
@@ -167,7 +167,7 @@ describe("RoomsService", () => {
       const service = makeService({ events: { publish } });
       await service.update("room-1", "partner-1", { capacity: 3 });
       expect(publish).toHaveBeenCalledWith(
-        "inventory.room.updated",
+        "inventory.room.upserted",
         expect.anything(),
       );
     });

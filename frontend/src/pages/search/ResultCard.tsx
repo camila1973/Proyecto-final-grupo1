@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { useLocale } from '../../context/LocaleContext';
 import type { SearchResult, LabelMap } from './types';
 import { formatPrice, resolveLabel } from './utils';
+import { formatAddress } from '../../utils/address';
 import Button from '@mui/material/Button';
 import BookmarkIcon from '@mui/icons-material/Bookmark';
 import Card from '@mui/material/Card';
@@ -41,7 +42,7 @@ export default function ResultCard({
       <CardMedia
         component="img"
         image={result.thumbnailUrl || 'https://placehold.co/224x170?text=Hotel'}
-        alt={result.propertyName}
+        alt={result.name}
         sx={{ width: '27%', flexShrink: 0, objectFit: 'cover' }}
         onError={(e) => {
           (e.currentTarget as HTMLImageElement).src = 'https://placehold.co/224x170?text=Hotel';
@@ -70,11 +71,10 @@ export default function ResultCard({
             noWrap
             color="text.primary"
           >
-            {result.propertyName}
+            {result.name}
           </Typography>
           <Typography variant="caption" color="text.secondary" display="block" mt={0.5}>
-            {result.neighborhood ? `${result.neighborhood}, ` : ''}
-            {result.city}, {result.country}
+            {formatAddress(result.neighborhood, result.city, result.countryCode)}
           </Typography>
           <Typography variant="caption" color="text.secondary" display="block" mt={0.5}>
             {resolveLabel(roomTypeLabels, result.bestRoom.roomType)} · {result.bestRoom.capacity}{' '}

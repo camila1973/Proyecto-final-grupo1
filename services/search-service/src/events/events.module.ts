@@ -2,7 +2,7 @@ import { Module } from "@nestjs/common";
 import { EventsService } from "./events.service.js";
 import { RoomUpsertedHandler } from "./handlers/room-upserted.handler.js";
 import { AvailabilityUpdatedHandler } from "./handlers/availability-updated.handler.js";
-import { TaxonomyUpdatedHandler } from "./handlers/taxonomy-updated.handler.js";
+import { RoomDeletedHandler } from "./handlers/room-deleted.handler.js";
 import { PropertiesModule } from "../properties/properties.module.js";
 import { TaxonomiesModule } from "../taxonomies/taxonomies.module.js";
 
@@ -12,7 +12,7 @@ import { TaxonomiesModule } from "../taxonomies/taxonomies.module.js";
     EventsService,
     RoomUpsertedHandler,
     AvailabilityUpdatedHandler,
-    TaxonomyUpdatedHandler,
+    RoomDeletedHandler,
   ],
 })
 export class EventsModule {}

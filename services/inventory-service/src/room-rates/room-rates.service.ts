@@ -43,12 +43,12 @@ export class RoomRatesService {
       price_usd: String(dto.priceUsd),
       currency: dto.currency ?? "USD",
     });
-    this.events.publish("price.updated", {
-      routingKey: "price.updated",
+    this.events.publish("inventory.price.updated", {
+      routingKey: "inventory.price.updated",
       roomId,
-      fromDate: dto.fromDate,
-      toDate: dto.toDate,
-      priceUsd: dto.priceUsd,
+      pricePeriods: [
+        { fromDate: dto.fromDate, toDate: dto.toDate, priceUsd: dto.priceUsd },
+      ],
       timestamp: new Date().toISOString(),
     });
     return this.toPublic(rate);
@@ -60,7 +60,7 @@ export class RoomRatesService {
     fromDate?: string,
     toDate?: string,
   ): Promise<PublicRoomRate[]> {
-    const rooms = await this.roomsService.findByProperty(propertyId, partnerId);
+    const rooms = await this.roomsService.findByProperty(propertyId);
     const results = await Promise.all(
       rooms.map((r) => this.repo.findByRoom(r.id, fromDate, toDate)),
     );

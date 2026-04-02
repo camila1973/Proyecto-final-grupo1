@@ -31,10 +31,10 @@ export interface BestRoom {
 }
 
 export interface SearchResult {
-  propertyId: string;
-  propertyName: string;
+  id: string;
+  name: string;
   city: string;
-  country: string;
+  countryCode: string;
   neighborhood: string | null;
   thumbnailUrl: string;
   amenities: string[];

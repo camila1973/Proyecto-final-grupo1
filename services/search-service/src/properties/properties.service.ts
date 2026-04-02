@@ -5,12 +5,7 @@ import { CacheService } from "../cache/cache.service.js";
 import { FacetsService } from "./facets/facets.service.js";
 import { InventoryClientService } from "../inventory/inventory-client.service.js";
 import type { SearchPropertiesDto } from "./dto/search-properties.dto.js";
-
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const allCities = require("cities.json") as {
-  name: string;
-  country: string;
-}[];
+import { City } from "country-state-city";
 
 const CACHE_TTL = 60 * 5; // 5 minutes
 
@@ -79,65 +74,59 @@ export class PropertiesService {
     return response;
   }
 
-  async getPropertyById(propertyId: string) {
-    const cacheKey = `search:property:${propertyId}`;
-    const cached = await this.cache.get(cacheKey);
-    if (cached) {
-      return JSON.parse(cached) as object;
-    }
-
-    const rows = await this.repo.findByPropertyId(propertyId);
-
-    if (rows.length === 0) {
-      return null;
-    }
-
-    const first = rows[0];
-    const allAmenities = [...new Set(rows.flatMap((r) => r.amenities))];
-    const rooms = rows.map((r) => ({
-      roomId: r.room_id,
-      roomType: r.room_type,
-      bedType: r.bed_type,
-      viewType: r.view_type,
-      capacity: r.capacity,
-      basePriceUsd: parseFloat(r.base_price_usd),
-    }));
-
-    const response = {
-      propertyId: first.property_id,
-      propertyName: first.property_name,
-      city: first.city,
-      country: first.country,
-      neighborhood: first.neighborhood ?? null,
-      lat: first.lat,
-      lon: first.lon,
-      stars: first.stars,
-      rating: parseFloat(first.rating),
-      reviewCount: first.review_count,
-      thumbnailUrl: first.thumbnail_url,
-      amenities: allAmenities,
-      rooms,
-    };
-
-    await this.cache.set(cacheKey, JSON.stringify(response), CACHE_TTL);
-    return response;
-  }
-
   getCitySuggestions(
     q: string,
     limit = 8,
-  ): { suggestions: { city: string; country: string }[] } {
+  ): {
+    suggestions: {
+      id: string;
+      city: string;
+      country: string;
+      latitude?: string;
+      longitude?: string;
+    }[];
+  } {
     const normalized = this.stripAccents(q.toLowerCase());
-    const suggestions: { city: string; country: string }[] = [];
+    const suggestions: {
+      id: string;
+      city: string;
+      country: string;
+      latitude?: string;
+      longitude?: string;
+    }[] = [];
 
-    for (const entry of allCities) {
+    for (const entry of City.getAllCities()) {
       if (this.stripAccents(entry.name.toLowerCase()).startsWith(normalized)) {
-        suggestions.push({ city: entry.name, country: entry.country });
+        suggestions.push({
+          id: this.buildCityId(entry.name, entry.stateCode, entry.countryCode),
+          city: entry.name,
+          country: entry.countryCode,
+          latitude: entry.latitude ?? undefined,
+          longitude: entry.longitude ?? undefined,
+        });
         if (suggestions.length === limit) break;
       }
     }
 
     return { suggestions };
+  }
+
+  async getFeatured(limit: number) {
+    const cacheKey = `search:featured:${limit}`;
+    const cached = await this.cache.get(cacheKey);
+    if (cached) return JSON.parse(cached) as object;
+
+    const candidates = await this.repo.findFeatured(limit * 5);
+    const properties = this.facets.selectBestRoomPerProperty(candidates);
+    const sorted = this.facets.sortProperties(properties, "relevance");
+    const results = sorted.slice(0, limit);
+
+    const response = {
+      results,
+      meta: { total: results.length, page: 1, pageSize: limit },
+    };
+    await this.cache.set(cacheKey, JSON.stringify(response), CACHE_TTL);
+    return response;
   }
 
   async invalidateCityCache(city: string): Promise<void> {
@@ -152,6 +141,7 @@ export class PropertiesService {
     const fingerprint = createHash("sha256")
       .update(
         JSON.stringify({
+          countryCode: dto.countryCode,
           checkIn: dto.checkIn,
           checkOut: dto.checkOut,
           guests: dto.guests,
@@ -174,8 +164,18 @@ export class PropertiesService {
     return `search:properties:${city}:${fingerprint}`;
   }
 
+  private buildCityId(
+    name: string,
+    stateCode: string,
+    countryCode: string,
+  ): string {
+    const slug = (s: string) =>
+      this.stripAccents(s).toLowerCase().trim().replace(/[\s]+/g, "-");
+    return `${slug(countryCode)}-${slug(stateCode)}-${slug(name)}`;
+  }
+
   private normalizeCity(city: string): string {
-    return city.toLowerCase().trim().replace(/\s+/g, "_");
+    return this.stripAccents(city).toLowerCase().trim().replace(/\s+/g, "_");
   }
 
   private stripAccents(str: string): string {

@@ -7,10 +7,10 @@ import en from './i18n/locales/en.json';
 const i18n = setupTestI18n('es');
 
 const mockProperty = (id: string, name: string) => ({
-  propertyId: id,
-  propertyName: name,
+  id,
+  name,
   city: 'Cancún',
-  country: 'Mexico',
+  countryCode: 'MX',
   neighborhood: 'Zona Hotelera',
   lat: 21.16,
   lon: -86.85,
@@ -19,14 +19,23 @@ const mockProperty = (id: string, name: string) => ({
   reviewCount: 100,
   thumbnailUrl: 'https://placehold.co/400x300',
   amenities: ['wifi'],
-  rooms: [{ roomId: 'r1', roomType: 'deluxe', bedType: 'king', viewType: 'ocean', capacity: 2, basePriceUsd: 300 }],
+  bestRoom: { roomId: 'r1', roomType: 'deluxe', bedType: 'king', capacity: 2, basePriceUsd: 300, priceUsd: 300 },
 });
+
+const featuredResponse = {
+  results: [
+    mockProperty('b1000000-0000-0000-0000-000000000001', 'Gran Caribe Resort & Spa'),
+    mockProperty('b1000000-0000-0000-0000-000000000004', 'Hotel Histórico Centro'),
+    mockProperty('b1000000-0000-0000-0000-000000000002', 'Playa Azul Hotel'),
+  ],
+  total: 3,
+  page: 1,
+  pageSize: 3,
+};
 
 beforeEach(() => {
   global.fetch = jest.fn((url: string) => {
-    if (url.includes('000000000001')) return Promise.resolve({ ok: true, json: () => Promise.resolve(mockProperty('b1000000-0000-0000-0000-000000000001', 'Gran Caribe Resort & Spa')) });
-    if (url.includes('000000000004')) return Promise.resolve({ ok: true, json: () => Promise.resolve(mockProperty('b1000000-0000-0000-0000-000000000004', 'Hotel Histórico Centro')) });
-    if (url.includes('000000000002')) return Promise.resolve({ ok: true, json: () => Promise.resolve(mockProperty('b1000000-0000-0000-0000-000000000002', 'Playa Azul Hotel')) });
+    if (String(url).includes('/search/properties')) return Promise.resolve({ ok: true, json: () => Promise.resolve(featuredResponse) });
     return Promise.resolve({ ok: false, json: () => Promise.resolve({}) });
   }) as jest.Mock;
 });

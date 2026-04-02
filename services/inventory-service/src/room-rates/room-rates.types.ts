@@ -1,4 +1,5 @@
 export interface CreateRoomRateDto {
+  partnerId?: string;
   roomId: string;
   fromDate: string; // ISO date YYYY-MM-DD
   toDate: string; // exclusive upper bound

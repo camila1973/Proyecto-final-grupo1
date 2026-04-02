@@ -31,6 +31,7 @@ const searchRoute = createRoute({
   path: '/search',
   validateSearch: (search: Record<string, unknown>) => ({
     city: (search.city as string) ?? '',
+    countryCode: (search.countryCode as string) ?? '',
     checkIn: (search.checkIn as string) ?? '',
     checkOut: (search.checkOut as string) ?? '',
     guests: Number(search.guests ?? 2),
@@ -41,6 +42,11 @@ const searchRoute = createRoute({
 const propertyRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/properties/$propertyId',
+  validateSearch: (search: Record<string, unknown>) => ({
+    checkIn: (search.checkIn as string) ?? '',
+    checkOut: (search.checkOut as string) ?? '',
+    guests: Number(search.guests ?? 1),
+  }),
   component: PropertyDetailPage,
 });
 

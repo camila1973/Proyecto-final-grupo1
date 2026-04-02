@@ -6,7 +6,13 @@ import {
   NewProperty,
   PropertyRow,
   PropertyUpdate,
+  RoomRow,
 } from "../database/database.types";
+
+export interface PropertyWithRooms {
+  property: PropertyRow;
+  rooms: RoomRow[];
+}
 
 @Injectable()
 export class PropertiesRepository {
@@ -39,6 +45,18 @@ export class PropertiesRepository {
       .selectAll()
       .where("id", "=", id)
       .executeTakeFirst();
+  }
+
+  async findByIdWithRooms(id: string): Promise<PropertyWithRooms | undefined> {
+    const property = await this.findById(id);
+    if (!property) return undefined;
+    const rooms = await this.db
+      .selectFrom("inv_rooms")
+      .selectAll()
+      .where("property_id", "=", id)
+      .where("status", "=", "active")
+      .execute();
+    return { property, rooms };
   }
 
   async findByName(name: string): Promise<PropertyRow | undefined> {

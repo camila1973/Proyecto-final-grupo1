@@ -101,6 +101,7 @@ export class PropertiesRepository {
         "rsi.property_name",
         "rsi.city",
         "rsi.country",
+        "rsi.neighborhood",
         "rsi.stars",
         "rsi.rating",
         "rsi.review_count",
@@ -115,8 +116,8 @@ export class PropertiesRepository {
           SELECT rpp.price_usd::text
           FROM room_price_periods rpp
           WHERE rpp.room_id = rsi.room_id
-            AND rpp.from_date <= ${dto.checkIn ?? "9999-12-31"}::date
-            AND rpp.to_date   >= ${dto.checkOut ?? "0001-01-01"}::date
+            AND rpp.from_date <= ${dto.checkIn || "9999-12-31"}::date
+            AND rpp.to_date   >= ${dto.checkOut || "0001-01-01"}::date
           LIMIT 1
         )`.as("avail_price_usd"),
       ])
@@ -127,16 +128,40 @@ export class PropertiesRepository {
           sql<SqlBool>`(rsi.city % ${dto.city} OR rsi.property_name % ${dto.city})`,
         ),
       )
-      .$if(!!dto.checkIn && !!dto.checkOut, (qb) =>
-        qb.where(
-          sql<SqlBool>`EXISTS (
-            SELECT 1 FROM room_price_periods rpp
-            WHERE rpp.room_id = rsi.room_id
-              AND rpp.from_date <= ${dto.checkIn}::date
-              AND rpp.to_date   >= ${dto.checkOut}::date
-          )`,
-        ),
+      .$if(!!dto.countryCode, (qb) =>
+        qb.where("rsi.country", "=", dto.countryCode!),
       )
+      .execute();
+
+    return rows as CandidateRoom[];
+  }
+
+  async findFeatured(limit: number): Promise<CandidateRoom[]> {
+    const rows = await this.db
+      .selectFrom("room_search_index as rsi")
+      .select([
+        "rsi.room_id",
+        "rsi.property_id",
+        "rsi.property_name",
+        "rsi.city",
+        "rsi.country",
+        "rsi.neighborhood",
+        "rsi.stars",
+        "rsi.rating",
+        "rsi.review_count",
+        "rsi.thumbnail_url",
+        "rsi.amenities",
+        "rsi.room_type",
+        "rsi.bed_type",
+        "rsi.view_type",
+        "rsi.capacity",
+        "rsi.base_price_usd",
+        sql<string | null>`NULL`.as("avail_price_usd"),
+      ])
+      .where("rsi.is_active", "=", true)
+      .orderBy("rsi.rating", "desc")
+      .orderBy("rsi.stars", "desc")
+      .limit(limit)
       .execute();
 
     return rows as CandidateRoom[];
@@ -170,6 +195,14 @@ export class PropertiesRepository {
       .where("rsi.property_id", "=", propertyId)
       .where("rsi.is_active", "=", true)
       .execute() as Promise<Selectable<RoomSearchIndexTable>[]>;
+  }
+
+  async deactivateRoom(roomId: string): Promise<void> {
+    await this.db
+      .updateTable("room_search_index")
+      .set({ is_active: false })
+      .where("room_id", "=", roomId)
+      .execute();
   }
 
   async findRoomCity(roomId: string): Promise<string | undefined> {

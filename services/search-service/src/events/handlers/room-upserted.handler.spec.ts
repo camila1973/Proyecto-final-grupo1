@@ -6,26 +6,27 @@ import type { RoomUpsertedPayload } from "./room-upserted.handler.js";
 const makePayload = (
   overrides: Partial<RoomUpsertedPayload> = {},
 ): RoomUpsertedPayload => ({
-  room_id: "550e8400-e29b-41d4-a716-446655440000",
-  property_id: "660e8400-e29b-41d4-a716-446655440001",
-  partner_id: "770e8400-e29b-41d4-a716-446655440002",
-  property_name: "Grand Hotel",
+  roomId: "550e8400-e29b-41d4-a716-446655440000",
+  propertyId: "660e8400-e29b-41d4-a716-446655440001",
+  partnerId: "770e8400-e29b-41d4-a716-446655440002",
+  propertyName: "Grand Hotel",
   city: "Cancún",
   country: "Mexico",
   neighborhood: null,
   lat: 21.17,
   lon: -86.84,
-  room_type: "suite",
-  bed_type: "king",
-  view_type: "ocean",
+  roomType: "suite",
+  bedType: "king",
+  viewType: "ocean",
   capacity: 2,
+  totalRooms: 10,
   amenities: ["wifi", "pool"],
-  base_price_usd: 350,
+  basePriceUsd: 350,
   stars: 5,
   rating: 4.8,
-  review_count: 320,
-  thumbnail_url: "https://example.com/img.jpg",
-  is_active: true,
+  reviewCount: 320,
+  thumbnailUrl: "https://example.com/img.jpg",
+  isActive: true,
   ...overrides,
 });
 
@@ -48,11 +49,31 @@ describe("RoomUpsertedHandler", () => {
     );
   });
 
-  it("calls repo.upsertRoom and invalidates the city cache", async () => {
+  it("calls repo.upsertRoom with mapped snake_case record and invalidates the city cache", async () => {
     const payload = makePayload();
     await handler.handle(payload);
 
-    expect(repo.upsertRoom).toHaveBeenCalledWith(payload);
+    expect(repo.upsertRoom).toHaveBeenCalledWith(
+      expect.objectContaining({
+        room_id: payload.roomId,
+        property_id: payload.propertyId,
+        partner_id: payload.partnerId,
+        property_name: payload.propertyName,
+        city: payload.city,
+        country: payload.country,
+        room_type: payload.roomType,
+        bed_type: payload.bedType,
+        view_type: payload.viewType,
+        capacity: payload.capacity,
+        amenities: payload.amenities,
+        base_price_usd: payload.basePriceUsd,
+        stars: payload.stars,
+        rating: payload.rating,
+        review_count: payload.reviewCount,
+        thumbnail_url: payload.thumbnailUrl,
+        is_active: payload.isActive,
+      }),
+    );
     expect(propertiesService.invalidateCityCache).toHaveBeenCalledWith(
       "Cancún",
     );

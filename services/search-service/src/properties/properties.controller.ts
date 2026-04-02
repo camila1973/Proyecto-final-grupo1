@@ -1,11 +1,4 @@
-import {
-  BadRequestException,
-  Controller,
-  Get,
-  NotFoundException,
-  Param,
-  Query,
-} from "@nestjs/common";
+import { BadRequestException, Controller, Get, Query } from "@nestjs/common";
 import { PropertiesService } from "./properties.service.js";
 import type {
   SearchPropertiesDto,
@@ -23,19 +16,16 @@ const VALID_SORTS: SortOption[] = [
 export class PropertiesController {
   constructor(private readonly propertiesService: PropertiesService) {}
 
+  @Get("featured")
+  getFeatured(@Query("limit") limit?: string) {
+    const size = limit ? Math.min(20, Math.max(1, parseInt(limit, 10))) : 6;
+    return this.propertiesService.getFeatured(size);
+  }
+
   @Get("properties")
   searchProperties(@Query() query: Record<string, string>) {
     const dto = this.parseQuery(query);
     return this.propertiesService.searchProperties(dto);
-  }
-
-  @Get("properties/:id")
-  async getProperty(@Param("id") id: string) {
-    const result = await this.propertiesService.getPropertyById(id);
-    if (!result) {
-      throw new NotFoundException(`Property ${id} not found`);
-    }
-    return result;
   }
 
   @Get("cities")
@@ -47,7 +37,12 @@ export class PropertiesController {
   }
 
   private parseQuery(query: Record<string, string>): SearchPropertiesDto {
-    const { city, checkIn, checkOut, guests, page, limit, sort } = query;
+    const { city, countryCode, checkIn, checkOut, guests, page, limit, sort } =
+      query;
+
+    if (!city?.trim()) {
+      throw new BadRequestException("city is required");
+    }
 
     if (checkIn && isNaN(new Date(checkIn).getTime())) {
       throw new BadRequestException("checkIn must be a valid ISO 8601 date");
@@ -76,7 +71,8 @@ export class PropertiesController {
     const starsNums = starsRaw?.map(Number).filter((n) => !isNaN(n));
 
     return {
-      city: city?.trim() ?? "",
+      city: city.trim(),
+      countryCode: countryCode?.trim() || undefined,
       checkIn: checkIn ?? "",
       checkOut: checkOut ?? "",
       guests: guestsNum,

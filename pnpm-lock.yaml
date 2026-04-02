@@ -53,15 +53,15 @@ importers:
       amqplib:
         specifier: ^0.10.8
         version: 0.10.9
-      cities.json:
-        specifier: ^1.1.50
-        version: 1.1.50
       class-transformer:
         specifier: ^0.5.1
         version: 0.5.1
       class-validator:
         specifier: ^0.15.1
         version: 0.15.1
+      country-state-city:
+        specifier: ^3.2.1
+        version: 3.2.1
       dayjs:
         specifier: ^1.11.20
         version: 1.11.20
@@ -5181,9 +5181,6 @@ packages:
     resolution: {integrity: sha512-77PSwercCZU2Fc4sX94eF8k8Pxte6JAwL4/ICZLFjJLqegs7kCuAsqqj/70NQF6TvDpgFjkubQB2FW2ZZddvQg==}
     engines: {node: '>=8'}
 
-  cities.json@1.1.50:
-    resolution: {integrity: sha512-ZsCgxtaSyU66bGSwSUl1PZzP2BHxzwvNkjolxb3HIYmbYsaeq+k3wZt2De16HswQHGHY1agRwpSWenkWeLrzfg==}
-
   citty@0.1.6:
     resolution: {integrity: sha512-tskPPKEs8D2KPafUypv2gxwJP8h/OaJmC82QQGGDQcHvXX43xF2VDACcJVmZ0EuSxkpO9Kc4MlrA3q0+FG58AQ==}
 
@@ -5463,6 +5460,9 @@ packages:
     peerDependenciesMeta:
       typescript:
         optional: true
+
+  country-state-city@3.2.1:
+    resolution: {integrity: sha512-kxbanqMc6izjhc/EHkGPCTabSPZ2G6eG4/97akAYHJUN4stzzFEvQPZoF8oXDQ+10gM/O/yUmISCR1ZVxyb6EA==}
 
   create-require@1.1.1:
     resolution: {integrity: sha512-dcKFX3jn0MpIaXjisoRvexIJVEKzaq7z2rZKxf+MSr9TkdmHmsU4m2lcLojrj/FHl8mk5VxMmYA+ftRkP/3oKQ==}
@@ -17689,8 +17689,6 @@ snapshots:
 
   ci-info@4.4.0: {}
 
-  cities.json@1.1.50: {}
-
   citty@0.1.6:
     dependencies:
       consola: 3.4.2
@@ -17952,6 +17950,8 @@ snapshots:
       path-type: 4.0.0
     optionalDependencies:
       typescript: 5.9.3
+
+  country-state-city@3.2.1: {}
 
   create-require@1.1.1: {}
 

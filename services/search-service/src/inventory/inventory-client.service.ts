@@ -11,7 +11,7 @@ export class InventoryClientService {
     toDate: string;
   }): Promise<Array<{ roomId: string }>> {
     const url = new URL(`${this.baseUrl}/availability`);
-    url.searchParams.set("roomIds", params.roomIds.join(","));
+    url.searchParams.set("roomId", params.roomIds.join(","));
     url.searchParams.set("fromDate", params.fromDate);
     url.searchParams.set("toDate", params.toDate);
 

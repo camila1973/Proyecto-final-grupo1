@@ -9,9 +9,8 @@ import { PropertiesService } from "../../properties/properties.service.js";
 export type { PricePeriod };
 
 export interface AvailabilityUpdatedPayload {
-  room_id: string;
-  /** Seasonal price periods to replace for this room. */
-  price_periods: PricePeriod[];
+  roomId: string;
+  pricePeriods: Array<{ fromDate: string; toDate: string; priceUsd: number }>;
 }
 
 @Injectable()
@@ -25,18 +24,21 @@ export class AvailabilityUpdatedHandler {
   ) {}
 
   async handle(payload: AvailabilityUpdatedPayload): Promise<void> {
-    await this.pricePeriodsRepo.replaceForRoom(
-      payload.room_id,
-      payload.price_periods,
-    );
+    const periods: PricePeriod[] = payload.pricePeriods.map((p) => ({
+      from_date: p.fromDate,
+      to_date: p.toDate,
+      price_usd: p.priceUsd,
+    }));
 
-    const city = await this.propertiesRepo.findRoomCity(payload.room_id);
+    await this.pricePeriodsRepo.replaceForRoom(payload.roomId, periods);
+
+    const city = await this.propertiesRepo.findRoomCity(payload.roomId);
     if (city) {
       await this.properties.invalidateCityCache(city);
     }
 
     this.logger.debug(
-      `Updated price periods for room ${payload.room_id} (${payload.price_periods.length} periods)`,
+      `Updated price periods for room ${payload.roomId} (${periods.length} periods)`,
     );
   }
 }

@@ -17,10 +17,10 @@ const roomTypeLabels = { suite: 'Suite', standard: 'Estándar', deluxe: 'Deluxe'
 
 function makeResult(overrides: Partial<SearchResult> = {}): SearchResult {
   return {
-    propertyId: 'p1',
-    propertyName: 'Gran Caribe Resort',
+    id: 'p1',
+    name: 'Gran Caribe Resort',
     city: 'Cancún',
-    country: 'Mexico',
+    countryCode: 'MX',
     neighborhood: 'Zona Hotelera',
     thumbnailUrl: 'https://placehold.co/400x300',
     amenities: ['wifi', 'pool', 'spa', 'gym'],
@@ -64,7 +64,7 @@ describe('ResultCard', () => {
       />,
     );
     expect(screen.getByText(/Cancún/)).toBeInTheDocument();
-    expect(screen.getByText(/Mexico/)).toBeInTheDocument();
+    expect(screen.getByText(/MX/)).toBeInTheDocument();
   });
 
   it('renders neighborhood when present', () => {

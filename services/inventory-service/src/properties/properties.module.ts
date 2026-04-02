@@ -2,8 +2,10 @@ import { Module } from "@nestjs/common";
 import { PropertiesController } from "./properties.controller";
 import { PropertiesService } from "./properties.service";
 import { PropertiesRepository } from "./properties.repository";
+import { EventsModule } from "../events/events.module";
 
 @Module({
+  imports: [EventsModule],
   controllers: [PropertiesController],
   providers: [PropertiesService, PropertiesRepository],
   exports: [PropertiesService, PropertiesRepository],

@@ -44,6 +44,8 @@
     "error": "No se pudieron cargar los detalles de la propiedad."
   },
   "search": {
+    "error_city_required": "Por favor ingresa un destino.",
+    "error_checkout_after_checkin": "La fecha de salida debe ser posterior a la de llegada.",
     "loading": "Buscando hoteles...",
     "error": "Error al buscar hoteles. Por favor intenta de nuevo.",
     "empty": "No se encontraron hoteles con estos criterios.",
