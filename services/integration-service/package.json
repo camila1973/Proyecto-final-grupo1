@@ -1,1 +1,8 @@
-{ "name": "integration-service", "version": "0.0.1", "private": true }
+{
+  "name": "integration-service",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "generate-hmac": "npx tsx scripts/generate-hmac.ts"
+  }
+}
