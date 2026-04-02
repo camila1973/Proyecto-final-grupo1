@@ -22,6 +22,25 @@ export interface InvPropertiesTable {
   status: Generated<string>; // DEFAULT 'active'
   country_code: string;
   partner_id: string;
+  neighborhood: ColumnType<
+    string | null,
+    string | null | undefined,
+    string | null | undefined
+  >;
+  lat: ColumnType<
+    number | null,
+    number | null | undefined,
+    number | null | undefined
+  >;
+  lon: ColumnType<
+    number | null,
+    number | null | undefined,
+    number | null | undefined
+  >;
+  rating: Generated<string>; // NUMERIC returned as string, DEFAULT 0
+  review_count: Generated<number>; // DEFAULT 0
+  thumbnail_url: Generated<string>; // DEFAULT ''
+  amenities: Generated<string[]>; // DEFAULT '{}'
   created_at: Generated<Date>;
   updated_at: Generated<Date>;
 }
@@ -30,6 +49,8 @@ export interface InvRoomsTable {
   id: Generated<string>;
   property_id: string;
   room_type: string;
+  bed_type: Generated<string>; // DEFAULT ''
+  view_type: Generated<string>; // DEFAULT ''
   capacity: number;
   total_rooms: number;
   base_price_usd: string; // NUMERIC returned as string by pg

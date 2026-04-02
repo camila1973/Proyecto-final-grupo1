@@ -21,10 +21,12 @@ export class RoomsService {
     partnerId: string,
     dto: CreateRoomDto,
   ): Promise<PublicRoom> {
-    await this.propertiesService.findOne(propertyId, partnerId);
+    await this.propertiesService.findOne(propertyId);
     const room = await this.repo.create({
       property_id: propertyId,
       room_type: dto.roomType,
+      bed_type: dto.bedType,
+      view_type: dto.viewType,
       capacity: dto.capacity,
       total_rooms: dto.totalRooms,
       base_price_usd: String(dto.basePriceUsd),
@@ -33,19 +35,16 @@ export class RoomsService {
     return this.toPublic(room);
   }
 
-  async findByProperty(
-    propertyId: string,
-    partnerId: string,
-  ): Promise<PublicRoom[]> {
-    await this.propertiesService.findOne(propertyId, partnerId);
+  async findByProperty(propertyId: string): Promise<PublicRoom[]> {
+    await this.propertiesService.findOne(propertyId);
     const rows = await this.repo.findByProperty(propertyId);
     return rows.map((r) => this.toPublic(r));
   }
 
-  async findOne(id: string, partnerId: string): Promise<PublicRoom> {
+  async findOne(id: string): Promise<PublicRoom> {
     const room = await this.repo.findById(id);
     if (!room) throw new NotFoundException(`Room ${id} not found`);
-    await this.propertiesService.findOne(room.property_id, partnerId);
+    await this.propertiesService.findOne(room.property_id);
     return this.toPublic(room);
   }
 
@@ -58,9 +57,11 @@ export class RoomsService {
     partnerId: string,
     dto: UpdateRoomDto,
   ): Promise<PublicRoom> {
-    await this.findOne(id, partnerId);
+    await this.findOne(id);
     const updated = await this.repo.update(id, {
       room_type: dto.roomType,
+      bed_type: dto.bedType,
+      view_type: dto.viewType,
       capacity: dto.capacity,
       total_rooms: dto.totalRooms,
       status: dto.status,
@@ -72,8 +73,8 @@ export class RoomsService {
     return this.toPublic(updated);
   }
 
-  async remove(id: string, partnerId: string): Promise<void> {
-    const room = await this.findOne(id, partnerId);
+  async remove(id: string): Promise<void> {
+    const room = await this.findOne(id);
     await this.repo.softDelete(id);
     this.events.publish("inventory.room.deleted", {
       routingKey: "inventory.room.deleted",
@@ -89,17 +90,28 @@ export class RoomsService {
     const snapshot: RoomSnapshot = {
       roomId: room.id,
       propertyId: property.id,
+      partnerId: property.partner_id,
       propertyName: property.name,
       city: property.city,
-      countryCode: property.country_code,
+      country: property.country_code,
+      neighborhood: property.neighborhood,
+      lat: property.lat,
+      lon: property.lon,
       roomType: room.room_type,
+      bedType: room.bed_type,
+      viewType: room.view_type,
       capacity: room.capacity,
       totalRooms: room.total_rooms,
       basePriceUsd: parseFloat(room.base_price_usd),
+      amenities: property.amenities,
       stars: property.stars,
+      rating: parseFloat(property.rating),
+      reviewCount: property.review_count,
+      thumbnailUrl: property.thumbnail_url,
+      isActive: room.status === "active",
     };
-    this.events.publish("inventory.room.updated", {
-      routingKey: "inventory.room.updated",
+    this.events.publish("inventory.room.upserted", {
+      routingKey: "inventory.room.upserted",
       timestamp: new Date().toISOString(),
       snapshot,
     });
@@ -110,6 +122,8 @@ export class RoomsService {
       id: row.id,
       propertyId: row.property_id,
       roomType: row.room_type,
+      bedType: row.bed_type,
+      viewType: row.view_type,
       capacity: row.capacity,
       totalRooms: row.total_rooms,
       basePriceUsd: row.base_price_usd,

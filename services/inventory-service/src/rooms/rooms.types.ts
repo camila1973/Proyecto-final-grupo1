@@ -1,6 +1,8 @@
 export interface CreateRoomDto {
   propertyId: string;
   roomType: string;
+  bedType?: string;
+  viewType?: string;
   capacity: number;
   totalRooms: number;
   basePriceUsd: number;
@@ -8,6 +10,8 @@ export interface CreateRoomDto {
 
 export interface UpdateRoomDto {
   roomType?: string;
+  bedType?: string;
+  viewType?: string;
   capacity?: number;
   totalRooms?: number;
   basePriceUsd?: number;
@@ -18,6 +22,8 @@ export interface PublicRoom {
   id: string;
   propertyId: string;
   roomType: string;
+  bedType: string;
+  viewType: string;
   capacity: number;
   totalRooms: number;
   basePriceUsd: string;

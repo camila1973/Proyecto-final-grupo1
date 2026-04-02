@@ -17,6 +17,7 @@ export default function SearchPage() {
 
   const {
     city: urlCity,
+    countryCode: urlCountryCode,
     checkIn: urlCheckIn,
     checkOut: urlCheckOut,
     guests: urlGuests,
@@ -49,6 +50,7 @@ export default function SearchPage() {
   // Build API query string from URL params + active filters
   const queryParams = new URLSearchParams();
   if (urlCity) queryParams.set('city', urlCity);
+  if (urlCountryCode) queryParams.set('countryCode', urlCountryCode);
   if (urlCheckIn) queryParams.set('checkIn', urlCheckIn);
   if (urlCheckOut) queryParams.set('checkOut', urlCheckOut);
   if (urlGuests) queryParams.set('guests', String(urlGuests));
@@ -114,6 +116,7 @@ export default function SearchPage() {
           <SearchBarForm
             key={`${urlCity}-${urlCheckIn}-${urlCheckOut}-${urlGuests}`}
             defaultCity={urlCity}
+            defaultCountryCode={urlCountryCode}
             defaultCheckIn={urlCheckIn}
             defaultCheckOut={urlCheckOut}
             defaultGuests={urlGuests}
@@ -166,7 +169,7 @@ export default function SearchPage() {
 
           {results.map((result) => (
             <ResultCard
-              key={result.propertyId}
+              key={result.id}
               result={result}
               nights={nights}
               amenityLabels={amenityLabels}
@@ -174,7 +177,12 @@ export default function SearchPage() {
               onBook={() =>
                 navigate({
                   to: '/properties/$propertyId',
-                  params: { propertyId: result.propertyId },
+                  params: { propertyId: result.id },
+                  search: {
+                    checkIn: urlCheckIn,
+                    checkOut: urlCheckOut,
+                    guests: urlGuests,
+                  },
                 })
               }
             />

@@ -1,18 +1,16 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { sql } from "kysely";
-import { DatabaseService } from "../../database/database.service.js";
+import { PropertiesRepository } from "../../properties/properties.repository.js";
+import {
+  PricePeriodsRepository,
+  type PricePeriod,
+} from "../../properties/price-periods.repository.js";
 import { PropertiesService } from "../../properties/properties.service.js";
 
-export interface PricePeriod {
-  from_date: string;
-  to_date: string;
-  price_usd: number;
-}
+export type { PricePeriod };
 
 export interface AvailabilityUpdatedPayload {
-  room_id: string;
-  /** Seasonal price periods to replace for this room. */
-  price_periods: PricePeriod[];
+  roomId: string;
+  pricePeriods: Array<{ fromDate: string; toDate: string; priceUsd: number }>;
 }
 
 @Injectable()
@@ -20,40 +18,27 @@ export class AvailabilityUpdatedHandler {
   private readonly logger = new Logger(AvailabilityUpdatedHandler.name);
 
   constructor(
-    private readonly db: DatabaseService,
+    private readonly propertiesRepo: PropertiesRepository,
+    private readonly pricePeriodsRepo: PricePeriodsRepository,
     private readonly properties: PropertiesService,
   ) {}
 
   async handle(payload: AvailabilityUpdatedPayload): Promise<void> {
-    // Replace all price periods for this room atomically.
-    await sql`
-      DELETE FROM room_price_periods WHERE room_id = ${payload.room_id}::uuid
-    `.execute(this.db.db);
+    const periods: PricePeriod[] = payload.pricePeriods.map((p) => ({
+      from_date: p.fromDate,
+      to_date: p.toDate,
+      price_usd: p.priceUsd,
+    }));
 
-    for (const period of payload.price_periods) {
-      await sql`
-        INSERT INTO room_price_periods (room_id, from_date, to_date, price_usd)
-        VALUES (
-          ${payload.room_id}::uuid,
-          ${period.from_date}::date,
-          ${period.to_date}::date,
-          ${period.price_usd}
-        )
-      `.execute(this.db.db);
-    }
+    await this.pricePeriodsRepo.replaceForRoom(payload.roomId, periods);
 
-    const row = await this.db.db
-      .selectFrom("room_search_index")
-      .select("city")
-      .where("room_id", "=", payload.room_id)
-      .executeTakeFirst();
-
-    if (row) {
-      await this.properties.invalidateCityCache(row.city);
+    const city = await this.propertiesRepo.findRoomCity(payload.roomId);
+    if (city) {
+      await this.properties.invalidateCityCache(city);
     }
 
     this.logger.debug(
-      `Updated price periods for room ${payload.room_id} (${payload.price_periods.length} periods)`,
+      `Updated price periods for room ${payload.roomId} (${periods.length} periods)`,
     );
   }
 }

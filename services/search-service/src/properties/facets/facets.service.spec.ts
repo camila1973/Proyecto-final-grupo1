@@ -14,6 +14,7 @@ function makeRoom(overrides: Partial<CandidateRoom> = {}): CandidateRoom {
     review_count: 100,
     thumbnail_url: "https://example.com/img.jpg",
     amenities: ["wifi", "pool"],
+    neighborhood: null,
     room_type: "suite",
     bed_type: "king",
     view_type: "ocean",
@@ -322,10 +323,11 @@ describe("FacetsService", () => {
       stars: number,
       rating: number,
     ): ReturnType<FacetsService["selectBestRoomPerProperty"]>[0] => ({
-      propertyId: id,
-      propertyName: `Hotel ${id}`,
+      id: id,
+      name: `Hotel ${id}`,
       city: "Lisbon",
-      country: "PT",
+      countryCode: "PT",
+      neighborhood: null,
       stars,
       rating,
       reviewCount: 10,
@@ -347,7 +349,7 @@ describe("FacetsService", () => {
         makeProperty("p2", 100, 3, 3.5),
       ];
       const sorted = service.sortProperties(props, "price_asc");
-      expect(sorted[0].propertyId).toBe("p2");
+      expect(sorted[0].id).toBe("p2");
     });
 
     it("sorts by price_desc", () => {
@@ -356,7 +358,7 @@ describe("FacetsService", () => {
         makeProperty("p2", 200, 3, 3.5),
       ];
       const sorted = service.sortProperties(props, "price_desc");
-      expect(sorted[0].propertyId).toBe("p2");
+      expect(sorted[0].id).toBe("p2");
     });
 
     it("sorts by stars_desc, then rating desc as tiebreaker", () => {
@@ -366,9 +368,9 @@ describe("FacetsService", () => {
         makeProperty("p3", 150, 5, 3.0),
       ];
       const sorted = service.sortProperties(props, "stars_desc");
-      expect(sorted[0].propertyId).toBe("p3");
-      expect(sorted[1].propertyId).toBe("p2");
-      expect(sorted[2].propertyId).toBe("p1");
+      expect(sorted[0].id).toBe("p3");
+      expect(sorted[1].id).toBe("p2");
+      expect(sorted[2].id).toBe("p1");
     });
 
     it("does not mutate the original array", () => {
@@ -378,7 +380,7 @@ describe("FacetsService", () => {
       ];
       const original = [...props];
       service.sortProperties(props, "price_asc");
-      expect(props[0].propertyId).toBe(original[0].propertyId);
+      expect(props[0].id).toBe(original[0].id);
     });
   });
 

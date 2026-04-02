@@ -12,25 +12,25 @@
     },
     {
       "key": "partner_id",
-      "value": "your-partner-id",
+      "value": "a1000000-0000-0000-0000-000000000001",
       "type": "string",
       "enabled": true
     },
     {
       "key": "property_id",
-      "value": "your-property-id",
+      "value": "b1000000-0000-0000-0000-000000000001",
       "type": "string",
       "enabled": true
     },
     {
       "key": "room_id",
-      "value": "your-room-id",
+      "value": "c1000000-0000-0000-0000-000000000001",
       "type": "string",
       "enabled": true
     },
     {
       "key": "rate_id",
-      "value": "your-rate-id",
+      "value": "004ca352-a49e-424d-98e9-ab9476d5a255",
       "type": "string",
       "enabled": true
     }
@@ -45,8 +45,12 @@
             "method": "GET",
             "url": {
               "raw": "{{base_url}}/health",
-              "host": ["{{base_url}}"],
-              "path": ["health"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "health"
+              ]
             }
           }
         }
@@ -61,8 +65,14 @@
             "method": "GET",
             "url": {
               "raw": "{{base_url}}/api/auth/health",
-              "host": ["{{base_url}}"],
-              "path": ["api", "auth", "health"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "health"
+              ]
             }
           }
         },
@@ -72,8 +82,14 @@
             "method": "GET",
             "url": {
               "raw": "{{base_url}}/api/auth/users",
-              "host": ["{{base_url}}"],
-              "path": ["api", "auth", "users"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "users"
+              ]
             }
           }
         },
@@ -83,10 +99,21 @@
             "method": "POST",
             "url": {
               "raw": "{{base_url}}/api/auth/register",
-              "host": ["{{base_url}}"],
-              "path": ["api", "auth", "register"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
             },
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"test@travelhub.com\",\n  \"password\": \"secret123\"\n}"
@@ -99,10 +126,21 @@
             "method": "POST",
             "url": {
               "raw": "{{base_url}}/api/auth/login",
-              "host": ["{{base_url}}"],
-              "path": ["api", "auth", "login"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
             },
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"alice@travelhub.com\",\n  \"password\": \"secret123\"\n}"
@@ -120,8 +158,14 @@
             "method": "GET",
             "url": {
               "raw": "{{base_url}}/api/search/health",
-              "host": ["{{base_url}}"],
-              "path": ["api", "search", "health"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "search",
+                "health"
+              ]
             }
           }
         },
@@ -131,8 +175,14 @@
             "method": "GET",
             "url": {
               "raw": "{{base_url}}/api/search/taxonomies",
-              "host": ["{{base_url}}"],
-              "path": ["api", "search", "taxonomies"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "search",
+                "taxonomies"
+              ]
             }
           }
         },
@@ -142,8 +192,14 @@
             "method": "GET",
             "url": {
               "raw": "{{base_url}}/api/search/properties",
-              "host": ["{{base_url}}"],
-              "path": ["api", "search", "properties"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "search",
+                "properties"
+              ]
             }
           }
         },
@@ -153,13 +209,31 @@
             "method": "GET",
             "url": {
               "raw": "{{base_url}}/api/search/properties?city=Cancún&checkIn=2026-04-10&checkOut=2026-04-15&guests=2",
-              "host": ["{{base_url}}"],
-              "path": ["api", "search", "properties"],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "search",
+                "properties"
+              ],
               "query": [
-                { "key": "city", "value": "Cancún" },
-                { "key": "checkIn", "value": "2026-04-10" },
-                { "key": "checkOut", "value": "2026-04-15" },
-                { "key": "guests", "value": "2" }
+                {
+                  "key": "city",
+                  "value": "Cancún"
+                },
+                {
+                  "key": "checkIn",
+                  "value": "2026-04-10"
+                },
+                {
+                  "key": "checkOut",
+                  "value": "2026-04-15"
+                },
+                {
+                  "key": "guests",
+                  "value": "2"
+                }
               ]
             }
           }
@@ -170,20 +244,98 @@
             "method": "GET",
             "url": {
               "raw": "{{base_url}}/api/search/properties?city=Cancún&checkIn=2026-04-10&checkOut=2026-04-15&guests=2&amenities=pool,wifi&stars=4,5&priceMin=100&priceMax=500&sort=price_asc&page=1&limit=10",
-              "host": ["{{base_url}}"],
-              "path": ["api", "search", "properties"],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "search",
+                "properties"
+              ],
               "query": [
-                { "key": "city", "value": "Cancún" },
-                { "key": "checkIn", "value": "2026-04-10" },
-                { "key": "checkOut", "value": "2026-04-15" },
-                { "key": "guests", "value": "2" },
-                { "key": "amenities", "value": "pool,wifi" },
-                { "key": "stars", "value": "4,5" },
-                { "key": "priceMin", "value": "100" },
-                { "key": "priceMax", "value": "500" },
-                { "key": "sort", "value": "price_asc" },
-                { "key": "page", "value": "1" },
-                { "key": "limit", "value": "10" }
+                {
+                  "key": "city",
+                  "value": "Cancún"
+                },
+                {
+                  "key": "checkIn",
+                  "value": "2026-04-10"
+                },
+                {
+                  "key": "checkOut",
+                  "value": "2026-04-15"
+                },
+                {
+                  "key": "guests",
+                  "value": "2"
+                },
+                {
+                  "key": "amenities",
+                  "value": "pool,wifi"
+                },
+                {
+                  "key": "stars",
+                  "value": "4,5"
+                },
+                {
+                  "key": "priceMin",
+                  "value": "100"
+                },
+                {
+                  "key": "priceMax",
+                  "value": "500"
+                },
+                {
+                  "key": "sort",
+                  "value": "price_asc"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Search sorted by Stars",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/search/properties?city=Cancún&checkIn=2026-04-10&checkOut=2026-04-15&guests=2&sort=stars_desc",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "search",
+                "properties"
+              ],
+              "query": [
+                {
+                  "key": "city",
+                  "value": "Cancún"
+                },
+                {
+                  "key": "checkIn",
+                  "value": "2026-04-10"
+                },
+                {
+                  "key": "checkOut",
+                  "value": "2026-04-15"
+                },
+                {
+                  "key": "guests",
+                  "value": "2"
+                },
+                {
+                  "key": "sort",
+                  "value": "stars_desc"
+                }
               ]
             }
           }
@@ -194,26 +346,19 @@
             "method": "GET",
             "url": {
               "raw": "{{base_url}}/api/search/cities?q=Cancun",
-              "host": ["{{base_url}}"],
-              "path": ["api", "search", "cities"],
-              "query": [{ "key": "q", "value": "Cancun" }]
-            }
-          }
-        },
-        {
-          "name": "Search sorted by Stars",
-          "request": {
-            "method": "GET",
-            "url": {
-              "raw": "{{base_url}}/api/search/properties?city=Cancún&checkIn=2026-04-10&checkOut=2026-04-15&guests=2&sort=stars_desc",
-              "host": ["{{base_url}}"],
-              "path": ["api", "search", "properties"],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "search",
+                "cities"
+              ],
               "query": [
-                { "key": "city", "value": "Cancún" },
-                { "key": "checkIn", "value": "2026-04-10" },
-                { "key": "checkOut", "value": "2026-04-15" },
-                { "key": "guests", "value": "2" },
-                { "key": "sort", "value": "stars_desc" }
+                {
+                  "key": "q",
+                  "value": "Cancun"
+                }
               ]
             }
           }
@@ -229,8 +374,14 @@
             "method": "GET",
             "url": {
               "raw": "{{base_url}}/api/inventory/health",
-              "host": ["{{base_url}}"],
-              "path": ["api", "inventory", "health"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "inventory",
+                "health"
+              ]
             }
           }
         },
@@ -242,17 +393,25 @@
               "request": {
                 "method": "POST",
                 "header": [
-                  { "key": "Content-Type", "value": "application/json" },
-                  { "key": "x-partner-id", "value": "{{partner_id}}" }
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
                 ],
                 "url": {
                   "raw": "{{base_url}}/api/inventory/properties",
-                  "host": ["{{base_url}}"],
-                  "path": ["api", "inventory", "properties"]
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "inventory",
+                    "properties"
+                  ]
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"name\": \"Grand Cancún Palace\",\n  \"type\": \"hotel\",\n  \"city\": \"Cancún\",\n  \"countryCode\": \"MX\",\n  \"stars\": 5\n}"
+                  "raw": "{\n  \"partnerId\": \"{{partner_id}}\",\n  \"name\": \"Grand Canc\\u00fan Palace\",\n  \"type\": \"hotel\",\n  \"city\": \"Canc\\u00fan\",\n  \"countryCode\": \"MX\",\n  \"stars\": 5,\n  \"neighborhood\": \"Zona Hotelera\",\n  \"lat\": 21.1619,\n  \"lon\": -86.8515,\n  \"rating\": 4.5,\n  \"reviewCount\": 120,\n  \"thumbnailUrl\": \"https://placehold.co/400x300?text=Hotel\",\n  \"amenities\": [\n    \"pool\",\n    \"wifi\",\n    \"spa\"\n  ]\n}"
                 }
               }
             },
@@ -260,11 +419,23 @@
               "name": "List Properties",
               "request": {
                 "method": "GET",
-                "header": [{ "key": "x-partner-id", "value": "{{partner_id}}" }],
+                "header": [],
                 "url": {
-                  "raw": "{{base_url}}/api/inventory/properties",
-                  "host": ["{{base_url}}"],
-                  "path": ["api", "inventory", "properties"]
+                  "raw": "{{base_url}}/api/inventory/properties?partnerId={{partner_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "inventory",
+                    "properties"
+                  ],
+                  "query": [
+                    {
+                      "key": "partnerId",
+                      "value": "{{partner_id}}"
+                    }
+                  ]
                 }
               }
             },
@@ -272,14 +443,30 @@
               "name": "List Properties (filtered)",
               "request": {
                 "method": "GET",
-                "header": [{ "key": "x-partner-id", "value": "{{partner_id}}" }],
+                "header": [],
                 "url": {
-                  "raw": "{{base_url}}/api/inventory/properties?city=Cancún&status=active",
-                  "host": ["{{base_url}}"],
-                  "path": ["api", "inventory", "properties"],
+                  "raw": "{{base_url}}/api/inventory/properties?partnerId={{partner_id}}&city=Cancún&status=active",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "inventory",
+                    "properties"
+                  ],
                   "query": [
-                    { "key": "city", "value": "Cancún" },
-                    { "key": "status", "value": "active" }
+                    {
+                      "key": "partnerId",
+                      "value": "{{partner_id}}"
+                    },
+                    {
+                      "key": "city",
+                      "value": "Cancún"
+                    },
+                    {
+                      "key": "status",
+                      "value": "active"
+                    }
                   ]
                 }
               }
@@ -288,11 +475,18 @@
               "name": "Get Property",
               "request": {
                 "method": "GET",
-                "header": [{ "key": "x-partner-id", "value": "{{partner_id}}" }],
+                "header": [],
                 "url": {
                   "raw": "{{base_url}}/api/inventory/properties/{{property_id}}",
-                  "host": ["{{base_url}}"],
-                  "path": ["api", "inventory", "properties", "{{property_id}}"]
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "inventory",
+                    "properties",
+                    "{{property_id}}"
+                  ]
                 }
               }
             },
@@ -301,13 +495,22 @@
               "request": {
                 "method": "PATCH",
                 "header": [
-                  { "key": "Content-Type", "value": "application/json" },
-                  { "key": "x-partner-id", "value": "{{partner_id}}" }
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
                 ],
                 "url": {
                   "raw": "{{base_url}}/api/inventory/properties/{{property_id}}",
-                  "host": ["{{base_url}}"],
-                  "path": ["api", "inventory", "properties", "{{property_id}}"]
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "inventory",
+                    "properties",
+                    "{{property_id}}"
+                  ]
                 },
                 "body": {
                   "mode": "raw",
@@ -319,11 +522,18 @@
               "name": "Delete Property",
               "request": {
                 "method": "DELETE",
-                "header": [{ "key": "x-partner-id", "value": "{{partner_id}}" }],
+                "header": [],
                 "url": {
                   "raw": "{{base_url}}/api/inventory/properties/{{property_id}}",
-                  "host": ["{{base_url}}"],
-                  "path": ["api", "inventory", "properties", "{{property_id}}"]
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "inventory",
+                    "properties",
+                    "{{property_id}}"
+                  ]
                 }
               }
             }
@@ -337,17 +547,29 @@
               "request": {
                 "method": "POST",
                 "header": [
-                  { "key": "Content-Type", "value": "application/json" },
-                  { "key": "x-partner-id", "value": "{{partner_id}}" }
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "x-partner-id",
+                    "value": "{{partner_id}}"
+                  }
                 ],
                 "url": {
                   "raw": "{{base_url}}/api/inventory/rooms",
-                  "host": ["{{base_url}}"],
-                  "path": ["api", "inventory", "rooms"]
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "inventory",
+                    "rooms"
+                  ]
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"propertyId\": \"{{property_id}}\",\n  \"roomType\": \"standard\",\n  \"capacity\": 2,\n  \"totalRooms\": 5,\n  \"basePriceUsd\": 150\n}"
+                  "raw": "{\n  \"propertyId\": \"{{property_id}}\",\n  \"roomType\": \"standard\",\n  \"bedType\": \"king\",\n  \"viewType\": \"ocean\",\n  \"capacity\": 2,\n  \"totalRooms\": 5,\n  \"basePriceUsd\": 150\n}"
                 }
               }
             },
@@ -355,12 +577,28 @@
               "name": "List Rooms by Property",
               "request": {
                 "method": "GET",
-                "header": [{ "key": "x-partner-id", "value": "{{partner_id}}" }],
+                "header": [
+                  {
+                    "key": "x-partner-id",
+                    "value": "{{partner_id}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{base_url}}/api/inventory/rooms?propertyId={{property_id}}",
-                  "host": ["{{base_url}}"],
-                  "path": ["api", "inventory", "rooms"],
-                  "query": [{ "key": "propertyId", "value": "{{property_id}}" }]
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "inventory",
+                    "rooms"
+                  ],
+                  "query": [
+                    {
+                      "key": "propertyId",
+                      "value": "{{property_id}}"
+                    }
+                  ]
                 }
               }
             },
@@ -368,11 +606,23 @@
               "name": "Get Room",
               "request": {
                 "method": "GET",
-                "header": [{ "key": "x-partner-id", "value": "{{partner_id}}" }],
+                "header": [
+                  {
+                    "key": "x-partner-id",
+                    "value": "{{partner_id}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{base_url}}/api/inventory/rooms/{{room_id}}",
-                  "host": ["{{base_url}}"],
-                  "path": ["api", "inventory", "rooms", "{{room_id}}"]
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "inventory",
+                    "rooms",
+                    "{{room_id}}"
+                  ]
                 }
               }
             },
@@ -381,13 +631,26 @@
               "request": {
                 "method": "PATCH",
                 "header": [
-                  { "key": "Content-Type", "value": "application/json" },
-                  { "key": "x-partner-id", "value": "{{partner_id}}" }
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "x-partner-id",
+                    "value": "{{partner_id}}"
+                  }
                 ],
                 "url": {
                   "raw": "{{base_url}}/api/inventory/rooms/{{room_id}}",
-                  "host": ["{{base_url}}"],
-                  "path": ["api", "inventory", "rooms", "{{room_id}}"]
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "inventory",
+                    "rooms",
+                    "{{room_id}}"
+                  ]
                 },
                 "body": {
                   "mode": "raw",
@@ -399,11 +662,23 @@
               "name": "Delete Room",
               "request": {
                 "method": "DELETE",
-                "header": [{ "key": "x-partner-id", "value": "{{partner_id}}" }],
+                "header": [
+                  {
+                    "key": "x-partner-id",
+                    "value": "{{partner_id}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{base_url}}/api/inventory/rooms/{{room_id}}",
-                  "host": ["{{base_url}}"],
-                  "path": ["api", "inventory", "rooms", "{{room_id}}"]
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "inventory",
+                    "rooms",
+                    "{{room_id}}"
+                  ]
                 }
               }
             }
@@ -417,13 +692,25 @@
               "request": {
                 "method": "POST",
                 "header": [
-                  { "key": "Content-Type", "value": "application/json" },
-                  { "key": "x-partner-id", "value": "{{partner_id}}" }
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "x-partner-id",
+                    "value": "{{partner_id}}"
+                  }
                 ],
                 "url": {
                   "raw": "{{base_url}}/api/inventory/rates",
-                  "host": ["{{base_url}}"],
-                  "path": ["api", "inventory", "rates"]
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "inventory",
+                    "rates"
+                  ]
                 },
                 "body": {
                   "mode": "raw",
@@ -435,15 +722,35 @@
               "name": "List Rates by Room",
               "request": {
                 "method": "GET",
-                "header": [{ "key": "x-partner-id", "value": "{{partner_id}}" }],
+                "header": [
+                  {
+                    "key": "x-partner-id",
+                    "value": "{{partner_id}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{base_url}}/api/inventory/rates?roomId={{room_id}}&fromDate=2026-06-01&toDate=2026-06-30",
-                  "host": ["{{base_url}}"],
-                  "path": ["api", "inventory", "rates"],
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "inventory",
+                    "rates"
+                  ],
                   "query": [
-                    { "key": "roomId", "value": "{{room_id}}" },
-                    { "key": "fromDate", "value": "2026-06-01" },
-                    { "key": "toDate", "value": "2026-06-30" }
+                    {
+                      "key": "roomId",
+                      "value": "{{room_id}}"
+                    },
+                    {
+                      "key": "fromDate",
+                      "value": "2026-06-01"
+                    },
+                    {
+                      "key": "toDate",
+                      "value": "2026-06-30"
+                    }
                   ]
                 }
               }
@@ -452,15 +759,35 @@
               "name": "List Rates by Property",
               "request": {
                 "method": "GET",
-                "header": [{ "key": "x-partner-id", "value": "{{partner_id}}" }],
+                "header": [
+                  {
+                    "key": "x-partner-id",
+                    "value": "{{partner_id}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{base_url}}/api/inventory/rates?propertyId={{property_id}}&fromDate=2026-06-01&toDate=2026-06-30",
-                  "host": ["{{base_url}}"],
-                  "path": ["api", "inventory", "rates"],
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "inventory",
+                    "rates"
+                  ],
                   "query": [
-                    { "key": "propertyId", "value": "{{property_id}}" },
-                    { "key": "fromDate", "value": "2026-06-01" },
-                    { "key": "toDate", "value": "2026-06-30" }
+                    {
+                      "key": "propertyId",
+                      "value": "{{property_id}}"
+                    },
+                    {
+                      "key": "fromDate",
+                      "value": "2026-06-01"
+                    },
+                    {
+                      "key": "toDate",
+                      "value": "2026-06-30"
+                    }
                   ]
                 }
               }
@@ -470,13 +797,26 @@
               "request": {
                 "method": "PUT",
                 "header": [
-                  { "key": "Content-Type", "value": "application/json" },
-                  { "key": "x-partner-id", "value": "{{partner_id}}" }
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "x-partner-id",
+                    "value": "{{partner_id}}"
+                  }
                 ],
                 "url": {
                   "raw": "{{base_url}}/api/inventory/rates/{{rate_id}}",
-                  "host": ["{{base_url}}"],
-                  "path": ["api", "inventory", "rates", "{{rate_id}}"]
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "inventory",
+                    "rates",
+                    "{{rate_id}}"
+                  ]
                 },
                 "body": {
                   "mode": "raw",
@@ -488,11 +828,23 @@
               "name": "Delete Rate",
               "request": {
                 "method": "DELETE",
-                "header": [{ "key": "x-partner-id", "value": "{{partner_id}}" }],
+                "header": [
+                  {
+                    "key": "x-partner-id",
+                    "value": "{{partner_id}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{base_url}}/api/inventory/rates/{{rate_id}}",
-                  "host": ["{{base_url}}"],
-                  "path": ["api", "inventory", "rates", "{{rate_id}}"]
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "inventory",
+                    "rates",
+                    "{{rate_id}}"
+                  ]
                 }
               }
             }
@@ -505,15 +857,35 @@
               "name": "Check by Property",
               "request": {
                 "method": "GET",
-                "header": [{ "key": "x-partner-id", "value": "{{partner_id}}" }],
+                "header": [
+                  {
+                    "key": "x-partner-id",
+                    "value": "{{partner_id}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{base_url}}/api/inventory/availability?propertyId={{property_id}}&fromDate=2026-06-01&toDate=2026-06-15",
-                  "host": ["{{base_url}}"],
-                  "path": ["api", "inventory", "availability"],
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "inventory",
+                    "availability"
+                  ],
                   "query": [
-                    { "key": "propertyId", "value": "{{property_id}}" },
-                    { "key": "fromDate", "value": "2026-06-01" },
-                    { "key": "toDate", "value": "2026-06-15" }
+                    {
+                      "key": "propertyId",
+                      "value": "{{property_id}}"
+                    },
+                    {
+                      "key": "fromDate",
+                      "value": "2026-06-01"
+                    },
+                    {
+                      "key": "toDate",
+                      "value": "2026-06-15"
+                    }
                   ]
                 }
               }
@@ -522,16 +894,39 @@
               "name": "Check by Property + Room",
               "request": {
                 "method": "GET",
-                "header": [{ "key": "x-partner-id", "value": "{{partner_id}}" }],
+                "header": [
+                  {
+                    "key": "x-partner-id",
+                    "value": "{{partner_id}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{base_url}}/api/inventory/availability?propertyId={{property_id}}&roomId={{room_id}}&fromDate=2026-06-01&toDate=2026-06-15",
-                  "host": ["{{base_url}}"],
-                  "path": ["api", "inventory", "availability"],
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "inventory",
+                    "availability"
+                  ],
                   "query": [
-                    { "key": "propertyId", "value": "{{property_id}}" },
-                    { "key": "roomId", "value": "{{room_id}}" },
-                    { "key": "fromDate", "value": "2026-06-01" },
-                    { "key": "toDate", "value": "2026-06-15" }
+                    {
+                      "key": "propertyId",
+                      "value": "{{property_id}}"
+                    },
+                    {
+                      "key": "roomId",
+                      "value": "{{room_id}}"
+                    },
+                    {
+                      "key": "fromDate",
+                      "value": "2026-06-01"
+                    },
+                    {
+                      "key": "toDate",
+                      "value": "2026-06-15"
+                    }
                   ]
                 }
               }
@@ -543,12 +938,27 @@
                 "header": [],
                 "url": {
                   "raw": "{{base_url}}/api/inventory/availability?roomIds={{room_id}}&fromDate=2026-06-01&toDate=2026-06-15",
-                  "host": ["{{base_url}}"],
-                  "path": ["api", "inventory", "availability"],
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "inventory",
+                    "availability"
+                  ],
                   "query": [
-                    { "key": "roomIds", "value": "{{room_id}}" },
-                    { "key": "fromDate", "value": "2026-06-01" },
-                    { "key": "toDate", "value": "2026-06-15" }
+                    {
+                      "key": "roomIds",
+                      "value": "{{room_id}}"
+                    },
+                    {
+                      "key": "fromDate",
+                      "value": "2026-06-01"
+                    },
+                    {
+                      "key": "toDate",
+                      "value": "2026-06-15"
+                    }
                   ]
                 }
               }
@@ -558,13 +968,26 @@
               "request": {
                 "method": "POST",
                 "header": [
-                  { "key": "Content-Type", "value": "application/json" },
-                  { "key": "x-partner-id", "value": "{{partner_id}}" }
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "x-partner-id",
+                    "value": "{{partner_id}}"
+                  }
                 ],
                 "url": {
                   "raw": "{{base_url}}/api/inventory/availability/reduce",
-                  "host": ["{{base_url}}"],
-                  "path": ["api", "inventory", "availability", "reduce"]
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "inventory",
+                    "availability",
+                    "reduce"
+                  ]
                 },
                 "body": {
                   "mode": "raw",
@@ -577,13 +1000,26 @@
               "request": {
                 "method": "POST",
                 "header": [
-                  { "key": "Content-Type", "value": "application/json" },
-                  { "key": "x-partner-id", "value": "{{partner_id}}" }
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "x-partner-id",
+                    "value": "{{partner_id}}"
+                  }
                 ],
                 "url": {
                   "raw": "{{base_url}}/api/inventory/availability/block",
-                  "host": ["{{base_url}}"],
-                  "path": ["api", "inventory", "availability", "block"]
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "inventory",
+                    "availability",
+                    "block"
+                  ]
                 },
                 "body": {
                   "mode": "raw",
@@ -596,13 +1032,26 @@
               "request": {
                 "method": "POST",
                 "header": [
-                  { "key": "Content-Type", "value": "application/json" },
-                  { "key": "x-partner-id", "value": "{{partner_id}}" }
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "x-partner-id",
+                    "value": "{{partner_id}}"
+                  }
                 ],
                 "url": {
                   "raw": "{{base_url}}/api/inventory/availability/unblock",
-                  "host": ["{{base_url}}"],
-                  "path": ["api", "inventory", "availability", "unblock"]
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "inventory",
+                    "availability",
+                    "unblock"
+                  ]
                 },
                 "body": {
                   "mode": "raw",
@@ -614,11 +1063,23 @@
               "name": "Hold",
               "request": {
                 "method": "POST",
-                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
                 "url": {
                   "raw": "{{base_url}}/api/inventory/availability/hold",
-                  "host": ["{{base_url}}"],
-                  "path": ["api", "inventory", "availability", "hold"]
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "inventory",
+                    "availability",
+                    "hold"
+                  ]
                 },
                 "body": {
                   "mode": "raw",
@@ -630,11 +1091,23 @@
               "name": "Unhold",
               "request": {
                 "method": "POST",
-                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
                 "url": {
                   "raw": "{{base_url}}/api/inventory/availability/unhold",
-                  "host": ["{{base_url}}"],
-                  "path": ["api", "inventory", "availability", "unhold"]
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "inventory",
+                    "availability",
+                    "unhold"
+                  ]
                 },
                 "body": {
                   "mode": "raw",
@@ -646,11 +1119,23 @@
               "name": "Confirm",
               "request": {
                 "method": "POST",
-                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
                 "url": {
                   "raw": "{{base_url}}/api/inventory/availability/confirm",
-                  "host": ["{{base_url}}"],
-                  "path": ["api", "inventory", "availability", "confirm"]
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "inventory",
+                    "availability",
+                    "confirm"
+                  ]
                 },
                 "body": {
                   "mode": "raw",
@@ -662,11 +1147,23 @@
               "name": "Release",
               "request": {
                 "method": "POST",
-                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
                 "url": {
                   "raw": "{{base_url}}/api/inventory/availability/release",
-                  "host": ["{{base_url}}"],
-                  "path": ["api", "inventory", "availability", "release"]
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "inventory",
+                    "availability",
+                    "release"
+                  ]
                 },
                 "body": {
                   "mode": "raw",
@@ -684,13 +1181,26 @@
               "request": {
                 "method": "POST",
                 "header": [
-                  { "key": "Content-Type", "value": "application/json" },
-                  { "key": "x-webhook-signature", "value": "" }
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "x-webhook-signature",
+                    "value": ""
+                  }
                 ],
                 "url": {
                   "raw": "{{base_url}}/api/inventory/webhooks/hotelbeds",
-                  "host": ["{{base_url}}"],
-                  "path": ["api", "inventory", "webhooks", "hotelbeds"]
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "inventory",
+                    "webhooks",
+                    "hotelbeds"
+                  ]
                 },
                 "body": {
                   "mode": "raw",
@@ -703,13 +1213,26 @@
               "request": {
                 "method": "POST",
                 "header": [
-                  { "key": "Content-Type", "value": "application/json" },
-                  { "key": "x-webhook-signature", "value": "" }
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "x-webhook-signature",
+                    "value": ""
+                  }
                 ],
                 "url": {
                   "raw": "{{base_url}}/api/inventory/webhooks/travelclick",
-                  "host": ["{{base_url}}"],
-                  "path": ["api", "inventory", "webhooks", "travelclick"]
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "inventory",
+                    "webhooks",
+                    "travelclick"
+                  ]
                 },
                 "body": {
                   "mode": "raw",
@@ -722,13 +1245,26 @@
               "request": {
                 "method": "POST",
                 "header": [
-                  { "key": "Content-Type", "value": "application/json" },
-                  { "key": "x-webhook-signature", "value": "" }
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "x-webhook-signature",
+                    "value": ""
+                  }
                 ],
                 "url": {
                   "raw": "{{base_url}}/api/inventory/webhooks/roomraccoon",
-                  "host": ["{{base_url}}"],
-                  "path": ["api", "inventory", "webhooks", "roomraccoon"]
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "inventory",
+                    "webhooks",
+                    "roomraccoon"
+                  ]
                 },
                 "body": {
                   "mode": "raw",
@@ -749,8 +1285,14 @@
             "method": "GET",
             "url": {
               "raw": "{{base_url}}/api/booking/health",
-              "host": ["{{base_url}}"],
-              "path": ["api", "booking", "health"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "booking",
+                "health"
+              ]
             }
           }
         },
@@ -760,8 +1302,14 @@
             "method": "GET",
             "url": {
               "raw": "{{base_url}}/api/booking/reservations",
-              "host": ["{{base_url}}"],
-              "path": ["api", "booking", "reservations"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "booking",
+                "reservations"
+              ]
             }
           }
         },
@@ -771,8 +1319,15 @@
             "method": "GET",
             "url": {
               "raw": "{{base_url}}/api/booking/reservations/res_001",
-              "host": ["{{base_url}}"],
-              "path": ["api", "booking", "reservations", "res_001"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "booking",
+                "reservations",
+                "res_001"
+              ]
             }
           }
         },
@@ -782,13 +1337,24 @@
             "method": "POST",
             "url": {
               "raw": "{{base_url}}/api/booking/reservations",
-              "host": ["{{base_url}}"],
-              "path": ["api", "booking", "reservations"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "booking",
+                "reservations"
+              ]
             },
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"propertyId\": \"prop_001\",\n  \"roomId\": \"room_001\",\n  \"guestId\": \"usr_002\",\n  \"checkIn\": \"2026-04-10\",\n  \"checkOut\": \"2026-04-15\"\n}"
+              "raw": "{\n  \"propertyId\": \"{{property_id}}\",\n  \"roomId\": \"{{room_id}}\",\n  \"guestId\": \"usr_002\",\n  \"checkIn\": \"2026-04-10\",\n  \"checkOut\": \"2026-04-15\"\n}"
             }
           }
         }
@@ -803,8 +1369,14 @@
             "method": "GET",
             "url": {
               "raw": "{{base_url}}/api/payment/health",
-              "host": ["{{base_url}}"],
-              "path": ["api", "payment", "health"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "payment",
+                "health"
+              ]
             }
           }
         },
@@ -814,8 +1386,14 @@
             "method": "GET",
             "url": {
               "raw": "{{base_url}}/api/payment/transactions",
-              "host": ["{{base_url}}"],
-              "path": ["api", "payment", "transactions"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "payment",
+                "transactions"
+              ]
             }
           }
         },
@@ -825,10 +1403,21 @@
             "method": "POST",
             "url": {
               "raw": "{{base_url}}/api/payment/charge",
-              "host": ["{{base_url}}"],
-              "path": ["api", "payment", "charge"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "payment",
+                "charge"
+              ]
             },
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"reservationId\": \"res_001\",\n  \"amount\": 1750,\n  \"currency\": \"USD\",\n  \"provider\": \"stripe\"\n}"
@@ -846,8 +1435,14 @@
             "method": "GET",
             "url": {
               "raw": "{{base_url}}/api/notifications/health",
-              "host": ["{{base_url}}"],
-              "path": ["api", "notifications", "health"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "health"
+              ]
             }
           }
         },
@@ -857,8 +1452,14 @@
             "method": "GET",
             "url": {
               "raw": "{{base_url}}/api/notifications/notifications",
-              "host": ["{{base_url}}"],
-              "path": ["api", "notifications", "notifications"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "notifications"
+              ]
             }
           }
         },
@@ -868,10 +1469,22 @@
             "method": "POST",
             "url": {
               "raw": "{{base_url}}/api/notifications/notifications/send",
-              "host": ["{{base_url}}"],
-              "path": ["api", "notifications", "notifications", "send"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "notifications",
+                "send"
+              ]
             },
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"userId\": \"usr_002\",\n  \"channel\": \"email\",\n  \"subject\": \"Booking Confirmed\",\n  \"message\": \"Your reservation res_001 has been confirmed.\"\n}"
@@ -889,8 +1502,14 @@
             "method": "GET",
             "url": {
               "raw": "{{base_url}}/api/partners/health",
-              "host": ["{{base_url}}"],
-              "path": ["api", "partners", "health"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "partners",
+                "health"
+              ]
             }
           }
         },
@@ -900,8 +1519,14 @@
             "method": "GET",
             "url": {
               "raw": "{{base_url}}/api/partners/hotels",
-              "host": ["{{base_url}}"],
-              "path": ["api", "partners", "hotels"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "partners",
+                "hotels"
+              ]
             }
           }
         },
@@ -911,8 +1536,16 @@
             "method": "GET",
             "url": {
               "raw": "{{base_url}}/api/partners/hotels/hotel_001/revenue",
-              "host": ["{{base_url}}"],
-              "path": ["api", "partners", "hotels", "hotel_001", "revenue"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "partners",
+                "hotels",
+                "hotel_001",
+                "revenue"
+              ]
             }
           }
         },
@@ -922,8 +1555,14 @@
             "method": "GET",
             "url": {
               "raw": "{{base_url}}/api/partners/revenue",
-              "host": ["{{base_url}}"],
-              "path": ["api", "partners", "revenue"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "partners",
+                "revenue"
+              ]
             }
           }
         }

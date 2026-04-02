@@ -44,6 +44,8 @@
     "error": "Could not load property details."
   },
   "search": {
+    "error_city_required": "Please enter a destination.",
+    "error_checkout_after_checkin": "Check-out must be after check-in.",
     "loading": "Searching hotels...",
     "error": "Error searching hotels. Please try again.",
     "empty": "No hotels found for these criteria.",

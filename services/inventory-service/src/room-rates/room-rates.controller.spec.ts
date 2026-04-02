@@ -26,15 +26,16 @@ function makeController(overrides: Partial<RoomRatesService> = {}) {
 
 describe("RoomRatesController", () => {
   describe("create", () => {
-    it("delegates to service.create with roomId from body", async () => {
+    it("delegates to service.create with roomId and partnerId from body", async () => {
       const { controller, service } = makeController();
       const dto = {
         roomId: "room-1",
+        partnerId: "partner-1",
         fromDate: "2026-04-01",
         toDate: "2026-04-10",
         priceUsd: 150,
       };
-      const result = await controller.create("partner-1", dto);
+      const result = await controller.create(dto);
       expect(service.create).toHaveBeenCalledWith("room-1", "partner-1", dto);
       expect(result.id).toBe("rate-1");
     });
@@ -88,11 +89,12 @@ describe("RoomRatesController", () => {
       const { controller, service } = makeController();
       const dto = {
         roomId: "room-1",
+        partnerId: "partner-1",
         fromDate: "2026-04-01",
         toDate: "2026-04-10",
         priceUsd: 200,
       };
-      await controller.replace("partner-1", "rate-1", dto);
+      await controller.replace("rate-1", dto);
       expect(service.replace).toHaveBeenCalledWith("rate-1", "partner-1", dto);
     });
   });
@@ -100,8 +102,8 @@ describe("RoomRatesController", () => {
   describe("remove", () => {
     it("delegates to service.remove", async () => {
       const { controller, service } = makeController();
-      await controller.remove("partner-1", "rate-1");
-      expect(service.remove).toHaveBeenCalledWith("rate-1", "partner-1");
+      await controller.remove("rate-1");
+      expect(service.remove).toHaveBeenCalledWith("rate-1");
     });
   });
 });

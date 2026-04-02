@@ -1,26 +1,21 @@
 import { Injectable } from "@nestjs/common";
-import { sql, type SqlBool } from "kysely";
 import { createHash, randomUUID } from "crypto";
-import { DatabaseService } from "../database/database.service.js";
+import { PropertiesRepository } from "./properties.repository.js";
 import { CacheService } from "../cache/cache.service.js";
 import { FacetsService } from "./facets/facets.service.js";
-import type { CandidateRoom } from "./facets/facets.service.js";
+import { InventoryClientService } from "../inventory/inventory-client.service.js";
 import type { SearchPropertiesDto } from "./dto/search-properties.dto.js";
-
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const allCities = require("cities.json") as {
-  name: string;
-  country: string;
-}[];
+import { City } from "country-state-city";
 
 const CACHE_TTL = 60 * 5; // 5 minutes
 
 @Injectable()
 export class PropertiesService {
   constructor(
-    private readonly db: DatabaseService,
+    private readonly repo: PropertiesRepository,
     private readonly cache: CacheService,
     private readonly facets: FacetsService,
+    private readonly inventoryClient: InventoryClientService,
   ) {}
 
   async searchProperties(dto: SearchPropertiesDto) {
@@ -31,9 +26,21 @@ export class PropertiesService {
       return JSON.parse(cached) as object;
     }
 
-    const candidates = await this.fetchCandidates(dto);
+    const candidates = await this.repo.findCandidates(dto);
 
-    const filtered = this.facets.applyFilters(candidates, {
+    let available = candidates;
+    if (dto.checkIn && dto.checkOut && candidates.length > 0) {
+      const candidateIds = candidates.map((r) => r.room_id);
+      const availableRooms = await this.inventoryClient.checkAvailability({
+        roomIds: candidateIds,
+        fromDate: dto.checkIn,
+        toDate: dto.checkOut,
+      });
+      const availableIds = new Set(availableRooms.map((r) => r.roomId));
+      available = candidates.filter((r) => availableIds.has(r.room_id));
+    }
+
+    const filtered = this.facets.applyFilters(available, {
       roomType: dto.exact ? dto.roomType : undefined,
       bedType: dto.exact ? dto.bedType : undefined,
       viewType: dto.exact ? dto.viewType : undefined,
@@ -43,7 +50,7 @@ export class PropertiesService {
       priceMax: dto.priceMax,
     });
 
-    const facetData = this.facets.computeFacets(candidates, dto);
+    const facetData = this.facets.computeFacets(available, dto);
     const properties = this.facets.selectBestRoomPerProperty(filtered);
     const sorted = this.facets.sortProperties(properties, dto.sort);
 
@@ -67,89 +74,59 @@ export class PropertiesService {
     return response;
   }
 
-  async getPropertyById(propertyId: string) {
-    const cacheKey = `search:property:${propertyId}`;
-    const cached = await this.cache.get(cacheKey);
-    if (cached) {
-      return JSON.parse(cached) as object;
-    }
-
-    const rows = await this.db.db
-      .selectFrom("room_search_index as rsi")
-      .select([
-        "rsi.room_id",
-        "rsi.property_id",
-        "rsi.property_name",
-        "rsi.city",
-        "rsi.country",
-        "rsi.neighborhood",
-        "rsi.lat",
-        "rsi.lon",
-        "rsi.stars",
-        "rsi.rating",
-        "rsi.review_count",
-        "rsi.thumbnail_url",
-        "rsi.amenities",
-        "rsi.room_type",
-        "rsi.bed_type",
-        "rsi.view_type",
-        "rsi.capacity",
-        "rsi.base_price_usd",
-      ])
-      .where("rsi.property_id", "=", propertyId)
-      .where("rsi.is_active", "=", true)
-      .execute();
-
-    if (rows.length === 0) {
-      return null;
-    }
-
-    const first = rows[0];
-    const allAmenities = [...new Set(rows.flatMap((r) => r.amenities))];
-    const rooms = rows.map((r) => ({
-      roomId: r.room_id,
-      roomType: r.room_type,
-      bedType: r.bed_type,
-      viewType: r.view_type,
-      capacity: r.capacity,
-      basePriceUsd: parseFloat(r.base_price_usd),
-    }));
-
-    const response = {
-      propertyId: first.property_id,
-      propertyName: first.property_name,
-      city: first.city,
-      country: first.country,
-      neighborhood: first.neighborhood ?? null,
-      lat: first.lat,
-      lon: first.lon,
-      stars: first.stars,
-      rating: parseFloat(first.rating),
-      reviewCount: first.review_count,
-      thumbnailUrl: first.thumbnail_url,
-      amenities: allAmenities,
-      rooms,
-    };
-
-    await this.cache.set(cacheKey, JSON.stringify(response), CACHE_TTL);
-    return response;
-  }
-
   getCitySuggestions(
     q: string,
     limit = 8,
-  ): { suggestions: { city: string; country: string }[] } {
+  ): {
+    suggestions: {
+      id: string;
+      city: string;
+      country: string;
+      latitude?: string;
+      longitude?: string;
+    }[];
+  } {
     const normalized = this.stripAccents(q.toLowerCase());
-    const suggestions: { city: string; country: string }[] = [];
+    const suggestions: {
+      id: string;
+      city: string;
+      country: string;
+      latitude?: string;
+      longitude?: string;
+    }[] = [];
 
-    for (const entry of allCities) {
+    for (const entry of City.getAllCities()) {
       if (this.stripAccents(entry.name.toLowerCase()).startsWith(normalized)) {
-        suggestions.push({ city: entry.name, country: entry.country });
+        suggestions.push({
+          id: this.buildCityId(entry.name, entry.stateCode, entry.countryCode),
+          city: entry.name,
+          country: entry.countryCode,
+          latitude: entry.latitude ?? undefined,
+          longitude: entry.longitude ?? undefined,
+        });
         if (suggestions.length === limit) break;
       }
     }
 
     return { suggestions };
+  }
+
+  async getFeatured(limit: number) {
+    const cacheKey = `search:featured:${limit}`;
+    const cached = await this.cache.get(cacheKey);
+    if (cached) return JSON.parse(cached) as object;
+
+    const candidates = await this.repo.findFeatured(limit * 5);
+    const properties = this.facets.selectBestRoomPerProperty(candidates);
+    const sorted = this.facets.sortProperties(properties, "relevance");
+    const results = sorted.slice(0, limit);
+
+    const response = {
+      results,
+      meta: { total: results.length, page: 1, pageSize: limit },
+    };
+    await this.cache.set(cacheKey, JSON.stringify(response), CACHE_TTL);
+    return response;
   }
 
   async invalidateCityCache(city: string): Promise<void> {
@@ -159,68 +136,12 @@ export class PropertiesService {
 
   // ─── private helpers ──────────────────────────────────────────────────────
 
-  private async fetchCandidates(
-    dto: SearchPropertiesDto,
-  ): Promise<CandidateRoom[]> {
-    const hasDates = !!dto.checkIn && !!dto.checkOut;
-    const hasCity = !!dto.city;
-
-    const rows = await this.db.db
-      .selectFrom("room_search_index as rsi")
-      .select([
-        "rsi.room_id",
-        "rsi.property_id",
-        "rsi.property_name",
-        "rsi.city",
-        "rsi.country",
-        "rsi.stars",
-        "rsi.rating",
-        "rsi.review_count",
-        "rsi.thumbnail_url",
-        "rsi.amenities",
-        "rsi.room_type",
-        "rsi.bed_type",
-        "rsi.view_type",
-        "rsi.capacity",
-        "rsi.base_price_usd",
-        // Seasonal price: pick the first matching period, fall back to base price
-        sql<string | null>`(
-          SELECT rpp.price_usd::text
-          FROM room_price_periods rpp
-          WHERE rpp.room_id = rsi.room_id
-            AND rpp.from_date <= ${dto.checkIn ?? "9999-12-31"}::date
-            AND rpp.to_date   >= ${dto.checkOut ?? "0001-01-01"}::date
-          LIMIT 1
-        )`.as("avail_price_usd"),
-      ])
-      .where("rsi.is_active", "=", true)
-      .where("rsi.capacity", ">=", dto.guests)
-      .$if(hasCity, (qb) =>
-        qb.where(
-          sql<SqlBool>`(rsi.city % ${dto.city} OR rsi.property_name % ${dto.city})`,
-        ),
-      )
-      .$if(hasDates, (qb) =>
-        qb.where(
-          sql<SqlBool>`NOT EXISTS (
-            SELECT 1
-            FROM room_booked_ranges rbr
-            WHERE rbr.room_id  = rsi.room_id
-              AND rbr.from_date < ${dto.checkOut}::date
-              AND rbr.to_date   > ${dto.checkIn}::date
-          )`,
-        ),
-      )
-      .execute();
-
-    return rows as CandidateRoom[];
-  }
-
   private buildCacheKey(dto: SearchPropertiesDto): string {
     const city = this.normalizeCity(dto.city);
     const fingerprint = createHash("sha256")
       .update(
         JSON.stringify({
+          countryCode: dto.countryCode,
           checkIn: dto.checkIn,
           checkOut: dto.checkOut,
           guests: dto.guests,
@@ -243,8 +164,18 @@ export class PropertiesService {
     return `search:properties:${city}:${fingerprint}`;
   }
 
+  private buildCityId(
+    name: string,
+    stateCode: string,
+    countryCode: string,
+  ): string {
+    const slug = (s: string) =>
+      this.stripAccents(s).toLowerCase().trim().replace(/[\s]+/g, "-");
+    return `${slug(countryCode)}-${slug(stateCode)}-${slug(name)}`;
+  }
+
   private normalizeCity(city: string): string {
-    return city.toLowerCase().trim().replace(/\s+/g, "_");
+    return this.stripAccents(city).toLowerCase().trim().replace(/\s+/g, "_");
   }
 
   private stripAccents(str: string): string {

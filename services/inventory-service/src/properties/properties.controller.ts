@@ -1,10 +1,11 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
   Get,
-  Headers,
   HttpCode,
+  NotFoundException,
   Param,
   Patch,
   Post,
@@ -18,39 +19,36 @@ export class PropertiesController {
   constructor(private readonly service: PropertiesService) {}
 
   @Post()
-  create(
-    @Headers("x-partner-id") partnerId: string,
-    @Body() dto: CreatePropertyDto,
-  ) {
-    return this.service.create(partnerId, dto);
+  create(@Body() dto: CreatePropertyDto) {
+    return this.service.create(dto.partnerId, dto);
   }
 
   @Get()
   findAll(
-    @Headers("x-partner-id") partnerId: string,
+    @Query("partnerId") partnerId: string | undefined,
     @Query("city") city?: string,
     @Query("status") status?: string,
   ) {
+    if (!partnerId)
+      throw new BadRequestException("partnerId query param is required");
     return this.service.findAll(partnerId, city, status);
   }
 
   @Get(":id")
-  findOne(@Headers("x-partner-id") partnerId: string, @Param("id") id: string) {
-    return this.service.findOne(id, partnerId);
+  async findOne(@Param("id") id: string) {
+    const detail = await this.service.findDetail(id);
+    if (!detail) throw new NotFoundException(`Property ${id} not found`);
+    return detail;
   }
 
   @Patch(":id")
-  update(
-    @Headers("x-partner-id") partnerId: string,
-    @Param("id") id: string,
-    @Body() dto: UpdatePropertyDto,
-  ) {
-    return this.service.update(id, partnerId, dto);
+  update(@Param("id") id: string, @Body() dto: UpdatePropertyDto) {
+    return this.service.update(id, dto);
   }
 
   @Delete(":id")
   @HttpCode(204)
-  remove(@Headers("x-partner-id") partnerId: string, @Param("id") id: string) {
-    return this.service.remove(id, partnerId);
+  remove(@Param("id") id: string) {
+    return this.service.remove(id);
   }
 }

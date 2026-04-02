@@ -4,7 +4,6 @@ import {
   Controller,
   Delete,
   Get,
-  Headers,
   HttpCode,
   Param,
   Post,
@@ -19,16 +18,13 @@ export class RoomRatesController {
   constructor(private readonly service: RoomRatesService) {}
 
   @Post()
-  create(
-    @Headers("x-partner-id") partnerId: string,
-    @Body() dto: CreateRoomRateDto,
-  ) {
-    return this.service.create(dto.roomId, partnerId, dto);
+  create(@Body() dto: CreateRoomRateDto) {
+    return this.service.create(dto.roomId, dto.partnerId!, dto);
   }
 
   @Get()
   findAll(
-    @Headers("x-partner-id") partnerId: string,
+    @Query("partnerId") partnerId: string,
     @Query("roomId") roomId?: string,
     @Query("propertyId") propertyId?: string,
     @Query("fromDate") fromDate?: string,
@@ -43,17 +39,13 @@ export class RoomRatesController {
   }
 
   @Put(":id")
-  replace(
-    @Headers("x-partner-id") partnerId: string,
-    @Param("id") id: string,
-    @Body() dto: CreateRoomRateDto,
-  ) {
-    return this.service.replace(id, partnerId, dto);
+  replace(@Param("id") id: string, @Body() dto: CreateRoomRateDto) {
+    return this.service.replace(id, dto.partnerId!, dto);
   }
 
   @Delete(":id")
   @HttpCode(204)
-  remove(@Headers("x-partner-id") partnerId: string, @Param("id") id: string) {
-    return this.service.remove(id, partnerId);
+  remove(@Param("id") id: string) {
+    return this.service.remove(id);
   }
 }

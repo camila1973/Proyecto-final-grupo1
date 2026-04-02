@@ -18,7 +18,7 @@ export class EventsPublisher implements OnModuleInit, OnModuleDestroy {
         process.env.RABBITMQ_URL ?? "amqp://localhost:5672",
       );
       this.channel = await this.connection.createChannel();
-      await this.channel.assertExchange("inventory", "topic", {
+      await this.channel.assertExchange("travelhub", "topic", {
         durable: true,
       });
       this.logger.log("RabbitMQ connection established");
@@ -31,7 +31,7 @@ export class EventsPublisher implements OnModuleInit, OnModuleDestroy {
   publish(routingKey: string, payload: unknown): void {
     if (!this.channel) return;
     this.channel.publish(
-      "inventory",
+      "travelhub",
       routingKey,
       Buffer.from(JSON.stringify(payload)),
       { persistent: true },

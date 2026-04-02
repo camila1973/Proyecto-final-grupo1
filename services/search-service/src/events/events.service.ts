@@ -13,7 +13,10 @@ import {
   AvailabilityUpdatedHandler,
   type AvailabilityUpdatedPayload,
 } from "./handlers/availability-updated.handler.js";
-import { TaxonomyUpdatedHandler } from "./handlers/taxonomy-updated.handler.js";
+import {
+  RoomDeletedHandler,
+  type RoomDeletedPayload,
+} from "./handlers/room-deleted.handler.js";
 
 @Injectable()
 export class EventsService implements OnModuleInit, OnModuleDestroy {
@@ -24,7 +27,7 @@ export class EventsService implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly roomUpserted: RoomUpsertedHandler,
     private readonly availabilityUpdated: AvailabilityUpdatedHandler,
-    private readonly taxonomyUpdated: TaxonomyUpdatedHandler,
+    private readonly roomDeleted: RoomDeletedHandler,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -62,21 +65,24 @@ export class EventsService implements OnModuleInit, OnModuleDestroy {
         "search.inventory.room.upserted",
         exchange,
         "inventory.room.upserted",
-        (p) => this.roomUpserted.handle(p as RoomUpsertedPayload),
+        (p) => {
+          const event = p as { snapshot: RoomUpsertedPayload };
+          return this.roomUpserted.handle(event.snapshot);
+        },
       );
 
       await this.subscribe(
-        "search.inventory.availability.updated",
+        "search.inventory.price.updated",
         exchange,
-        "inventory.availability.updated",
+        "inventory.price.updated",
         (p) => this.availabilityUpdated.handle(p as AvailabilityUpdatedPayload),
       );
 
       await this.subscribe(
-        "search.taxonomy.updated",
+        "search.inventory.room.deleted",
         exchange,
-        "taxonomy.updated",
-        () => this.taxonomyUpdated.handle(),
+        "inventory.room.deleted",
+        (p) => this.roomDeleted.handle(p as RoomDeletedPayload),
       );
 
       this.logger.log("Connected to RabbitMQ and consuming events");

@@ -1,10 +1,18 @@
-import { Injectable, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from "@nestjs/common";
 import { Kysely, PostgresDialect, sql } from "kysely";
 import { Pool } from "pg";
 import type { SearchDatabase } from "./database.types.js";
 
+export const KYSELY = "KYSELY";
+
 @Injectable()
-export class DatabaseService implements OnModuleInit, OnModuleDestroy {
+export class DatabaseProvider implements OnModuleInit, OnModuleDestroy {
+  private readonly logger = new Logger(DatabaseProvider.name);
   private readonly pool: Pool;
   readonly db: Kysely<SearchDatabase>;
 
@@ -19,10 +27,11 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
+  // Connectivity check only — schema is managed by migrations.
+  // Run: nx migrate search-service
   async onModuleInit(): Promise<void> {
-    // Connectivity check — migrations are applied externally via kysely-ctl
-    // before the app starts: `nx migrate search-service`
     await sql`SELECT 1`.execute(this.db);
+    this.logger.log("Database connection established");
   }
 
   async onModuleDestroy(): Promise<void> {

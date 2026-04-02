@@ -1,20 +1,16 @@
-import { BadRequestException, NotFoundException } from "@nestjs/common";
+import { BadRequestException } from "@nestjs/common";
 import { PropertiesController } from "./properties.controller.js";
 import type { PropertiesService } from "./properties.service.js";
 
 describe("PropertiesController", () => {
   let controller: PropertiesController;
   let service: jest.Mocked<
-    Pick<
-      PropertiesService,
-      "searchProperties" | "getPropertyById" | "getCitySuggestions"
-    >
+    Pick<PropertiesService, "searchProperties" | "getCitySuggestions">
   >;
 
   beforeEach(() => {
     service = {
       searchProperties: jest.fn().mockResolvedValue({ results: [] }),
-      getPropertyById: jest.fn().mockResolvedValue(null),
       getCitySuggestions: jest.fn().mockReturnValue({ suggestions: [] }),
     };
     controller = new PropertiesController(
@@ -57,147 +53,169 @@ describe("PropertiesController", () => {
   });
 
   it("defaults to page 1, pageSize 20, guests 1, sort relevance when omitted", () => {
-    const dto = parse(controller, {});
+    const dto = parse(controller, { city: "Lisbon" });
     expect(dto.page).toBe(1);
     expect(dto.pageSize).toBe(20);
     expect(dto.guests).toBe(1);
     expect(dto.sort).toBe("relevance");
   });
 
-  it("defaults city and checkIn/checkOut to empty strings when omitted", () => {
-    const dto = parse(controller, {});
-    expect(dto.city).toBe("");
+  it("defaults checkIn/checkOut to empty strings when omitted", () => {
+    const dto = parse(controller, { city: "Lisbon" });
     expect(dto.checkIn).toBe("");
     expect(dto.checkOut).toBe("");
   });
 
   it("clamps pageSize to 100 maximum", () => {
-    const dto = parse(controller, { limit: "9999" });
+    const dto = parse(controller, { city: "Lisbon", limit: "9999" });
     expect(dto.pageSize).toBe(100);
   });
 
   it("clamps pageSize to 1 minimum", () => {
-    const dto = parse(controller, { limit: "0" });
+    const dto = parse(controller, { city: "Lisbon", limit: "0" });
     expect(dto.pageSize).toBe(1);
   });
 
   it("clamps page to 1 minimum", () => {
-    const dto = parse(controller, { page: "-5" });
+    const dto = parse(controller, { city: "Lisbon", page: "-5" });
     expect(dto.page).toBe(1);
   });
 
   it("leaves priceMin/priceMax undefined when not provided", () => {
-    const dto = parse(controller, {});
+    const dto = parse(controller, { city: "Lisbon" });
     expect(dto.priceMin).toBeUndefined();
     expect(dto.priceMax).toBeUndefined();
   });
 
   it("filters out NaN values from stars array", () => {
-    const dto = parse(controller, { stars: "4,abc,5" });
+    const dto = parse(controller, { city: "Lisbon", stars: "4,abc,5" });
     expect(dto.stars).toEqual([4, 5]);
   });
 
   it("filters empty strings from amenities array", () => {
-    const dto = parse(controller, { amenities: "wifi,,pool," });
+    const dto = parse(controller, { city: "Lisbon", amenities: "wifi,,pool," });
     expect(dto.amenities).toEqual(["wifi", "pool"]);
   });
 
   it("accepts all valid sort options", () => {
     for (const sort of ["price_asc", "price_desc", "stars_desc", "relevance"]) {
-      expect(() => parse(controller, { sort })).not.toThrow();
+      expect(() => parse(controller, { city: "Lisbon", sort })).not.toThrow();
     }
   });
 
   it("parses roomType from comma-delimited string", () => {
-    expect(parse(controller, { roomType: "suite,deluxe" }).roomType).toEqual([
-      "suite",
-      "deluxe",
-    ]);
+    expect(
+      parse(controller, { city: "Lisbon", roomType: "suite,deluxe" }).roomType,
+    ).toEqual(["suite", "deluxe"]);
   });
 
   it("parses bedType from comma-delimited string", () => {
-    expect(parse(controller, { bedType: "king" }).bedType).toEqual(["king"]);
+    expect(
+      parse(controller, { city: "Lisbon", bedType: "king" }).bedType,
+    ).toEqual(["king"]);
   });
 
   it("parses viewType from comma-delimited string", () => {
-    expect(parse(controller, { viewType: "ocean,city" }).viewType).toEqual([
-      "ocean",
-      "city",
-    ]);
+    expect(
+      parse(controller, { city: "Lisbon", viewType: "ocean,city" }).viewType,
+    ).toEqual(["ocean", "city"]);
   });
 
   it("parses amenities from bracket key (amenities[])", () => {
-    expect(parse(controller, { "amenities[]": "wifi,pool" }).amenities).toEqual(
-      ["wifi", "pool"],
-    );
+    expect(
+      parse(controller, { city: "Lisbon", "amenities[]": "wifi,pool" })
+        .amenities,
+    ).toEqual(["wifi", "pool"]);
   });
 
   it("parses roomType from bracket key (roomType[])", () => {
-    expect(parse(controller, { "roomType[]": "suite" }).roomType).toEqual([
-      "suite",
-    ]);
+    expect(
+      parse(controller, { city: "Lisbon", "roomType[]": "suite" }).roomType,
+    ).toEqual(["suite"]);
   });
 
   it('sets exact=true when query["exact"] is "true"', () => {
-    expect(parse(controller, { exact: "true" }).exact).toBe(true);
+    expect(parse(controller, { city: "Lisbon", exact: "true" }).exact).toBe(
+      true,
+    );
   });
 
   it('sets exact=false when query["exact"] is absent', () => {
-    expect(parse(controller, {}).exact).toBe(false);
+    expect(parse(controller, { city: "Lisbon" }).exact).toBe(false);
   });
 
   it('sets exact=false when query["exact"] is "false"', () => {
-    expect(parse(controller, { exact: "false" }).exact).toBe(false);
+    expect(parse(controller, { city: "Lisbon", exact: "false" }).exact).toBe(
+      false,
+    );
   });
 
   // ─── validation errors ──────────────────────────────────────────────────────
 
-  it("throws BadRequestException for invalid checkIn date", () => {
-    expect(() => parse(controller, { checkIn: "not-a-date" })).toThrow(
+  it("throws BadRequestException when city is missing", () => {
+    expect(() => parse(controller, {})).toThrow(BadRequestException);
+  });
+
+  it("throws BadRequestException when city is whitespace-only", () => {
+    expect(() => parse(controller, { city: "   " })).toThrow(
       BadRequestException,
     );
   });
 
+  it("throws BadRequestException for invalid checkIn date", () => {
+    expect(() =>
+      parse(controller, { city: "Lisbon", checkIn: "not-a-date" }),
+    ).toThrow(BadRequestException);
+  });
+
   it("throws BadRequestException for invalid checkOut date", () => {
-    expect(() => parse(controller, { checkOut: "not-a-date" })).toThrow(
-      BadRequestException,
-    );
+    expect(() =>
+      parse(controller, { city: "Lisbon", checkOut: "not-a-date" }),
+    ).toThrow(BadRequestException);
   });
 
   it("throws BadRequestException when checkOut equals checkIn", () => {
     expect(() =>
-      parse(controller, { checkIn: "2026-04-01", checkOut: "2026-04-01" }),
+      parse(controller, {
+        city: "Lisbon",
+        checkIn: "2026-04-01",
+        checkOut: "2026-04-01",
+      }),
     ).toThrow(BadRequestException);
   });
 
   it("throws BadRequestException when checkOut is before checkIn", () => {
     expect(() =>
-      parse(controller, { checkIn: "2026-04-05", checkOut: "2026-04-01" }),
+      parse(controller, {
+        city: "Lisbon",
+        checkIn: "2026-04-05",
+        checkOut: "2026-04-01",
+      }),
     ).toThrow(BadRequestException);
   });
 
   it("throws BadRequestException for non-numeric guests", () => {
-    expect(() => parse(controller, { guests: "abc" })).toThrow(
+    expect(() => parse(controller, { city: "Lisbon", guests: "abc" })).toThrow(
       BadRequestException,
     );
   });
 
   it("throws BadRequestException for guests = 0", () => {
-    expect(() => parse(controller, { guests: "0" })).toThrow(
+    expect(() => parse(controller, { city: "Lisbon", guests: "0" })).toThrow(
       BadRequestException,
     );
   });
 
   it("throws BadRequestException for negative guests", () => {
-    expect(() => parse(controller, { guests: "-1" })).toThrow(
+    expect(() => parse(controller, { city: "Lisbon", guests: "-1" })).toThrow(
       BadRequestException,
     );
   });
 
   it("throws BadRequestException for unknown sort value", () => {
-    expect(() => parse(controller, { sort: "cheapest_first" })).toThrow(
-      BadRequestException,
-    );
+    expect(() =>
+      parse(controller, { city: "Lisbon", sort: "cheapest_first" }),
+    ).toThrow(BadRequestException);
   });
 
   // ─── HTTP endpoint ──────────────────────────────────────────────────────────
@@ -210,42 +228,8 @@ describe("PropertiesController", () => {
   });
 
   it("returns the service response", async () => {
-    const response = await controller.searchProperties({});
+    const response = await controller.searchProperties({ city: "Cancún" });
     expect(response).toEqual({ results: [] });
-  });
-
-  // ─── GET /properties/:id ────────────────────────────────────────────────────
-
-  describe("getProperty", () => {
-    const mockDetail = {
-      propertyId: "p1",
-      propertyName: "Hotel A",
-      city: "Lisbon",
-      country: "Portugal",
-      neighborhood: null,
-      lat: 38.7,
-      lon: -9.14,
-      stars: 4,
-      rating: 4.0,
-      reviewCount: 10,
-      thumbnailUrl: "",
-      amenities: ["wifi"],
-      rooms: [],
-    };
-
-    it("returns property detail when found", async () => {
-      (service.getPropertyById as jest.Mock).mockResolvedValue(mockDetail);
-      const result = await controller.getProperty("p1");
-      expect(result).toEqual(mockDetail);
-      expect(service.getPropertyById).toHaveBeenCalledWith("p1");
-    });
-
-    it("throws NotFoundException when property not found", async () => {
-      (service.getPropertyById as jest.Mock).mockResolvedValue(null);
-      await expect(controller.getProperty("missing")).rejects.toThrow(
-        NotFoundException,
-      );
-    });
   });
 
   describe("GET cities", () => {

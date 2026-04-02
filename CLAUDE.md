@@ -67,6 +67,32 @@ pnpm run lint                  # Lint all projects
 nx lint auth-service           # Single service
 ```
 
+### Database (Migrations & Seed)
+
+Each service with a database has `migrate` and `seed` nx targets. The local DB ports differ from the in-container defaults, so always pass `DATABASE_URL` explicitly.
+
+| Service | Local port | DB name |
+|---|---|---|
+| `search-service` | 5433 | `search_service` |
+| `inventory-service` | 5434 | `travelhub` |
+
+```bash
+# Search service
+DATABASE_URL=postgres://postgres:postgres@localhost:5433/search_service pnpm exec nx run search-service:migrate
+DATABASE_URL=postgres://postgres:postgres@localhost:5433/search_service pnpm exec nx run search-service:seed
+
+# Inventory service
+DATABASE_URL=postgres://postgres:postgres@localhost:5434/travelhub pnpm exec nx run inventory-service:migrate
+DATABASE_URL=postgres://postgres:postgres@localhost:5434/travelhub pnpm exec nx run inventory-service:seed
+```
+
+To fully reset and reseed from scratch:
+```bash
+docker compose down -v          # stop containers and delete volumes
+docker compose up -d            # recreate containers (DBs will be empty)
+# then run migrate + seed for each service above
+```
+
 ### Nx Utilities
 ```bash
 pnpm run affected:test     # Test only projects changed vs main branch
@@ -124,3 +150,57 @@ Prettier settings: single quotes, trailing commas.
 ## CI
 
 `.github/workflows/ci.yml` runs on push to `main` and on pull requests. It uses `nx affected` for lint/build/test so only changed projects run in CI. Node is provided via `.nvmrc` (Node 24). `NX_DAEMON=false` and `NX_TUI=false` are set for CI stability. Uses `pnpm install --frozen-lockfile` for clean installs.
+
+## Event Bus (RabbitMQ)
+
+Exchange: **`travelhub`** — type `topic`, durable. All inter-service events flow through this exchange.
+
+### inventory-service → search-service
+
+| Routing key | Publisher | Queue (consumer) | Trigger | Handler effect |
+|---|---|---|---|---|
+| `inventory.room.upserted` | `events.publisher.ts` | `search.inventory.room.upserted` | Room created or updated | Upserts full room snapshot into `room_search_index`; invalidates city Redis cache |
+| `inventory.room.deleted` | `events.publisher.ts` | `search.inventory.room.deleted` | Room soft-deleted | Sets `is_active = false` in `room_search_index`; invalidates city Redis cache |
+| `inventory.price.updated` | `events.publisher.ts` | `search.inventory.price.updated` | Rate created/updated | Replaces `room_price_periods` for the room; invalidates city Redis cache |
+
+### Payload shapes
+
+**`inventory.room.upserted`** — `InventoryRoomUpdatedEvent` (`events.types.ts`):
+```ts
+{
+  routingKey: "inventory.room.upserted";
+  timestamp: string;          // ISO-8601
+  snapshot: RoomSnapshot;     // full denormalized room + property fields
+}
+```
+
+**`inventory.price.updated`** — `InventoryPriceUpdatedEvent` (`events.types.ts`):
+```ts
+{
+  routingKey: "inventory.price.updated";
+  roomId: string;
+  pricePeriods: Array<{ fromDate: string; toDate: string; priceUsd: number }>;
+  timestamp: string;
+}
+```
+
+**`inventory.room.deleted`** — `InventoryRoomDeletedEvent` (`events.types.ts`):
+```ts
+{
+  routingKey: "inventory.room.deleted";
+  roomId: string;
+  propertyId: string;
+  timestamp: string;
+}
+```
+
+### Key files
+
+| File | Role |
+|---|---|
+| `services/inventory-service/src/events/events.publisher.ts` | Publishes to `travelhub` exchange |
+| `services/inventory-service/src/events/events.types.ts` | `RoomSnapshot`, all event interfaces |
+| `services/search-service/src/events/events.service.ts` | Subscribes to all queues on startup |
+| `services/search-service/src/events/handlers/room-upserted.handler.ts` | Maps camelCase snapshot → snake_case `RoomIndexRecord` |
+| `services/search-service/src/events/handlers/availability-updated.handler.ts` | Replaces `room_price_periods` for a room |
+| `services/search-service/src/events/handlers/room-deleted.handler.ts` | Sets room inactive; invalidates city Redis cache |
