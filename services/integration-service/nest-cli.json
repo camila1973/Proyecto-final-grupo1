@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json.schemastore.org/nest-cli",
+  "collection": "@nestjs/schematics",
+  "sourceRoot": "services/integration-service/src",
+  "compilerOptions": {
+    "deleteOutDir": false,
+    "outputPath": "dist/integration-service",
+    "assets": [],
+    "watchAssets": false
+  }
+}
