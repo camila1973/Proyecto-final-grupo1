@@ -73,7 +73,7 @@ export class InventoryClient {
     propertyId: string,
     dto: CreateRoomDto,
   ): Promise<{ id: string }> {
-    return this.post<{ id: string }>(`/properties/${propertyId}/rooms`, dto);
+    return this.post<{ id: string }>("/rooms", { ...dto, propertyId });
   }
 
   async updateRoom(id: string, dto: UpdateRoomDto): Promise<void> {

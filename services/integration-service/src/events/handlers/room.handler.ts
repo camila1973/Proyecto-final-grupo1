@@ -5,7 +5,7 @@ import {
   IsOptional,
   validateOrReject,
 } from "class-validator";
-import { plainToInstance } from "class-transformer";
+import { plainToInstance, Type } from "class-transformer";
 import { ExternalIdService } from "../../external-id/external-id.service";
 import { InventoryClient } from "../../clients/inventory.client";
 import { UnknownEntityError } from "../unknown-entity.error";
@@ -20,12 +20,15 @@ class RoomEventData {
   @IsString()
   roomType: string;
 
+  @Type(() => Number)
   @IsNumber()
   capacity: number;
 
+  @Type(() => Number)
   @IsNumber()
   totalRooms: number;
 
+  @Type(() => Number)
   @IsNumber()
   basePriceUsd: number;
 

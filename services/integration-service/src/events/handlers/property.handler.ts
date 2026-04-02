@@ -5,7 +5,7 @@ import {
   IsNumber,
   validateOrReject,
 } from "class-validator";
-import { plainToInstance } from "class-transformer";
+import { plainToInstance, Type } from "class-transformer";
 import { ExternalIdService } from "../../external-id/external-id.service";
 import { InventoryClient } from "../../clients/inventory.client";
 import { UnknownEntityError } from "../unknown-entity.error";
@@ -27,6 +27,7 @@ class PropertyEventData {
   countryCode: string;
 
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   stars?: number;
 }
