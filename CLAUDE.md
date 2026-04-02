@@ -105,16 +105,16 @@ docker compose up -d            # recreate containers (DBs will be empty)
 The integration-service ships a helper script to generate HMAC-SHA256 signatures for manual webhook testing. Run it from the service directory or via `pnpm`:
 
 ```bash
-# Via pnpm script (from services/integration-service/)
+# From workspace root
 pnpm generate-hmac --secret <signing-secret> --body '<json>'
 
-# From the workspace root
-cd services/integration-service && pnpm generate-hmac \
+# Example
+pnpm generate-hmac \
   --secret secret-partner-1 \
   --body '{"eventId":"evt-001","eventType":"room.availability.updated","occurredAt":"2026-04-01T10:00:00Z","data":{"externalRoomId":"gran-caribe-deluxe-king-ocean","date":"2027-08-01","available":false}}'
 
 # Pipe JSON via stdin (secret from env var)
-echo '<json>' | WEBHOOK_SECRET=secret-partner-1 pnpm --filter integration-service generate-hmac
+echo '<json>' | WEBHOOK_SECRET=secret-partner-1 pnpm generate-hmac
 
 # Read body from file
 pnpm generate-hmac --secret secret-partner-1 --file /tmp/payload.json

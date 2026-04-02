@@ -21,6 +21,7 @@
     "serve:notification": "nx serve notification-service",
     "serve:partners": "nx serve partners-service",
     "serve:integration": "nx serve integration-service",
+    "generate-hmac": "npx tsx services/integration-service/scripts/generate-hmac.ts",
     "serve:frontend": "nx serve frontend",
     "start:mobile": "nx start mobile",
     "test": "NX_DAEMON=false NX_TUI=false nx run-many -t test --outputStyle=static",
