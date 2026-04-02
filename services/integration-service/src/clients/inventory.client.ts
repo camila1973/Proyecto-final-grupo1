@@ -84,7 +84,10 @@ export class InventoryClient {
     roomId: string,
     dto: UpdateAvailabilityDto,
   ): Promise<void> {
-    await this.patch(`/rooms/${roomId}/availability`, dto);
+    const endpoint = dto.available
+      ? "/availability/unblock"
+      : "/availability/block";
+    await this.post(endpoint, { roomId, fromDate: dto.date, toDate: dto.date });
   }
 
   async updateRates(roomId: string, dto: UpdateRatesDto): Promise<void> {
