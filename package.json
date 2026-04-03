@@ -39,7 +39,7 @@
     "infra:preview": "cd pulumi && pulumi preview",
     "infra:up": "cd pulumi && pulumi up",
     "infra:down": "cd pulumi && pulumi destroy",
-    "deploy:frontend": "VITE_API_URL=$(pulumi stack output gatewayUrl --stack prod --cwd pulumi) pnpm run build:frontend && aws s3 sync dist/frontend/ s3://$(pulumi stack output frontendBucket --stack prod --cwd pulumi)/ --delete && aws cloudfront create-invalidation --distribution-id $(pulumi stack output cdnId --stack prod --cwd pulumi) --paths '/*'",
+    "deploy:frontend": "VITE_API_URL=$(pulumi stack output gatewayUrl --stack prod --cwd pulumi) nx build frontend --skip-nx-cache && aws s3 sync dist/frontend/ s3://$(pulumi stack output frontendBucket --stack prod --cwd pulumi)/ --delete && aws cloudfront create-invalidation --distribution-id $(pulumi stack output cdnId --stack prod --cwd pulumi) --paths '/*'",
     "prepare": "husky"
   },
   "pnpm": {

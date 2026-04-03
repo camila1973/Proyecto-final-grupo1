@@ -17,10 +17,14 @@ export class DatabaseProvider implements OnModuleInit, OnModuleDestroy {
   readonly db: Kysely<Database>;
 
   constructor() {
+    const connectionString =
+      process.env.DATABASE_URL ??
+      "postgres://postgres:postgres@localhost:5435/integration_service";
     this.pool = new Pool({
-      connectionString:
-        process.env.DATABASE_URL ??
-        "postgres://postgres:postgres@localhost:5435/integration_service",
+      connectionString,
+      ssl: connectionString.includes("localhost")
+        ? false
+        : { rejectUnauthorized: false },
     });
     this.db = new Kysely<Database>({
       dialect: new PostgresDialect({ pool: this.pool }),

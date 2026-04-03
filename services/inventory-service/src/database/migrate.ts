@@ -9,12 +9,46 @@ import * as path from "node:path";
 import { Pool } from "pg";
 import { Logger } from "@nestjs/common";
 
+async function ensureDatabase(
+  connectionString: string,
+  logger: Logger,
+): Promise<void> {
+  const url = new URL(connectionString);
+  const targetDb = url.pathname.slice(1);
+  if (!targetDb || targetDb === "postgres") return;
+
+  url.pathname = "/postgres";
+  const adminPool = new Pool({
+    connectionString: url.toString(),
+    ssl: connectionString.includes("localhost")
+      ? false
+      : { rejectUnauthorized: false },
+  });
+  try {
+    const { rows } = await adminPool.query<{ exists: boolean }>(
+      "SELECT 1 FROM pg_database WHERE datname = $1",
+      [targetDb],
+    );
+    if (rows.length === 0) {
+      await adminPool.query(`CREATE DATABASE "${targetDb}"`);
+      logger.log(`Created database: ${targetDb}`);
+    }
+  } finally {
+    await adminPool.end();
+  }
+}
+
 export async function runMigrations(): Promise<void> {
   const logger = new Logger("Migrations");
+  const connectionString =
+    process.env.DATABASE_URL ??
+    "postgres://postgres:postgres@localhost:5434/travelhub";
+  await ensureDatabase(connectionString, logger);
   const pool = new Pool({
-    connectionString:
-      process.env.DATABASE_URL ??
-      "postgres://postgres:postgres@localhost:5434/travelhub",
+    connectionString,
+    ssl: connectionString.includes("localhost")
+      ? false
+      : { rejectUnauthorized: false },
   });
   const db = new Kysely<any>({ dialect: new PostgresDialect({ pool }) });
   try {
