@@ -100,6 +100,51 @@ GitHub Actions runs on every push to `main` and on pull requests:
 4. **Test** — affected projects only, with coverage
 5. **Coverage** — uploaded to Codecov (requires `CODECOV_TOKEN` repository secret)
 
+## Deployment
+
+Infrastructure is managed with [Pulumi](https://www.pulumi.com/) in `pulumi/`. State lives in S3 (`s3://travelhub-pulumi-state`). Services run on AWS App Runner; the frontend is served from S3 + CloudFront.
+
+### Prerequisites
+
+- [Pulumi CLI](https://www.pulumi.com/docs/install/)
+- AWS credentials with access to the account
+- `cd pulumi && npm install`
+
+### Deploy locally
+
+```bash
+cd pulumi
+
+# Export credentials (needed when using AWS SSO / login sessions)
+eval "$(aws configure export-credentials --format env)"
+
+# Preview
+AWS_REGION=us-east-1 PULUMI_CONFIG_PASSPHRASE="" pulumi preview --stack prod
+
+# Deploy backend (builds Docker images, pushes to ECR, updates App Runner)
+AWS_REGION=us-east-1 PULUMI_CONFIG_PASSPHRASE="" pulumi up --stack prod
+
+# Deploy frontend (run after pulumi up)
+cd ..
+pnpm run build:frontend
+BUCKET=$(AWS_REGION=us-east-1 PULUMI_CONFIG_PASSPHRASE="" pulumi stack output frontendBucket --stack prod --cwd pulumi)
+CDN_ID=$(AWS_REGION=us-east-1 PULUMI_CONFIG_PASSPHRASE="" pulumi stack output cdnId --stack prod --cwd pulumi)
+aws s3 sync dist/frontend/ "s3://${BUCKET}/" --delete
+aws cloudfront create-invalidation --distribution-id "${CDN_ID}" --paths "/*"
+```
+
+### Deploy via GitHub Actions
+
+Trigger manually: **Actions → Deploy → Run workflow**
+
+Required secrets in the `production` GitHub Environment:
+
+| Secret | Description |
+|---|---|
+| `AWS_ACCESS_KEY_ID` | IAM key with ECR / App Runner / S3 / CloudFront access |
+| `AWS_SECRET_ACCESS_KEY` | Corresponding secret key |
+| `PULUMI_CONFIG_PASSPHRASE` | Empty string (no secret encryption on this project) |
+
 ## Code Quality
 
 - **Pre-commit**: Husky runs lint-staged (ESLint + Prettier) on staged files only

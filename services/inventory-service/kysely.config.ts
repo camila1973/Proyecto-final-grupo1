@@ -11,6 +11,6 @@ export default defineConfig({
     }),
   }),
   migrations: {
-    migrationFolder: "migrations",
+    migrationFolder: "src/database/migrations",
   },
 });

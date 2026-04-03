@@ -192,6 +192,64 @@ Prettier settings: single quotes, trailing commas.
 
 `.github/workflows/ci.yml` runs on push to `main` and on pull requests. It uses `nx affected` for lint/build/test so only changed projects run in CI. Node is provided via `.nvmrc` (Node 24). `NX_DAEMON=false` and `NX_TUI=false` are set for CI stability. Uses `pnpm install --frozen-lockfile` for clean installs.
 
+## Deployment (Pulumi)
+
+Infrastructure is managed with Pulumi (TypeScript) in `pulumi/`. State is stored in S3 (`s3://travelhub-pulumi-state`, `us-east-1`). The backend URL is declared in `pulumi/Pulumi.yaml` so no `pulumi login` is needed.
+
+### Prerequisites
+- [Pulumi CLI](https://www.pulumi.com/docs/install/) installed
+- AWS credentials active in the current shell session
+- `cd pulumi && npm install`
+
+### Running Pulumi locally
+
+Pulumi's SDK does not always pick up credentials from the AWS CLI's SSO/login cache. Export them explicitly first:
+
+```bash
+eval "$(aws configure export-credentials --format env)"
+```
+
+Then run any Pulumi command with an empty passphrase (this project uses no secret encryption):
+
+```bash
+# Preview changes
+AWS_REGION=us-east-1 PULUMI_CONFIG_PASSPHRASE="" pulumi preview --stack prod
+
+# Deploy
+AWS_REGION=us-east-1 PULUMI_CONFIG_PASSPHRASE="" pulumi up --stack prod
+
+# Read stack outputs
+AWS_REGION=us-east-1 PULUMI_CONFIG_PASSPHRASE="" pulumi stack output --stack prod
+```
+
+### What `pulumi up` does
+
+1. Builds all Docker images (base + 9 service images) and pushes to ECR
+2. Creates/updates all AWS App Runner services
+3. Provisions shared infrastructure (RDS, ElastiCache Redis, Amazon MQ, VPC)
+
+The frontend is **not** deployed by Pulumi — it requires a separate step after `pulumi up`:
+
+```bash
+pnpm run build:frontend
+BUCKET=$(AWS_REGION=us-east-1 PULUMI_CONFIG_PASSPHRASE="" pulumi stack output frontendBucket --stack prod --cwd pulumi)
+CDN_ID=$(AWS_REGION=us-east-1 PULUMI_CONFIG_PASSPHRASE="" pulumi stack output cdnId --stack prod --cwd pulumi)
+aws s3 sync dist/frontend/ "s3://${BUCKET}/" --delete
+aws cloudfront create-invalidation --distribution-id "${CDN_ID}" --paths "/*"
+```
+
+### GitHub Actions deploy
+
+`.github/workflows/deploy.yml` — manually triggered via Actions → Deploy → Run workflow.
+
+Required secrets (set in the `production` GitHub Environment):
+
+| Secret | Value |
+|---|---|
+| `AWS_ACCESS_KEY_ID` | IAM key with ECR/AppRunner/S3/CloudFront access |
+| `AWS_SECRET_ACCESS_KEY` | Corresponding secret |
+| `PULUMI_CONFIG_PASSPHRASE` | Empty string `""` |
+
 ## Event Bus (RabbitMQ)
 
 Exchange: **`travelhub`** — type `topic`, durable. All inter-service events flow through this exchange.

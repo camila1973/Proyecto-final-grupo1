@@ -1,0 +1,59 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false # never abort an in-flight pulumi up
+
+permissions:
+  contents: read
+
+env:
+  NX_DAEMON: 'false'
+  NX_TUI: 'false'
+  HUSKY: '0'
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+  AWS_REGION: us-east-1
+  PULUMI_STACK: prod
+
+jobs:
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Root node_modules — reuses the existing composite action (pnpm + Node + Nx cache)
+      - uses: ./.github/actions/setup
+
+      # pulumi/ has its own package.json and no lockfile
+      - name: Install Pulumi dependencies
+        run: npm install
+        working-directory: pulumi
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # Builds all Docker images, pushes to ECR, updates App Runner services.
+      # Backend URL is declared in pulumi/Pulumi.yaml — no cloud-url needed here.
+      - name: Deploy backend (pulumi up)
+        uses: pulumi/actions@v6
+        with:
+          command: up
+          stack-name: ${{ env.PULUMI_STACK }}
+          work-dir: pulumi
+          upsert: false
+        env:
+          PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
+
+      - name: Deploy frontend
+        run: pnpm run deploy:frontend
+        env:
+          PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
