@@ -25,11 +25,17 @@ const MICROSERVICES = SERVICES.filter(s => s.name !== "api-gateway");
 const TAGS = { Project: "travelhub" };
 
 
-// ─── VPC — public subnets only (no NAT gateway = free) ───────────────────────
+// ─── VPC — public + private subnets, single NAT gateway ──────────────────────
+// NAT gateway is required: App Runner uses egressType "VPC" which routes all
+// outbound traffic through the VPC connector. Without a NAT gateway, App Runner
+// containers cannot reach the internet (including other App Runner service URLs).
 
 const vpc = new awsx.ec2.Vpc("travelhub", {
-  natGateways: { strategy: "None" },
-  subnetSpecs: [{ type: awsx.ec2.SubnetType.Public, cidrMask: 24 }],
+  natGateways: { strategy: "Single" },
+  subnetSpecs: [
+    { type: awsx.ec2.SubnetType.Public,  cidrMask: 24 },
+    { type: awsx.ec2.SubnetType.Private, cidrMask: 24 },
+  ],
   subnetStrategy: awsx.ec2.SubnetAllocationStrategy.Auto,
   numberOfAvailabilityZones: 2,
   tags: TAGS,
@@ -245,7 +251,7 @@ const scaling = new aws.apprunner.AutoScalingConfigurationVersion("scaling", {
 // VPC connector gives App Runner outbound access to RDS/Redis/MQ inside the VPC
 const vpcConnector = new aws.apprunner.VpcConnector("vpc-connector", {
   vpcConnectorName: "travelhub",
-  subnets:          vpc.publicSubnetIds,
+  subnets:          vpc.privateSubnetIds,
   securityGroups:   [appRunnerSg.id],
   tags: TAGS,
 });
