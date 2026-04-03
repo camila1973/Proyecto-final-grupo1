@@ -11,10 +11,14 @@ import { Logger } from "@nestjs/common";
 
 export async function runMigrations(): Promise<void> {
   const logger = new Logger("Migrations");
+  const connectionString =
+    process.env.DATABASE_URL ??
+    "postgres://postgres:postgres@localhost:5435/integration_service";
   const pool = new Pool({
-    connectionString:
-      process.env.DATABASE_URL ??
-      "postgres://postgres:postgres@localhost:5435/integration_service",
+    connectionString,
+    ssl: connectionString.includes("localhost")
+      ? false
+      : { rejectUnauthorized: false },
   });
   const db = new Kysely<any>({ dialect: new PostgresDialect({ pool }) });
   try {
