@@ -35,9 +35,7 @@ export async function runMigrations(): Promise<void> {
       }
     }
     if (error)
-      throw error instanceof Error
-        ? error
-        : new Error("Migration failed", { cause: error });
+      throw error instanceof Error ? error : new Error("Migration failed");
     logger.log("Migrations up to date");
   } finally {
     await pool.end();
