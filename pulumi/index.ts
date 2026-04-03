@@ -143,7 +143,7 @@ const mqPassword = new random.RandomPassword("mq-password", {
 
 const mqBroker = new aws.mq.Broker("travelhub-mq", {
   brokerName:          "travelhub",
-  engineType:              "RABBITMQ",
+  engineType:              "RabbitMQ",
   engineVersion:           "3.13",
   hostInstanceType:        "mq.t3.micro",
   deploymentMode:          "SINGLE_INSTANCE",
