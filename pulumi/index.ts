@@ -156,7 +156,7 @@ const mqBroker = new aws.mq.Broker("travelhub-mq", {
     password: mqPassword.result,
   }],
   tags: TAGS,
-});
+}, { ignoreChanges: ["subnetIds"] });
 
 // ─── ECR repositories ─────────────────────────────────────────────────────────
 
