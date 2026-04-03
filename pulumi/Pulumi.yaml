@@ -1,6 +1,8 @@
 name: travelhub
 runtime: nodejs
 description: TravelHub — AWS App Runner + RDS + CloudFront (cheapest viable cloud setup)
+backend:
+  url: s3://travelhub-pulumi-state
 config:
   aws:region:
-    default: us-east-1
+    value: us-east-1

@@ -7,25 +7,30 @@ import * as random from "@pulumi/random";
 // ─── Service definitions ──────────────────────────────────────────────────────
 
 const SERVICES = [
-  { name: "api-gateway",          port: 3000, db: null          },
-  { name: "auth-service",         port: 3001, db: "auth"        },
-  { name: "search-service",       port: 3002, db: "search"      },
-  { name: "inventory-service",    port: 3003, db: "inventory"   },
-  { name: "booking-service",      port: 3004, db: "booking"     },
-  { name: "payment-service",      port: 3005, db: "payment"     },
-  { name: "notification-service", port: 3006, db: "notification"},
-  { name: "partners-service",     port: 3007, db: "partners"    },
+  { name: "api-gateway",          port: 3000, db: null                },
+  { name: "auth-service",         port: 3001, db: "auth"              },
+  // inventory before search — search-service needs INVENTORY_SERVICE_URL at creation time
+  { name: "inventory-service",    port: 3003, db: "inventory"         },
+  { name: "booking-service",      port: 3004, db: "booking"           },
+  { name: "payment-service",      port: 3005, db: "payment"           },
+  { name: "notification-service", port: 3006, db: "notification"      },
+  { name: "partners-service",     port: 3007, db: "partners"          },
+  { name: "search-service",       port: 3002, db: "search"            },
+  // integration last — needs inventory, booking, and payment URLs
+  { name: "integration-service",  port: 3008, db: "integration_service" },
 ] as const;
 
 type SvcName = typeof SERVICES[number]["name"];
 const MICROSERVICES = SERVICES.filter(s => s.name !== "api-gateway");
 const TAGS = { Project: "travelhub" };
 
+
 // ─── VPC — public subnets only (no NAT gateway = free) ───────────────────────
 
 const vpc = new awsx.ec2.Vpc("travelhub", {
   natGateways: { strategy: "None" },
   subnetSpecs: [{ type: awsx.ec2.SubnetType.Public, cidrMask: 24 }],
+  subnetStrategy: awsx.ec2.SubnetAllocationStrategy.Auto,
   numberOfAvailabilityZones: 2,
   tags: TAGS,
 });
@@ -49,6 +54,30 @@ const dbSg = new aws.ec2.SecurityGroup("db-sg", {
   }],
   egress: [{ fromPort: 0, toPort: 0, protocol: "-1", cidrBlocks: ["0.0.0.0/0"] }],
   tags: { ...TAGS, Name: "travelhub-rds" },
+});
+
+// Redis — only reachable from App Runner SG
+const redisSg = new aws.ec2.SecurityGroup("redis-sg", {
+  vpcId: vpc.vpcId,
+  ingress: [{
+    fromPort: 6379, toPort: 6379, protocol: "tcp",
+    securityGroups: [appRunnerSg.id],
+    description: "Redis from App Runner",
+  }],
+  egress: [{ fromPort: 0, toPort: 0, protocol: "-1", cidrBlocks: ["0.0.0.0/0"] }],
+  tags: { ...TAGS, Name: "travelhub-redis" },
+});
+
+// Amazon MQ (RabbitMQ) — only reachable from App Runner SG
+const mqSg = new aws.ec2.SecurityGroup("mq-sg", {
+  vpcId: vpc.vpcId,
+  ingress: [{
+    fromPort: 5672, toPort: 5672, protocol: "tcp",
+    securityGroups: [appRunnerSg.id],
+    description: "AMQP from App Runner",
+  }],
+  egress: [{ fromPort: 0, toPort: 0, protocol: "-1", cidrBlocks: ["0.0.0.0/0"] }],
+  tags: { ...TAGS, Name: "travelhub-mq" },
 });
 
 // ─── RDS — single db.t4g.micro shared by all services ────────────────────────
@@ -83,6 +112,52 @@ const db = new aws.rds.Instance("travelhub-db", {
   tags: TAGS,
 });
 
+// ─── ElastiCache Redis — single cache.t4g.micro node (~$12/month) ─────────────
+// Used by search-service (caching) and integration-service (rate limiting / state)
+
+const redisSubnetGroup = new aws.elasticache.SubnetGroup("redis-subnets", {
+  subnetIds: vpc.publicSubnetIds,
+  tags: TAGS,
+});
+
+const redisCluster = new aws.elasticache.Cluster("travelhub-redis", {
+  clusterId:           "travelhub",
+  engine:              "redis",
+  nodeType:            "cache.t4g.micro",
+  numCacheNodes:       1,
+  parameterGroupName:  "default.redis7",
+  engineVersion:       "7.1",
+  port:                6379,
+  subnetGroupName:     redisSubnetGroup.name,
+  securityGroupIds:    [redisSg.id],
+  tags: TAGS,
+});
+
+// ─── Amazon MQ (RabbitMQ) — single mq.t3.micro broker (~$25/month) ────────────
+// Used by search-service and inventory-service for async event propagation
+
+const mqPassword = new random.RandomPassword("mq-password", {
+  length: 32,
+  special: false,
+});
+
+const mqBroker = new aws.mq.Broker("travelhub-mq", {
+  brokerName:          "travelhub",
+  engineType:              "RABBITMQ",
+  engineVersion:           "3.13",
+  hostInstanceType:        "mq.t3.micro",
+  deploymentMode:          "SINGLE_INSTANCE",
+  autoMinorVersionUpgrade: true,
+  publiclyAccessible:      false,
+  subnetIds:           vpc.publicSubnetIds.apply(ids => [ids[0]]),
+  securityGroups:      [mqSg.id],
+  users: [{
+    username: "travelhub",
+    password: mqPassword.result,
+  }],
+  tags: TAGS,
+});
+
 // ─── ECR repositories ─────────────────────────────────────────────────────────
 
 const ecrToken = aws.ecr.getAuthorizationTokenOutput();
@@ -101,7 +176,7 @@ const baseRepo = makeRepo("base");
 const repos: Partial<Record<SvcName, aws.ecr.Repository>> = {};
 for (const svc of SERVICES) repos[svc.name] = makeRepo(svc.name);
 
-function registryCreds(repo: aws.ecr.Repository): docker.types.input.RegistryArgs {
+function registryCreds(repo: aws.ecr.Repository): docker.types.input.Registry {
   return { server: repo.repositoryUrl, username: ecrToken.userName, password: ecrToken.password };
 }
 
@@ -167,7 +242,7 @@ const scaling = new aws.apprunner.AutoScalingConfigurationVersion("scaling", {
   tags: TAGS,
 });
 
-// VPC connector gives App Runner outbound access to RDS inside the VPC
+// VPC connector gives App Runner outbound access to RDS/Redis/MQ inside the VPC
 const vpcConnector = new aws.apprunner.VpcConnector("vpc-connector", {
   vpcConnectorName: "travelhub",
   subnets:          vpc.publicSubnetIds,
@@ -209,9 +284,16 @@ function makeAppRunner(
   }, { dependsOn: deps });
 }
 
-// ─── Microservices (auth, search, inventory, booking, payment, notification, partners) ──
+// ─── Microservices ────────────────────────────────────────────────────────────
 
 const runners: Partial<Record<SvcName, aws.apprunner.Service>> = {};
+
+// RabbitMQ AMQP URL — derive host from the amqps endpoint (strip scheme + port)
+// instances is an Output<array> so we apply() over it to safely index into it
+const mqHost = mqBroker.instances.apply(
+  instances => (instances?.[0]?.endpoints?.[0] ?? "").replace("amqps://", "").replace(":5671", ""),
+);
+const mqAmqpUrl = pulumi.interpolate`amqp://travelhub:${mqPassword.result}@${mqHost}:5672`;
 
 for (const svc of MICROSERVICES) {
   const env: { [k: string]: pulumi.Input<string> } = {
@@ -221,27 +303,34 @@ for (const svc of MICROSERVICES) {
       DATABASE_URL: pulumi.interpolate`postgres://travelhub:${dbPassword.result}@${db.address}:5432/${svc.db}`,
     } : {}),
   };
-  runners[svc.name] = makeAppRunner(svc.name, svc.port, svcImgs[svc.name]!, env, [db]);
+
+  // Per-service extras matching docker-compose environment
+  if (svc.name === "search-service") {
+    env["REDIS_URL"]            = pulumi.interpolate`redis://${redisCluster.cacheNodes[0].address}:6379`;
+    env["MESSAGE_BROKER_URL"]   = mqAmqpUrl;
+    env["MESSAGE_BROKER_TYPE"]  = "rabbitmq";
+    env["INVENTORY_SERVICE_URL"] = pulumi.interpolate`https://${runners["inventory-service"]!.serviceUrl}`;
+  }
+
+  if (svc.name === "inventory-service") {
+    env["RABBITMQ_URL"] = mqAmqpUrl;
+  }
+
+  if (svc.name === "integration-service") {
+    env["REDIS_HOST"]             = redisCluster.cacheNodes[0].address;
+    env["REDIS_PORT"]             = "6379";
+    env["INVENTORY_SERVICE_URL"]  = pulumi.interpolate`https://${runners["inventory-service"]!.serviceUrl}`;
+    env["BOOKING_SERVICE_URL"]    = pulumi.interpolate`https://${runners["booking-service"]!.serviceUrl}`;
+    env["PAYMENT_SERVICE_URL"]    = pulumi.interpolate`https://${runners["payment-service"]!.serviceUrl}`;
+    env["FX_MOCK"]                = "true";
+  }
+
+  const deps: pulumi.Resource[] = [db, redisCluster, mqBroker];
+  runners[svc.name] = makeAppRunner(svc.name, svc.port, svcImgs[svc.name]!, env, deps);
 }
-
-// ─── API Gateway — created last so it knows downstream service URLs ────────────
-
-const gwEnv: { [k: string]: pulumi.Input<string> } = {
-  NODE_ENV: "production",
-  PORT:     "3000",
-};
-for (const svc of MICROSERVICES) {
-  // auth-service → AUTH_SERVICE_URL, notification-service → NOTIFICATION_SERVICE_URL …
-  const key = svc.name.replace("-service", "").toUpperCase() + "_SERVICE_URL";
-  gwEnv[key] = pulumi.interpolate`https://${runners[svc.name]!.serviceUrl}`;
-}
-
-runners["api-gateway"] = makeAppRunner(
-  "api-gateway", 3000, svcImgs["api-gateway"]!, gwEnv,
-  Object.values(runners) as aws.apprunner.Service[],
-);
 
 // ─── Frontend — S3 + CloudFront (~$1/month vs ~$14/month for App Runner nginx) ──
+// Declared before API Gateway so cdn.domainName is available for CORS_ORIGIN.
 
 const bucket = new aws.s3.BucketV2("frontend-bucket", { tags: TAGS });
 
@@ -283,6 +372,8 @@ const cdn = new aws.cloudfront.Distribution("frontend-cdn", {
     { errorCode: 403, responseCode: 200, responsePagePath: "/index.html" },
     { errorCode: 404, responseCode: 200, responsePagePath: "/index.html" },
   ],
+  // PriceClass_100 = US + Europe only — cheapest CloudFront price class
+  priceClass:        "PriceClass_100",
   restrictions:      { geoRestriction: { restrictionType: "none" } },
   viewerCertificate: { cloudfrontDefaultCertificate: true },
   tags: TAGS,
@@ -305,13 +396,34 @@ new aws.s3.BucketPolicy("frontend-bucket-policy", {
   ),
 });
 
+// ─── API Gateway — created last so it knows downstream service URLs ────────────
+
+const gwEnv: { [k: string]: pulumi.Input<string> } = {
+  NODE_ENV:    "production",
+  PORT:        "3000",
+  CORS_ORIGIN: pulumi.interpolate`https://${cdn.domainName}`,
+};
+for (const svc of MICROSERVICES) {
+  // auth-service → AUTH_SERVICE_URL, integration-service → INTEGRATION_SERVICE_URL …
+  const key = svc.name.replace("-service", "").toUpperCase() + "_SERVICE_URL";
+  gwEnv[key] = pulumi.interpolate`https://${runners[svc.name]!.serviceUrl}`;
+}
+
+runners["api-gateway"] = makeAppRunner(
+  "api-gateway", 3000, svcImgs["api-gateway"]!, gwEnv,
+  Object.values(runners) as aws.apprunner.Service[],
+);
+
 // ─── Outputs ──────────────────────────────────────────────────────────────────
 
 export const gatewayUrl        = pulumi.interpolate`https://${runners["api-gateway"]!.serviceUrl}`;
 export const frontendUrl       = pulumi.interpolate`https://${cdn.domainName}`;
 export const frontendBucket    = bucket.bucket;
+export const cdnId             = cdn.id;
 export const dbEndpoint        = db.endpoint; // host:5432
 export const vpcId             = vpc.vpcId;
+export const redisEndpoint     = pulumi.interpolate`${redisCluster.cacheNodes[0].address}:6379`;
+export const mqEndpoint        = mqBroker.instances.apply(i => i?.[0]?.endpoints?.[0] ?? "");
 
 // After `pulumi up`, deploy the frontend with:
 //   npm run build:frontend

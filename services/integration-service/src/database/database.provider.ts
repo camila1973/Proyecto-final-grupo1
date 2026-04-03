@@ -19,7 +19,7 @@ export class DatabaseProvider implements OnModuleInit, OnModuleDestroy {
   constructor() {
     this.pool = new Pool({
       connectionString:
-        process.env.INTEGRATION_DATABASE_URL ??
+        process.env.DATABASE_URL ??
         "postgres://postgres:postgres@localhost:5435/integration_service",
     });
     this.db = new Kysely<Database>({
