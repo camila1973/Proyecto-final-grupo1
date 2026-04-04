@@ -96,7 +96,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3001
-      DATABASE_URL: postgres://postgres:postgres@auth-db:5432/travelhub
+      DATABASE_URL: postgres://postgres:postgres@auth-db:5432/travelhub?sslmode=disable
     depends_on:
       auth-db:
         condition: service_healthy
@@ -160,7 +160,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3002
-      DATABASE_URL: postgres://postgres:postgres@search-db:5432/search_service
+      DATABASE_URL: postgres://postgres:postgres@search-db:5432/search_service?sslmode=disable
       REDIS_URL: redis://redis:6379
       MESSAGE_BROKER_URL: amqp://guest:guest@rabbitmq:5672
       MESSAGE_BROKER_TYPE: rabbitmq
@@ -204,7 +204,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3003
-      DATABASE_URL: postgres://postgres:postgres@inventory-db:5432/travelhub
+      DATABASE_URL: postgres://postgres:postgres@inventory-db:5432/travelhub?sslmode=disable
       RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
     depends_on:
       inventory-db:
@@ -369,7 +369,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3008
-      INTEGRATION_DATABASE_URL: postgres://postgres:postgres@integration-db:5432/integration_service
+      DATABASE_URL: postgres://postgres:postgres@integration-db:5432/integration_service?sslmode=disable
       REDIS_HOST: redis
       REDIS_PORT: 6379
       INVENTORY_SERVICE_URL: http://inventory-service:3003

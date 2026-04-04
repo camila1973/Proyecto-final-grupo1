@@ -248,8 +248,9 @@ const scaling = new aws.apprunner.AutoScalingConfigurationVersion("scaling", {
   tags: TAGS,
 });
 
-// VPC connector gives App Runner outbound access to RDS/Redis/MQ inside the VPC
-const vpcConnector = new aws.apprunner.VpcConnector("vpc-connector", {
+// VPC connector — on private subnets so App Runner can reach RDS/Redis/MQ,
+// with NAT gateway providing outbound internet access for inter-service calls.
+const vpcConnector = new aws.apprunner.VpcConnector("apprunner-vpc-connector", {
   vpcConnectorName: "travelhub",
   subnets:          vpc.privateSubnetIds,
   securityGroups:   [appRunnerSg.id],
@@ -280,7 +281,10 @@ function makeAppRunner(
     instanceConfiguration: { cpu: "256", memory: "512" },
     autoScalingConfigurationArn: scaling.arn,
     networkConfiguration: {
-      egressConfiguration: { egressType: "VPC", vpcConnectorArn: vpcConnector.arn },
+      egressConfiguration: {
+        egressType:       "VPC",
+        vpcConnectorArn:  vpcConnector.arn,
+      },
     },
     healthCheckConfiguration: {
       protocol: "HTTP", path: "/health",
