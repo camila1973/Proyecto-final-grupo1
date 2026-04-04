@@ -39,7 +39,7 @@
     "infra:preview": "cd pulumi && pulumi preview",
     "infra:up": "cd pulumi && pulumi up",
     "infra:down": "cd pulumi && pulumi destroy",
-    "deploy:frontend": "VITE_API_URL=$(cd pulumi && PULUMI_CONFIG_PASSPHRASE='' pulumi stack output gatewayUrl --stack prod) pnpm run build:frontend && gcloud storage rsync -r dist/frontend/ gs://$(cd pulumi && PULUMI_CONFIG_PASSPHRASE='' pulumi stack output frontendBucket --stack prod)/ --delete-unmatched-destination-objects",
+    "deploy:frontend": "node scripts/deploy-frontend.mjs",
     "prepare": "husky"
   },
   "pnpm": {
