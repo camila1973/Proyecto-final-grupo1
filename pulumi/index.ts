@@ -451,6 +451,17 @@ new aws.iam.RolePolicyAttachment("ecs-exec-policy", {
   role:      ecsExecRole.name,
   policyArn: "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy",
 });
+new aws.iam.RolePolicy("ecs-exec-logs-policy", {
+  role: ecsExecRole.name,
+  policy: JSON.stringify({
+    Version: "2012-10-17",
+    Statement: [{
+      Effect:   "Allow",
+      Action:   ["logs:CreateLogGroup"],
+      Resource: "arn:aws:logs:us-east-1:*:log-group:/ecs/travelhub-seed*",
+    }],
+  }),
+});
 
 const seedTaskDef = new aws.ecs.TaskDefinition("seed-task", {
   family:                  "travelhub-seed",
