@@ -48,12 +48,13 @@ jobs:
         with:
           command: up
           stack-name: ${{ env.PULUMI_STACK }}
+          cloud-url: ${{ env.PULUMI_BACKEND_URL }}
           work-dir: pulumi
           upsert: false
         env:
-          PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
+          PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE || '' }}
 
       - name: Deploy frontend
         run: pnpm run deploy:frontend
         env:
-          PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
+          PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE || '' }}
