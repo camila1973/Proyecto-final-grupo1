@@ -476,9 +476,9 @@ const seedTaskDef = new aws.ecs.TaskDefinition("seed-task", {
       image,
       essential: true,
       environment: [
-        { name: "SEARCH_DB_URL",      value: `postgres://travelhub:${pass}@${host}:5432/search` },
-        { name: "INVENTORY_DB_URL",   value: `postgres://travelhub:${pass}@${host}:5432/inventory` },
-        { name: "INTEGRATION_DB_URL", value: `postgres://travelhub:${pass}@${host}:5432/integration_service` },
+        { name: "SEARCH_DB_URL",      value: `postgres://travelhub:${pass}@${host}:5432/search?sslmode=require` },
+        { name: "INVENTORY_DB_URL",   value: `postgres://travelhub:${pass}@${host}:5432/inventory?sslmode=require` },
+        { name: "INTEGRATION_DB_URL", value: `postgres://travelhub:${pass}@${host}:5432/integration_service?sslmode=require` },
       ],
       logConfiguration: {
         logDriver: "awslogs",
