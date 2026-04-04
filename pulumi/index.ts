@@ -25,11 +25,17 @@ const MICROSERVICES = SERVICES.filter(s => s.name !== "api-gateway");
 const TAGS = { Project: "travelhub" };
 
 
-// ─── VPC — public subnets only (no NAT gateway = free) ───────────────────────
+// ─── VPC — public + private subnets, single NAT gateway ──────────────────────
+// NAT gateway is required: App Runner uses egressType "VPC" which routes all
+// outbound traffic through the VPC connector. Without a NAT gateway, App Runner
+// containers cannot reach the internet (including other App Runner service URLs).
 
 const vpc = new awsx.ec2.Vpc("travelhub", {
-  natGateways: { strategy: "None" },
-  subnetSpecs: [{ type: awsx.ec2.SubnetType.Public, cidrMask: 24 }],
+  natGateways: { strategy: "Single" },
+  subnetSpecs: [
+    { type: awsx.ec2.SubnetType.Public,  cidrMask: 24 },
+    { type: awsx.ec2.SubnetType.Private, cidrMask: 24 },
+  ],
   subnetStrategy: awsx.ec2.SubnetAllocationStrategy.Auto,
   numberOfAvailabilityZones: 2,
   tags: TAGS,
@@ -72,9 +78,9 @@ const redisSg = new aws.ec2.SecurityGroup("redis-sg", {
 const mqSg = new aws.ec2.SecurityGroup("mq-sg", {
   vpcId: vpc.vpcId,
   ingress: [{
-    fromPort: 5672, toPort: 5672, protocol: "tcp",
+    fromPort: 5671, toPort: 5671, protocol: "tcp",
     securityGroups: [appRunnerSg.id],
-    description: "AMQP from App Runner",
+    description: "AMQPS from App Runner",
   }],
   egress: [{ fromPort: 0, toPort: 0, protocol: "-1", cidrBlocks: ["0.0.0.0/0"] }],
   tags: { ...TAGS, Name: "travelhub-mq" },
@@ -242,10 +248,11 @@ const scaling = new aws.apprunner.AutoScalingConfigurationVersion("scaling", {
   tags: TAGS,
 });
 
-// VPC connector gives App Runner outbound access to RDS/Redis/MQ inside the VPC
-const vpcConnector = new aws.apprunner.VpcConnector("vpc-connector", {
+// VPC connector — on private subnets so App Runner can reach RDS/Redis/MQ,
+// with NAT gateway providing outbound internet access for inter-service calls.
+const vpcConnector = new aws.apprunner.VpcConnector("apprunner-vpc-connector", {
   vpcConnectorName: "travelhub",
-  subnets:          vpc.publicSubnetIds,
+  subnets:          vpc.privateSubnetIds,
   securityGroups:   [appRunnerSg.id],
   tags: TAGS,
 });
@@ -274,7 +281,10 @@ function makeAppRunner(
     instanceConfiguration: { cpu: "256", memory: "512" },
     autoScalingConfigurationArn: scaling.arn,
     networkConfiguration: {
-      egressConfiguration: { egressType: "VPC", vpcConnectorArn: vpcConnector.arn },
+      egressConfiguration: {
+        egressType:       "VPC",
+        vpcConnectorArn:  vpcConnector.arn,
+      },
     },
     healthCheckConfiguration: {
       protocol: "HTTP", path: "/health",
@@ -288,12 +298,12 @@ function makeAppRunner(
 
 const runners: Partial<Record<SvcName, aws.apprunner.Service>> = {};
 
-// RabbitMQ AMQP URL — derive host from the amqps endpoint (strip scheme + port)
+// RabbitMQ AMQPS URL — Amazon MQ only exposes TLS on port 5671
 // instances is an Output<array> so we apply() over it to safely index into it
 const mqHost = mqBroker.instances.apply(
   instances => (instances?.[0]?.endpoints?.[0] ?? "").replace("amqps://", "").replace(":5671", ""),
 );
-const mqAmqpUrl = pulumi.interpolate`amqp://travelhub:${mqPassword.result}@${mqHost}:5672`;
+const mqAmqpUrl = pulumi.interpolate`amqps://travelhub:${mqPassword.result}@${mqHost}:5671`;
 
 for (const svc of MICROSERVICES) {
   const env: { [k: string]: pulumi.Input<string> } = {
