@@ -2,15 +2,16 @@ FROM node:24-alpine
 RUN corepack enable && corepack prepare pnpm@10.0.0 --activate
 WORKDIR /workspace
 COPY package.json pnpm-lock.yaml tsconfig.base.json nx.json jest.preset.js ./
-RUN pnpm install --frozen-lockfile --ignore-scripts
+RUN pnpm install --frozen-lockfile --ignore-scripts && \
+    pnpm add -g tsx
 COPY services/search-service/      ./services/search-service/
 COPY services/inventory-service/   ./services/inventory-service/
 COPY services/integration-service/ ./services/integration-service/
 CMD ["sh", "-c", "\
   cd /workspace/services/search-service && DATABASE_URL=$SEARCH_DB_URL /workspace/node_modules/.bin/kysely migrate:latest && \
-  cd /workspace && DATABASE_URL=$SEARCH_DB_URL /workspace/node_modules/.bin/tsx services/search-service/scripts/seed.ts && \
+  cd /workspace && DATABASE_URL=$SEARCH_DB_URL tsx services/search-service/scripts/seed.ts && \
   cd /workspace/services/inventory-service && DATABASE_URL=$INVENTORY_DB_URL /workspace/node_modules/.bin/kysely migrate:latest && \
-  cd /workspace && DATABASE_URL=$INVENTORY_DB_URL /workspace/node_modules/.bin/tsx services/inventory-service/scripts/seed.ts && \
+  cd /workspace && DATABASE_URL=$INVENTORY_DB_URL tsx services/inventory-service/scripts/seed.ts && \
   cd /workspace/services/integration-service && DATABASE_URL=$INTEGRATION_DB_URL /workspace/node_modules/.bin/kysely migrate:latest && \
-  cd /workspace && DATABASE_URL=$INTEGRATION_DB_URL /workspace/node_modules/.bin/tsx services/integration-service/scripts/seed.ts \
+  cd /workspace && DATABASE_URL=$INTEGRATION_DB_URL tsx services/integration-service/scripts/seed.ts \
 "]
