@@ -1,8 +1,10 @@
 name: travelhub
 runtime: nodejs
-description: TravelHub — AWS App Runner + RDS + CloudFront (cheapest viable cloud setup)
+description: TravelHub — GCP Cloud Run + Cloud SQL + Memorystore + Pub/Sub
 backend:
-  url: s3://travelhub-pulumi-state
+  url: gs://travelhub-pulumi-state
 config:
-  aws:region:
-    value: us-east-1
+  gcp:project:
+    value: travelhub-cbayona-prod   # replace before first `pulumi up`
+  gcp:region:
+    value: us-central1

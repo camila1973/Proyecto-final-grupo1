@@ -2,59 +2,75 @@ name: Deploy
 
 on:
   workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        required: false
+        default: prod
 
 concurrency:
-  group: deploy-production
+  group: deploy-${{ github.event.inputs.environment || 'prod' }}
   cancel-in-progress: false # never abort an in-flight pulumi up
 
 permissions:
   contents: read
+  id-token: write  # needed for Workload Identity Federation (optional alternative to SA key)
 
 env:
   NX_DAEMON: 'false'
   NX_TUI: 'false'
   HUSKY: '0'
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
-  AWS_REGION: us-east-1
-  PULUMI_STACK: prod
+  PULUMI_STACK: ${{ github.event.inputs.environment || 'prod' }}
 
 jobs:
   deploy:
-    name: Deploy to Production
+    name: Deploy to GCP (${{ github.event.inputs.environment || 'prod' }})
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
 
-      # Root node_modules — reuses the existing composite action (pnpm + Node + Nx cache)
+      # Root node_modules (pnpm + Node + Nx cache)
       - uses: ./.github/actions/setup
 
-      # pulumi/ has its own package.json and no lockfile
+      # pulumi/ has its own package.json
       - name: Install Pulumi dependencies
         run: npm install
         working-directory: pulumi
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+      # Authenticate to GCP using a service account JSON key stored in GitHub secrets
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-      # Builds all Docker images, pushes to ECR, updates App Runner services.
-      # Backend URL is declared in pulumi/Pulumi.yaml — no cloud-url needed here.
-      - name: Deploy backend (pulumi up)
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      # Authorize Docker to push to Artifact Registry
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+
+      # pulumi up handles everything:
+      # - provisions Cloud SQL, Memorystore, Pub/Sub, VPC, Artifact Registry
+      # - builds & pushes Docker images
+      # - creates/updates Cloud Run services
+      # - writes DATABASE_URL secrets to Secret Manager
+      # upsert:true creates the stack on the first run without needing `pulumi stack init`
+      - name: Deploy infrastructure + services (pulumi up)
         uses: pulumi/actions@v6
         with:
           command: up
           stack-name: ${{ env.PULUMI_STACK }}
-          cloud-url: ${{ env.PULUMI_BACKEND_URL }}
           work-dir: pulumi
-          upsert: false
+          upsert: true
         env:
-          PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE || '' }}
+          PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
+          GOOGLE_PROJECT: ${{ secrets.GCP_PROJECT_ID }}
 
-      - name: Deploy frontend
+      # Build the React SPA with the gateway URL baked in, then sync to GCS
+      - name: Deploy frontend to Cloud Storage
         run: pnpm run deploy:frontend
         env:
           PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE || '' }}

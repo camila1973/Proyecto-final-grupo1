@@ -13,71 +13,84 @@ permissions:
 env:
   NX_DAEMON: 'false'
   NX_TUI: 'false'
-  AWS_REGION: us-east-1
+  HUSKY: '0'
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
   PULUMI_STACK: prod
 
 jobs:
   seed:
-    name: Truncate and seed production databases
+    name: Migrate and seed production databases
     runs-on: ubuntu-latest
-    environment: production
 
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: '.nvmrc'
+      - uses: ./.github/actions/setup
 
       - name: Install Pulumi dependencies
         run: npm install
         working-directory: pulumi
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
         with:
-          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region:            ${{ env.AWS_REGION }}
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
 
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      # Read the Cloud SQL connection name and DB password from the Pulumi stack
       - name: Read stack outputs
         id: stack
         run: |
           get() {
-            PULUMI_CONFIG_PASSPHRASE="${{ secrets.PULUMI_CONFIG_PASSPHRASE || '' }}" \
-            pulumi stack output "$1" --stack $PULUMI_STACK --cwd pulumi
+            PULUMI_CONFIG_PASSPHRASE="${{ secrets.PULUMI_CONFIG_PASSPHRASE }}" \
+              pulumi stack output "$1" --stack $PULUMI_STACK --cwd pulumi
           }
-          echo "cluster=$(get seedClusterArn)"         >> $GITHUB_OUTPUT
-          echo "task_def=$(get seedTaskDefinitionArn)" >> $GITHUB_OUTPUT
-          echo "subnets=$(get privateSubnetIds)"       >> $GITHUB_OUTPUT
-          echo "sg=$(get appRunnerSgId)"               >> $GITHUB_OUTPUT
+          get_secret() {
+            PULUMI_CONFIG_PASSPHRASE="${{ secrets.PULUMI_CONFIG_PASSPHRASE }}" \
+              pulumi stack output "$1" --show-secrets --stack $PULUMI_STACK --cwd pulumi
+          }
+          echo "connection_name=$(get dbConnectionName)" >> $GITHUB_OUTPUT
+
+          DB_PASS=$(get_secret dbPasswordSecret)
+          echo "::add-mask::$DB_PASS"
+          echo "db_pass=$DB_PASS" >> $GITHUB_OUTPUT
         env:
-          PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE || '' }}
+          PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
 
-      - name: Run Fargate seed task
-        id: run_task
+      # Download and start Cloud SQL Auth Proxy so we can connect to Cloud SQL
+      # from this CI runner via localhost:5432
+      - name: Start Cloud SQL Auth Proxy
         run: |
-          TASK_ARN=$(aws ecs run-task \
-            --cluster "${{ steps.stack.outputs.cluster }}" \
-            --task-definition "${{ steps.stack.outputs.task_def }}" \
-            --launch-type FARGATE \
-            --network-configuration \
-              "awsvpcConfiguration={subnets=[${{ steps.stack.outputs.subnets }}],securityGroups=[${{ steps.stack.outputs.sg }}],assignPublicIp=DISABLED}" \
-            --query 'tasks[0].taskArn' --output text)
-          echo "task_arn=$TASK_ARN" >> $GITHUB_OUTPUT
-          echo "Started task: $TASK_ARN"
+          curl -sSL -o cloud-sql-proxy \
+            https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.13.0/cloud-sql-proxy.linux.amd64
+          chmod +x cloud-sql-proxy
+          ./cloud-sql-proxy "${{ steps.stack.outputs.connection_name }}" \
+            --port 5432 --quiet &
+          # Give the proxy a moment to establish the connection
+          sleep 3
 
-      - name: Wait for task to stop
+      # Run migrations for every service that has a database.
+      # DATABASE_URL points to localhost via the proxy above.
+      - name: Run migrations
         run: |
-          aws ecs wait tasks-stopped \
-            --cluster "${{ steps.stack.outputs.cluster }}" \
-            --tasks   "${{ steps.run_task.outputs.task_arn }}"
+          BASE="postgres://travelhub:${{ steps.stack.outputs.db_pass }}@localhost:5432"
 
-      - name: Assert exit code 0
+          DATABASE_URL="${BASE}/auth"             pnpm exec nx run auth-service:migrate
+          DATABASE_URL="${BASE}/search"            pnpm exec nx run search-service:migrate
+          DATABASE_URL="${BASE}/inventory"         pnpm exec nx run inventory-service:migrate
+          DATABASE_URL="${BASE}/booking"           pnpm exec nx run booking-service:migrate
+          DATABASE_URL="${BASE}/payment"           pnpm exec nx run payment-service:migrate
+          DATABASE_URL="${BASE}/notification"      pnpm exec nx run notification-service:migrate
+          DATABASE_URL="${BASE}/partners"          pnpm exec nx run partners-service:migrate
+          DATABASE_URL="${BASE}/integration_service" pnpm exec nx run integration-service:migrate
+
+      # Seed only the services that ship seed data
+      - name: Run seeds
         run: |
-          EXIT=$(aws ecs describe-tasks \
-            --cluster "${{ steps.stack.outputs.cluster }}" \
-            --tasks   "${{ steps.run_task.outputs.task_arn }}" \
-            --query 'tasks[0].containers[0].exitCode' --output text)
-          echo "Seed task exit code: $EXIT"
-          [ "$EXIT" = "0" ] || exit 1
+          BASE="postgres://travelhub:${{ steps.stack.outputs.db_pass }}@localhost:5432"
+
+          DATABASE_URL="${BASE}/search"              pnpm exec nx run search-service:seed
+          DATABASE_URL="${BASE}/inventory"           pnpm exec nx run inventory-service:seed
+          DATABASE_URL="${BASE}/integration_service" pnpm exec nx run integration-service:seed
