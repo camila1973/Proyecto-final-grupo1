@@ -32,24 +32,21 @@
       "executor": "nx:run-commands",
       "options": {
         "command": "pnpm exec kysely migrate:latest",
-        "cwd": "services/integration-service",
-        "env": { "DATABASE_URL": "postgres://postgres:postgres@localhost:5435/integration_service" }
+        "cwd": "services/integration-service"
       }
     },
     "migrate-down": {
       "executor": "nx:run-commands",
       "options": {
         "command": "pnpm exec kysely migrate:down",
-        "cwd": "services/integration-service",
-        "env": { "DATABASE_URL": "postgres://postgres:postgres@localhost:5435/integration_service" }
+        "cwd": "services/integration-service"
       }
     },
     "seed": {
       "executor": "nx:run-commands",
       "options": {
         "command": "npx tsx scripts/seed.ts",
-        "cwd": "services/integration-service",
-        "env": { "DATABASE_URL": "postgres://postgres:postgres@localhost:5435/integration_service" }
+        "cwd": "services/integration-service"
       }
     }
   }
