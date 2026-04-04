@@ -189,7 +189,7 @@ for (const svc of MICROSERVICES) {
   new gcp.secretmanager.SecretVersion(`secret-db-url-version-${svc.name}`, {
     secret: secret.id,
     // Full DATABASE_URL including password — encrypted at rest by Secret Manager
-    secretData: pulumi.interpolate`postgresql://travelhub:${dbPassword.result}@/${svc.db}?host=/cloudsql/${sqlConnectionName}`,
+    secretData: pulumi.interpolate`postgresql://travelhub:${dbPassword.result}@localhost/${svc.db}?host=/cloudsql/${sqlConnectionName}`,
   });
 
   dbUrlSecrets[svc.name] = secret;
