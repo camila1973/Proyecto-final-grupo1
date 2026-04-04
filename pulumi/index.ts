@@ -39,7 +39,7 @@ const network = new gcp.compute.Network("travelhub", {
 const subnet = new gcp.compute.Subnetwork("travelhub-subnet", {
   network: network.id,
   region: REGION,
-  ipCidrRange: "10.0.0.0/24",
+  ipCidrRange: "10.8.0.0/28",
 });
 
 // Serverless VPC Access connector — lets Cloud Run reach Memorystore private IP
