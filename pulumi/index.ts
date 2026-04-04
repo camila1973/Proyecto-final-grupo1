@@ -451,6 +451,17 @@ new aws.iam.RolePolicyAttachment("ecs-exec-policy", {
   role:      ecsExecRole.name,
   policyArn: "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy",
 });
+new aws.iam.RolePolicy("ecs-exec-logs-policy", {
+  role: ecsExecRole.name,
+  policy: JSON.stringify({
+    Version: "2012-10-17",
+    Statement: [{
+      Effect:   "Allow",
+      Action:   ["logs:CreateLogGroup"],
+      Resource: "arn:aws:logs:us-east-1:*:log-group:/ecs/travelhub-seed*",
+    }],
+  }),
+});
 
 const seedTaskDef = new aws.ecs.TaskDefinition("seed-task", {
   family:                  "travelhub-seed",
@@ -465,9 +476,10 @@ const seedTaskDef = new aws.ecs.TaskDefinition("seed-task", {
       image,
       essential: true,
       environment: [
-        { name: "SEARCH_DB_URL",      value: `postgres://travelhub:${pass}@${host}:5432/search` },
-        { name: "INVENTORY_DB_URL",   value: `postgres://travelhub:${pass}@${host}:5432/inventory` },
-        { name: "INTEGRATION_DB_URL", value: `postgres://travelhub:${pass}@${host}:5432/integration_service` },
+        { name: "SEARCH_DB_URL",                   value: `postgres://travelhub:${pass}@${host}:5432/search?sslmode=require` },
+        { name: "INVENTORY_DB_URL",                value: `postgres://travelhub:${pass}@${host}:5432/inventory?sslmode=require` },
+        { name: "INTEGRATION_DB_URL",              value: `postgres://travelhub:${pass}@${host}:5432/integration_service?sslmode=require` },
+        { name: "NODE_TLS_REJECT_UNAUTHORIZED",    value: "0" },
       ],
       logConfiguration: {
         logDriver: "awslogs",
