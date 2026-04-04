@@ -65,7 +65,10 @@ const registerSuccessRoute = createRoute({
 const routeTree = rootRoute.addChildren([homeRoute, searchRoute, propertyRoute, registerRoute, registerSuccessRoute]);
 
 export function createAppRouter() {
-  return createRouter({ routeTree });
+  return createRouter({
+    routeTree,
+    basepath: import.meta.env.BASE_URL ?? '/',
+  });
 }
 
 type AppRouter = ReturnType<typeof createAppRouter>;
