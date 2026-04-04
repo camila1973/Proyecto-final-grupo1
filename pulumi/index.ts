@@ -285,7 +285,7 @@ function makeCloudRun(
       scaling: { minInstanceCount: 0, maxInstanceCount: 1 },
       containers: [{
         image: img.imageName,
-        ports: [{ containerPort: port }],
+        ports: [{ containerPort: 8080 }],
         envs: [...plainVars, ...secretVars],
         volumeMounts,
         resources: {
@@ -293,7 +293,7 @@ function makeCloudRun(
           startupCpuBoost: true,
         },
         startupProbe: {
-          httpGet: { path: "/health", port: port },
+          httpGet: { path: "/health", port: 8080 },
           initialDelaySeconds: 5,
           periodSeconds: 10,
           failureThreshold: 6,
