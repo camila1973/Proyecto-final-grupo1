@@ -424,6 +424,64 @@ runners["api-gateway"] = makeAppRunner(
   Object.values(runners) as aws.apprunner.Service[],
 );
 
+// ─── ECS Fargate seed runner ──────────────────────────────────────────────────
+
+const seedRepo = makeRepo("seed");
+
+const seedImg = new docker.Image("img-seed", {
+  build: {
+    context: "../",
+    dockerfile: "../docker/Dockerfile.seed",
+    platform: "linux/amd64",
+  },
+  imageName: pulumi.interpolate`${seedRepo.repositoryUrl}:latest`,
+  registry: registryCreds(seedRepo),
+}, { dependsOn: [baseImg] });
+
+const ecsCluster = new aws.ecs.Cluster("seed-cluster", { tags: TAGS });
+
+const ecsExecRole = new aws.iam.Role("ecs-exec-role", {
+  assumeRolePolicy: JSON.stringify({
+    Version: "2012-10-17",
+    Statement: [{ Effect: "Allow", Principal: { Service: "ecs-tasks.amazonaws.com" }, Action: "sts:AssumeRole" }],
+  }),
+  tags: TAGS,
+});
+new aws.iam.RolePolicyAttachment("ecs-exec-policy", {
+  role:      ecsExecRole.name,
+  policyArn: "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy",
+});
+
+const seedTaskDef = new aws.ecs.TaskDefinition("seed-task", {
+  family:                  "travelhub-seed",
+  networkMode:             "awsvpc",
+  requiresCompatibilities: ["FARGATE"],
+  cpu:                     "256",
+  memory:                  "512",
+  executionRoleArn:        ecsExecRole.arn,
+  containerDefinitions: pulumi.all([seedImg.imageName, dbPassword.result, db.address])
+    .apply(([image, pass, host]) => JSON.stringify([{
+      name:      "seed",
+      image,
+      essential: true,
+      environment: [
+        { name: "SEARCH_DB_URL",      value: `postgres://travelhub:${pass}@${host}:5432/search` },
+        { name: "INVENTORY_DB_URL",   value: `postgres://travelhub:${pass}@${host}:5432/inventory` },
+        { name: "INTEGRATION_DB_URL", value: `postgres://travelhub:${pass}@${host}:5432/integration_service` },
+      ],
+      logConfiguration: {
+        logDriver: "awslogs",
+        options: {
+          "awslogs-group":         "/ecs/travelhub-seed",
+          "awslogs-region":        "us-east-1",
+          "awslogs-stream-prefix": "seed",
+          "awslogs-create-group":  "true",
+        },
+      },
+    }])),
+  tags: TAGS,
+});
+
 // ─── Outputs ──────────────────────────────────────────────────────────────────
 
 export const gatewayUrl        = pulumi.interpolate`https://${runners["api-gateway"]!.serviceUrl}`;
@@ -434,6 +492,10 @@ export const dbEndpoint        = db.endpoint; // host:5432
 export const vpcId             = vpc.vpcId;
 export const redisEndpoint     = pulumi.interpolate`${redisCluster.cacheNodes[0].address}:6379`;
 export const mqEndpoint        = mqBroker.instances.apply(i => i?.[0]?.endpoints?.[0] ?? "");
+export const seedClusterArn        = ecsCluster.arn;
+export const seedTaskDefinitionArn = seedTaskDef.arn;
+export const privateSubnetIds      = vpc.privateSubnetIds.apply(ids => ids.join(","));
+export const appRunnerSgId         = appRunnerSg.id;
 
 // After `pulumi up`, deploy the frontend with:
 //   npm run build:frontend

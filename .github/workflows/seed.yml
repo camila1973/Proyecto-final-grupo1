@@ -1,0 +1,79 @@
+name: Seed Databases
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: seed-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  NX_DAEMON: 'false'
+  NX_TUI: 'false'
+  AWS_REGION: us-east-1
+  PULUMI_STACK: prod
+
+jobs:
+  seed:
+    name: Truncate and seed production databases
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Pulumi dependencies
+        run: npm install
+        working-directory: pulumi
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ${{ env.AWS_REGION }}
+
+      - name: Read stack outputs
+        id: stack
+        run: |
+          get() {
+            PULUMI_CONFIG_PASSPHRASE="${{ secrets.PULUMI_CONFIG_PASSPHRASE || '' }}" \
+            pulumi stack output "$1" --stack $PULUMI_STACK --cwd pulumi
+          }
+          echo "cluster=$(get seedClusterArn)"         >> $GITHUB_OUTPUT
+          echo "task_def=$(get seedTaskDefinitionArn)" >> $GITHUB_OUTPUT
+          echo "subnets=$(get privateSubnetIds)"       >> $GITHUB_OUTPUT
+          echo "sg=$(get appRunnerSgId)"               >> $GITHUB_OUTPUT
+        env:
+          PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE || '' }}
+
+      - name: Run Fargate seed task
+        id: run_task
+        run: |
+          TASK_ARN=$(aws ecs run-task \
+            --cluster "${{ steps.stack.outputs.cluster }}" \
+            --task-definition "${{ steps.stack.outputs.task_def }}" \
+            --launch-type FARGATE \
+            --network-configuration \
+              "awsvpcConfiguration={subnets=[${{ steps.stack.outputs.subnets }}],securityGroups=[${{ steps.stack.outputs.sg }}],assignPublicIp=DISABLED}" \
+            --query 'tasks[0].taskArn' --output text)
+          echo "task_arn=$TASK_ARN" >> $GITHUB_OUTPUT
+          echo "Started task: $TASK_ARN"
+
+      - name: Wait for task to stop
+        run: |
+          aws ecs wait tasks-stopped \
+            --cluster "${{ steps.stack.outputs.cluster }}" \
+            --tasks   "${{ steps.run_task.outputs.task_arn }}"
+
+      - name: Assert exit code 0
+        run: |
+          EXIT=$(aws ecs describe-tasks \
+            --cluster "${{ steps.stack.outputs.cluster }}" \
+            --tasks   "${{ steps.run_task.outputs.task_arn }}" \
+            --query 'tasks[0].containers[0].exitCode' --output text)
+          echo "Seed task exit code: $EXIT"
+          [ "$EXIT" = "0" ] || exit 1
