@@ -78,9 +78,9 @@ const redisSg = new aws.ec2.SecurityGroup("redis-sg", {
 const mqSg = new aws.ec2.SecurityGroup("mq-sg", {
   vpcId: vpc.vpcId,
   ingress: [{
-    fromPort: 5672, toPort: 5672, protocol: "tcp",
+    fromPort: 5671, toPort: 5671, protocol: "tcp",
     securityGroups: [appRunnerSg.id],
-    description: "AMQP from App Runner",
+    description: "AMQPS from App Runner",
   }],
   egress: [{ fromPort: 0, toPort: 0, protocol: "-1", cidrBlocks: ["0.0.0.0/0"] }],
   tags: { ...TAGS, Name: "travelhub-mq" },
@@ -298,12 +298,12 @@ function makeAppRunner(
 
 const runners: Partial<Record<SvcName, aws.apprunner.Service>> = {};
 
-// RabbitMQ AMQP URL — derive host from the amqps endpoint (strip scheme + port)
+// RabbitMQ AMQPS URL — Amazon MQ only exposes TLS on port 5671
 // instances is an Output<array> so we apply() over it to safely index into it
 const mqHost = mqBroker.instances.apply(
   instances => (instances?.[0]?.endpoints?.[0] ?? "").replace("amqps://", "").replace(":5671", ""),
 );
-const mqAmqpUrl = pulumi.interpolate`amqp://travelhub:${mqPassword.result}@${mqHost}:5672`;
+const mqAmqpUrl = pulumi.interpolate`amqps://travelhub:${mqPassword.result}@${mqHost}:5671`;
 
 for (const svc of MICROSERVICES) {
   const env: { [k: string]: pulumi.Input<string> } = {
