@@ -240,7 +240,7 @@ type SecretRef = { secretId: pulumi.Input<string>; version?: string };
 
 function makeCloudRun(
   name: string,
-  port: number,
+  _port: number,
   img: docker.Image,
   plainEnv: Record<string, pulumi.Input<string>>,
   secretEnv: Record<string, SecretRef>,
