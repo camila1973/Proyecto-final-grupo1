@@ -170,6 +170,13 @@ new gcp.projects.IAMMember("sa-pubsub-subscriber",  { project: PROJECT, role: "r
 new gcp.projects.IAMMember("sa-artifact-reader",    { project: PROJECT, role: "roles/artifactregistry.reader",      member: saMember });
 new gcp.projects.IAMMember("sa-secret-accessor",    { project: PROJECT, role: "roles/secretmanager.secretAccessor", member: saMember });
 
+// Allow the CI deployer SA to assign travelhub-cloudrun as a Cloud Run service account
+new gcp.serviceaccount.IAMMember("sa-deployer-act-as", {
+  serviceAccountId: serviceAccount.name,
+  role: "roles/iam.serviceAccountUser",
+  member: `serviceAccount:travelhub-deployer@${PROJECT}.iam.gserviceaccount.com`,
+});
+
 // ─── Secret Manager — DATABASE_URL per service ────────────────────────────────
 // Each service's DATABASE_URL (which embeds the DB password) is stored in
 // Secret Manager. Cloud Run pulls the value at startup via secretKeyVersion —
