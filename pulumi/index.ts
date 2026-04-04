@@ -319,7 +319,6 @@ function makeCloudRun(
 for (const svc of MICROSERVICES) {
   const plainEnv: Record<string, pulumi.Input<string>> = {
     NODE_ENV: "production",
-    PORT:     String(svc.port),
   };
 
   // DATABASE_URL pulled from Secret Manager at runtime — never a plain env var
@@ -382,7 +381,6 @@ new gcp.storage.BucketIAMBinding("frontend-public", {
 
 const gwEnv: Record<string, pulumi.Input<string>> = {
   NODE_ENV:    "production",
-  PORT:        "3000",
   CORS_ORIGIN: pulumi.interpolate`https://storage.googleapis.com/${frontendBucketResource.name}`,
 };
 for (const svc of MICROSERVICES) {
