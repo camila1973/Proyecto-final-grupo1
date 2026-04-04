@@ -196,7 +196,7 @@ for (const svc of MICROSERVICES) {
 
 // ─── Docker images ────────────────────────────────────────────────────────────
 
-const gcpAuth = gcp.auth.getClientConfigOutput({});
+const gcpAuth = gcp.organizations.getClientConfigOutput({});
 const registryCreds: docker.types.input.Registry = {
   server: pulumi.interpolate`${REGION}-docker.pkg.dev`,
   username: "oauth2accesstoken",
@@ -255,7 +255,7 @@ function makeCloudRun(
     Object.entries(secretEnv).map(([n, ref]) => ({
       name: n,
       valueSource: {
-        secretKeyVersion: {
+        secretKeyRef: {
           secret:  ref.secretId as string,
           version: ref.version ?? "latest",
         },
