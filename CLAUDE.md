@@ -171,7 +171,7 @@ pnpm run graph             # Open dependency graph in browser
 Each project has its own `project.json` defining Nx targets (build, serve, lint, test).
 
 ### Microservices
-Each service under `services/<name>/` follows the standard NestJS module pattern: `app.module.ts` → controllers → services. Entry point: `services/<name>/src/main.ts`. Services build via `nest build` (configured in `services/<name>/nest-cli.json`), compiling to `dist/<name>/`. TypeScript target is ES2023 with `nodenext` modules. Each service exposes a `GET /health` endpoint returning `{ status: 'ok', service: '<name>' }`. Communication between services: REST/HTTP only. Deployment target: AWS App Runner (one service = one App Runner service). The `api-gateway` is the single entry point for frontend/mobile.
+Each service under `services/<name>/` follows the standard NestJS module pattern: `app.module.ts` → controllers → services. Entry point: `services/<name>/src/main.ts`. Services build via `nest build` (configured in `services/<name>/nest-cli.json`), compiling to `dist/<name>/`. TypeScript target is ES2023 with `nodenext` modules. Each service exposes a `GET /health` endpoint returning `{ status: 'ok', service: '<name>' }`. Communication between services: REST/HTTP only. Deployment target: Google Cloud Run (one service = one Cloud Run service). The `api-gateway` is the single entry point for frontend/mobile.
 
 ### Frontend
 Standard Vite + React setup. Entry: `frontend/src/main.tsx`. The `vite.config.ts` uses `nxViteTsPaths()` for monorepo path resolution. Tests use `ts-jest` transforming `.tsx?` files via `frontend/tsconfig.spec.json`.
@@ -194,69 +194,97 @@ Prettier settings: single quotes, trailing commas.
 
 ## Deployment (Pulumi)
 
-Infrastructure is managed with Pulumi (TypeScript) in `pulumi/`. State is stored in S3 (`s3://travelhub-pulumi-state`, `us-east-1`). The backend URL is declared in `pulumi/Pulumi.yaml` so no `pulumi login` is needed.
+Infrastructure is managed with Pulumi (TypeScript) in `pulumi/`. State is stored in GCS (`gs://travelhub-pulumi-state`). The backend URL is declared in `pulumi/Pulumi.yaml` so no `pulumi login` is needed.
 
 ### Prerequisites
 - [Pulumi CLI](https://www.pulumi.com/docs/install/) installed
-- AWS credentials active in the current shell session
+- [gcloud CLI](https://cloud.google.com/sdk/docs/install) installed and authenticated (`gcloud auth application-default login`)
+- A GCP project with billing enabled
+- A GCS bucket for Pulumi state: `gcloud storage buckets create gs://travelhub-pulumi-state --location=us-central1`
+- Edit `pulumi/Pulumi.yaml` — replace `YOUR_GCP_PROJECT_ID` with your actual project ID
 - `cd pulumi && npm install`
+
+### First-time GCP setup
+
+Enable the required APIs once per project:
+
+```bash
+gcloud services enable \
+  run.googleapis.com \
+  sql-component.googleapis.com \
+  sqladmin.googleapis.com \
+  redis.googleapis.com \
+  pubsub.googleapis.com \
+  artifactregistry.googleapis.com \
+  vpcaccess.googleapis.com \
+  servicenetworking.googleapis.com
+```
 
 ### Running Pulumi locally
 
-Pulumi's SDK does not always pick up credentials from the AWS CLI's SSO/login cache. Export them explicitly first:
-
-```bash
-eval "$(aws configure export-credentials --format env)"
-```
-
-Then run any Pulumi command with an empty passphrase (this project uses no secret encryption):
-
 ```bash
 # Preview changes
-AWS_REGION=us-east-1 PULUMI_CONFIG_PASSPHRASE="" pulumi preview --stack prod
+PULUMI_CONFIG_PASSPHRASE="" pulumi preview --stack prod --cwd pulumi
 
 # Deploy
-AWS_REGION=us-east-1 PULUMI_CONFIG_PASSPHRASE="" pulumi up --stack prod
+PULUMI_CONFIG_PASSPHRASE="" pulumi up --stack prod --cwd pulumi
 
 # Read stack outputs
-AWS_REGION=us-east-1 PULUMI_CONFIG_PASSPHRASE="" pulumi stack output --stack prod
+PULUMI_CONFIG_PASSPHRASE="" pulumi stack output --stack prod --cwd pulumi
 ```
 
 ### What `pulumi up` does
 
-1. Builds all Docker images (base + 9 service images) and pushes to ECR
-2. Creates/updates all AWS App Runner services
-3. Provisions shared infrastructure (RDS, ElastiCache Redis, Amazon MQ, VPC)
+1. Builds all Docker images (base + 9 service images) and pushes to Artifact Registry
+2. Creates/updates all Cloud Run services
+3. Provisions shared infrastructure (Cloud SQL PostgreSQL, Memorystore Redis, Pub/Sub topics + subscriptions, VPC + Serverless VPC Access connector)
 
 The frontend is **not** deployed by Pulumi — it requires a separate step after `pulumi up`:
 
 ```bash
-pnpm run build:frontend
-BUCKET=$(AWS_REGION=us-east-1 PULUMI_CONFIG_PASSPHRASE="" pulumi stack output frontendBucket --stack prod --cwd pulumi)
-CDN_ID=$(AWS_REGION=us-east-1 PULUMI_CONFIG_PASSPHRASE="" pulumi stack output cdnId --stack prod --cwd pulumi)
-aws s3 sync dist/frontend/ "s3://${BUCKET}/" --delete
-aws cloudfront create-invalidation --distribution-id "${CDN_ID}" --paths "/*"
+# Convenience script (runs build + gcloud storage rsync):
+pnpm run deploy:frontend
+
+# Manual steps:
+VITE_API_URL=$(PULUMI_CONFIG_PASSPHRASE="" pulumi stack output gatewayUrl --stack prod --cwd pulumi) \
+  pnpm run build:frontend
+BUCKET=$(PULUMI_CONFIG_PASSPHRASE="" pulumi stack output frontendBucket --stack prod --cwd pulumi)
+gcloud storage rsync -r dist/frontend/ "gs://${BUCKET}/" --delete-unmatched-destination-objects
 ```
 
 ### GitHub Actions deploy
 
 `.github/workflows/deploy.yml` — manually triggered via Actions → Deploy → Run workflow.
 
-Required secrets (set in the `production` GitHub Environment):
+Required secrets (repository or `production` GitHub Environment):
 
 | Secret | Value |
 |---|---|
-| `AWS_ACCESS_KEY_ID` | IAM key with ECR/AppRunner/S3/CloudFront access |
-| `AWS_SECRET_ACCESS_KEY` | Corresponding secret |
+| `GCP_SA_KEY` | JSON key of a GCP service account with Pulumi deploy permissions |
+| `GCP_PROJECT_ID` | Your GCP project ID |
 | `PULUMI_CONFIG_PASSPHRASE` | Empty string `""` |
 
-## Event Bus (RabbitMQ)
+## Event Bus (Pub/Sub in GCP, RabbitMQ locally)
 
-Exchange: **`travelhub`** — type `topic`, durable. All inter-service events flow through this exchange.
+Events flow from `inventory-service` (publisher) to `search-service` (consumer) via a message broker selected by `MESSAGE_BROKER_TYPE`:
+- `rabbitmq` (default) — used in local docker compose; AMQP topic exchange `travelhub`
+- `pubsub` — used in GCP production; Google Cloud Pub/Sub
+
+### Routing key → Pub/Sub name mapping
+
+Dots in routing keys become hyphens for GCP resource names (both are valid identifiers):
+
+| Routing key | Pub/Sub topic | Pub/Sub subscription (search-service) |
+|---|---|---|
+| `inventory.room.upserted` | `inventory-room-upserted` | `search-inventory-room-upserted` |
+| `inventory.room.deleted` | `inventory-room-deleted` | `search-inventory-room-deleted` |
+| `inventory.price.updated` | `inventory-price-updated` | `search-inventory-price-updated` |
+
+Topics and subscriptions are created by Pulumi before the services start — services never create them dynamically.
 
 ### inventory-service → search-service
 
-| Routing key | Publisher | Queue (consumer) | Trigger | Handler effect |
+| Routing key | Publisher | Queue / Subscription | Trigger | Handler effect |
 |---|---|---|---|---|
 | `inventory.room.upserted` | `events.publisher.ts` | `search.inventory.room.upserted` | Room created or updated | Upserts full room snapshot into `room_search_index`; invalidates city Redis cache |
 | `inventory.room.deleted` | `events.publisher.ts` | `search.inventory.room.deleted` | Room soft-deleted | Sets `is_active = false` in `room_search_index`; invalidates city Redis cache |
@@ -297,9 +325,9 @@ Exchange: **`travelhub`** — type `topic`, durable. All inter-service events fl
 
 | File | Role |
 |---|---|
-| `services/inventory-service/src/events/events.publisher.ts` | Publishes to `travelhub` exchange |
+| `services/inventory-service/src/events/events.publisher.ts` | Publishes events — RabbitMQ or Pub/Sub based on `MESSAGE_BROKER_TYPE` |
 | `services/inventory-service/src/events/events.types.ts` | `RoomSnapshot`, all event interfaces |
-| `services/search-service/src/events/events.service.ts` | Subscribes to all queues on startup |
+| `services/search-service/src/events/events.service.ts` | Consumes events — RabbitMQ or Pub/Sub based on `MESSAGE_BROKER_TYPE` |
 | `services/search-service/src/events/handlers/room-upserted.handler.ts` | Maps camelCase snapshot → snake_case `RoomIndexRecord` |
 | `services/search-service/src/events/handlers/availability-updated.handler.ts` | Replaces `room_price_periods` for a room |
 | `services/search-service/src/events/handlers/room-deleted.handler.ts` | Sets room inactive; invalidates city Redis cache |

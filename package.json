@@ -39,7 +39,7 @@
     "infra:preview": "cd pulumi && pulumi preview",
     "infra:up": "cd pulumi && pulumi up",
     "infra:down": "cd pulumi && pulumi destroy",
-    "deploy:frontend": "VITE_API_URL=$(pulumi stack output gatewayUrl --stack prod --cwd pulumi) nx build frontend --skip-nx-cache && aws s3 sync dist/frontend/ s3://$(pulumi stack output frontendBucket --stack prod --cwd pulumi)/ --delete && aws cloudfront create-invalidation --distribution-id $(pulumi stack output cdnId --stack prod --cwd pulumi) --paths '/*'",
+    "deploy:frontend": "VITE_API_URL=$(cd pulumi && PULUMI_CONFIG_PASSPHRASE='' pulumi stack output gatewayUrl --stack prod) pnpm run build:frontend && gcloud storage rsync -r dist/frontend/ gs://$(cd pulumi && PULUMI_CONFIG_PASSPHRASE='' pulumi stack output frontendBucket --stack prod)/ --delete-unmatched-destination-objects",
     "prepare": "husky"
   },
   "pnpm": {
@@ -64,6 +64,7 @@
     "@mui/icons-material": "^7.3.9",
     "@mui/material": "^7.3.9",
     "@mui/x-date-pickers": "^8.27.2",
+    "@google-cloud/pubsub": "^4.9.0",
     "@nestjs/axios": "^4.0.1",
     "@nestjs/bull": "^11.0.4",
     "@nestjs/common": "^11.0.1",
