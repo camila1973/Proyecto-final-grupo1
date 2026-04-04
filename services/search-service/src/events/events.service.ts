@@ -75,8 +75,12 @@ export class EventsService implements OnModuleInit, OnModuleDestroy {
 
     if (brokerType === "pubsub") {
       await this.connectPubSub(subscriptions);
-    } else {
+    } else if (brokerType === "rabbitmq") {
       await this.connectRabbitMQ(subscriptions);
+    } else {
+      this.logger.warn(
+        `MESSAGE_BROKER_TYPE=${brokerType} is not supported; use rabbitmq or pubsub.`,
+      );
     }
   }
 
