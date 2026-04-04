@@ -44,6 +44,7 @@ const subnet = new gcp.compute.Subnetwork("travelhub-subnet", {
 
 // Serverless VPC Access connector — lets Cloud Run reach Memorystore private IP
 const vpcConnector = new gcp.vpcaccess.Connector("travelhub-connector", {
+  name: "th-vpc-connector",
   region: REGION,
   subnet: { name: subnet.name },
   minInstances: 2,

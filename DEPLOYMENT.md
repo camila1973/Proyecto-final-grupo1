@@ -182,14 +182,20 @@ PULUMI_CONFIG_PASSPHRASE="" pulumi stack output --stack prod --cwd pulumi
 ## What Pulumi manages
 
 ### Infrastructure
-| Resource | GCP Service | Notes |
-|---|---|---|
-| VPC + subnet | Compute Engine | Private network for Memorystore |
-| VPC Access connector | Serverless VPC Access | Lets Cloud Run reach Memorystore |
-| PostgreSQL | Cloud SQL 16 (db-f1-micro) | Single instance, 8 separate databases |
-| Redis | Memorystore BASIC 1 GB | Shared by search-service + integration-service |
-| Message broker | Pub/Sub | 3 topics + 3 subscriptions |
-| Container registry | Artifact Registry | `us-central1-docker.pkg.dev/PROJECT/travelhub` |
+| Resource | GCP Service | Notes | Est. cost/month |
+|---|---|---|---|
+| VPC + subnet | Compute Engine | Private network for Memorystore | Free |
+| VPC Access connector | Serverless VPC Access | 2× e2-micro; lets Cloud Run reach Memorystore | ~$12 |
+| PostgreSQL | Cloud SQL 16 (db-f1-micro) | Single instance, 8 separate databases | ~$10 |
+| Redis | Memorystore BASIC 1 GB | Shared by search-service + integration-service | ~$12 |
+| Message broker | Pub/Sub | 3 topics + 3 subscriptions | Free (< 10 GB/mo) |
+| Container registry | Artifact Registry | ~10 GB of Docker layers | ~$1–3 |
+| Cloud Run | Cloud Run v2 | 9 services, scale-to-zero (min 0) | ~$0–5 |
+| Frontend | Cloud Storage | Static SPA (< 1 GB) | < $1 |
+| Secrets | Secret Manager | 8 secrets, accessed at startup only | < $1 |
+| **Total** | | | **~$35–45/month** |
+
+> Costs are estimates for `us-central1` at low/moderate traffic. Cloud Run is billed per request (CPU + memory only during invocations), so with min 0 instances it costs almost nothing at rest. The VPC connector and Cloud SQL instance are the fixed costs that run 24/7.
 
 ### Secrets (Secret Manager)
 One secret per service that has a database, named `travelhub-db-url-{service}`:
@@ -205,7 +211,7 @@ One secret per service that has a database, named `travelhub-db-url-{service}`:
 | `travelhub-db-url-search-service` | search-service |
 | `travelhub-db-url-integration-service` | integration-service |
 
-The `DATABASE_URL` secret contains the full PostgreSQL connection string including the password. Cloud Run injects it at startup via `secretKeyVersion` — the plaintext password never appears in Cloud Run environment variable configuration.
+The `DATABASE_URL` secret contains the full PostgreSQL connection string including the password. Cloud Run injects it at startup via `secretKeyRef` — the plaintext password never appears in Cloud Run environment variable configuration.
 
 ### Services (Cloud Run)
 9 Cloud Run services, one per microservice. All use a shared service account (`travelhub-cloudrun@PROJECT.iam.gserviceaccount.com`).
