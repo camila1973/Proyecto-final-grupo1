@@ -1,6 +1,10 @@
 name: Deploy
 
 on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
     inputs:
       environment:
@@ -10,7 +14,7 @@ on:
 
 concurrency:
   group: deploy-${{ github.event.inputs.environment || 'prod' }}
-  cancel-in-progress: false # never abort an in-flight pulumi up
+  cancel-in-progress: false # never abort an in-flight deployment
 
 permissions:
   contents: read
@@ -22,24 +26,83 @@ env:
   HUSKY: '0'
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
   PULUMI_STACK: ${{ github.event.inputs.environment || 'prod' }}
+  REGION: us-central1
 
 jobs:
-  deploy:
-    name: Deploy to GCP (${{ github.event.inputs.environment || 'prod' }})
+  # ── Detect what changed ───────────────────────────────────────────────────────
+  detect:
+    name: Detect changes
     runs-on: ubuntu-latest
-
+    # For workflow_run: only proceed when CI succeeded. Manual dispatch always runs.
+    if: github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch'
+    outputs:
+      infra_changed: ${{ steps.diff.outputs.infra }}
+      frontend_changed: ${{ steps.diff.outputs.frontend }}
+      services: ${{ steps.nx.outputs.services }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
-      # Root node_modules (pnpm + Node + Nx cache)
       - uses: ./.github/actions/setup
 
-      # pulumi/ has its own package.json
+      - name: Detect file changes
+        id: diff
+        run: |
+          BASE=$(git rev-parse HEAD^1 2>/dev/null || git rev-parse HEAD)
+          echo "Base: $BASE  Head: $(git rev-parse HEAD)"
+          git diff --name-only "$BASE" HEAD > changed_files.txt
+          echo "--- Changed files ---"
+          cat changed_files.txt
+
+          grep -q "^pulumi/" changed_files.txt \
+            && echo "infra=true" >> "$GITHUB_OUTPUT" \
+            || echo "infra=false" >> "$GITHUB_OUTPUT"
+
+          grep -q "^frontend/" changed_files.txt \
+            && echo "frontend=true" >> "$GITHUB_OUTPUT" \
+            || echo "frontend=false" >> "$GITHUB_OUTPUT"
+
+      - name: Get affected NX services
+        id: nx
+        run: |
+          BASE=$(git rev-parse HEAD^1 2>/dev/null || git rev-parse HEAD)
+          ALL_SERVICES="api-gateway auth-service search-service inventory-service booking-service payment-service notification-service partners-service integration-service"
+
+          # nx show projects --affected lists all affected project names (one per line)
+          AFFECTED=$(pnpm exec nx show projects --affected --base="$BASE" --head=HEAD 2>/dev/null || echo "")
+          echo "Affected NX projects: $AFFECTED"
+
+          RESULT=""
+          for SVC in $ALL_SERVICES; do
+            if echo "$AFFECTED" | grep -qw "$SVC"; then
+              RESULT="$RESULT $SVC"
+            fi
+          done
+          RESULT=$(echo "$RESULT" | xargs)  # trim whitespace
+          echo "Affected services: $RESULT"
+          echo "services=$RESULT" >> "$GITHUB_OUTPUT"
+
+  # ── Full Pulumi deploy (infra changed or manual) ──────────────────────────────
+  # pulumi up rebuilds all Docker images, updates Cloud Run, and provisions infra.
+  # Also deploys the frontend since it needs the up-to-date gateway URL.
+  deploy-infra:
+    name: Full deploy (Pulumi)
+    needs: detect
+    if: needs.detect.outputs.infra_changed == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - uses: ./.github/actions/setup
+
       - name: Install Pulumi dependencies
         run: npm install
         working-directory: pulumi
 
-      # Authenticate to GCP using a service account JSON key stored in GitHub secrets
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
@@ -48,16 +111,13 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
 
-      # Authorize Docker to push to Artifact Registry
       - name: Configure Docker for Artifact Registry
-        run: gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
 
       # pulumi up handles everything:
-      # - provisions Cloud SQL, Memorystore, Pub/Sub, VPC, Artifact Registry
-      # - builds & pushes Docker images
+      # - builds & pushes Docker images for all services
       # - creates/updates Cloud Run services
-      # - writes DATABASE_URL secrets to Secret Manager
-      # upsert:true creates the stack on the first run without needing `pulumi stack init`
+      # - provisions Cloud SQL, Memorystore, Pub/Sub, VPC, Artifact Registry
       - name: Deploy infrastructure + services (pulumi up)
         uses: pulumi/actions@v6
         with:
@@ -69,7 +129,123 @@ jobs:
           PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
           GOOGLE_PROJECT: ${{ secrets.GCP_PROJECT_ID }}
 
-      # Build the React SPA with the gateway URL baked in, then sync to GCS
+      - name: Deploy frontend to Cloud Storage
+        run: pnpm run deploy:frontend
+        env:
+          PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE || '' }}
+
+  # ── Fast path: rebuild only affected services ─────────────────────────────────
+  # Skipped when infra changed (pulumi up covers this) or on manual dispatch.
+  deploy-services:
+    name: Deploy changed services
+    needs: detect
+    if: |
+      needs.detect.outputs.services != '' &&
+      needs.detect.outputs.infra_changed == 'false' &&
+      github.event_name != 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - name: Build and push base image
+        env:
+          REGISTRY: ${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/travelhub
+        run: |
+          docker build \
+            --platform linux/amd64 \
+            -f docker/Dockerfile.base \
+            -t "$REGISTRY/base:latest" \
+            .
+          docker push "$REGISTRY/base:latest"
+
+      - name: Build and deploy affected services
+        env:
+          REGISTRY: ${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/travelhub
+          AFFECTED: ${{ needs.detect.outputs.services }}
+        run: |
+          get_port() {
+            case "$1" in
+              api-gateway)          echo 3000 ;;
+              auth-service)         echo 3001 ;;
+              search-service)       echo 3002 ;;
+              inventory-service)    echo 3003 ;;
+              booking-service)      echo 3004 ;;
+              payment-service)      echo 3005 ;;
+              notification-service) echo 3006 ;;
+              partners-service)     echo 3007 ;;
+              integration-service)  echo 3008 ;;
+              *) echo "" ;;
+            esac
+          }
+
+          for SVC in $AFFECTED; do
+            PORT=$(get_port "$SVC")
+            if [ -z "$PORT" ]; then
+              echo "Unknown service '$SVC', skipping"
+              continue
+            fi
+
+            echo "=== Building $SVC (port $PORT) ==="
+            docker build \
+              --platform linux/amd64 \
+              -f docker/Dockerfile.service \
+              --build-arg BASE_IMAGE="$REGISTRY/base:latest" \
+              --build-arg SERVICE_NAME="$SVC" \
+              --build-arg SERVICE_PORT="$PORT" \
+              -t "$REGISTRY/$SVC:latest" \
+              .
+            docker push "$REGISTRY/$SVC:latest"
+
+            echo "=== Deploying $SVC to Cloud Run ==="
+            gcloud run deploy "travelhub-$SVC" \
+              --image "$REGISTRY/$SVC:latest" \
+              --region "${{ env.REGION }}" \
+              --quiet
+          done
+
+  # ── Frontend-only deploy ──────────────────────────────────────────────────────
+  # Runs when only frontend/ changed (no infra, not manual — those paths
+  # already include a frontend deploy step).
+  deploy-frontend:
+    name: Deploy frontend
+    needs: detect
+    if: |
+      needs.detect.outputs.frontend_changed == 'true' &&
+      needs.detect.outputs.infra_changed == 'false' &&
+      github.event_name != 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - uses: ./.github/actions/setup
+
+      - name: Install Pulumi dependencies
+        run: npm install
+        working-directory: pulumi
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
       - name: Deploy frontend to Cloud Storage
         run: pnpm run deploy:frontend
         env:
