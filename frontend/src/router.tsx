@@ -1,4 +1,4 @@
-import { createRouter, createRoute, createRootRoute, Outlet } from '@tanstack/react-router';
+import { createRouter, createRoute, createRootRoute, Outlet, createHashHistory } from '@tanstack/react-router';
 import { LocaleProvider } from './context/LocaleContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
@@ -67,7 +67,7 @@ const routeTree = rootRoute.addChildren([homeRoute, searchRoute, propertyRoute, 
 export function createAppRouter() {
   return createRouter({
     routeTree,
-    basepath: import.meta.env.BASE_URL ?? '/',
+    history: createHashHistory(),
   });
 }
 

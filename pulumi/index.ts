@@ -388,7 +388,7 @@ new gcp.storage.BucketIAMBinding("frontend-public", {
 
 const gwEnv: Record<string, pulumi.Input<string>> = {
   NODE_ENV:    "production",
-  CORS_ORIGIN: pulumi.interpolate`https://storage.googleapis.com/${frontendBucketResource.name}`,
+  CORS_ORIGIN: "https://storage.googleapis.com",
 };
 for (const svc of MICROSERVICES) {
   const key = svc.name.replace("-service", "").toUpperCase() + "_SERVICE_URL";

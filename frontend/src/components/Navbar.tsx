@@ -36,6 +36,7 @@ export default function Navbar() {
               <circle cx="14" cy="17" r="2.5" fill="white" />
             </svg>
             <span className="font-bold text-lg text-gray-900">TravelHub</span>
+            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">v2</span>
           </div>
 
           <div ref={containerRef} style={{ position: 'relative' }}>
