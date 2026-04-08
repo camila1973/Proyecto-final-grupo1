@@ -51,6 +51,18 @@
       "value": "",
       "type": "string",
       "enabled": true
+    },
+    {
+      "key": "reservation_id",
+      "value": "",
+      "type": "string",
+      "enabled": true
+    },
+    {
+      "key": "guest_id",
+      "value": "d1000000-0000-0000-0000-000000000001",
+      "type": "string",
+      "enabled": true
     }
   ],
   "item": [
@@ -1240,7 +1252,7 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{base_url}}/api/booking/reservations/res_001",
+              "raw": "{{base_url}}/api/booking/reservations/{{reservation_id}}",
               "host": [
                 "{{base_url}}"
               ],
@@ -1248,13 +1260,53 @@
                 "api",
                 "booking",
                 "reservations",
-                "res_001"
+                "{{reservation_id}}"
               ]
             }
           }
         },
         {
+          "name": "Preview Fare",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{base_url}}/api/booking/reservations/preview",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "booking",
+                "reservations",
+                "preview"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"propertyId\": \"{{property_id}}\",\n  \"roomId\": \"{{room_id}}\",\n  \"partnerId\": \"{{partner_id}}\",\n  \"checkIn\": \"2026-06-01\",\n  \"checkOut\": \"2026-06-04\"\n}"
+            }
+          }
+        },
+        {
           "name": "Create Reservation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.id) pm.collectionVariables.set('reservation_id', res.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "url": {
@@ -1276,7 +1328,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"propertyId\": \"{{property_id}}\",\n  \"roomId\": \"{{room_id}}\",\n  \"guestId\": \"usr_002\",\n  \"checkIn\": \"2026-04-10\",\n  \"checkOut\": \"2026-04-15\"\n}"
+              "raw": "{\n  \"propertyId\": \"{{property_id}}\",\n  \"roomId\": \"{{room_id}}\",\n  \"partnerId\": \"{{partner_id}}\",\n  \"guestId\": \"{{guest_id}}\",\n  \"checkIn\": \"2026-06-01\",\n  \"checkOut\": \"2026-06-04\"\n}"
             }
           }
         }
