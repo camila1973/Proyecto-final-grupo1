@@ -163,12 +163,13 @@ describe("ReservationsService", () => {
       expect(typeof result.holdExpiresAt).toBe("string");
     });
 
-    it("stores serialized fare_breakdown in the DB", async () => {
+    it("stores fare_breakdown object in the DB", async () => {
       await service.create(CREATE_DTO);
 
       const inserted = reservationsRepo.insert.mock.calls[0][0];
-      const parsed = JSON.parse(inserted.fare_breakdown as string);
-      expect(parsed.totalUsd).toBe(fareBreakdown.totalUsd);
+      expect(inserted.fare_breakdown).toMatchObject({
+        totalUsd: fareBreakdown.totalUsd,
+      });
     });
 
     it("propagates fare calculation errors", async () => {
