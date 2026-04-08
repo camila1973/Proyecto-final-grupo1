@@ -52,7 +52,7 @@ export class ReservationsService {
       check_in: dto.checkIn,
       check_out: dto.checkOut,
       status: "pending",
-      fare_breakdown: fareBreakdown as Record<string, unknown>,
+      fare_breakdown: fareBreakdown,
       tax_total_usd: fareBreakdown.taxTotalUsd,
       fee_total_usd: fareBreakdown.feeTotalUsd,
       grand_total_usd: fareBreakdown.totalUsd,

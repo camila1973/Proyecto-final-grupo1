@@ -81,8 +81,8 @@ export interface ReservationsTable {
   status: Generated<string>; // DEFAULT 'pending'
   fare_breakdown: ColumnType<
     Record<string, unknown> | null,
-    Record<string, unknown> | null | undefined,
-    Record<string, unknown> | null | undefined
+    object | null | undefined,
+    object | null | undefined
   >;
   tax_total_usd: NumericColumn;
   fee_total_usd: NumericColumn;
