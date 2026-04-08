@@ -1,0 +1,194 @@
+import { NotFoundException } from "@nestjs/common";
+import { ReservationsRepository } from "./reservations.repository.js";
+
+// ─── Kysely builder mock ────────────────────────────────────────────────────
+
+function makeDb(
+  opts: {
+    single?: Record<string, unknown> | null;
+    many?: Record<string, unknown>[];
+  } = {},
+) {
+  const db: Record<string, jest.Mock> = {};
+  const chain = [
+    "selectFrom",
+    "insertInto",
+    "where",
+    "select",
+    "selectAll",
+    "values",
+    "returningAll",
+  ];
+  chain.forEach((m) => {
+    db[m] = jest.fn().mockReturnValue(db);
+  });
+  db.execute = jest.fn().mockResolvedValue(opts.many ?? []);
+  db.executeTakeFirst = jest.fn().mockResolvedValue(opts.single ?? undefined);
+  db.executeTakeFirstOrThrow = jest.fn().mockResolvedValue(opts.single ?? {});
+  return db as any;
+}
+
+// ─── Row factory ────────────────────────────────────────────────────────────
+
+function makeRow(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "res-uuid",
+    property_id: "prop-uuid",
+    room_id: "room-uuid",
+    partner_id: "partner-uuid",
+    guest_id: "guest-uuid",
+    check_in: "2026-05-01",
+    check_out: "2026-05-04",
+    status: "pending",
+    fare_breakdown: { total: 522 },
+    tax_total_usd: "72.00",
+    fee_total_usd: "0.00",
+    grand_total_usd: "522.00",
+    hold_expires_at: null as Date | string | null,
+    created_at: new Date("2026-04-07T10:00:00Z"),
+    updated_at: new Date("2026-04-07T10:00:00Z"),
+    ...overrides,
+  };
+}
+
+// ─── Tests ──────────────────────────────────────────────────────────────────
+
+describe("ReservationsRepository", () => {
+  describe("insert", () => {
+    it("calls insertInto and returns the created row", async () => {
+      const row = makeRow();
+      const db = makeDb({ single: row });
+      const repo = new ReservationsRepository(db);
+
+      const result = await repo.insert(row as any);
+
+      expect(db.insertInto).toHaveBeenCalledWith("reservations");
+      expect(result).toBe(row);
+    });
+  });
+
+  describe("findAll", () => {
+    it("returns all rows from the reservations table", async () => {
+      const rows = [makeRow(), makeRow({ id: "res-2" })];
+      const db = makeDb({ many: rows });
+      const repo = new ReservationsRepository(db);
+
+      const result = await repo.findAll();
+
+      expect(db.selectFrom).toHaveBeenCalledWith("reservations");
+      expect(result).toBe(rows);
+    });
+  });
+
+  describe("findById", () => {
+    it("returns the row when found", async () => {
+      const row = makeRow();
+      const db = makeDb({ single: row });
+      const repo = new ReservationsRepository(db);
+
+      const result = await repo.findById("res-uuid");
+
+      expect(db.where).toHaveBeenCalledWith("id", "=", "res-uuid");
+      expect(result).toBe(row);
+    });
+
+    it("throws NotFoundException when row is not found", async () => {
+      const db = makeDb({ single: undefined });
+      const repo = new ReservationsRepository(db);
+
+      await expect(repo.findById("nonexistent")).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  // ─── toResponse ─────────────────────────────────────────────────────────────
+
+  describe("toResponse", () => {
+    let repo: ReservationsRepository;
+
+    beforeEach(() => {
+      repo = new ReservationsRepository(null as any);
+    });
+
+    it("maps snake_case fields to camelCase", () => {
+      const row = makeRow();
+      const result = repo.toResponse(row as any);
+
+      expect(result.id).toBe("res-uuid");
+      expect(result.propertyId).toBe("prop-uuid");
+      expect(result.roomId).toBe("room-uuid");
+      expect(result.guestId).toBe("guest-uuid");
+      expect(result.checkIn).toBe("2026-05-01");
+      expect(result.checkOut).toBe("2026-05-04");
+      expect(result.status).toBe("pending");
+    });
+
+    it("parses numeric columns as floats", () => {
+      const result = repo.toResponse(makeRow() as any);
+
+      expect(result.taxTotalUsd).toBe(72);
+      expect(result.feeTotalUsd).toBe(0);
+      expect(result.grandTotalUsd).toBe(522);
+    });
+
+    it("returns null for null numeric columns", () => {
+      const row = makeRow({
+        tax_total_usd: null,
+        fee_total_usd: null,
+        grand_total_usd: null,
+      });
+      const result = repo.toResponse(row as any);
+
+      expect(result.taxTotalUsd).toBeNull();
+      expect(result.feeTotalUsd).toBeNull();
+      expect(result.grandTotalUsd).toBeNull();
+    });
+
+    it("returns null for null holdExpiresAt", () => {
+      const result = repo.toResponse(makeRow({ hold_expires_at: null }) as any);
+
+      expect(result.holdExpiresAt).toBeNull();
+    });
+
+    it("converts Date holdExpiresAt to ISO string", () => {
+      const date = new Date("2026-04-07T12:00:00.000Z");
+      const result = repo.toResponse(makeRow({ hold_expires_at: date }) as any);
+
+      expect(result.holdExpiresAt).toBe("2026-04-07T12:00:00.000Z");
+    });
+
+    it("converts string holdExpiresAt to string", () => {
+      const result = repo.toResponse(
+        makeRow({ hold_expires_at: "2026-04-07T12:00:00Z" }) as any,
+      );
+
+      expect(result.holdExpiresAt).toBe("2026-04-07T12:00:00Z");
+    });
+
+    it("converts Date createdAt to ISO string", () => {
+      const result = repo.toResponse(
+        makeRow({ created_at: new Date("2026-04-07T10:00:00.000Z") }) as any,
+      );
+
+      expect(result.createdAt).toBe("2026-04-07T10:00:00.000Z");
+    });
+
+    it("converts string createdAt to string", () => {
+      const result = repo.toResponse(
+        makeRow({ created_at: "2026-04-07T10:00:00Z" }) as any,
+      );
+
+      expect(result.createdAt).toBe("2026-04-07T10:00:00Z");
+    });
+
+    it("passes through fareBreakdown as-is", () => {
+      const breakdown = { total: 999 };
+      const result = repo.toResponse(
+        makeRow({ fare_breakdown: breakdown }) as any,
+      );
+
+      expect(result.fareBreakdown).toBe(breakdown);
+    });
+  });
+});

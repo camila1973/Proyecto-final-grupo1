@@ -37,6 +37,7 @@ export default tseslint.config(
       '@typescript-eslint/no-unsafe-assignment': 'warn',
       '@typescript-eslint/no-redundant-type-constituents': 'warn',
       '@typescript-eslint/require-await': 'warn',
+      '@typescript-eslint/unbound-method': 'warn',
       "prettier/prettier": ["error", { endOfLine: "auto" }],
     },
   },
