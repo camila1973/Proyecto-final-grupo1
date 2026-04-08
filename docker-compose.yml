@@ -219,6 +219,8 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: travelhub
+    ports:
+      - "5436:5432"
     volumes:
       - booking_pg_data:/var/lib/postgresql/data
     networks:
@@ -239,9 +241,13 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3004
-      DATABASE_URL: postgres://postgres:postgres@booking-db:5432/travelhub
+      DATABASE_URL: postgres://postgres:postgres@booking-db:5432/travelhub?sslmode=disable
+      MESSAGE_BROKER_URL: amqp://guest:guest@rabbitmq:5672
+      MESSAGE_BROKER_TYPE: rabbitmq
     depends_on:
       booking-db:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
 
   # ─── Payment Service ──────────────────────────────────────────────────────────

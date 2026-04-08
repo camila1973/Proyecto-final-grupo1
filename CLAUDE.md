@@ -78,6 +78,7 @@ Each service with a database has `migrate` and `seed` nx targets. The local DB p
 | `search-service` | 5433 | `search_service` |
 | `inventory-service` | 5434 | `travelhub` |
 | `integration-service` | 5435 | `integration_service` |
+| `booking-service` | 5436 | `travelhub` |
 
 ```bash
 # Search service
@@ -91,6 +92,10 @@ DATABASE_URL=postgres://postgres:postgres@localhost:5434/travelhub pnpm exec nx 
 # Integration service
 pnpm exec nx run integration-service:migrate
 pnpm exec nx run integration-service:seed
+
+# Booking service
+DATABASE_URL=postgres://postgres:postgres@localhost:5436/travelhub pnpm exec nx run booking-service:migrate
+DATABASE_URL=postgres://postgres:postgres@localhost:5436/travelhub pnpm exec nx run booking-service:seed
 ```
 
 To fully reset and reseed from scratch:
