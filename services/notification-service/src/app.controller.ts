@@ -20,6 +20,7 @@ export class AppController {
     @Body()
     body: {
       userId: string;
+      to?: string;
       channel: string;
       subject: string;
       message: string;
