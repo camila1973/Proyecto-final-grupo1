@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project Overview
 
 **TravelHub** is an Nx 22.5.1 monorepo with three applications sharing a single `node_modules/`:
-- **services/** — 8 independent NestJS 11 microservices (see port map below)
+- **services/** — 9 independent NestJS 11 microservices (see port map below)
 - **frontend** — React 19 + Vite 7 SPA (port 4200, preview on 4300)
 - **mobile** — Expo 54 + React Native 0.81 app (port 8081)
 
@@ -21,6 +21,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `payment-service` | 3005 | Multi-provider (Stripe/MercadoPago/PayPal), tokenization, fraud detection, reconciliation |
 | `notification-service` | 3006 | Email, push notifications, alerts (async, called by other services) |
 | `partners-service` | 3007 | Hotel/agency portal: dashboards, revenue reports, rate management |
+| `integration-service` | 3008 | Single entry point for external partner data: PMS webhooks (generic + Hotelbeds/TravelClick/RoomRaccoon), CSV bulk import, external↔internal ID mapping |
 
 ## Commands
 
@@ -38,6 +39,7 @@ pnpm run serve:booking         # Booking service (port 3004)
 pnpm run serve:payment         # Payment service (port 3005)
 pnpm run serve:notification    # Notification service (port 3006)
 pnpm run serve:partners        # Partners service (port 3007)
+pnpm run serve:integration     # Integration service (port 3008)
 pnpm run serve:frontend        # Frontend only (Vite dev server)
 pnpm run start:mobile          # Mobile only (Expo)
 nx run-ios mobile              # iOS simulator
@@ -47,7 +49,7 @@ nx run-android mobile          # Android emulator
 ### Build
 ```bash
 pnpm run build                 # Build all projects
-pnpm run build:services        # Build all 8 microservices
+pnpm run build:services        # Build all 9 microservices
 pnpm run build:frontend        # Vite → dist/frontend/
 nx build mobile                # Expo export → dist/mobile/
 nx build auth-service          # Single service → dist/auth-service/
@@ -66,6 +68,75 @@ nx test booking-service -- --coverage  # With coverage (output: coverage/<servic
 pnpm run lint                  # Lint all projects
 nx lint auth-service           # Single service
 ```
+
+### Database (Migrations & Seed)
+
+Each service with a database has `migrate` and `seed` nx targets. The local DB ports differ from the in-container defaults, so always pass `DATABASE_URL` explicitly.
+
+| Service | Local port | DB name |
+|---|---|---|
+| `search-service` | 5433 | `search_service` |
+| `inventory-service` | 5434 | `travelhub` |
+| `integration-service` | 5435 | `integration_service` |
+| `booking-service` | 5436 | `travelhub` |
+
+```bash
+# Search service
+DATABASE_URL=postgres://postgres:postgres@localhost:5433/search_service pnpm exec nx run search-service:migrate
+DATABASE_URL=postgres://postgres:postgres@localhost:5433/search_service pnpm exec nx run search-service:seed
+
+# Inventory service
+DATABASE_URL=postgres://postgres:postgres@localhost:5434/travelhub pnpm exec nx run inventory-service:migrate
+DATABASE_URL=postgres://postgres:postgres@localhost:5434/travelhub pnpm exec nx run inventory-service:seed
+
+# Integration service
+pnpm exec nx run integration-service:migrate
+pnpm exec nx run integration-service:seed
+
+# Booking service
+DATABASE_URL=postgres://postgres:postgres@localhost:5436/travelhub pnpm exec nx run booking-service:migrate
+DATABASE_URL=postgres://postgres:postgres@localhost:5436/travelhub pnpm exec nx run booking-service:seed
+```
+
+To fully reset and reseed from scratch:
+```bash
+docker compose down -v          # stop containers and delete volumes
+docker compose up -d            # recreate containers (DBs will be empty)
+# then run migrate + seed for each service above
+```
+
+### Integration Service — Webhook Testing
+
+The integration-service ships a helper script to generate HMAC-SHA256 signatures for manual webhook testing. Run it from the service directory or via `pnpm`:
+
+```bash
+# From workspace root
+pnpm generate-hmac --secret <signing-secret> --body '<json>'
+
+# Example
+pnpm generate-hmac \
+  --secret secret-partner-1 \
+  --body '{"eventId":"evt-001","eventType":"room.availability.updated","occurredAt":"2026-04-01T10:00:00Z","data":{"externalRoomId":"gran-caribe-deluxe-king-ocean","date":"2027-08-01","available":false}}'
+
+# Pipe JSON via stdin (secret from env var)
+echo '<json>' | WEBHOOK_SECRET=secret-partner-1 pnpm generate-hmac
+
+# Read body from file
+pnpm generate-hmac --secret secret-partner-1 --file /tmp/payload.json
+```
+
+Output: raw hex signature + a ready-to-paste `curl` snippet with the `X-TravelHub-Signature` header.
+
+Seeded signing secrets (set by `integration-service:seed`):
+
+| Partner | `partner_id` | Signing secret |
+|---|---|---|
+| Partner 1 (Cancún) | `a1000000-0000-0000-0000-000000000001` | `secret-partner-1` |
+| Partner 2 (CDMX + Cancún hostel) | `a1000000-0000-0000-0000-000000000002` | `secret-partner-2` |
+
+Sample CSV fixtures for bulk import testing are in `services/integration-service/scripts/`:
+- `sample-properties.csv` — 3 properties (Guadalajara, Partner 1)
+- `sample-rooms.csv` — 8 rooms for those properties (import properties first)
 
 ### Nx Utilities
 ```bash
@@ -87,7 +158,8 @@ pnpm run graph             # Open dependency graph in browser
 │   ├── booking-service/      # NestJS microservice (port 3004)
 │   ├── payment-service/      # NestJS microservice (port 3005)
 │   ├── notification-service/ # NestJS microservice (port 3006)
-│   └── partners-service/     # NestJS microservice (port 3007)
+│   ├── partners-service/     # NestJS microservice (port 3007)
+│   └── integration-service/  # NestJS microservice (port 3008)
 ├── frontend/src/             # React source (components, assets)
 ├── mobile/
 │   ├── app/                  # Expo Router file-based routes
@@ -104,7 +176,7 @@ pnpm run graph             # Open dependency graph in browser
 Each project has its own `project.json` defining Nx targets (build, serve, lint, test).
 
 ### Microservices
-Each service under `services/<name>/` follows the standard NestJS module pattern: `app.module.ts` → controllers → services. Entry point: `services/<name>/src/main.ts`. Services build via `nest build` (configured in `services/<name>/nest-cli.json`), compiling to `dist/<name>/`. TypeScript target is ES2023 with `nodenext` modules. Each service exposes a `GET /health` endpoint returning `{ status: 'ok', service: '<name>' }`. Communication between services: REST/HTTP only. Deployment target: AWS App Runner (one service = one App Runner service). The `api-gateway` is the single entry point for frontend/mobile.
+Each service under `services/<name>/` follows the standard NestJS module pattern: `app.module.ts` → controllers → services. Entry point: `services/<name>/src/main.ts`. Services build via `nest build` (configured in `services/<name>/nest-cli.json`), compiling to `dist/<name>/`. TypeScript target is ES2023 with `nodenext` modules. Each service exposes a `GET /health` endpoint returning `{ status: 'ok', service: '<name>' }`. Communication between services: REST/HTTP only. Deployment target: Google Cloud Run (one service = one Cloud Run service). The `api-gateway` is the single entry point for frontend/mobile.
 
 ### Frontend
 Standard Vite + React setup. Entry: `frontend/src/main.tsx`. The `vite.config.ts` uses `nxViteTsPaths()` for monorepo path resolution. Tests use `ts-jest` transforming `.tsx?` files via `frontend/tsconfig.spec.json`.
@@ -124,3 +196,143 @@ Prettier settings: single quotes, trailing commas.
 ## CI
 
 `.github/workflows/ci.yml` runs on push to `main` and on pull requests. It uses `nx affected` for lint/build/test so only changed projects run in CI. Node is provided via `.nvmrc` (Node 24). `NX_DAEMON=false` and `NX_TUI=false` are set for CI stability. Uses `pnpm install --frozen-lockfile` for clean installs.
+
+## Deployment (Pulumi)
+
+Infrastructure is managed with Pulumi (TypeScript) in `pulumi/`. State is stored in GCS (`gs://travelhub-pulumi-state`). The backend URL is declared in `pulumi/Pulumi.yaml` so no `pulumi login` is needed.
+
+### Prerequisites
+- [Pulumi CLI](https://www.pulumi.com/docs/install/) installed
+- [gcloud CLI](https://cloud.google.com/sdk/docs/install) installed and authenticated (`gcloud auth application-default login`)
+- A GCP project with billing enabled
+- A GCS bucket for Pulumi state: `gcloud storage buckets create gs://travelhub-pulumi-state --location=us-central1`
+- Edit `pulumi/Pulumi.yaml` — replace `YOUR_GCP_PROJECT_ID` with your actual project ID
+- `cd pulumi && npm install`
+
+### First-time GCP setup
+
+Enable the required APIs once per project:
+
+```bash
+gcloud services enable \
+  run.googleapis.com \
+  sql-component.googleapis.com \
+  sqladmin.googleapis.com \
+  redis.googleapis.com \
+  pubsub.googleapis.com \
+  artifactregistry.googleapis.com \
+  vpcaccess.googleapis.com \
+  servicenetworking.googleapis.com
+```
+
+### Running Pulumi locally
+
+```bash
+# Preview changes
+PULUMI_CONFIG_PASSPHRASE="" pulumi preview --stack prod --cwd pulumi
+
+# Deploy
+PULUMI_CONFIG_PASSPHRASE="" pulumi up --stack prod --cwd pulumi
+
+# Read stack outputs
+PULUMI_CONFIG_PASSPHRASE="" pulumi stack output --stack prod --cwd pulumi
+```
+
+### What `pulumi up` does
+
+1. Builds all Docker images (base + 9 service images) and pushes to Artifact Registry
+2. Creates/updates all Cloud Run services
+3. Provisions shared infrastructure (Cloud SQL PostgreSQL, Memorystore Redis, Pub/Sub topics + subscriptions, VPC + Serverless VPC Access connector)
+
+The frontend is **not** deployed by Pulumi — it requires a separate step after `pulumi up`:
+
+```bash
+# Convenience script (runs build + gcloud storage rsync):
+pnpm run deploy:frontend
+
+# Manual steps:
+VITE_API_URL=$(PULUMI_CONFIG_PASSPHRASE="" pulumi stack output gatewayUrl --stack prod --cwd pulumi) \
+  pnpm run build:frontend
+BUCKET=$(PULUMI_CONFIG_PASSPHRASE="" pulumi stack output frontendBucket --stack prod --cwd pulumi)
+gcloud storage rsync -r dist/frontend/ "gs://${BUCKET}/" --delete-unmatched-destination-objects
+```
+
+### GitHub Actions deploy
+
+`.github/workflows/deploy.yml` — manually triggered via Actions → Deploy → Run workflow.
+
+Required secrets (repository or `production` GitHub Environment):
+
+| Secret | Value |
+|---|---|
+| `GCP_SA_KEY` | JSON key of a GCP service account with Pulumi deploy permissions |
+| `GCP_PROJECT_ID` | Your GCP project ID |
+| `PULUMI_CONFIG_PASSPHRASE` | Empty string `""` |
+
+## Event Bus (Pub/Sub in GCP, RabbitMQ locally)
+
+Events flow from `inventory-service` (publisher) to `search-service` (consumer) via a message broker selected by `MESSAGE_BROKER_TYPE`:
+- `rabbitmq` (default) — used in local docker compose; AMQP topic exchange `travelhub`
+- `pubsub` — used in GCP production; Google Cloud Pub/Sub
+
+### Routing key → Pub/Sub name mapping
+
+Dots in routing keys become hyphens for GCP resource names (both are valid identifiers):
+
+| Routing key | Pub/Sub topic | Pub/Sub subscription (search-service) |
+|---|---|---|
+| `inventory.room.upserted` | `inventory-room-upserted` | `search-inventory-room-upserted` |
+| `inventory.room.deleted` | `inventory-room-deleted` | `search-inventory-room-deleted` |
+| `inventory.price.updated` | `inventory-price-updated` | `search-inventory-price-updated` |
+
+Topics and subscriptions are created by Pulumi before the services start — services never create them dynamically.
+
+### inventory-service → search-service
+
+| Routing key | Publisher | Queue / Subscription | Trigger | Handler effect |
+|---|---|---|---|---|
+| `inventory.room.upserted` | `events.publisher.ts` | `search.inventory.room.upserted` | Room created or updated | Upserts full room snapshot into `room_search_index`; invalidates city Redis cache |
+| `inventory.room.deleted` | `events.publisher.ts` | `search.inventory.room.deleted` | Room soft-deleted | Sets `is_active = false` in `room_search_index`; invalidates city Redis cache |
+| `inventory.price.updated` | `events.publisher.ts` | `search.inventory.price.updated` | Rate created/updated | Replaces `room_price_periods` for the room; invalidates city Redis cache |
+
+### Payload shapes
+
+**`inventory.room.upserted`** — `InventoryRoomUpdatedEvent` (`events.types.ts`):
+```ts
+{
+  routingKey: "inventory.room.upserted";
+  timestamp: string;          // ISO-8601
+  snapshot: RoomSnapshot;     // full denormalized room + property fields
+}
+```
+
+**`inventory.price.updated`** — `InventoryPriceUpdatedEvent` (`events.types.ts`):
+```ts
+{
+  routingKey: "inventory.price.updated";
+  roomId: string;
+  pricePeriods: Array<{ fromDate: string; toDate: string; priceUsd: number }>;
+  timestamp: string;
+}
+```
+
+**`inventory.room.deleted`** — `InventoryRoomDeletedEvent` (`events.types.ts`):
+```ts
+{
+  routingKey: "inventory.room.deleted";
+  roomId: string;
+  propertyId: string;
+  timestamp: string;
+}
+```
+
+### Key files
+
+| File | Role |
+|---|---|
+| `services/inventory-service/src/events/events.publisher.ts` | Publishes events — RabbitMQ or Pub/Sub based on `MESSAGE_BROKER_TYPE` |
+| `services/inventory-service/src/events/events.types.ts` | `RoomSnapshot`, all event interfaces |
+| `services/search-service/src/events/events.service.ts` | Consumes events — RabbitMQ or Pub/Sub based on `MESSAGE_BROKER_TYPE` |
+| `services/search-service/src/events/handlers/room-upserted.handler.ts` | Maps camelCase snapshot → snake_case `RoomIndexRecord` |
+| `services/search-service/src/events/handlers/availability-updated.handler.ts` | Replaces `room_price_periods` for a room |
+| `services/search-service/src/events/handlers/room-deleted.handler.ts` | Sets room inactive; invalidates city Redis cache |

@@ -1,0 +1,53 @@
+{
+  "name": "integration-service",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "services/integration-service/src",
+  "projectType": "application",
+  "tags": ["scope:backend"],
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "outputs": ["{workspaceRoot}/dist/integration-service"],
+      "options": { "command": "nest build", "cwd": "services/integration-service" }
+    },
+    "serve": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node ../../dist/integration-service/main.js",
+        "cwd": "services/integration-service",
+        "env": { "PORT": "3008" }
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "outputs": ["{options.outputFile}"],
+      "options": { "lintFilePatterns": ["services/integration-service/src/**/*.ts"] }
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/integration-service"],
+      "options": { "jestConfig": "services/integration-service/jest.config.js", "passWithNoTests": true }
+    },
+    "migrate": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm exec kysely migrate:latest",
+        "cwd": "services/integration-service"
+      }
+    },
+    "migrate-down": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm exec kysely migrate:down",
+        "cwd": "services/integration-service"
+      }
+    },
+    "seed": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npx tsx scripts/seed.ts",
+        "cwd": "services/integration-service"
+      }
+    }
+  }
+}

@@ -1,0 +1,48 @@
+name: Destroy
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "destroy" to confirm'
+        required: true
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  NX_DAEMON: 'false'
+  NX_TUI: 'false'
+  HUSKY: '0'
+
+jobs:
+  destroy:
+    name: Destroy production infrastructure
+    runs-on: ubuntu-latest
+    if: github.event.inputs.confirm == 'destroy'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Pulumi dependencies
+        run: npm install
+        working-directory: pulumi
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Destroy infrastructure (pulumi destroy)
+        uses: pulumi/actions@v6
+        with:
+          command: destroy
+          stack-name: prod
+          work-dir: pulumi
+        env:
+          PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
+          GOOGLE_PROJECT: ${{ secrets.GCP_PROJECT_ID }}

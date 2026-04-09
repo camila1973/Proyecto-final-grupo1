@@ -20,6 +20,7 @@ volumes:
   payment_pg_data:
   notification_pg_data:
   partners_pg_data:
+  integration_pg_data:
   redis_data:
   rabbitmq_data:
 
@@ -95,7 +96,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3001
-      DATABASE_URL: postgres://postgres:postgres@auth-db:5432/travelhub
+      DATABASE_URL: postgres://postgres:postgres@auth-db:5432/travelhub?sslmode=disable
       NOTIFICATION_SERVICE_URL: http://notification-service:3006
     depends_on:
       auth-db:
@@ -160,10 +161,11 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3002
-      DATABASE_URL: postgres://postgres:postgres@search-db:5432/search_service
+      DATABASE_URL: postgres://postgres:postgres@search-db:5432/search_service?sslmode=disable
       REDIS_URL: redis://redis:6379
       MESSAGE_BROKER_URL: amqp://guest:guest@rabbitmq:5672
       MESSAGE_BROKER_TYPE: rabbitmq
+      INVENTORY_SERVICE_URL: http://inventory-service:3003
     depends_on:
       search-db:
         condition: service_healthy
@@ -171,6 +173,8 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      inventory-service:
+        condition: service_started
 
   # ─── Inventory Service ────────────────────────────────────────────────────────
   inventory-db:
@@ -201,7 +205,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3003
-      DATABASE_URL: postgres://postgres:postgres@inventory-db:5432/travelhub
+      DATABASE_URL: postgres://postgres:postgres@inventory-db:5432/travelhub?sslmode=disable
       RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
     depends_on:
       inventory-db:
@@ -216,6 +220,8 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: travelhub
+    ports:
+      - "5436:5432"
     volumes:
       - booking_pg_data:/var/lib/postgresql/data
     networks:
@@ -236,9 +242,13 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3004
-      DATABASE_URL: postgres://postgres:postgres@booking-db:5432/travelhub
+      DATABASE_URL: postgres://postgres:postgres@booking-db:5432/travelhub?sslmode=disable
+      MESSAGE_BROKER_URL: amqp://guest:guest@rabbitmq:5672
+      MESSAGE_BROKER_TYPE: rabbitmq
     depends_on:
       booking-db:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
 
   # ─── Payment Service ──────────────────────────────────────────────────────────
@@ -335,4 +345,46 @@ services:
       DATABASE_URL: postgres://postgres:postgres@partners-db:5432/travelhub
     depends_on:
       partners-db:
+        condition: service_healthy
+
+  # ─── Integration Service ──────────────────────────────────────────────────────
+  integration-db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: integration_service
+    ports:
+      - "5435:5432"
+    volumes:
+      - integration_pg_data:/var/lib/postgresql/data
+    networks:
+      - travelhub
+    healthcheck:
+      <<: *pg-healthcheck
+
+  integration-service:
+    build:
+      <<: *service-build
+      args:
+        SERVICE_NAME: integration-service
+        SERVICE_PORT: 3008
+    ports:
+      - "3008:3008"
+    networks:
+      - travelhub
+    environment:
+      NODE_ENV: production
+      PORT: 3008
+      DATABASE_URL: postgres://postgres:postgres@integration-db:5432/integration_service?sslmode=disable
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      INVENTORY_SERVICE_URL: http://inventory-service:3003
+      BOOKING_SERVICE_URL: http://booking-service:3004
+      PAYMENT_SERVICE_URL: http://payment-service:3005
+      FX_MOCK: "true"
+    depends_on:
+      integration-db:
+        condition: service_healthy
+      redis:
         condition: service_healthy

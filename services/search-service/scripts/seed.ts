@@ -30,7 +30,7 @@ const ROOM = (n: number) =>
 
 async function seed() {
   console.log("Truncating tables...");
-  await sql`TRUNCATE room_price_periods, room_booked_ranges, room_search_index, taxonomy_values, taxonomy_categories RESTART IDENTITY CASCADE`.execute(
+  await sql`TRUNCATE room_price_periods, room_search_index, taxonomy_values, taxonomy_categories RESTART IDENTITY CASCADE`.execute(
     db,
   );
 
@@ -247,7 +247,7 @@ async function seed() {
         partner_id: PARTNER_1,
         property_name: "Gran Caribe Resort & Spa",
         city: "Cancún",
-        country: "Mexico",
+        country: "MX",
         neighborhood: "Zona Hotelera",
         lat: 21.1619,
         lon: -86.8515,
@@ -277,7 +277,7 @@ async function seed() {
         partner_id: PARTNER_1,
         property_name: "Gran Caribe Resort & Spa",
         city: "Cancún",
-        country: "Mexico",
+        country: "MX",
         neighborhood: "Zona Hotelera",
         lat: 21.1619,
         lon: -86.8515,
@@ -308,7 +308,7 @@ async function seed() {
         partner_id: PARTNER_1,
         property_name: "Playa Azul Hotel",
         city: "Cancún",
-        country: "Mexico",
+        country: "MX",
         neighborhood: "Zona Hotelera",
         lat: 21.1502,
         lon: -86.8437,
@@ -329,7 +329,7 @@ async function seed() {
         partner_id: PARTNER_1,
         property_name: "Playa Azul Hotel",
         city: "Cancún",
-        country: "Mexico",
+        country: "MX",
         neighborhood: "Zona Hotelera",
         lat: 21.1502,
         lon: -86.8437,
@@ -357,7 +357,7 @@ async function seed() {
         partner_id: PARTNER_1,
         property_name: "Playa Azul Hotel",
         city: "Cancún",
-        country: "Mexico",
+        country: "MX",
         neighborhood: "Zona Hotelera",
         lat: 21.1502,
         lon: -86.8437,
@@ -387,7 +387,7 @@ async function seed() {
         partner_id: PARTNER_2,
         property_name: "Hostal Sol Cancún",
         city: "Cancún",
-        country: "Mexico",
+        country: "MX",
         neighborhood: "Downtown",
         lat: 21.1743,
         lon: -86.8466,
@@ -408,7 +408,7 @@ async function seed() {
         partner_id: PARTNER_2,
         property_name: "Hostal Sol Cancún",
         city: "Cancún",
-        country: "Mexico",
+        country: "MX",
         neighborhood: "Downtown",
         lat: 21.1743,
         lon: -86.8466,
@@ -430,7 +430,7 @@ async function seed() {
         partner_id: PARTNER_2,
         property_name: "Hotel Histórico Centro",
         city: "Ciudad de México",
-        country: "Mexico",
+        country: "MX",
         neighborhood: "Centro Histórico",
         lat: 19.4326,
         lon: -99.1332,
@@ -459,7 +459,7 @@ async function seed() {
         partner_id: PARTNER_2,
         property_name: "Hotel Histórico Centro",
         city: "Ciudad de México",
-        country: "Mexico",
+        country: "MX",
         neighborhood: "Centro Histórico",
         lat: 19.4326,
         lon: -99.1332,
@@ -490,7 +490,7 @@ async function seed() {
         partner_id: PARTNER_2,
         property_name: "Condesa Inn",
         city: "Ciudad de México",
-        country: "Mexico",
+        country: "MX",
         neighborhood: "Condesa",
         lat: 19.4118,
         lon: -99.1718,
@@ -523,151 +523,124 @@ async function seed() {
     // ROOM 1 – Gran Caribe Resort & Spa, deluxe king ocean
     {
       room_id: ROOM(1),
-      from_date: "2026-01-01",
-      to_date: "2026-06-30",
+      from_date: "2027-01-01",
+      to_date: "2027-06-30",
       price_usd: "310.00",
     },
     {
       room_id: ROOM(1),
-      from_date: "2026-07-01",
-      to_date: "2026-08-31",
+      from_date: "2027-07-01",
+      to_date: "2027-08-31",
       price_usd: "370.00",
     },
     {
       room_id: ROOM(1),
-      from_date: "2026-09-01",
-      to_date: "2026-12-31",
+      from_date: "2027-09-01",
+      to_date: "2027-12-31",
       price_usd: "330.00",
     },
     // ROOM 2 – Gran Caribe Resort & Spa, suite king ocean
     {
       room_id: ROOM(2),
-      from_date: "2026-01-01",
-      to_date: "2026-06-30",
+      from_date: "2027-01-01",
+      to_date: "2027-06-30",
       price_usd: "560.00",
     },
     {
       room_id: ROOM(2),
-      from_date: "2026-07-01",
-      to_date: "2026-08-31",
+      from_date: "2027-07-01",
+      to_date: "2027-08-31",
       price_usd: "650.00",
     },
     {
       room_id: ROOM(2),
-      from_date: "2026-09-01",
-      to_date: "2026-12-31",
+      from_date: "2027-09-01",
+      to_date: "2027-12-31",
       price_usd: "590.00",
     },
     // ROOM 3 – Playa Azul Hotel, standard queen pool
     {
       room_id: ROOM(3),
-      from_date: "2026-01-01",
-      to_date: "2026-12-31",
+      from_date: "2027-01-01",
+      to_date: "2027-12-31",
       price_usd: "135.00",
     },
     // ROOM 4 – Playa Azul Hotel, deluxe king ocean
     {
       room_id: ROOM(4),
-      from_date: "2026-01-01",
-      to_date: "2026-06-30",
+      from_date: "2027-01-01",
+      to_date: "2027-06-30",
       price_usd: "185.00",
     },
     {
       room_id: ROOM(4),
-      from_date: "2026-07-01",
-      to_date: "2026-08-31",
+      from_date: "2027-07-01",
+      to_date: "2027-08-31",
       price_usd: "220.00",
     },
     {
       room_id: ROOM(4),
-      from_date: "2026-09-01",
-      to_date: "2026-12-31",
+      from_date: "2027-09-01",
+      to_date: "2027-12-31",
       price_usd: "195.00",
     },
     // ROOM 5 – Playa Azul Hotel, junior suite king ocean
     {
       room_id: ROOM(5),
-      from_date: "2026-01-01",
-      to_date: "2026-12-31",
+      from_date: "2027-01-01",
+      to_date: "2027-12-31",
       price_usd: "250.00",
     },
     // ROOM 6 – Hostal Sol Cancún, standard double city
     {
       room_id: ROOM(6),
-      from_date: "2026-01-01",
-      to_date: "2026-12-31",
+      from_date: "2027-01-01",
+      to_date: "2027-12-31",
       price_usd: "60.00",
     },
     // ROOM 7 – Hostal Sol Cancún, standard twin garden
     {
       room_id: ROOM(7),
-      from_date: "2026-01-01",
-      to_date: "2026-12-31",
+      from_date: "2027-01-01",
+      to_date: "2027-12-31",
       price_usd: "50.00",
     },
     // ROOM 8 – Hotel Histórico Centro, deluxe king city
     {
       room_id: ROOM(8),
-      from_date: "2026-01-01",
-      to_date: "2026-06-30",
+      from_date: "2027-01-01",
+      to_date: "2027-06-30",
       price_usd: "270.00",
     },
     {
       room_id: ROOM(8),
-      from_date: "2026-07-01",
-      to_date: "2026-08-31",
+      from_date: "2027-07-01",
+      to_date: "2027-08-31",
       price_usd: "320.00",
     },
     {
       room_id: ROOM(8),
-      from_date: "2026-09-01",
-      to_date: "2026-12-31",
+      from_date: "2027-09-01",
+      to_date: "2027-12-31",
       price_usd: "285.00",
     },
     // ROOM 9 – Hotel Histórico Centro, penthouse king city
     {
       room_id: ROOM(9),
-      from_date: "2026-01-01",
-      to_date: "2026-12-31",
+      from_date: "2027-01-01",
+      to_date: "2027-12-31",
       price_usd: "620.00",
     },
     // ROOM 10 – Condesa Inn, standard queen garden
     {
       room_id: ROOM(10),
-      from_date: "2026-01-01",
-      to_date: "2026-12-31",
+      from_date: "2027-01-01",
+      to_date: "2027-12-31",
       price_usd: "105.00",
     },
   ];
 
   await db.insertInto("room_price_periods").values(pricePeriods).execute();
-
-  // ── room_booked_ranges ────────────────────────────────────────────────────
-  // Simulate realistic bookings so date-filtered searches exclude these rooms.
-  // Dates are around today (2026-03-26) to make manual testing easy.
-  console.log("Seeding room_booked_ranges...");
-  const bookedRanges: Array<{
-    room_id: string;
-    from_date: string;
-    to_date: string;
-  }> = [
-    // ROOM 1 – Gran Caribe Resort & Spa, deluxe: booked this week + mid-April
-    { room_id: ROOM(1), from_date: "2026-03-25", to_date: "2026-03-30" },
-    { room_id: ROOM(1), from_date: "2026-04-10", to_date: "2026-04-15" },
-    // ROOM 2 – Gran Caribe Resort & Spa, suite: booked over Easter
-    { room_id: ROOM(2), from_date: "2026-04-02", to_date: "2026-04-07" },
-    // ROOM 4 – Playa Azul Hotel, deluxe: booked next week
-    { room_id: ROOM(4), from_date: "2026-03-30", to_date: "2026-04-05" },
-    // ROOM 5 – Playa Azul Hotel, junior suite: booked in May
-    { room_id: ROOM(5), from_date: "2026-05-01", to_date: "2026-05-08" },
-    // ROOM 8 – Hotel Histórico Centro, deluxe: booked this weekend + high season
-    { room_id: ROOM(8), from_date: "2026-03-27", to_date: "2026-03-29" },
-    { room_id: ROOM(8), from_date: "2026-07-15", to_date: "2026-07-22" },
-    // ROOM 9 – Hotel Histórico Centro, penthouse: long stay booked in April
-    { room_id: ROOM(9), from_date: "2026-04-01", to_date: "2026-04-20" },
-  ];
-
-  await db.insertInto("room_booked_ranges").values(bookedRanges).execute();
 
   console.log("✓ Seed complete.");
   await db.destroy();

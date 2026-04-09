@@ -29,14 +29,15 @@ export default function Navbar() {
     <header className="bg-white border-b border-gray-200">
       <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
+          <Link to="/" className="flex items-center gap-2 hover:opacity-80">
             <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
               <circle cx="14" cy="14" r="14" fill="#3a608f" />
               <path d="M8 14c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke="white" strokeWidth="2" fill="none" strokeLinecap="round"/>
               <circle cx="14" cy="17" r="2.5" fill="white" />
             </svg>
             <span className="font-bold text-lg text-gray-900">TravelHub</span>
-          </div>
+            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">v2</span>
+          </Link>
 
           <div ref={containerRef} style={{ position: 'relative' }}>
             <Button

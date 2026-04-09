@@ -6,5 +6,13 @@ module.exports = {
   moduleFileExtensions: ['ts', 'js', 'html'],
   coverageDirectory: '../../coverage/booking-service',
   coverageReporters: ['lcov', 'text-summary'],
-  collectCoverageFrom: ['**/*.(t|j)s'],
+  collectCoverageFrom: [
+    'src/**/*.(t|j)s',
+    '!src/main.ts',
+    '!src/**/*.module.ts',
+    '!src/database/migrate.ts',
+    '!src/database/database.provider.ts',
+    '!src/database/database.types.ts',
+    '!src/database/migrations/**',
+  ],
 };

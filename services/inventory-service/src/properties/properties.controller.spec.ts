@@ -12,13 +12,14 @@ const PUBLIC_PROPERTY = {
   partnerId: "partner-1",
   createdAt: new Date(),
   updatedAt: new Date(),
+  rooms: [],
 };
 
 function makeController(overrides: Partial<PropertiesService> = {}) {
   const service = {
     create: jest.fn().mockResolvedValue(PUBLIC_PROPERTY),
     findAll: jest.fn().mockResolvedValue([PUBLIC_PROPERTY]),
-    findOne: jest.fn().mockResolvedValue(PUBLIC_PROPERTY),
+    findDetail: jest.fn().mockResolvedValue(PUBLIC_PROPERTY),
     update: jest.fn().mockResolvedValue(PUBLIC_PROPERTY),
     remove: jest.fn().mockResolvedValue(undefined),
     ...overrides,
@@ -29,7 +30,8 @@ function makeController(overrides: Partial<PropertiesService> = {}) {
 describe("PropertiesController", () => {
   it("create — delegates to service.create", async () => {
     const { controller, service } = makeController();
-    const result = await controller.create("partner-1", {
+    const result = await controller.create({
+      partnerId: "partner-1",
       name: "Hotel Sol",
       type: "hotel",
       city: "Cancún",
@@ -53,24 +55,22 @@ describe("PropertiesController", () => {
     expect(result).toHaveLength(1);
   });
 
-  it("findOne — delegates to service.findOne", async () => {
+  it("findOne — delegates to service.findDetail", async () => {
     const { controller, service } = makeController();
-    const result = await controller.findOne("partner-1", "prop-1");
-    expect(service.findOne).toHaveBeenCalledWith("prop-1", "partner-1");
+    const result = await controller.findOne("prop-1");
+    expect(service.findDetail).toHaveBeenCalledWith("prop-1");
     expect(result.id).toBe("prop-1");
   });
 
   it("update — delegates to service.update", async () => {
     const { controller, service } = makeController();
-    await controller.update("partner-1", "prop-1", { city: "CDMX" });
-    expect(service.update).toHaveBeenCalledWith("prop-1", "partner-1", {
-      city: "CDMX",
-    });
+    await controller.update("prop-1", { city: "CDMX" });
+    expect(service.update).toHaveBeenCalledWith("prop-1", { city: "CDMX" });
   });
 
   it("remove — delegates to service.remove", async () => {
     const { controller, service } = makeController();
-    await controller.remove("partner-1", "prop-1");
-    expect(service.remove).toHaveBeenCalledWith("prop-1", "partner-1");
+    await controller.remove("prop-1");
+    expect(service.remove).toHaveBeenCalledWith("prop-1");
   });
 });

@@ -27,17 +27,14 @@ export class RoomsController {
   }
 
   @Get()
-  findAll(
-    @Headers("x-partner-id") partnerId: string,
-    @Query("propertyId") propertyId?: string,
-  ) {
+  findAll(@Query("propertyId") propertyId?: string) {
     if (!propertyId) throw new BadRequestException("propertyId is required");
-    return this.service.findByProperty(propertyId, partnerId);
+    return this.service.findByProperty(propertyId);
   }
 
   @Get(":id")
-  findOne(@Headers("x-partner-id") partnerId: string, @Param("id") id: string) {
-    return this.service.findOne(id, partnerId);
+  findOne(@Param("id") id: string) {
+    return this.service.findOne(id);
   }
 
   @Patch(":id")
@@ -51,7 +48,7 @@ export class RoomsController {
 
   @Delete(":id")
   @HttpCode(204)
-  remove(@Headers("x-partner-id") partnerId: string, @Param("id") id: string) {
-    return this.service.remove(id, partnerId);
+  remove(@Param("id") id: string) {
+    return this.service.remove(id);
   }
 }

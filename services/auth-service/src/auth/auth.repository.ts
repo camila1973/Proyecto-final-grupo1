@@ -35,11 +35,17 @@ export class AuthRepository implements OnModuleInit, OnModuleDestroy {
   private readonly pool: Pool;
   private readonly db: Kysely<AuthDatabase>;
 
+  private readonly connectionString: string;
+
   constructor() {
+    this.connectionString =
+      process.env.DATABASE_URL ??
+      "postgres://postgres:postgres@localhost:5432/travelhub";
     this.pool = new Pool({
-      connectionString:
-        process.env.DATABASE_URL ??
-        "postgres://postgres:postgres@localhost:5432/travelhub",
+      connectionString: this.connectionString,
+      ssl: this.connectionString.includes("localhost")
+        ? false
+        : { rejectUnauthorized: false },
     });
     this.db = new Kysely<AuthDatabase>({
       dialect: new PostgresDialect({ pool: this.pool }),
@@ -47,7 +53,32 @@ export class AuthRepository implements OnModuleInit, OnModuleDestroy {
   }
 
   async onModuleInit(): Promise<void> {
+    await this.ensureDatabase();
     await this.initializeSchema();
+  }
+
+  private async ensureDatabase(): Promise<void> {
+    const url = new URL(this.connectionString);
+    const targetDb = url.pathname.slice(1);
+    if (!targetDb || targetDb === "postgres") return;
+    url.pathname = "/postgres";
+    const adminPool = new Pool({
+      connectionString: url.toString(),
+      ssl: this.connectionString.includes("localhost")
+        ? false
+        : { rejectUnauthorized: false },
+    });
+    try {
+      const { rows } = await adminPool.query<{ exists: boolean }>(
+        "SELECT 1 FROM pg_database WHERE datname = $1",
+        [targetDb],
+      );
+      if (rows.length === 0) {
+        await adminPool.query(`CREATE DATABASE "${targetDb}"`);
+      }
+    } finally {
+      await adminPool.end();
+    }
   }
 
   async onModuleDestroy(): Promise<void> {

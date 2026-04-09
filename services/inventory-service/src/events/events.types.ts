@@ -1,18 +1,29 @@
 export interface RoomSnapshot {
   roomId: string;
   propertyId: string;
+  partnerId: string;
   propertyName: string;
   city: string;
-  countryCode: string;
+  country: string;
+  neighborhood: string | null;
+  lat: number | null;
+  lon: number | null;
   roomType: string;
+  bedType: string;
+  viewType: string;
   capacity: number;
   totalRooms: number;
   basePriceUsd: number;
+  amenities: string[];
   stars: number | null;
+  rating: number;
+  reviewCount: number;
+  thumbnailUrl: string;
+  isActive: boolean;
 }
 
 export interface InventoryRoomUpdatedEvent {
-  routingKey: "inventory.room.updated";
+  routingKey: "inventory.room.upserted";
   timestamp: string;
   snapshot: RoomSnapshot;
 }
@@ -24,18 +35,9 @@ export interface InventoryRoomDeletedEvent {
   timestamp: string;
 }
 
-export interface PriceUpdatedEvent {
-  routingKey: "price.updated";
+export interface InventoryPriceUpdatedEvent {
+  routingKey: "inventory.price.updated";
   roomId: string;
-  fromDate: string;
-  toDate: string;
-  priceUsd: number;
+  pricePeriods: Array<{ fromDate: string; toDate: string; priceUsd: number }>;
   timestamp: string;
-}
-
-export interface InventoryImportedEvent {
-  routingKey: "inventory.imported";
-  propertyId: string;
-  roomCount: number;
-  rooms: RoomSnapshot[];
 }

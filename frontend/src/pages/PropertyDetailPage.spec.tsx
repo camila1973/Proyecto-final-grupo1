@@ -11,10 +11,10 @@ import es from '../i18n/locales/es.json';
 setupTestI18n('es');
 
 const mockProperty = {
-  propertyId: 'prop_001',
-  propertyName: 'Hotel Test',
+  id: 'prop_001',
+  name: 'Hotel Test',
   city: 'Bogotá',
-  country: 'Colombia',
+  countryCode: 'CO',
   neighborhood: 'Chapinero',
   lat: 4.65,
   lon: -74.05,
@@ -23,17 +23,31 @@ const mockProperty = {
   reviewCount: 120,
   thumbnailUrl: 'https://example.com/hotel.jpg',
   amenities: ['wifi', 'pool'],
-  rooms: [
-    {
-      roomId: 'r1',
-      roomType: 'suite',
-      bedType: 'king',
-      viewType: 'city',
-      capacity: 2,
-      basePriceUsd: 150,
-    },
-  ],
 };
+
+const mockRooms = [
+  {
+    id: 'r1',
+    propertyId: 'prop_001',
+    roomType: 'suite',
+    bedType: 'king',
+    viewType: 'city',
+    capacity: 2,
+    totalRooms: 5,
+    basePriceUsd: '150.00',
+    status: 'active',
+  },
+];
+
+function mockFetch(propertyOk = true, rooms = mockRooms) {
+  (global.fetch as jest.Mock).mockImplementation((url: string) => {
+    if (url.includes('/rooms')) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(rooms) });
+    }
+    if (!propertyOk) return Promise.resolve({ ok: false });
+    return Promise.resolve({ ok: true, json: () => Promise.resolve(mockProperty) });
+  });
+}
 
 function makeRouter(propertyId = 'prop_001') {
   const rootRoute = createRootRoute({ component: () => <LocaleProvider><PropertyDetailPage /></LocaleProvider> });
@@ -71,37 +85,28 @@ describe('PropertyDetailPage', () => {
   });
 
   it('shows property details after successful fetch', async () => {
-    (global.fetch as jest.Mock).mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockProperty),
-    });
+    mockFetch();
     renderPage();
     expect(await screen.findByText('Hotel Test')).toBeInTheDocument();
-    expect(screen.getByText('Chapinero, Bogotá, Colombia')).toBeInTheDocument();
+    expect(screen.getByText('Chapinero, Bogotá, CO')).toBeInTheDocument();
     expect(screen.getByText('WiFi')).toBeInTheDocument();
     expect(screen.getByText('Piscina')).toBeInTheDocument();
   });
 
   it('shows error state when fetch fails', async () => {
-    (global.fetch as jest.Mock).mockResolvedValue({ ok: false });
+    mockFetch(false);
     renderPage();
     expect(await screen.findByText(es.property_detail.error)).toBeInTheDocument();
   });
 
   it('renders the back button', async () => {
-    (global.fetch as jest.Mock).mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockProperty),
-    });
+    mockFetch();
     renderPage();
     expect(await screen.findByText(es.property_detail.back)).toBeInTheDocument();
   });
 
   it('renders room card with book button', async () => {
-    (global.fetch as jest.Mock).mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockProperty),
-    });
+    mockFetch();
     renderPage();
     expect(await screen.findByText('Reservar')).toBeInTheDocument();
   });

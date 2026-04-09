@@ -61,7 +61,7 @@ function makeService(
 
 describe("RoomRatesService", () => {
   describe("create", () => {
-    it("creates a rate and publishes a price.updated event", async () => {
+    it("creates a rate and publishes an inventory.price.updated event", async () => {
       const publish = jest.fn();
       const service = makeService({ events: { publish } });
       const result = await service.create("room-1", "partner-1", {
@@ -73,8 +73,11 @@ describe("RoomRatesService", () => {
       });
       expect(result.id).toBe("rate-1");
       expect(publish).toHaveBeenCalledWith(
-        "price.updated",
-        expect.objectContaining({ roomId: "room-1", priceUsd: 150 }),
+        "inventory.price.updated",
+        expect.objectContaining({
+          roomId: "room-1",
+          pricePeriods: [expect.objectContaining({ priceUsd: 150 })],
+        }),
       );
     });
 
@@ -257,7 +260,7 @@ describe("RoomRatesService", () => {
     it("deletes the rate", async () => {
       const del = jest.fn().mockResolvedValue(undefined);
       const service = makeService({ repo: { delete: del } });
-      await service.remove("rate-1", "partner-1");
+      await service.remove("rate-1");
       expect(del).toHaveBeenCalledWith("rate-1");
     });
 
@@ -265,7 +268,7 @@ describe("RoomRatesService", () => {
       const service = makeService({
         repo: { findById: jest.fn().mockResolvedValue(undefined) },
       });
-      await expect(service.remove("missing", "partner-1")).rejects.toThrow(
+      await expect(service.remove("missing")).rejects.toThrow(
         NotFoundException,
       );
     });

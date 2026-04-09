@@ -1,28 +1,9 @@
-import { BadRequestException } from "@nestjs/common";
 import { AvailabilityController } from "./availability.controller";
 import type { AvailabilityService } from "./availability.service";
-import type { RoomsService } from "../rooms/rooms.service";
 
 const BULK_RESULT = [{ roomId: "room-1", available: true }];
 
-const PUBLIC_ROOM = {
-  id: "room-1",
-  propertyId: "prop-1",
-  roomType: "double",
-  capacity: 2,
-  totalRooms: 5,
-  basePriceUsd: "150.00",
-  status: "active",
-  createdAt: new Date(),
-  updatedAt: new Date(),
-};
-
-function makeController(
-  overrides: Partial<{
-    service: Partial<AvailabilityService>;
-    roomsService: Partial<RoomsService>;
-  }> = {},
-) {
+function makeController(overrides: Partial<AvailabilityService> = {}) {
   const service = {
     bulkCheck: jest.fn().mockResolvedValue(BULK_RESULT),
     reduceCapacity: jest.fn().mockResolvedValue(undefined),
@@ -32,29 +13,17 @@ function makeController(
     unhold: jest.fn().mockResolvedValue(undefined),
     confirm: jest.fn().mockResolvedValue(undefined),
     release: jest.fn().mockResolvedValue(undefined),
-    ...overrides.service,
+    ...overrides,
   } as unknown as AvailabilityService;
 
-  const roomsService = {
-    findByProperty: jest.fn().mockResolvedValue([PUBLIC_ROOM]),
-    ...overrides.roomsService,
-  } as unknown as RoomsService;
-
-  return {
-    controller: new AvailabilityController(service, roomsService),
-    service,
-    roomsService,
-  };
+  return { controller: new AvailabilityController(service), service };
 }
 
 describe("AvailabilityController", () => {
   describe("getAvailability", () => {
-    it("uses roomIds query param for bulk check", async () => {
+    it("splits comma-separated roomIds and delegates to service.bulkCheck", async () => {
       const { controller, service } = makeController();
       const result = await controller.getAvailability(
-        "partner-1",
-        undefined,
-        undefined,
         "room-1,room-2",
         "2026-04-01",
         "2026-04-07",
@@ -65,58 +34,6 @@ describe("AvailabilityController", () => {
         "2026-04-07",
       );
       expect(result).toEqual(BULK_RESULT);
-    });
-
-    it("throws BadRequestException when propertyId is missing and roomIds not provided", async () => {
-      const { controller } = makeController();
-      await expect(
-        controller.getAvailability(
-          "partner-1",
-          undefined,
-          undefined,
-          undefined,
-          "2026-04-01",
-          "2026-04-07",
-        ),
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it("fans out to all property rooms when no roomId filter", async () => {
-      const { controller, service, roomsService } = makeController();
-      await controller.getAvailability(
-        "partner-1",
-        "prop-1",
-        undefined,
-        undefined,
-        "2026-04-01",
-        "2026-04-07",
-      );
-      expect(roomsService.findByProperty).toHaveBeenCalledWith(
-        "prop-1",
-        "partner-1",
-      );
-      expect(service.bulkCheck).toHaveBeenCalledWith(
-        ["room-1"],
-        "2026-04-01",
-        "2026-04-07",
-      );
-    });
-
-    it("narrows to single roomId when provided alongside propertyId", async () => {
-      const { controller, service } = makeController();
-      await controller.getAvailability(
-        "partner-1",
-        "prop-1",
-        "room-1",
-        undefined,
-        "2026-04-01",
-        "2026-04-07",
-      );
-      expect(service.bulkCheck).toHaveBeenCalledWith(
-        ["room-1"],
-        "2026-04-01",
-        "2026-04-07",
-      );
     });
   });
 

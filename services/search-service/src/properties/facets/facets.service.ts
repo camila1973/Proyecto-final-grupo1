@@ -9,6 +9,7 @@ export interface CandidateRoom {
   property_name: string;
   city: string;
   country: string;
+  neighborhood: string | null;
   stars: number;
   rating: string;
   review_count: number;
@@ -23,10 +24,11 @@ export interface CandidateRoom {
 }
 
 export interface PropertyResult {
-  propertyId: string;
-  propertyName: string;
+  id: string;
+  name: string;
   city: string;
-  country: string;
+  countryCode: string;
+  neighborhood: string | null;
   stars: number;
   rating: number;
   reviewCount: number;
@@ -176,10 +178,11 @@ export class FacetsService {
       });
 
       results.push({
-        propertyId: best.property_id,
-        propertyName: best.property_name,
+        id: best.property_id,
+        name: best.property_name,
         city: best.city,
-        country: best.country,
+        countryCode: best.country,
+        neighborhood: best.neighborhood,
         stars: best.stars,
         rating: parseFloat(best.rating),
         reviewCount: best.review_count,

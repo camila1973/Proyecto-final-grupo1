@@ -22,10 +22,10 @@ jest.mock('@tanstack/react-router', () => ({
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
 const mockSearchResult = {
-  propertyId: 'p1',
-  propertyName: 'Gran Caribe Resort',
+  id: 'p1',
+  name: 'Gran Caribe Resort',
   city: 'Cancún',
-  country: 'Mexico',
+  countryCode: 'MX',
   neighborhood: 'Zona Hotelera',
   thumbnailUrl: 'https://placehold.co/400x300',
   amenities: ['wifi', 'pool'],
@@ -157,6 +157,7 @@ describe('SearchPage', () => {
       expect(mockNavigate).toHaveBeenCalledWith({
         to: '/properties/$propertyId',
         params: { propertyId: 'p1' },
+        search: { checkIn: '2026-04-01', checkOut: '2026-04-05', guests: 2 },
       });
     });
   });

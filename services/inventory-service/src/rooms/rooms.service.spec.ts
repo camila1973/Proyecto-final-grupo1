@@ -85,8 +85,8 @@ describe("RoomsService", () => {
       });
       expect(result.id).toBe("room-1");
       expect(publish).toHaveBeenCalledWith(
-        "inventory.room.updated",
-        expect.objectContaining({ routingKey: "inventory.room.updated" }),
+        "inventory.room.upserted",
+        expect.objectContaining({ routingKey: "inventory.room.upserted" }),
       );
     });
 
@@ -110,7 +110,7 @@ describe("RoomsService", () => {
   describe("findByProperty", () => {
     it("returns rooms for a given property", async () => {
       const service = makeService();
-      const result = await service.findByProperty("prop-1", "partner-1");
+      const result = await service.findByProperty("prop-1");
       expect(result).toHaveLength(1);
       expect(result[0].propertyId).toBe("prop-1");
     });
@@ -119,7 +119,7 @@ describe("RoomsService", () => {
   describe("findOne", () => {
     it("returns the room when found", async () => {
       const service = makeService();
-      const result = await service.findOne("room-1", "partner-1");
+      const result = await service.findOne("room-1");
       expect(result.id).toBe("room-1");
     });
 
@@ -127,7 +127,7 @@ describe("RoomsService", () => {
       const service = makeService({
         repo: { findById: jest.fn().mockResolvedValue(undefined) },
       });
-      await expect(service.findOne("missing", "partner-1")).rejects.toThrow(
+      await expect(service.findOne("missing")).rejects.toThrow(
         NotFoundException,
       );
     });
@@ -167,7 +167,7 @@ describe("RoomsService", () => {
       const service = makeService({ events: { publish } });
       await service.update("room-1", "partner-1", { capacity: 3 });
       expect(publish).toHaveBeenCalledWith(
-        "inventory.room.updated",
+        "inventory.room.upserted",
         expect.anything(),
       );
     });
@@ -181,7 +181,7 @@ describe("RoomsService", () => {
         repo: { softDelete },
         events: { publish },
       });
-      await service.remove("room-1", "partner-1");
+      await service.remove("room-1");
       expect(softDelete).toHaveBeenCalledWith("room-1");
       expect(publish).toHaveBeenCalledWith(
         "inventory.room.deleted",

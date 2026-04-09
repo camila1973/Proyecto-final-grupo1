@@ -4,48 +4,25 @@ import { useQuery } from '@tanstack/react-query';
 import HotelCard from '../components/HotelCard';
 import SearchBarForm from '../components/SearchBarForm';
 import { API_BASE } from '../env';
+import { formatAddress } from '../utils/address';
+import { todayISO, offsetDateISO } from './search/utils';
+import type { SearchResponse, SearchResult } from './search/types';
 
-// Featured property IDs — match the search-service seed data
-const FEATURED_IDS = [
-  'b1000000-0000-0000-0000-000000000001',
-  'b1000000-0000-0000-0000-000000000004',
-  'b1000000-0000-0000-0000-000000000002',
-];
-
-interface PropertySummary {
-  propertyId: string;
-  propertyName: string;
-  city: string;
-  neighborhood: string | null;
-  thumbnailUrl: string;
-  rooms: { basePriceUsd: number }[];
-}
-
-async function fetchProperty(id: string): Promise<PropertySummary> {
-  const res = await fetch(`${API_BASE}/api/search/properties/${id}`);
-  if (!res.ok) throw new Error(`Failed to fetch ${id}`);
-  return res.json();
-}
-
-function FeaturedCard({ id, onClick }: { id: string; onClick: () => void }) {
-  const { data } = useQuery({ queryKey: ['property', id], queryFn: () => fetchProperty(id) });
-  if (!data) return null;
-  const minPrice = Math.min(...data.rooms.map((r) => r.basePriceUsd));
-  return (
-    <HotelCard
-      id={data.propertyId}
-      name={data.propertyName}
-      location={`${data.neighborhood ?? data.city}, ${data.city}`}
-      price={minPrice}
-      img={data.thumbnailUrl}
-      onClick={onClick}
-    />
-  );
+async function fetchFeatured(): Promise<SearchResult[]> {
+  const res = await fetch(`${API_BASE}/api/search/featured?limit=3`);
+  if (!res.ok) throw new Error('Failed to fetch featured properties');
+  const data: SearchResponse = await res.json();
+  return data.results;
 }
 
 export default function HomePage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+
+  const { data: featured = [] } = useQuery({
+    queryKey: ['featured-properties'],
+    queryFn: fetchFeatured,
+  });
 
   return (
     <>
@@ -60,11 +37,15 @@ export default function HomePage() {
       <main className="flex-1 max-w-6xl mx-auto w-full px-6 py-10">
         <h2 className="text-xl font-bold text-gray-900 mb-6">{t('recommendations.title')}</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-          {FEATURED_IDS.map((id) => (
-            <FeaturedCard
-              key={id}
-              id={id}
-              onClick={() => navigate({ to: '/properties/$propertyId', params: { propertyId: id } })}
+          {featured.map((result) => (
+            <HotelCard
+              key={result.id}
+              id={result.id}
+              name={result.name}
+              location={formatAddress(result.neighborhood, result.city, result.countryCode)}
+              price={result.bestRoom.basePriceUsd}
+              img={result.thumbnailUrl}
+              onClick={() => navigate({ to: '/properties/$propertyId', params: { propertyId: result.id }, search: { checkIn: todayISO(), checkOut: offsetDateISO(2), guests: 2 } })}
             />
           ))}
         </div>

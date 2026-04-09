@@ -1,29 +1,32 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { sql } from "kysely";
-import { DatabaseService } from "../../database/database.service.js";
+import {
+  PropertiesRepository,
+  type RoomIndexRecord,
+} from "../../properties/properties.repository.js";
 import { PropertiesService } from "../../properties/properties.service.js";
 
 export interface RoomUpsertedPayload {
-  room_id: string;
-  property_id: string;
-  partner_id: string;
-  property_name: string;
+  roomId: string;
+  propertyId: string;
+  partnerId: string;
+  propertyName: string;
   city: string;
   country: string;
   neighborhood: string | null;
-  lat: number;
-  lon: number;
-  room_type: string;
-  bed_type: string;
-  view_type: string;
+  lat: number | null;
+  lon: number | null;
+  roomType: string;
+  bedType: string;
+  viewType: string;
   capacity: number;
+  totalRooms: number;
+  basePriceUsd: number;
   amenities: string[];
-  base_price_usd: number;
-  stars: number;
+  stars: number | null;
   rating: number;
-  review_count: number;
-  thumbnail_url: string;
-  is_active: boolean;
+  reviewCount: number;
+  thumbnailUrl: string;
+  isActive: boolean;
 }
 
 @Injectable()
@@ -31,66 +34,37 @@ export class RoomUpsertedHandler {
   private readonly logger = new Logger(RoomUpsertedHandler.name);
 
   constructor(
-    private readonly db: DatabaseService,
+    private readonly repo: PropertiesRepository,
     private readonly properties: PropertiesService,
   ) {}
 
   async handle(payload: RoomUpsertedPayload): Promise<void> {
-    await sql`
-      INSERT INTO room_search_index (
-        room_id, property_id, partner_id, property_name, city, country,
-        neighborhood, lat, lon, room_type, bed_type, view_type, capacity,
-        amenities, base_price_usd, stars, rating, review_count,
-        thumbnail_url, is_active, last_synced_at
-      ) VALUES (
-        ${payload.room_id}::uuid,
-        ${payload.property_id}::uuid,
-        ${payload.partner_id}::uuid,
-        ${payload.property_name},
-        ${payload.city},
-        ${payload.country},
-        ${payload.neighborhood ?? null},
-        ${payload.lat},
-        ${payload.lon},
-        ${payload.room_type},
-        ${payload.bed_type},
-        ${payload.view_type},
-        ${payload.capacity},
-        ${sql.raw(`ARRAY[${payload.amenities.map((a) => `'${a.replace(/'/g, "''")}'`).join(",")}]`)}::text[],
-        ${payload.base_price_usd},
-        ${payload.stars},
-        ${payload.rating},
-        ${payload.review_count},
-        ${payload.thumbnail_url},
-        ${payload.is_active},
-        NOW()
-      )
-      ON CONFLICT (room_id) DO UPDATE SET
-        property_id    = EXCLUDED.property_id,
-        partner_id     = EXCLUDED.partner_id,
-        property_name  = EXCLUDED.property_name,
-        city           = EXCLUDED.city,
-        country        = EXCLUDED.country,
-        neighborhood   = EXCLUDED.neighborhood,
-        lat            = EXCLUDED.lat,
-        lon            = EXCLUDED.lon,
-        room_type      = EXCLUDED.room_type,
-        bed_type       = EXCLUDED.bed_type,
-        view_type      = EXCLUDED.view_type,
-        capacity       = EXCLUDED.capacity,
-        amenities      = EXCLUDED.amenities,
-        base_price_usd = EXCLUDED.base_price_usd,
-        stars          = EXCLUDED.stars,
-        rating         = EXCLUDED.rating,
-        review_count   = EXCLUDED.review_count,
-        thumbnail_url  = EXCLUDED.thumbnail_url,
-        is_active      = EXCLUDED.is_active,
-        last_synced_at = NOW()
-    `.execute(this.db.db);
-
+    const record: RoomIndexRecord = {
+      room_id: payload.roomId,
+      property_id: payload.propertyId,
+      partner_id: payload.partnerId,
+      property_name: payload.propertyName,
+      city: payload.city,
+      country: payload.country,
+      neighborhood: payload.neighborhood,
+      lat: payload.lat ?? 0,
+      lon: payload.lon ?? 0,
+      room_type: payload.roomType,
+      bed_type: payload.bedType,
+      view_type: payload.viewType,
+      capacity: payload.capacity,
+      amenities: payload.amenities,
+      base_price_usd: payload.basePriceUsd,
+      stars: payload.stars ?? 0,
+      rating: payload.rating,
+      review_count: payload.reviewCount,
+      thumbnail_url: payload.thumbnailUrl,
+      is_active: payload.isActive,
+    };
+    await this.repo.upsertRoom(record);
     await this.properties.invalidateCityCache(payload.city);
     this.logger.debug(
-      `Upserted room ${payload.room_id} for city ${payload.city}`,
+      `Upserted room ${payload.roomId} for city ${payload.city}`,
     );
   }
 }

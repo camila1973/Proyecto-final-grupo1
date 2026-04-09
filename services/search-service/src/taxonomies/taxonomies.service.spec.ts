@@ -1,59 +1,48 @@
 import { TaxonomiesService } from "./taxonomies.service.js";
-import type { DatabaseService } from "../database/database.service.js";
+import type { TaxonomiesRepository } from "./taxonomies.repository.js";
 import type { CacheService } from "../cache/cache.service.js";
 
 const CACHE_KEY = "search:taxonomies";
 
-function makeDbChain(result: unknown) {
-  const chain: Record<string, jest.Mock> = {
-    selectAll: jest.fn(),
-    where: jest.fn(),
-    orderBy: jest.fn(),
-    execute: jest.fn().mockResolvedValue(result),
-  };
-  chain.selectAll.mockReturnValue(chain);
-  chain.where.mockReturnValue(chain);
-  chain.orderBy.mockReturnValue(chain);
-  return chain;
-}
+const fakeCategories = [
+  {
+    id: "cat1",
+    code: "room_type",
+    label: "Room Type",
+    filter_type: "checkbox",
+    display_order: 1,
+    is_active: true,
+    created_at: "",
+  },
+];
+
+const fakeValues = [
+  {
+    id: "val1",
+    category_id: "cat1",
+    code: "suite",
+    label: "Suite",
+    display_order: 1,
+    is_active: true,
+    created_at: "",
+  },
+  {
+    id: "val2",
+    category_id: "cat1",
+    code: "standard",
+    label: "Standard",
+    display_order: 2,
+    is_active: true,
+    created_at: "",
+  },
+];
 
 describe("TaxonomiesService", () => {
   let service: TaxonomiesService;
   let cache: jest.Mocked<Pick<CacheService, "get" | "set" | "del">>;
-  let dbSelectFrom: jest.Mock;
-
-  const fakeCategories = [
-    {
-      id: "cat1",
-      code: "room_type",
-      label: "Room Type",
-      filter_type: "checkbox",
-      display_order: 1,
-      is_active: true,
-      created_at: "",
-    },
-  ];
-
-  const fakeValues = [
-    {
-      id: "val1",
-      category_id: "cat1",
-      code: "suite",
-      label: "Suite",
-      display_order: 1,
-      is_active: true,
-      created_at: "",
-    },
-    {
-      id: "val2",
-      category_id: "cat1",
-      code: "standard",
-      label: "Standard",
-      display_order: 2,
-      is_active: true,
-      created_at: "",
-    },
-  ];
+  let repo: jest.Mocked<
+    Pick<TaxonomiesRepository, "findActiveCategories" | "findActiveValues">
+  >;
 
   beforeEach(() => {
     cache = {
@@ -62,15 +51,15 @@ describe("TaxonomiesService", () => {
       del: jest.fn().mockResolvedValue(undefined),
     };
 
-    dbSelectFrom = jest
-      .fn()
-      .mockReturnValueOnce(makeDbChain(fakeCategories))
-      .mockReturnValueOnce(makeDbChain(fakeValues));
+    repo = {
+      findActiveCategories: jest.fn().mockResolvedValue(fakeCategories),
+      findActiveValues: jest.fn().mockResolvedValue(fakeValues),
+    };
 
-    const db = {
-      db: { selectFrom: dbSelectFrom },
-    } as unknown as DatabaseService;
-    service = new TaxonomiesService(db, cache as unknown as CacheService);
+    service = new TaxonomiesService(
+      repo as unknown as TaxonomiesRepository,
+      cache as unknown as CacheService,
+    );
   });
 
   describe("getTaxonomies", () => {
@@ -81,10 +70,10 @@ describe("TaxonomiesService", () => {
       const result = await service.getTaxonomies();
 
       expect(result).toEqual(cached);
-      expect(dbSelectFrom).not.toHaveBeenCalled();
+      expect(repo.findActiveCategories).not.toHaveBeenCalled();
     });
 
-    it("queries DB on cache miss and returns camelCase response", async () => {
+    it("queries repo on cache miss and returns camelCase response", async () => {
       const result = (await service.getTaxonomies()) as any;
 
       expect(result.categories).toHaveLength(1);
@@ -105,7 +94,7 @@ describe("TaxonomiesService", () => {
       expect(result.categories[0].values).toHaveLength(2);
     });
 
-    it("stores result in cache after DB query", async () => {
+    it("stores result in cache after repo query", async () => {
       await service.getTaxonomies();
       expect(cache.set).toHaveBeenCalledWith(
         CACHE_KEY,
@@ -115,15 +104,7 @@ describe("TaxonomiesService", () => {
     });
 
     it("returns empty values array for category with no matching values", async () => {
-      dbSelectFrom = jest
-        .fn()
-        .mockReturnValueOnce(makeDbChain(fakeCategories))
-        .mockReturnValueOnce(makeDbChain([]));
-      const db = {
-        db: { selectFrom: dbSelectFrom },
-      } as unknown as DatabaseService;
-      service = new TaxonomiesService(db, cache as unknown as CacheService);
-
+      repo.findActiveValues.mockResolvedValue([]);
       const result = (await service.getTaxonomies()) as any;
       expect(result.categories[0].values).toEqual([]);
     });

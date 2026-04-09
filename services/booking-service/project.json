@@ -23,6 +23,18 @@
       "executor": "@nx/jest:jest",
       "outputs": ["{workspaceRoot}/coverage/booking-service"],
       "options": { "jestConfig": "services/booking-service/jest.config.js", "passWithNoTests": true }
+    },
+    "migrate": {
+      "executor": "nx:run-commands",
+      "options": { "command": "pnpm exec kysely migrate:latest", "cwd": "services/booking-service" }
+    },
+    "migrate-down": {
+      "executor": "nx:run-commands",
+      "options": { "command": "pnpm exec kysely migrate:down", "cwd": "services/booking-service" }
+    },
+    "seed": {
+      "executor": "nx:run-commands",
+      "options": { "command": "npx tsx scripts/seed.ts", "cwd": "services/booking-service" }
     }
   }
 }
