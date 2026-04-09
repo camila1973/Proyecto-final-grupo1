@@ -13,6 +13,8 @@ function makeDb(
   const chain = [
     "selectFrom",
     "insertInto",
+    "updateTable",
+    "set",
     "where",
     "select",
     "selectAll",
@@ -189,6 +191,24 @@ describe("ReservationsRepository", () => {
       );
 
       expect(result.fareBreakdown).toBe(breakdown);
+    });
+  });
+
+  describe("confirm", () => {
+    it("updates status to confirmed and returns the row", async () => {
+      const confirmed = makeRow({ status: "confirmed" });
+      const db = makeDb({ single: confirmed });
+      const repo = new ReservationsRepository(db);
+
+      const result = await repo.confirm("res-uuid");
+      expect(result).toEqual(confirmed);
+    });
+
+    it("throws NotFoundException when reservation not found", async () => {
+      const db = makeDb({ single: null });
+      const repo = new ReservationsRepository(db);
+
+      await expect(repo.confirm("missing")).rejects.toThrow(NotFoundException);
     });
   });
 });

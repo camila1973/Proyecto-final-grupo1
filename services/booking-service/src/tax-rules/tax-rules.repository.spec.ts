@@ -1,14 +1,34 @@
+import { NotFoundException } from "@nestjs/common";
 import { TaxRulesRepository } from "./tax-rules.repository.js";
 
 // ─── Kysely builder mock ────────────────────────────────────────────────────
 
-function makeDb(rows: Record<string, unknown>[] = []) {
+function makeDb(
+  rows: Record<string, unknown>[] = [],
+  firstRow?: Record<string, unknown> | null,
+) {
   const db: Record<string, jest.Mock> = {};
-  const chain = ["selectFrom", "where", "select"];
+  const chain = [
+    "selectFrom",
+    "where",
+    "select",
+    "selectAll",
+    "insertInto",
+    "values",
+    "returningAll",
+    "updateTable",
+    "set",
+  ];
   chain.forEach((m) => {
     db[m] = jest.fn().mockReturnValue(db);
   });
   db.execute = jest.fn().mockResolvedValue(rows);
+  db.executeTakeFirst = jest
+    .fn()
+    .mockResolvedValue(firstRow ?? rows[0] ?? undefined);
+  db.executeTakeFirstOrThrow = jest
+    .fn()
+    .mockResolvedValue(firstRow ?? rows[0] ?? undefined);
   return db as any;
 }
 
@@ -89,6 +109,100 @@ describe("TaxRulesRepository", () => {
 
       // The where calls include a reference to normalized city
       expect(db.where).toHaveBeenCalled();
+    });
+  });
+
+  describe("insert", () => {
+    it("inserts and returns the new row", async () => {
+      const row = makeRule();
+      const db = makeDb([], row);
+      const repo = new TaxRulesRepository(db);
+
+      const result = await repo.insert({
+        country: "MX",
+        city: null,
+        tax_name: "IVA",
+        tax_type: "PERCENTAGE",
+        rate: "16.00",
+        flat_amount: null,
+        currency: "USD",
+        effective_from: "2026-01-01",
+        effective_to: null,
+      } as any);
+
+      expect(db.insertInto).toHaveBeenCalledWith("tax_rules");
+      expect(result).toEqual(row);
+    });
+  });
+
+  describe("findAll", () => {
+    it("returns all rows without filter", async () => {
+      const rows = [makeRule(), makeRule({ id: "rule-2" })];
+      const db = makeDb(rows);
+      const repo = new TaxRulesRepository(db);
+
+      const result = await repo.findAll();
+      expect(result).toEqual(rows);
+    });
+
+    it("filters by country when provided", async () => {
+      const db = makeDb([makeRule()]);
+      const repo = new TaxRulesRepository(db);
+
+      await repo.findAll("MX");
+      expect(db.where).toHaveBeenCalledWith("country", "=", "MX");
+    });
+  });
+
+  describe("findById", () => {
+    it("returns row when found", async () => {
+      const row = makeRule();
+      const db = makeDb([], row);
+      const repo = new TaxRulesRepository(db);
+
+      const result = await repo.findById("rule-1");
+      expect(result).toEqual(row);
+    });
+
+    it("throws NotFoundException when not found", async () => {
+      const db = makeDb([], null);
+      const repo = new TaxRulesRepository(db);
+
+      await expect(repo.findById("missing")).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe("update", () => {
+    it("updates and returns the modified row", async () => {
+      const row = makeRule({ tax_name: "IVA updated" });
+      const db = makeDb([], row);
+      const repo = new TaxRulesRepository(db);
+
+      const result = await repo.update("rule-1", { tax_name: "IVA updated" });
+      expect(db.updateTable).toHaveBeenCalledWith("tax_rules");
+      expect(result).toEqual(row);
+    });
+
+    it("throws NotFoundException when row not found", async () => {
+      const db = makeDb([], null);
+      const repo = new TaxRulesRepository(db);
+
+      await expect(repo.update("missing", {})).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  describe("softDelete", () => {
+    it("sets is_active=false for the given id", async () => {
+      const db = makeDb();
+      const repo = new TaxRulesRepository(db);
+
+      await repo.softDelete("rule-1");
+      expect(db.updateTable).toHaveBeenCalledWith("tax_rules");
+      expect(db.set).toHaveBeenCalledWith(
+        expect.objectContaining({ is_active: false }),
+      );
     });
   });
 });
