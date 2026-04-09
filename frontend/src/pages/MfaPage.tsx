@@ -7,7 +7,8 @@ import Alert from '@mui/material/Alert';
 import { API_BASE } from '../env';
 import { useAuth } from '../hooks/useAuth';
 
-type MfaSearch = { challengeId: string };
+type MfaSearch = { challengeId: string | undefined };
+type MfaErrorKey = 'expired' | 'too_many_attempts' | 'invalid_code' | 'generic';
 
 export default function MfaPage() {
   const { t } = useTranslation();
@@ -17,7 +18,7 @@ export default function MfaPage() {
 
   const [code, setCode] = useState('');
   const [codeError, setCodeError] = useState<string | undefined>();
-  const [apiError, setApiError] = useState<string | null>(null);
+  const [errorKey, setErrorKey] = useState<MfaErrorKey | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -26,7 +27,7 @@ export default function MfaPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setApiError(null);
+    setErrorKey(null);
 
     if (!code.trim() || !/^\d{6}$/.test(code.trim())) {
       setCodeError(t('mfa.errors.code_invalid'));
@@ -45,17 +46,17 @@ export default function MfaPage() {
         const data = await response.json() as { message?: string };
         const msg = data.message ?? '';
         if (msg.includes('expired')) {
-          setApiError(t('mfa.errors.expired'));
+          setErrorKey('expired');
         } else if (msg.includes('attempts')) {
-          setApiError(t('mfa.errors.too_many_attempts'));
+          setErrorKey('too_many_attempts');
         } else {
-          setApiError(t('mfa.errors.invalid_code'));
+          setErrorKey('invalid_code');
         }
         return;
       }
 
       if (!response.ok) {
-        setApiError(t('mfa.errors.generic'));
+        setErrorKey('generic');
         return;
       }
 
@@ -67,11 +68,13 @@ export default function MfaPage() {
       login(data.accessToken, data.user);
       navigate({ to: '/' });
     } catch {
-      setApiError(t('mfa.errors.generic'));
+      setErrorKey('generic');
     } finally {
       setLoading(false);
     }
   };
+
+  const showRetryLink = errorKey === 'expired' || errorKey === 'too_many_attempts';
 
   return (
     <main className="flex-1 flex items-center justify-center py-10 px-4">
@@ -79,10 +82,10 @@ export default function MfaPage() {
         <h1 className="text-2xl font-bold text-gray-900 mb-1">{t('mfa.title')}</h1>
         <p className="text-sm text-gray-600 mb-6">{t('mfa.description')}</p>
 
-        {apiError && (
+        {errorKey && (
           <Alert severity="error" sx={{ mb: 2 }}>
-            {apiError}
-            {(apiError === t('mfa.errors.expired') || apiError === t('mfa.errors.too_many_attempts')) && (
+            {t(`mfa.errors.${errorKey}`)}
+            {showRetryLink && (
               <span>
                 {' '}
                 <a href="#/login" className="underline">

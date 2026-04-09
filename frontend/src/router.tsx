@@ -77,7 +77,7 @@ const mfaRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/login/mfa',
   validateSearch: (search: Record<string, unknown>) => ({
-    challengeId: (search.challengeId as string) ?? '',
+    challengeId: search.challengeId as string | undefined,
   }),
   component: MfaPage,
 });
