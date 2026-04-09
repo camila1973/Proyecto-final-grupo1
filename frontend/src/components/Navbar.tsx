@@ -2,11 +2,13 @@ import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from '@tanstack/react-router';
 import { useLocale, LANGUAGES, type Language } from '../context/LocaleContext';
+import { useAuth } from '../context/AuthContext';
 import Button from '@mui/material/Button';
 
 export default function Navbar() {
   const { t } = useTranslation();
   const { language, currency, setLanguage } = useLocale();
+  const { user, logout } = useAuth();
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -104,8 +106,19 @@ export default function Navbar() {
         </div>
 
         <nav className="flex items-center gap-6 text-sm text-gray-700">
-          <Link to="/register" className="hover:text-gray-900">{t('nav.register')}</Link>
-          <a href="#" className="hover:text-gray-900">{t('nav.login')}</a>
+          {user ? (
+            <>
+              <span className="text-gray-600">{user.email}</span>
+              <button onClick={logout} className="hover:text-gray-900">
+                {t('nav.logout')}
+              </button>
+            </>
+          ) : (
+            <>
+              <Link to="/register" className="hover:text-gray-900">{t('nav.register')}</Link>
+              <Link to="/login" className="hover:text-gray-900">{t('nav.login')}</Link>
+            </>
+          )}
         </nav>
       </div>
     </header>

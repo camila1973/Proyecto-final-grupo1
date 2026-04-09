@@ -1,5 +1,6 @@
 import { createRouter, createRoute, createRootRoute, Outlet, createHashHistory } from '@tanstack/react-router';
 import { LocaleProvider } from './context/LocaleContext';
+import { AuthProvider } from './context/AuthContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import HomePage from './pages/HomePage';
@@ -7,16 +8,20 @@ import SearchPage from './pages/search';
 import PropertyDetailPage from './pages/PropertyDetailPage';
 import RegisterPage from './pages/RegisterPage';
 import RegisterSuccess from './pages/RegisterSuccess';
+import LoginPage from './pages/LoginPage';
+import MfaPage from './pages/MfaPage';
 
 const rootRoute = createRootRoute({
   component: () => (
-    <LocaleProvider>
-      <div className="flex flex-col min-h-screen bg-[#f8f9ff]">
-        <Navbar />
-        <Outlet />
-        <Footer />
-      </div>
-    </LocaleProvider>
+    <AuthProvider>
+      <LocaleProvider>
+        <div className="flex flex-col min-h-screen bg-[#f8f9ff]">
+          <Navbar />
+          <Outlet />
+          <Footer />
+        </div>
+      </LocaleProvider>
+    </AuthProvider>
   ),
 });
 
@@ -62,7 +67,22 @@ const registerSuccessRoute = createRoute({
   component: RegisterSuccess,
 });
 
-const routeTree = rootRoute.addChildren([homeRoute, searchRoute, propertyRoute, registerRoute, registerSuccessRoute]);
+const loginRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/login',
+  component: LoginPage,
+});
+
+const mfaRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/login/mfa',
+  validateSearch: (search: Record<string, unknown>) => ({
+    challengeId: (search.challengeId as string) ?? '',
+  }),
+  component: MfaPage,
+});
+
+const routeTree = rootRoute.addChildren([homeRoute, searchRoute, propertyRoute, registerRoute, registerSuccessRoute, loginRoute, mfaRoute]);
 
 export function createAppRouter() {
   return createRouter({
