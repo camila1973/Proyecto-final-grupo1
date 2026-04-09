@@ -96,10 +96,14 @@ describe("RoomUpsertedHandler", () => {
   it("populates tax_rate_pct from booking-service tax rules", async () => {
     bookingClient.getTaxRules.mockResolvedValue([
       {
+        id: "t1",
+        country: "Mexico",
+        city: null,
         tax_name: "IVA",
         tax_type: "PERCENTAGE",
         rate: "16",
-        city: null,
+        flat_amount: null,
+        currency: "USD",
         is_active: true,
       },
     ]);
@@ -113,8 +117,26 @@ describe("RoomUpsertedHandler", () => {
 
   it("populates flat fee columns from booking-service partner fees", async () => {
     bookingClient.getPartnerFees.mockResolvedValue([
-      { fee_type: "FLAT_PER_NIGHT", flat_amount: "25", is_active: true },
-      { fee_type: "FLAT_PER_STAY", flat_amount: "50", is_active: true },
+      {
+        id: "f1",
+        partner_id: "p1",
+        fee_name: "Resort Fee",
+        fee_type: "FLAT_PER_NIGHT",
+        rate: null,
+        flat_amount: "25",
+        currency: "USD",
+        is_active: true,
+      },
+      {
+        id: "f2",
+        partner_id: "p1",
+        fee_name: "Cleaning Fee",
+        fee_type: "FLAT_PER_STAY",
+        rate: null,
+        flat_amount: "50",
+        currency: "USD",
+        is_active: true,
+      },
     ]);
 
     await handler.handle(makePayload());
