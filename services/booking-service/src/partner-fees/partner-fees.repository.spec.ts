@@ -53,6 +53,7 @@ function makeFeeRow(overrides: Record<string, unknown> = {}) {
     rate: null,
     flat_amount: "25.00",
     currency: "USD",
+    effective_from: "2026-01-01",
     ...overrides,
   };
 }

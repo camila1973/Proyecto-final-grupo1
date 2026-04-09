@@ -60,6 +60,7 @@ describe("ReservationsService", () => {
     findAll: jest.Mock;
     findById: jest.Mock;
     toResponse: jest.Mock;
+    confirm: jest.Mock;
   };
   let roomLocationCache: { findByRoomId: jest.Mock };
 
@@ -76,6 +77,7 @@ describe("ReservationsService", () => {
       findAll: jest.fn().mockResolvedValue([row, row]),
       findById: jest.fn().mockResolvedValue(row),
       toResponse: jest.fn().mockImplementation((r) => ({ id: r.id })),
+      confirm: jest.fn(),
     };
     service = new ReservationsService(
       fareCalculator as any,
