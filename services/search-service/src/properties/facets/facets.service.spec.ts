@@ -6,6 +6,7 @@ function makeRoom(overrides: Partial<CandidateRoom> = {}): CandidateRoom {
   return {
     room_id: "room-1",
     property_id: "prop-1",
+    partner_id: "partner-1",
     property_name: "Hotel A",
     city: "Lisbon",
     country: "Portugal",
@@ -21,6 +22,7 @@ function makeRoom(overrides: Partial<CandidateRoom> = {}): CandidateRoom {
     capacity: 2,
     base_price_usd: "150.00",
     avail_price_usd: null,
+    tax_rate_pct: "16",
     ...overrides,
   };
 }
@@ -340,6 +342,9 @@ describe("FacetsService", () => {
         capacity: 2,
         basePriceUsd: price,
         priceUsd: price,
+        taxRatePct: 0,
+        estimatedTotalUsd: price,
+        hasFlatFees: false,
       },
     });
 

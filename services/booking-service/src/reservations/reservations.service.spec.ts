@@ -81,6 +81,7 @@ describe("ReservationsService", () => {
       fareCalculator as any,
       reservationsRepo as any,
       roomLocationCache as any,
+      { publish: jest.fn() } as any,
     );
   });
 

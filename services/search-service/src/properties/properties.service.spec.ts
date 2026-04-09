@@ -46,6 +46,9 @@ const mockProperty = {
     capacity: 2,
     basePriceUsd: 200,
     priceUsd: 180,
+    taxRatePct: 0,
+    estimatedTotalUsd: 180,
+    hasFlatFees: false,
   },
 };
 
