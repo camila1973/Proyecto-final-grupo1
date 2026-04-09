@@ -5,13 +5,19 @@ import type { PropertiesService } from "./properties.service.js";
 describe("PropertiesController", () => {
   let controller: PropertiesController;
   let service: jest.Mocked<
-    Pick<PropertiesService, "searchProperties" | "getCitySuggestions">
+    Pick<
+      PropertiesService,
+      "searchProperties" | "getCitySuggestions" | "getPropertyRooms"
+    >
   >;
 
   beforeEach(() => {
     service = {
       searchProperties: jest.fn().mockResolvedValue({ results: [] }),
       getCitySuggestions: jest.fn().mockReturnValue({ suggestions: [] }),
+      getPropertyRooms: jest
+        .fn()
+        .mockResolvedValue({ property: null, rooms: [] }),
     };
     controller = new PropertiesController(
       service as unknown as PropertiesService,
@@ -260,6 +266,73 @@ describe("PropertiesController", () => {
       expect(() => controller.getCitySuggestions("   ")).toThrow(
         BadRequestException,
       );
+    });
+  });
+
+  describe("GET properties/:propertyId/rooms", () => {
+    it("delegates to service with propertyId and parsed options", async () => {
+      await controller.getPropertyRooms("p1", {
+        checkIn: "2026-04-01",
+        checkOut: "2026-04-05",
+        guests: "2",
+      });
+      expect(service.getPropertyRooms).toHaveBeenCalledWith("p1", {
+        checkIn: "2026-04-01",
+        checkOut: "2026-04-05",
+        guests: 2,
+      });
+    });
+
+    it("returns the service response", async () => {
+      const mockResponse = {
+        property: { id: "p1", name: "Hotel A" },
+        rooms: [],
+      };
+      (service.getPropertyRooms as jest.Mock).mockResolvedValue(mockResponse);
+      const result = await controller.getPropertyRooms("p1", {});
+      expect(result).toEqual(mockResponse);
+    });
+
+    it("omits checkIn/checkOut/guests when not provided", async () => {
+      await controller.getPropertyRooms("p1", {});
+      expect(service.getPropertyRooms).toHaveBeenCalledWith("p1", {
+        checkIn: undefined,
+        checkOut: undefined,
+        guests: undefined,
+      });
+    });
+
+    it("throws BadRequestException for invalid checkIn", () => {
+      expect(() =>
+        controller.getPropertyRooms("p1", { checkIn: "not-a-date" }),
+      ).toThrow(BadRequestException);
+    });
+
+    it("throws BadRequestException for invalid checkOut", () => {
+      expect(() =>
+        controller.getPropertyRooms("p1", { checkOut: "not-a-date" }),
+      ).toThrow(BadRequestException);
+    });
+
+    it("throws BadRequestException when checkOut equals checkIn", () => {
+      expect(() =>
+        controller.getPropertyRooms("p1", {
+          checkIn: "2026-04-01",
+          checkOut: "2026-04-01",
+        }),
+      ).toThrow(BadRequestException);
+    });
+
+    it("throws BadRequestException for guests = 0", () => {
+      expect(() => controller.getPropertyRooms("p1", { guests: "0" })).toThrow(
+        BadRequestException,
+      );
+    });
+
+    it("throws BadRequestException for non-numeric guests", () => {
+      expect(() =>
+        controller.getPropertyRooms("p1", { guests: "abc" }),
+      ).toThrow(BadRequestException);
     });
   });
 });

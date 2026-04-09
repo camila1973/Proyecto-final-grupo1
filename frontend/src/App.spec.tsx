@@ -7,19 +7,28 @@ import en from './i18n/locales/en.json';
 const i18n = setupTestI18n('es');
 
 const mockProperty = (id: string, name: string) => ({
-  id,
-  name,
-  city: 'Cancún',
-  countryCode: 'MX',
-  neighborhood: 'Zona Hotelera',
-  lat: 21.16,
-  lon: -86.85,
-  stars: 5,
-  rating: 4.7,
-  reviewCount: 100,
-  thumbnailUrl: 'https://placehold.co/400x300',
-  amenities: ['wifi'],
-  bestRoom: { roomId: 'r1', roomType: 'deluxe', bedType: 'king', capacity: 2, basePriceUsd: 300, priceUsd: 300 },
+  roomId: 'r1',
+  roomType: 'deluxe',
+  bedType: 'king',
+  viewType: 'ocean',
+  capacity: 2,
+  basePriceUsd: 300,
+  priceUsd: 300,
+  taxRatePct: 16,
+  estimatedTotalUsd: 348,
+  hasFlatFees: false,
+  property: {
+    id,
+    name,
+    city: 'Cancún',
+    countryCode: 'MX',
+    neighborhood: 'Zona Hotelera',
+    stars: 5,
+    rating: 4.7,
+    reviewCount: 100,
+    thumbnailUrl: 'https://placehold.co/400x300',
+    amenities: ['wifi'],
+  },
 });
 
 const featuredResponse = {

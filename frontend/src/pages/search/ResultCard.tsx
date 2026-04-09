@@ -29,12 +29,12 @@ export default function ResultCard({
 }: ResultCardProps) {
   const { t } = useTranslation();
   const { currency } = useLocale();
-  const { estimatedTotalUsd, hasFlatFees } = result.bestRoom;
+  const { estimatedTotalUsd, hasFlatFees } = result;
   const nightsLabel = t('search.card.nights', { count: nights || 1 });
   const inclLabel = hasFlatFees
     ? t('search.card.incl_taxes_fees')
     : t('search.card.incl_taxes_only');
-  const topAmenities = result.amenities.slice(0, 3);
+  const topAmenities = result.property.amenities.slice(0, 3);
 
   return (
     <Card
@@ -43,8 +43,8 @@ export default function ResultCard({
     >
       <CardMedia
         component="img"
-        image={result.thumbnailUrl || 'https://placehold.co/224x170?text=Hotel'}
-        alt={result.name}
+        image={result.property.thumbnailUrl || 'https://placehold.co/224x170?text=Hotel'}
+        alt={result.property.name}
         sx={{ width: '27%', flexShrink: 0, objectFit: 'cover' }}
         onError={(e) => {
           (e.currentTarget as HTMLImageElement).src = 'https://placehold.co/224x170?text=Hotel';
@@ -73,14 +73,14 @@ export default function ResultCard({
             noWrap
             color="text.primary"
           >
-            {result.name}
+            {result.property.name}
           </Typography>
           <Typography variant="caption" color="text.secondary" display="block" mt={0.5}>
-            {formatAddress(result.neighborhood, result.city, result.countryCode)}
+            {formatAddress(result.property.neighborhood, result.property.city, result.property.countryCode)}
           </Typography>
           <Typography variant="caption" color="text.secondary" display="block" mt={0.5}>
-            {resolveLabel(roomTypeLabels, result.bestRoom.roomType)} · {result.bestRoom.capacity}{' '}
-            {t('search.card.guests', { count: result.bestRoom.capacity })}
+            {resolveLabel(roomTypeLabels, result.roomType)} · {result.capacity}{' '}
+            {t('search.card.guests', { count: result.capacity })}
           </Typography>
         </Box>
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>

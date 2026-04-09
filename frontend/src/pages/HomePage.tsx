@@ -39,13 +39,13 @@ export default function HomePage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
           {featured.map((result) => (
             <HotelCard
-              key={result.id}
-              id={result.id}
-              name={result.name}
-              location={formatAddress(result.neighborhood, result.city, result.countryCode)}
-              price={result.bestRoom.basePriceUsd}
-              img={result.thumbnailUrl}
-              onClick={() => navigate({ to: '/properties/$propertyId', params: { propertyId: result.id }, search: { checkIn: todayISO(), checkOut: offsetDateISO(2), guests: 2 } })}
+              key={result.property.id}
+              id={result.property.id}
+              name={result.property.name}
+              location={formatAddress(result.property.neighborhood, result.property.city, result.property.countryCode)}
+              price={result.basePriceUsd}
+              img={result.property.thumbnailUrl}
+              onClick={() => navigate({ to: '/properties/$propertyId', params: { propertyId: result.property.id }, search: { checkIn: todayISO(), checkOut: offsetDateISO(2), guests: 2 } })}
             />
           ))}
         </div>

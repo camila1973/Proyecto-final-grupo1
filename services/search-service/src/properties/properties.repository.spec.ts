@@ -152,6 +152,29 @@ describe("PropertiesRepository", () => {
     });
   });
 
+  describe("findByPropertyId", () => {
+    it("queries room_search_index by property_id", async () => {
+      const { repo, db } = makeRepo();
+      await repo.findByPropertyId("p1");
+      expect(db.selectFrom).toHaveBeenCalledWith("room_search_index as rsi");
+    });
+
+    it("applies guests filter via $if when guests is provided", async () => {
+      const { repo, queryChain } = makeRepo();
+      await repo.findByPropertyId("p1", { guests: 2 });
+      const ifCalls = queryChain.$if.mock.calls;
+      // guests=2 → truthy → condition is true
+      expect(ifCalls[0][0]).toBe(true);
+    });
+
+    it("skips guests filter via $if when guests is not provided", async () => {
+      const { repo, queryChain } = makeRepo();
+      await repo.findByPropertyId("p1", {});
+      const ifCalls = queryChain.$if.mock.calls;
+      expect(ifCalls[0][0]).toBe(false);
+    });
+  });
+
   describe("findRoomCity", () => {
     it("returns city when room is found", async () => {
       const chain = makeQueryChain([{ city: "Lisbon" }]);

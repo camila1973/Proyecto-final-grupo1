@@ -1,10 +1,6 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { Kysely, sql, type SqlBool } from "kysely";
-import type { Selectable } from "kysely";
-import type {
-  SearchDatabase,
-  RoomSearchIndexTable,
-} from "../database/database.types.js";
+import type { SearchDatabase } from "../database/database.types.js";
 import { KYSELY } from "../database/database.provider.js";
 import type { CandidateRoom } from "./facets/facets.service.js";
 import type { SearchPropertiesDto } from "./dto/search-properties.dto.js";
@@ -188,18 +184,18 @@ export class PropertiesRepository {
 
   async findByPropertyId(
     propertyId: string,
-  ): Promise<Selectable<RoomSearchIndexTable>[]> {
-    return this.db
+    opts: { checkIn?: string; checkOut?: string; guests?: number } = {},
+  ): Promise<CandidateRoom[]> {
+    const rows = await this.db
       .selectFrom("room_search_index as rsi")
       .select([
         "rsi.room_id",
         "rsi.property_id",
+        "rsi.partner_id",
         "rsi.property_name",
         "rsi.city",
         "rsi.country",
         "rsi.neighborhood",
-        "rsi.lat",
-        "rsi.lon",
         "rsi.stars",
         "rsi.rating",
         "rsi.review_count",
@@ -210,10 +206,24 @@ export class PropertiesRepository {
         "rsi.view_type",
         "rsi.capacity",
         "rsi.base_price_usd",
+        "rsi.tax_rate_pct",
+        "rsi.flat_fee_per_night_usd",
+        "rsi.flat_fee_per_stay_usd",
+        sql<string | null>`(
+          SELECT rpp.price_usd::text
+          FROM room_price_periods rpp
+          WHERE rpp.room_id = rsi.room_id
+            AND rpp.from_date <= ${opts.checkIn || "9999-12-31"}::date
+            AND rpp.to_date   >= ${opts.checkOut || "0001-01-01"}::date
+          LIMIT 1
+        )`.as("avail_price_usd"),
       ])
       .where("rsi.property_id", "=", propertyId)
       .where("rsi.is_active", "=", true)
-      .execute() as Promise<Selectable<RoomSearchIndexTable>[]>;
+      .$if(!!opts.guests, (qb) => qb.where("rsi.capacity", ">=", opts.guests!))
+      .execute();
+
+    return rows as CandidateRoom[];
   }
 
   async deactivateRoom(roomId: string): Promise<void> {

@@ -19,19 +19,20 @@ import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
 import TextField from '@mui/material/TextField';
 
-interface Room {
-  id: string;
-  propertyId: string;
+interface SearchRoom {
+  roomId: string;
   roomType: string;
   bedType: string;
   viewType: string;
   capacity: number;
-  totalRooms: number;
-  basePriceUsd: string;
-  status: string;
+  basePriceUsd: number;
+  priceUsd: number | null;
+  taxRatePct: number;
+  estimatedTotalUsd: number;
+  hasFlatFees: boolean;
 }
 
-interface PropertyDetail {
+interface PropertyInfo {
   id: string;
   name: string;
   city: string;
@@ -44,28 +45,27 @@ interface PropertyDetail {
   amenities: string[];
 }
 
-async function fetchProperty(propertyId: string): Promise<PropertyDetail> {
-  const res = await fetch(`${API_BASE}/api/inventory/properties/${propertyId}`);
-  if (!res.ok) throw new Error(`Failed to fetch property ${propertyId}`);
-  return res.json() as Promise<PropertyDetail>;
+interface PropertyRoomsResponse {
+  property: PropertyInfo | null;
+  rooms: SearchRoom[];
 }
 
-async function fetchRooms(propertyId: string): Promise<Room[]> {
-  const res = await fetch(`${API_BASE}/api/inventory/rooms?propertyId=${encodeURIComponent(propertyId)}`);
+async function fetchPropertyRooms(
+  propertyId: string,
+  checkIn?: string,
+  checkOut?: string,
+  guests?: number,
+): Promise<PropertyRoomsResponse> {
+  const params = new URLSearchParams();
+  if (checkIn) params.set('checkIn', checkIn);
+  if (checkOut) params.set('checkOut', checkOut);
+  if (guests) params.set('guests', String(guests));
+  const qs = params.toString();
+  const res = await fetch(
+    `${API_BASE}/api/search/properties/${propertyId}/rooms${qs ? `?${qs}` : ''}`,
+  );
   if (!res.ok) throw new Error(`Failed to fetch rooms for property ${propertyId}`);
-  return res.json() as Promise<Room[]>;
-}
-
-async function fetchAvailability(
-  roomIds: string[],
-  fromDate: string,
-  toDate: string,
-): Promise<Set<string>> {
-  const params = new URLSearchParams({ roomId: roomIds.join(','), fromDate, toDate });
-  const res = await fetch(`${API_BASE}/api/inventory/availability?${params}`);
-  if (!res.ok) throw new Error('Failed to fetch availability');
-  const data: { roomId: string; available: boolean }[] = await res.json();
-  return new Set(data.filter((r) => r.available).map((r) => r.roomId));
+  return res.json() as Promise<PropertyRoomsResponse>;
 }
 
 const AMENITY_LABELS: Record<string, string> = {
@@ -105,29 +105,14 @@ export default function PropertyDetailPage() {
   const [checkOut, setCheckOut] = useState<Dayjs | null>(qCheckOut ? dayjs(qCheckOut) : dayjs().add(8, 'day'));
   const [guests, setGuests] = useState<number>(qGuests > 0 ? qGuests : 1);
 
-  const { data, isPending, isError } = useQuery<PropertyDetail>({
-    queryKey: ['property', propertyId],
-    queryFn: () => fetchProperty(propertyId),
-  });
-
-  const { data: rooms = [], isPending: roomsPending } = useQuery<Room[]>({
-    queryKey: ['property-rooms', propertyId],
-    queryFn: () => fetchRooms(propertyId),
-  });
-
   const fromDate = checkIn?.format('YYYY-MM-DD');
   const toDate = checkOut?.format('YYYY-MM-DD');
-  const canCheckAvailability = rooms.length > 0 && !!fromDate && !!toDate;
+  const nights = checkOut && checkIn ? Math.max(1, checkOut.diff(checkIn, 'day')) : 1;
 
-  const { data: availableIds, isPending: availPending } = useQuery<Set<string>>({
-    queryKey: ['room-availability', propertyId, fromDate, toDate],
-    queryFn: () => fetchAvailability(rooms.map((r) => r.id), fromDate!, toDate!),
-    enabled: canCheckAvailability,
+  const { data, isPending, isError } = useQuery<PropertyRoomsResponse>({
+    queryKey: ['property-rooms', propertyId, fromDate, toDate, guests],
+    queryFn: () => fetchPropertyRooms(propertyId, fromDate, toDate, guests),
   });
-
-  const visibleRooms = canCheckAvailability && availableIds
-    ? rooms.filter((r) => availableIds.has(r.id))
-    : rooms;
 
   if (isPending) {
     return (
@@ -137,7 +122,7 @@ export default function PropertyDetailPage() {
     );
   }
 
-  if (isError || !data) {
+  if (isError || !data?.property) {
     return (
       <main className="flex-1 max-w-6xl mx-auto w-full px-6 py-10">
         <p className="text-red-500">{t('property_detail.error')}</p>
@@ -145,7 +130,8 @@ export default function PropertyDetailPage() {
     );
   }
 
-  const address = formatAddress(data.neighborhood, data.city, data.countryCode);
+  const { property, rooms } = data;
+  const address = formatAddress(property.neighborhood, property.city, property.countryCode);
 
   return (
     <main className="flex-1 max-w-6xl mx-auto w-full px-6 py-8">
@@ -166,14 +152,14 @@ export default function PropertyDetailPage() {
       {/* Image gallery */}
       <div className="grid grid-cols-3 gap-2 rounded-2xl overflow-hidden mb-6 h-64">
         {[0, 1, 2].map((i) => (
-          <img key={i} src={data.thumbnailUrl} alt={data.name} className="w-full h-full object-cover" />
+          <img key={i} src={property.thumbnailUrl} alt={property.name} className="w-full h-full object-cover" />
         ))}
       </div>
 
       {/* Property header */}
       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 uppercase mb-1">{data.name}</h1>
+          <h1 className="text-2xl font-bold text-gray-900 uppercase mb-1">{property.name}</h1>
           <p className="text-gray-500 text-sm">{address}</p>
         </div>
         <Button
@@ -190,16 +176,16 @@ export default function PropertyDetailPage() {
       <section className="mb-6">
         <h2 className="text-base font-bold text-gray-900 mb-2">Acerca del hotel</h2>
         <p className="text-gray-600 text-sm leading-relaxed">
-          {data.name} está ubicado en {address}. Ofrece instalaciones de primera clase y un servicio excepcional para garantizar la comodidad de sus huéspedes durante toda su estadía.
+          {property.name} está ubicado en {address}. Ofrece instalaciones de primera clase y un servicio excepcional para garantizar la comodidad de sus huéspedes durante toda su estadía.
         </p>
       </section>
 
       {/* Amenities */}
-      {data.amenities.length > 0 && (
+      {property.amenities.length > 0 && (
         <section className="mb-8">
           <h2 className="text-base font-bold text-gray-900 mb-3">{t('property_detail.amenities')}</h2>
           <div className="flex flex-wrap gap-2">
-            {data.amenities.map((amenity) => (
+            {property.amenities.map((amenity) => (
               <Chip
                 key={amenity}
                 label={AMENITY_LABELS[amenity] ?? amenity}
@@ -216,7 +202,7 @@ export default function PropertyDetailPage() {
         <div className="flex items-baseline justify-between mb-4">
           <h2 className="text-xl font-bold text-gray-900">{t('property_detail.rooms')}</h2>
           <p className="text-sm text-gray-500">
-            <span className="font-bold text-gray-900">{visibleRooms.length} habitaciones</span> disponibles encontradas
+            <span className="font-bold text-gray-900">{rooms.length} habitaciones</span> disponibles encontradas
           </p>
         </div>
 
@@ -274,21 +260,16 @@ export default function PropertyDetailPage() {
 
           {/* Room list */}
           <div className="flex-1 flex flex-col gap-4">
-            {(roomsPending || (canCheckAvailability && availPending)) && (
-              <p className="text-gray-400 text-sm">Cargando habitaciones...</p>
-            )}
-            {visibleRooms.map((room) => {
-              const pricePerNight = parseFloat(room.basePriceUsd);
-              const nights = checkOut && checkIn ? Math.max(1, checkOut.diff(checkIn, 'day')) : 1;
-              const totalPrice = pricePerNight * nights;
+            {rooms.map((room) => {
+              const pricePerNight = room.priceUsd ?? room.basePriceUsd;
               const roomLabel = ROOM_TYPE_LABELS[room.roomType] ?? room.roomType;
               const bedLabel = BED_TYPE_LABELS[room.bedType] ?? room.bedType;
 
               return (
-                <Card key={room.id} variant="outlined" sx={{ display: 'flex', borderRadius: 3, overflow: 'hidden', bgcolor: 'grey.50' }}>
+                <Card key={room.roomId} variant="outlined" sx={{ display: 'flex', borderRadius: 3, overflow: 'hidden', bgcolor: 'grey.50' }}>
                   <CardMedia
                     component="img"
-                    image={data.thumbnailUrl}
+                    image={property.thumbnailUrl}
                     alt={roomLabel}
                     sx={{ width: 220, flexShrink: 0, objectFit: 'cover', alignSelf: 'stretch' }}
                   />
@@ -321,6 +302,11 @@ export default function PropertyDetailPage() {
                       <Typography component="span" variant="body2" color="text.secondary" fontWeight={400}>
                         {t('property_detail.per_night')}
                       </Typography>
+                      {room.hasFlatFees && (
+                        <Typography component="span" variant="body2" color="text.secondary" fontWeight={400}>
+                          {' '}· tarifas incluidas
+                        </Typography>
+                      )}
                     </Typography>
                   </CardContent>
                   <Box
@@ -336,10 +322,10 @@ export default function PropertyDetailPage() {
                   >
                     <Box textAlign="right">
                       <Typography variant="h5" fontWeight={700} lineHeight={1.2}>
-                        {formatPrice(totalPrice, currency)}
+                        {formatPrice(room.estimatedTotalUsd, currency)}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
-                        por {nights} noches
+                        por {nights} noches · impuestos incl.
                       </Typography>
                     </Box>
                     <Button

@@ -5,6 +5,7 @@ import { CacheService } from "../cache/cache.service.js";
 import { FacetsService } from "./facets/facets.service.js";
 import { InventoryClientService } from "../inventory/inventory-client.service.js";
 import type { SearchPropertiesDto } from "./dto/search-properties.dto.js";
+import type { PropertyRoomsDto } from "./dto/property-rooms.dto.js";
 import { City } from "country-state-city";
 
 const CACHE_TTL = 60 * 5; // 5 minutes
@@ -63,9 +64,9 @@ export class PropertiesService {
     });
 
     const facetData = this.facets.computeFacets(available, dto);
-    const properties = this.facets.selectBestRoomPerProperty(filtered, nights);
+    const rooms = this.facets.selectCheapestRoomPerProperty(filtered, nights);
 
-    const sorted = this.facets.sortProperties(properties, dto.sort);
+    const sorted = this.facets.sortRooms(rooms, dto.sort);
 
     const total = sorted.length;
     const offset = (dto.page - 1) * dto.pageSize;
@@ -133,8 +134,8 @@ export class PropertiesService {
     if (cached) return JSON.parse(cached) as object;
 
     const candidates = await this.repo.findFeatured(limit * 5);
-    const properties = this.facets.selectBestRoomPerProperty(candidates, 0);
-    const sorted = this.facets.sortProperties(properties, "relevance");
+    const rooms = this.facets.selectCheapestRoomPerProperty(candidates, 0);
+    const sorted = this.facets.sortRooms(rooms, "relevance");
     const results = sorted
       .slice(0, limit)
       .map(({ _partnerId: _, ...rest }) => rest);
@@ -145,6 +146,52 @@ export class PropertiesService {
     };
     await this.cache.set(cacheKey, JSON.stringify(response), CACHE_TTL);
     return response;
+  }
+
+  async getPropertyRooms(propertyId: string, dto: PropertyRoomsDto) {
+    const nights =
+      dto.checkIn && dto.checkOut
+        ? Math.max(
+            0,
+            Math.round(
+              (new Date(dto.checkOut).getTime() -
+                new Date(dto.checkIn).getTime()) /
+                (1000 * 60 * 60 * 24),
+            ),
+          )
+        : 0;
+
+    const candidates = await this.repo.findByPropertyId(propertyId, {
+      checkIn: dto.checkIn,
+      checkOut: dto.checkOut,
+      guests: dto.guests,
+    });
+
+    let available = candidates;
+    if (dto.checkIn && dto.checkOut && candidates.length > 0) {
+      const candidateIds = candidates.map((r) => r.room_id);
+      const availableRooms = await this.inventoryClient.checkAvailability({
+        roomIds: candidateIds,
+        fromDate: dto.checkIn,
+        toDate: dto.checkOut,
+      });
+      const availableIds = new Set(availableRooms.map((r) => r.roomId));
+      available = candidates.filter((r) => availableIds.has(r.room_id));
+    }
+
+    const roomResults = this.facets.mapAllRooms(available, nights);
+
+    if (roomResults.length === 0) {
+      return { property: null, rooms: [] };
+    }
+
+    // All rooms share the same property — hoist it to the top level
+    const { property } = roomResults[0];
+    const rooms = roomResults.map(
+      ({ property: _, _partnerId: __, ...roomFields }) => roomFields,
+    );
+
+    return { property, rooms };
   }
 
   async invalidateCityCache(city: string): Promise<void> {
