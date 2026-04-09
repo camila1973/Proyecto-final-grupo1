@@ -79,6 +79,7 @@ jobs:
 
           DATABASE_URL="${BASE}/search"              pnpm exec nx run search-service:migrate
           DATABASE_URL="${BASE}/inventory"           pnpm exec nx run inventory-service:migrate
+          DATABASE_URL="${BASE}/booking"             pnpm exec nx run booking-service:migrate
           DATABASE_URL="${BASE}/integration_service" pnpm exec nx run integration-service:migrate
 
       # Seed only the services that ship seed data
@@ -88,4 +89,5 @@ jobs:
 
           DATABASE_URL="${BASE}/search"              pnpm exec nx run search-service:seed
           DATABASE_URL="${BASE}/inventory"           pnpm exec nx run inventory-service:seed
+          DATABASE_URL="${BASE}/booking"             pnpm exec nx run booking-service:seed
           DATABASE_URL="${BASE}/integration_service" pnpm exec nx run integration-service:seed
