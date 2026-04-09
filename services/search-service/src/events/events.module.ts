@@ -9,16 +9,10 @@ import { PartnerFeeUpsertedHandler } from "./handlers/partner-fee-upserted.handl
 import { PartnerFeeDeletedHandler } from "./handlers/partner-fee-deleted.handler.js";
 import { PropertiesModule } from "../properties/properties.module.js";
 import { TaxonomiesModule } from "../taxonomies/taxonomies.module.js";
-import { TaxRateCacheModule } from "../tax-cache/tax-rate-cache.module.js";
-import { PartnerFeesCacheModule } from "../partner-fees-cache/partner-fees-cache.module.js";
+import { BookingModule } from "../booking/booking.module.js";
 
 @Module({
-  imports: [
-    PropertiesModule,
-    TaxonomiesModule,
-    TaxRateCacheModule,
-    PartnerFeesCacheModule,
-  ],
+  imports: [PropertiesModule, TaxonomiesModule, BookingModule],
   providers: [
     EventsService,
     RoomUpsertedHandler,

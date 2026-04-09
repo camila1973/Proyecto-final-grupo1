@@ -22,6 +22,8 @@ export interface CandidateRoom {
   capacity: number;
   base_price_usd: string;
   tax_rate_pct: string;
+  flat_fee_per_night_usd: string;
+  flat_fee_per_stay_usd: string;
   avail_price_usd: string | null;
 }
 
@@ -162,7 +164,10 @@ export class FacetsService {
     };
   }
 
-  selectBestRoomPerProperty(rooms: CandidateRoom[]): PropertyResult[] {
+  selectBestRoomPerProperty(
+    rooms: CandidateRoom[],
+    nights = 0,
+  ): PropertyResult[] {
     const byProperty = new Map<string, CandidateRoom[]>();
     for (const room of rooms) {
       const list = byProperty.get(room.property_id) ?? [];
@@ -189,7 +194,15 @@ export class FacetsService {
           ? parseFloat(best.avail_price_usd)
           : parseFloat(best.base_price_usd);
       const taxRatePct = parseFloat(best.tax_rate_pct ?? "0");
-      const estimatedTotalUsd = price * (1 + taxRatePct / 100);
+      const flatPerNight = parseFloat(best.flat_fee_per_night_usd ?? "0");
+      const flatPerStay = parseFloat(best.flat_fee_per_stay_usd ?? "0");
+      const hasFlatFees = flatPerNight > 0 || flatPerStay > 0;
+      const estimatedTotalUsd =
+        nights > 0
+          ? price * nights * (1 + taxRatePct / 100) +
+            flatPerNight * nights +
+            flatPerStay
+          : price * (1 + taxRatePct / 100) + flatPerNight;
 
       results.push({
         id: best.property_id,
@@ -215,7 +228,7 @@ export class FacetsService {
               : null,
           taxRatePct,
           estimatedTotalUsd,
-          hasFlatFees: false, // enriched by PropertiesService
+          hasFlatFees,
         },
       });
     }

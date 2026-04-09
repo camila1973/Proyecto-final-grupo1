@@ -34,6 +34,18 @@ type UpdateTaxRuleData = Partial<
   >
 >;
 
+/**
+ * Applies city-wins precedence to a set of tax rules.
+ * Rules with different tax_name values are all cumulative.
+ * When the same tax_name appears at both country and city level, city wins.
+ */
+export function resolveRules(rows: TaxRule[]): TaxRule[] {
+  const byName = new Map<string, TaxRule>();
+  for (const r of rows) if (r.city === null) byName.set(r.tax_name, r);
+  for (const r of rows) if (r.city !== null) byName.set(r.tax_name, r);
+  return [...byName.values()];
+}
+
 @Injectable()
 export class TaxRulesRepository {
   constructor(@Inject(KYSELY) private readonly db: Kysely<Database>) {}
@@ -72,24 +84,7 @@ export class TaxRulesRepository {
       ])
       .execute();
 
-    // Precedence: cumulative taxes from all levels; city-specific overrides
-    // country-level when the same tax_name appears at both levels.
-    const byName = new Map<string, TaxRule>();
-
-    // First pass: country-level rules
-    for (const row of rows) {
-      if (row.city === null) {
-        byName.set(row.tax_name, row as TaxRule);
-      }
-    }
-    // Second pass: city-specific rules override
-    for (const row of rows) {
-      if (row.city !== null) {
-        byName.set(row.tax_name, row as TaxRule);
-      }
-    }
-
-    return Array.from(byName.values());
+    return resolveRules(rows as TaxRule[]);
   }
 
   async insert(data: NewTaxRule): Promise<TaxRuleRow> {

@@ -4,9 +4,7 @@ import { PropertiesRepository } from "./properties.repository.js";
 import { CacheService } from "../cache/cache.service.js";
 import { FacetsService } from "./facets/facets.service.js";
 import { InventoryClientService } from "../inventory/inventory-client.service.js";
-import { PartnerFeesCacheRepository } from "../partner-fees-cache/partner-fees-cache.repository.js";
 import type { SearchPropertiesDto } from "./dto/search-properties.dto.js";
-import type { PropertyResult } from "./facets/facets.service.js";
 import { City } from "country-state-city";
 
 const CACHE_TTL = 60 * 5; // 5 minutes
@@ -18,7 +16,6 @@ export class PropertiesService {
     private readonly cache: CacheService,
     private readonly facets: FacetsService,
     private readonly inventoryClient: InventoryClientService,
-    private readonly partnerFeesCache: PartnerFeesCacheRepository,
   ) {}
 
   async searchProperties(dto: SearchPropertiesDto) {
@@ -28,6 +25,18 @@ export class PropertiesService {
     if (cached) {
       return JSON.parse(cached) as object;
     }
+
+    const nights =
+      dto.checkIn && dto.checkOut
+        ? Math.max(
+            0,
+            Math.round(
+              (new Date(dto.checkOut).getTime() -
+                new Date(dto.checkIn).getTime()) /
+                (1000 * 60 * 60 * 24),
+            ),
+          )
+        : 0;
 
     const candidates = await this.repo.findCandidates(dto);
 
@@ -54,12 +63,9 @@ export class PropertiesService {
     });
 
     const facetData = this.facets.computeFacets(available, dto);
-    const properties = this.facets.selectBestRoomPerProperty(filtered);
+    const properties = this.facets.selectBestRoomPerProperty(filtered, nights);
 
-    // Enrich with hasFlatFees and flat fee contribution
-    const enriched = await this.enrichWithFlatFees(properties, dto);
-
-    const sorted = this.facets.sortProperties(enriched, dto.sort);
+    const sorted = this.facets.sortProperties(properties, dto.sort);
 
     const total = sorted.length;
     const offset = (dto.page - 1) * dto.pageSize;
@@ -127,9 +133,8 @@ export class PropertiesService {
     if (cached) return JSON.parse(cached) as object;
 
     const candidates = await this.repo.findFeatured(limit * 5);
-    const properties = this.facets.selectBestRoomPerProperty(candidates);
-    const enriched = await this.enrichWithFlatFees(properties, {});
-    const sorted = this.facets.sortProperties(enriched, "relevance");
+    const properties = this.facets.selectBestRoomPerProperty(candidates, 0);
+    const sorted = this.facets.sortProperties(properties, "relevance");
     const results = sorted
       .slice(0, limit)
       .map(({ _partnerId: _, ...rest }) => rest);
@@ -148,44 +153,6 @@ export class PropertiesService {
   }
 
   // ─── private helpers ──────────────────────────────────────────────────────
-
-  private async enrichWithFlatFees(
-    properties: PropertyResult[],
-    dto: { checkIn?: string; checkOut?: string },
-  ): Promise<PropertyResult[]> {
-    if (properties.length === 0) return properties;
-
-    const partnerIds = [
-      ...new Set(
-        properties.map((p) => p._partnerId).filter(Boolean) as string[],
-      ),
-    ];
-
-    const [partnersWithFlatFees, flatFeeTotals] = await Promise.all([
-      this.partnerFeesCache.getPartnersWithActiveFlatFees(partnerIds),
-      dto.checkIn && dto.checkOut
-        ? this.partnerFeesCache.getFlatFeeTotals(
-            partnerIds,
-            dto.checkIn,
-            dto.checkOut,
-          )
-        : Promise.resolve(new Map<string, number>()),
-    ]);
-
-    return properties.map((p) => {
-      const partnerId = p._partnerId ?? "";
-      const hasFlatFees = partnersWithFlatFees.has(partnerId);
-      const flatFeeContribution = flatFeeTotals.get(partnerId) ?? 0;
-      return {
-        ...p,
-        bestRoom: {
-          ...p.bestRoom,
-          hasFlatFees,
-          estimatedTotalUsd: p.bestRoom.estimatedTotalUsd + flatFeeContribution,
-        },
-      };
-    });
-  }
 
   private buildCacheKey(dto: SearchPropertiesDto): string {
     const city = this.normalizeCity(dto.city);

@@ -1,5 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { TaxRateCacheRepository } from "../../tax-cache/tax-rate-cache.repository.js";
+import { PropertiesRepository } from "../../properties/properties.repository.js";
+import { BookingClientService } from "../../booking/booking-client.service.js";
 
 export interface TaxRuleUpsertedPayload {
   ruleId: string;
@@ -18,37 +19,42 @@ export interface TaxRuleUpsertedPayload {
 export class TaxRuleUpsertedHandler {
   private readonly logger = new Logger(TaxRuleUpsertedHandler.name);
 
-  constructor(private readonly taxRateCache: TaxRateCacheRepository) {}
+  constructor(
+    private readonly repo: PropertiesRepository,
+    private readonly bookingClient: BookingClientService,
+  ) {}
 
   async handle(payload: TaxRuleUpsertedPayload): Promise<void> {
-    if (payload.taxType !== "PERCENTAGE" || !payload.rate) {
-      // Only percentage rules contribute to the pre-summed tax_rate_pct
-      return;
-    }
-
     const city = payload.city ?? "";
 
-    // Recompute total rate for this (country, city) by looking up current cache
-    // then adding/updating this rule's contribution. Since we store the total,
-    // the simplest approach is to re-sum by fetching the existing total and
-    // adjusting. However, we don't have per-rule breakdown stored, so we just
-    // upsert the new total as the incremental addition to the existing value.
-    // A more precise implementation would store per-rule rates separately;
-    // for now we accumulate via upsert (overwrite with new rule's rate contribution).
-    // The event handler does an optimistic upsert: the actual total_pct is
-    // re-accumulated correctly by the booking-service (authoritative source).
-    // Here we store the cumulative total as reported by events.
-    const existing = await this.taxRateCache.lookup(payload.country, city);
-    // For simplicity: add this rule's rate to the existing total.
-    // If this is an update, the old value stays in the total — this is an
-    // eventual consistency approximation. The search estimate is non-authoritative.
-    const newTotal = existing + payload.rate;
+    // Re-query booking-service for all tax rules for this country, then apply
+    // the city-wins precedence and sum only PERCENTAGE winners. This avoids the
+    // stale-accumulation bug where updating a rule would double-count its rate.
+    const allRules = await this.bookingClient.getTaxRules(payload.country);
+    const activeRules = allRules.filter((r) => r.is_active);
 
-    await this.taxRateCache.upsert(payload.country, city, newTotal);
+    // Apply city-wins precedence (same logic as resolveRules in booking-service)
+    const byName = new Map<string, (typeof activeRules)[number]>();
+    for (const r of activeRules) if (r.city === null) byName.set(r.tax_name, r);
+    for (const r of activeRules) if (r.city !== null) byName.set(r.tax_name, r);
 
-    // Async bulk re-index of affected rooms (fire-and-forget)
-    void this.taxRateCache
-      .bulkUpdateRoomSearchIndex(payload.country, city, newTotal)
+    // Sum only PERCENTAGE rules for the (country, city) pair
+    // City-level rules apply only to their city; country-level rules apply everywhere.
+    // We maintain one total per (country, city) cache entry, so we sum only the
+    // rules that match this event's city scope.
+    const normalizedCity = city.toLowerCase();
+    const winners = [...byName.values()].filter(
+      (r) =>
+        r.tax_type === "PERCENTAGE" &&
+        (r.city === null || r.city.toLowerCase() === normalizedCity),
+    );
+    const totalPct = winners.reduce(
+      (acc, r) => acc + parseFloat(r.rate ?? "0"),
+      0,
+    );
+
+    void this.repo
+      .bulkUpdateRoomSearchIndex(payload.country, normalizedCity, totalPct)
       .catch((err: unknown) => {
         this.logger.error(
           `Failed to bulk-update room_search_index for ${payload.country}/${city}: ${String(err)}`,
@@ -56,7 +62,7 @@ export class TaxRuleUpsertedHandler {
       });
 
     this.logger.debug(
-      `Updated tax_rate_cache for ${payload.country}/${city} → ${newTotal}%`,
+      `Recomputed tax rate for ${payload.country}/${city} → ${totalPct}%`,
     );
   }
 }

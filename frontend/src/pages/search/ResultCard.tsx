@@ -29,9 +29,11 @@ export default function ResultCard({
 }: ResultCardProps) {
   const { t } = useTranslation();
   const { currency } = useLocale();
-  const effectiveNights = nights > 0 ? nights : 1;
-  const totalPriceUsd = (result.bestRoom.priceUsd ?? result.bestRoom.basePriceUsd) * effectiveNights;
+  const { estimatedTotalUsd, hasFlatFees } = result.bestRoom;
   const nightsLabel = t('search.card.nights', { count: nights || 1 });
+  const inclLabel = hasFlatFees
+    ? t('search.card.incl_taxes_fees')
+    : t('search.card.incl_taxes_only');
   const topAmenities = result.amenities.slice(0, 3);
 
   return (
@@ -107,10 +109,13 @@ export default function ResultCard({
       >
         <Box textAlign="right">
           <Typography variant="h6" fontWeight={700} lineHeight={1.2} color="text.primary">
-            {formatPrice(totalPriceUsd, currency)}
+            {formatPrice(estimatedTotalUsd, currency)}
           </Typography>
-          <Typography variant="caption" color="text.secondary">
+          <Typography variant="caption" color="text.secondary" display="block">
             {nightsLabel}
+          </Typography>
+          <Typography variant="caption" color="text.secondary" display="block">
+            {inclLabel}
           </Typography>
         </Box>
         <Button

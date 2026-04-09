@@ -1,5 +1,6 @@
 import { NotFoundException } from "@nestjs/common";
-import { TaxRulesRepository } from "./tax-rules.repository.js";
+import { TaxRulesRepository, resolveRules } from "./tax-rules.repository.js";
+import type { TaxRule } from "./tax-rules.repository.js";
 
 // ─── Kysely builder mock ────────────────────────────────────────────────────
 
@@ -204,5 +205,69 @@ describe("TaxRulesRepository", () => {
         expect.objectContaining({ is_active: false }),
       );
     });
+  });
+});
+
+describe("resolveRules", () => {
+  function makeRule(overrides: Partial<TaxRule> = {}): TaxRule {
+    return {
+      id: "r1",
+      country: "MX",
+      city: null,
+      tax_name: "IVA",
+      tax_type: "PERCENTAGE",
+      rate: "16",
+      flat_amount: null,
+      currency: "USD",
+      ...overrides,
+    };
+  }
+
+  it("returns single rule unchanged", () => {
+    const rule = makeRule();
+    expect(resolveRules([rule])).toEqual([rule]);
+  });
+
+  it("city-level rule wins over country-level rule with same tax_name", () => {
+    const country = makeRule({ city: null, rate: "16" });
+    const city = makeRule({ city: "cancún", rate: "11" });
+    const result = resolveRules([country, city]);
+    expect(result).toHaveLength(1);
+    expect(result[0].city).toBe("cancún");
+    expect(result[0].rate).toBe("11");
+  });
+
+  it("rules with different tax_name are both kept (cumulative)", () => {
+    const iva = makeRule({ tax_name: "IVA", city: null });
+    const inc = makeRule({ id: "r2", tax_name: "INC", city: null, rate: "8" });
+    const result = resolveRules([iva, inc]);
+    expect(result).toHaveLength(2);
+    const names = result.map((r) => r.tax_name);
+    expect(names).toContain("IVA");
+    expect(names).toContain("INC");
+  });
+
+  it("Colombia scenario: IVA 19% + INC 8% both survive", () => {
+    const iva = makeRule({ tax_name: "IVA", rate: "19", city: null });
+    const inc = makeRule({ id: "r2", tax_name: "INC", rate: "8", city: null });
+    const result = resolveRules([iva, inc]);
+    expect(result).toHaveLength(2);
+    const total = result.reduce((acc, r) => acc + parseFloat(r.rate ?? "0"), 0);
+    expect(total).toBe(27);
+  });
+
+  it("Cancún scenario: city IVA (11) + ISH (3) = 14 (country IVA 16 excluded)", () => {
+    const countryIva = makeRule({ tax_name: "IVA", rate: "16", city: null });
+    const cityIva = makeRule({ tax_name: "IVA", rate: "11", city: "cancún" });
+    const ish = makeRule({
+      id: "r3",
+      tax_name: "ISH",
+      rate: "3",
+      city: "cancún",
+    });
+    const result = resolveRules([countryIva, cityIva, ish]);
+    expect(result).toHaveLength(2);
+    const total = result.reduce((acc, r) => acc + parseFloat(r.rate ?? "0"), 0);
+    expect(total).toBe(14);
   });
 });

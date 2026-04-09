@@ -20,6 +20,7 @@
   "recommendations": {
     "title": "Recommendations for you",
     "per_night": "per night",
+    "taxes_not_included": "Taxes & fees not included",
     "book": "Book"
   },
   "property_detail": {
@@ -61,9 +62,15 @@
     "card": {
       "nights_one": "per night",
       "nights_other": "for {{count}} nights",
+      "incl_taxes_only": "incl. taxes",
+      "incl_taxes_fees": "incl. taxes & fees",
       "guests_one": "guest",
       "guests_other": "guests",
-      "book": "Book"
+      "book": "Book",
+      "estimated_total": "~{{amount}} total",
+      "flat_fees_disclaimer": "+ fees",
+      "incl_taxes": "~{{amount}} incl. taxes",
+      "flat_fees_may_apply": "Flat fees may apply"
     }
   },
   "register": {

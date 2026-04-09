@@ -55,6 +55,10 @@ describe('HotelCard', () => {
     it('renders the book button in Spanish', () => {
       expect(screen.getByRole('button', { name: new RegExp(es.recommendations.book, 'i') })).toBeInTheDocument();
     });
+
+    it('renders the taxes not included label in Spanish', () => {
+      expect(screen.getByText(es.recommendations.taxes_not_included)).toBeInTheDocument();
+    });
   });
 
   describe('English', () => {
@@ -66,6 +70,10 @@ describe('HotelCard', () => {
 
     it('renders the book button in English', () => {
       expect(screen.getByRole('button', { name: new RegExp(en.recommendations.book, 'i') })).toBeInTheDocument();
+    });
+
+    it('renders the taxes not included label in English', () => {
+      expect(screen.getByText(en.recommendations.taxes_not_included)).toBeInTheDocument();
     });
   });
 });

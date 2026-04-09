@@ -34,6 +34,9 @@ function makeResult(overrides: Partial<SearchResult> = {}): SearchResult {
       capacity: 2,
       basePriceUsd: 320,
       priceUsd: 280,
+      taxRatePct: 16,
+      estimatedTotalUsd: 1300,
+      hasFlatFees: false,
     },
     ...overrides,
   };
@@ -80,37 +83,56 @@ describe('ResultCard', () => {
     expect(screen.getByText(/Zona Hotelera/)).toBeInTheDocument();
   });
 
-  it('uses priceUsd for price calculation when available', () => {
-    // 280 USD × 4 nights × 4200 COP/USD = 4,704,000 COP
+  it('shows per-night price using priceUsd when available (280 USD → COP)', () => {
+    // 280 USD * 4200 COP/USD = 1,176,000 COP — look for "176"
     renderCard(
       <ResultCard
-        result={makeResult({ bestRoom: { roomId: 'r1', roomType: 'suite', bedType: 'king', capacity: 2, basePriceUsd: 320, priceUsd: 280 } })}
+        result={makeResult()}
         nights={4}
         amenityLabels={amenityLabels}
         roomTypeLabels={roomTypeLabels}
         onBook={jest.fn()}
       />,
     );
-    // 280 * 4 * 4200 = 4,704,000 — should contain "704" somewhere
-    expect(screen.getByText(/704/)).toBeInTheDocument();
+    expect(screen.getByText(/176/)).toBeInTheDocument();
   });
 
-  it('falls back to basePriceUsd when priceUsd is null', () => {
-    // 320 USD × 3 nights × 4200 = 4,032,000 COP — look for "032"
+  it('shows per-night price using basePriceUsd when priceUsd is null (320 USD → COP)', () => {
+    // 320 USD * 4200 = 1,344,000 COP — look for "344"
     renderCard(
       <ResultCard
-        result={makeResult({ bestRoom: { roomId: 'r1', roomType: 'suite', bedType: 'king', capacity: 2, basePriceUsd: 320, priceUsd: null } })}
+        result={makeResult({
+          bestRoom: {
+            roomId: 'r1', roomType: 'suite', bedType: 'king', capacity: 2,
+            basePriceUsd: 320, priceUsd: null,
+            taxRatePct: 16, estimatedTotalUsd: 1300, hasFlatFees: false,
+          },
+        })}
         nights={3}
         amenityLabels={amenityLabels}
         roomTypeLabels={roomTypeLabels}
         onBook={jest.fn()}
       />,
     );
-    expect(screen.getByText(/032/)).toBeInTheDocument();
+    expect(screen.getByText(/344/)).toBeInTheDocument();
   });
 
-  it('uses 1 as effective nights when nights is 0', () => {
-    // 280 USD × 1 night × 4200 = 1,176,000 COP — look for "176"
+  it('shows estimated total label with "total" when dates are provided (nights > 0)', () => {
+    // estimatedTotalUsd=1300, 1300*4200=5,460,000 — look for "460"
+    renderCard(
+      <ResultCard
+        result={makeResult({ bestRoom: { roomId: 'r1', roomType: 'suite', bedType: 'king', capacity: 2, basePriceUsd: 320, priceUsd: 280, taxRatePct: 16, estimatedTotalUsd: 1300, hasFlatFees: false } })}
+        nights={4}
+        amenityLabels={amenityLabels}
+        roomTypeLabels={roomTypeLabels}
+        onBook={jest.fn()}
+      />,
+    );
+    expect(screen.getByText(/total/)).toBeInTheDocument();
+    expect(screen.getByText(/460/)).toBeInTheDocument();
+  });
+
+  it('shows incl. impuestos label when no dates (nights=0)', () => {
     renderCard(
       <ResultCard
         result={makeResult()}
@@ -120,7 +142,53 @@ describe('ResultCard', () => {
         onBook={jest.fn()}
       />,
     );
-    expect(screen.getByText(/176/)).toBeInTheDocument();
+    expect(screen.getByText(/impuestos/)).toBeInTheDocument();
+  });
+
+  it('shows flat fees disclaimer when hasFlatFees=true and nights > 0', () => {
+    renderCard(
+      <ResultCard
+        result={makeResult({
+          bestRoom: {
+            roomId: 'r1', roomType: 'suite', bedType: 'king', capacity: 2,
+            basePriceUsd: 320, priceUsd: 280,
+            taxRatePct: 16, estimatedTotalUsd: 1350, hasFlatFees: true,
+          },
+        })}
+        nights={4}
+        amenityLabels={amenityLabels}
+        roomTypeLabels={roomTypeLabels}
+        onBook={jest.fn()}
+      />,
+    );
+    expect(screen.getByText(/cargos/)).toBeInTheDocument();
+  });
+
+  it('does not show flat fees disclaimer when hasFlatFees=false', () => {
+    renderCard(
+      <ResultCard
+        result={makeResult({ bestRoom: { roomId: 'r1', roomType: 'suite', bedType: 'king', capacity: 2, basePriceUsd: 320, priceUsd: 280, taxRatePct: 16, estimatedTotalUsd: 1300, hasFlatFees: false } })}
+        nights={4}
+        amenityLabels={amenityLabels}
+        roomTypeLabels={roomTypeLabels}
+        onBook={jest.fn()}
+      />,
+    );
+    expect(screen.queryByText(/cargos/)).not.toBeInTheDocument();
+  });
+
+  it('shows "flat fees may apply" note when no dates (nights=0)', () => {
+    renderCard(
+      <ResultCard
+        result={makeResult()}
+        nights={0}
+        amenityLabels={amenityLabels}
+        roomTypeLabels={roomTypeLabels}
+        onBook={jest.fn()}
+      />,
+    );
+    // dateless mode always shows the flat fees may apply note
+    expect(screen.getByText(/Cargos adicionales/)).toBeInTheDocument();
   });
 
   it('shows at most 3 amenities', () => {
@@ -133,7 +201,6 @@ describe('ResultCard', () => {
         onBook={jest.fn()}
       />,
     );
-    // Only the first 3 amenities should appear
     expect(screen.getByText('WiFi')).toBeInTheDocument();
     expect(screen.getByText('Piscina')).toBeInTheDocument();
     expect(screen.getByText('Spa')).toBeInTheDocument();
@@ -217,7 +284,6 @@ describe('ResultCard', () => {
         onBook={jest.fn()}
       />,
     );
-    // The capacity "2" appears in the guest label alongside "huéspedes"
     expect(screen.getByText(/huéspedes/)).toBeInTheDocument();
   });
 });

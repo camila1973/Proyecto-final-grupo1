@@ -1,84 +1,158 @@
 import { TaxRuleUpsertedHandler } from "./tax-rule-upserted.handler.js";
 
-function makeCache() {
+function makeRepo() {
   return {
-    lookup: jest.fn(),
-    upsert: jest.fn(),
-    bulkUpdateRoomSearchIndex: jest.fn(),
+    bulkUpdateRoomSearchIndex: jest.fn().mockResolvedValue(undefined),
+  };
+}
+
+function makeBookingClient(rules: object[] = []) {
+  return {
+    getTaxRules: jest.fn().mockResolvedValue(rules),
   };
 }
 
 describe("TaxRuleUpsertedHandler", () => {
-  it("does nothing when taxType is not PERCENTAGE", async () => {
-    const cache = makeCache();
-    const handler = new TaxRuleUpsertedHandler(cache as any);
-
-    await handler.handle({
-      ruleId: "r1",
-      country: "MX",
-      taxName: "Resort",
-      taxType: "FLAT_PER_STAY",
-      currency: "USD",
-      effectiveFrom: "2026-01-01",
-    });
-
-    expect(cache.lookup).not.toHaveBeenCalled();
-    expect(cache.upsert).not.toHaveBeenCalled();
-  });
-
-  it("does nothing when rate is falsy", async () => {
-    const cache = makeCache();
-    const handler = new TaxRuleUpsertedHandler(cache as any);
+  it("re-queries booking-service and upserts computed total", async () => {
+    const repo = makeRepo();
+    const bookingClient = makeBookingClient([
+      {
+        tax_name: "IVA",
+        tax_type: "PERCENTAGE",
+        rate: "16",
+        city: null,
+        is_active: true,
+      },
+    ]);
+    const handler = new TaxRuleUpsertedHandler(
+      repo as any,
+      bookingClient as any,
+    );
 
     await handler.handle({
       ruleId: "r1",
       country: "MX",
       taxName: "IVA",
       taxType: "PERCENTAGE",
-      rate: 0,
+      rate: 16,
       currency: "USD",
       effectiveFrom: "2026-01-01",
     });
 
-    expect(cache.lookup).not.toHaveBeenCalled();
+    expect(bookingClient.getTaxRules).toHaveBeenCalledWith("MX");
+    expect(repo.bulkUpdateRoomSearchIndex).toHaveBeenCalledWith("MX", "", 16);
   });
 
-  it("accumulates rate on top of existing total and upserts", async () => {
-    const cache = makeCache();
-    cache.lookup.mockResolvedValue(8);
-    cache.upsert.mockResolvedValue(undefined);
-    cache.bulkUpdateRoomSearchIndex.mockResolvedValue(undefined);
+  it("applies city-wins precedence: city IVA overrides country IVA, ISH cumulative", async () => {
+    const repo = makeRepo();
+    const bookingClient = makeBookingClient([
+      {
+        tax_name: "IVA",
+        tax_type: "PERCENTAGE",
+        rate: "16",
+        city: null,
+        is_active: true,
+      },
+      {
+        tax_name: "IVA",
+        tax_type: "PERCENTAGE",
+        rate: "11",
+        city: "cancún",
+        is_active: true,
+      },
+      {
+        tax_name: "ISH",
+        tax_type: "PERCENTAGE",
+        rate: "3",
+        city: "cancún",
+        is_active: true,
+      },
+    ]);
+    const handler = new TaxRuleUpsertedHandler(
+      repo as any,
+      bookingClient as any,
+    );
 
-    const handler = new TaxRuleUpsertedHandler(cache as any);
     await handler.handle({
-      ruleId: "r1",
+      ruleId: "r2",
       country: "MX",
       city: "cancún",
       taxName: "IVA",
       taxType: "PERCENTAGE",
-      rate: 16,
+      rate: 11,
       currency: "USD",
       effectiveFrom: "2026-01-01",
     });
 
-    expect(cache.lookup).toHaveBeenCalledWith("MX", "cancún");
-    expect(cache.upsert).toHaveBeenCalledWith("MX", "cancún", 24);
-    expect(cache.bulkUpdateRoomSearchIndex).toHaveBeenCalledWith(
+    // city IVA (11) wins over country IVA (16); ISH (3) applies too → total 14
+    expect(repo.bulkUpdateRoomSearchIndex).toHaveBeenCalledWith(
       "MX",
       "cancún",
-      24,
+      14,
     );
   });
 
-  it("uses empty string for city when not provided", async () => {
-    const cache = makeCache();
-    cache.lookup.mockResolvedValue(0);
-    cache.upsert.mockResolvedValue(undefined);
-    cache.bulkUpdateRoomSearchIndex.mockResolvedValue(undefined);
+  it("Colombia: IVA 19% + INC 8% both apply (different tax_name)", async () => {
+    const repo = makeRepo();
+    const bookingClient = makeBookingClient([
+      {
+        tax_name: "IVA",
+        tax_type: "PERCENTAGE",
+        rate: "19",
+        city: null,
+        is_active: true,
+      },
+      {
+        tax_name: "INC",
+        tax_type: "PERCENTAGE",
+        rate: "8",
+        city: null,
+        is_active: true,
+      },
+    ]);
+    const handler = new TaxRuleUpsertedHandler(
+      repo as any,
+      bookingClient as any,
+    );
 
-    const handler = new TaxRuleUpsertedHandler(cache as any);
     await handler.handle({
-      ruleId: "r1",
+      ruleId: "r3",
+      country: "CO",
+      taxName: "IVA",
+      taxType: "PERCENTAGE",
+      rate: 19,
+      currency: "USD",
+      effectiveFrom: "2026-01-01",
+    });
+
+    expect(repo.bulkUpdateRoomSearchIndex).toHaveBeenCalledWith("CO", "", 27);
+  });
+
+  it("skips inactive rules when computing total", async () => {
+    const repo = makeRepo();
+    const bookingClient = makeBookingClient([
+      {
+        tax_name: "IVA",
+        tax_type: "PERCENTAGE",
+        rate: "16",
+        city: null,
+        is_active: true,
+      },
+      {
+        tax_name: "OLD",
+        tax_type: "PERCENTAGE",
+        rate: "5",
+        city: null,
+        is_active: false,
+      },
+    ]);
+    const handler = new TaxRuleUpsertedHandler(
+      repo as any,
+      bookingClient as any,
+    );
+
+    await handler.handle({
+      ruleId: "r4",
       country: "MX",
       taxName: "IVA",
       taxType: "PERCENTAGE",
@@ -87,17 +161,26 @@ describe("TaxRuleUpsertedHandler", () => {
       effectiveFrom: "2026-01-01",
     });
 
-    expect(cache.lookup).toHaveBeenCalledWith("MX", "");
-    expect(cache.upsert).toHaveBeenCalledWith("MX", "", 16);
+    expect(repo.bulkUpdateRoomSearchIndex).toHaveBeenCalledWith("MX", "", 16);
   });
 
   it("swallows bulk update errors without throwing", async () => {
-    const cache = makeCache();
-    cache.lookup.mockResolvedValue(0);
-    cache.upsert.mockResolvedValue(undefined);
-    cache.bulkUpdateRoomSearchIndex.mockRejectedValue(new Error("DB down"));
+    const repo = makeRepo();
+    repo.bulkUpdateRoomSearchIndex.mockRejectedValue(new Error("DB down"));
+    const bookingClient = makeBookingClient([
+      {
+        tax_name: "IVA",
+        tax_type: "PERCENTAGE",
+        rate: "10",
+        city: null,
+        is_active: true,
+      },
+    ]);
+    const handler = new TaxRuleUpsertedHandler(
+      repo as any,
+      bookingClient as any,
+    );
 
-    const handler = new TaxRuleUpsertedHandler(cache as any);
     await expect(
       handler.handle({
         ruleId: "r1",
