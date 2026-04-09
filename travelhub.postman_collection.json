@@ -63,6 +63,18 @@
       "value": "d1000000-0000-0000-0000-000000000001",
       "type": "string",
       "enabled": true
+    },
+    {
+      "key": "tax_rule_id",
+      "value": "",
+      "type": "string",
+      "enabled": true
+    },
+    {
+      "key": "fee_id",
+      "value": "",
+      "type": "string",
+      "enabled": true
     }
   ],
   "item": [
@@ -1331,6 +1343,91 @@
               "raw": "{\n  \"propertyId\": \"{{property_id}}\",\n  \"roomId\": \"{{room_id}}\",\n  \"partnerId\": \"{{partner_id}}\",\n  \"guestId\": \"{{guest_id}}\",\n  \"checkIn\": \"2026-06-01\",\n  \"checkOut\": \"2026-06-04\"\n}"
             }
           }
+        },
+        {
+          "name": "Tax Rules",
+          "item": [
+            {
+              "name": "List Tax Rules",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{base_url}}/api/booking/tax-rules?country=MX",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "booking", "tax-rules"],
+                  "query": [
+                    { "key": "country", "value": "MX" }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Get Tax Rule",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{base_url}}/api/booking/tax-rules/{{tax_rule_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "booking", "tax-rules", "{{tax_rule_id}}"]
+                }
+              }
+            },
+            {
+              "name": "Create Tax Rule",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const res = pm.response.json();",
+                      "if (res.id) pm.collectionVariables.set('tax_rule_id', res.id);"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{base_url}}/api/booking/tax-rules",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "booking", "tax-rules"]
+                },
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"country\": \"MX\",\n  \"city\": \"cancún\",\n  \"taxName\": \"ISH\",\n  \"taxType\": \"PERCENTAGE\",\n  \"rate\": 3,\n  \"currency\": \"USD\",\n  \"effectiveFrom\": \"2026-01-01\"\n}"
+                }
+              }
+            },
+            {
+              "name": "Update Tax Rule",
+              "request": {
+                "method": "PUT",
+                "url": {
+                  "raw": "{{base_url}}/api/booking/tax-rules/{{tax_rule_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "booking", "tax-rules", "{{tax_rule_id}}"]
+                },
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"rate\": 4,\n  \"effectiveFrom\": \"2026-06-01\"\n}"
+                }
+              }
+            },
+            {
+              "name": "Delete Tax Rule",
+              "request": {
+                "method": "DELETE",
+                "url": {
+                  "raw": "{{base_url}}/api/booking/tax-rules/{{tax_rule_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "booking", "tax-rules", "{{tax_rule_id}}"]
+                }
+              }
+            }
+          ]
         }
       ]
     },
@@ -1797,6 +1894,80 @@
               ]
             }
           }
+        },
+        {
+          "name": "Partner Fees",
+          "item": [
+            {
+              "name": "List Partner Fees",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{base_url}}/api/partners/fees?partnerId={{partner_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "partners", "fees"],
+                  "query": [
+                    { "key": "partnerId", "value": "{{partner_id}}" }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Create Partner Fee",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const res = pm.response.json();",
+                      "if (res.id) pm.collectionVariables.set('fee_id', res.id);"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{base_url}}/api/partners/fees",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "partners", "fees"]
+                },
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"partnerId\": \"{{partner_id}}\",\n  \"feeName\": \"Resort Fee\",\n  \"feeType\": \"FLAT_PER_NIGHT\",\n  \"flatAmount\": 25,\n  \"currency\": \"USD\",\n  \"effectiveFrom\": \"2026-01-01\"\n}"
+                }
+              }
+            },
+            {
+              "name": "Update Partner Fee",
+              "request": {
+                "method": "PUT",
+                "url": {
+                  "raw": "{{base_url}}/api/partners/fees/{{fee_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "partners", "fees", "{{fee_id}}"]
+                },
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"partnerId\": \"{{partner_id}}\",\n  \"flatAmount\": 30\n}"
+                }
+              }
+            },
+            {
+              "name": "Delete Partner Fee",
+              "request": {
+                "method": "DELETE",
+                "url": {
+                  "raw": "{{base_url}}/api/partners/fees/{{fee_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "partners", "fees", "{{fee_id}}"]
+                }
+              }
+            }
+          ]
         }
       ]
     }
