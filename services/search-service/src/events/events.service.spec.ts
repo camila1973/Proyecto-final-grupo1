@@ -2,6 +2,10 @@ import { EventsService } from "./events.service.js";
 import type { RoomUpsertedHandler } from "./handlers/room-upserted.handler.js";
 import type { AvailabilityUpdatedHandler } from "./handlers/availability-updated.handler.js";
 import type { RoomDeletedHandler } from "./handlers/room-deleted.handler.js";
+import type { TaxRuleUpsertedHandler } from "./handlers/tax-rule-upserted.handler.js";
+import type { TaxRuleDeletedHandler } from "./handlers/tax-rule-deleted.handler.js";
+import type { PartnerFeeUpsertedHandler } from "./handlers/partner-fee-upserted.handler.js";
+import type { PartnerFeeDeletedHandler } from "./handlers/partner-fee-deleted.handler.js";
 
 // ─── amqplib mock ─────────────────────────────────────────────────────────────
 // jest.mock is hoisted before variable declarations, so define mocks inside the factory
@@ -58,7 +62,31 @@ function makeHandlers() {
     handle: jest.fn().mockResolvedValue(undefined),
   } as unknown as jest.Mocked<RoomDeletedHandler>;
 
-  return { roomUpserted, availabilityUpdated, roomDeleted };
+  const taxRuleUpserted = {
+    handle: jest.fn().mockResolvedValue(undefined),
+  } as unknown as jest.Mocked<TaxRuleUpsertedHandler>;
+
+  const taxRuleDeleted = {
+    handle: jest.fn().mockResolvedValue(undefined),
+  } as unknown as jest.Mocked<TaxRuleDeletedHandler>;
+
+  const partnerFeeUpserted = {
+    handle: jest.fn().mockResolvedValue(undefined),
+  } as unknown as jest.Mocked<PartnerFeeUpsertedHandler>;
+
+  const partnerFeeDeleted = {
+    handle: jest.fn().mockResolvedValue(undefined),
+  } as unknown as jest.Mocked<PartnerFeeDeletedHandler>;
+
+  return {
+    roomUpserted,
+    availabilityUpdated,
+    roomDeleted,
+    taxRuleUpserted,
+    taxRuleDeleted,
+    partnerFeeUpserted,
+    partnerFeeDeleted,
+  };
 }
 
 // ─── tests ────────────────────────────────────────────────────────────────────
@@ -77,6 +105,10 @@ describe("EventsService", () => {
       handlers.roomUpserted,
       handlers.availabilityUpdated,
       handlers.roomDeleted,
+      handlers.taxRuleUpserted,
+      handlers.taxRuleDeleted,
+      handlers.partnerFeeUpserted,
+      handlers.partnerFeeDeleted,
     );
   });
 
@@ -107,13 +139,13 @@ describe("EventsService", () => {
       delete process.env.MESSAGE_BROKER_TYPE;
     });
 
-    it("subscribes to exactly three queues", async () => {
+    it("subscribes to exactly seven queues", async () => {
       process.env.MESSAGE_BROKER_TYPE = "rabbitmq";
       await service.onModuleInit();
 
-      expect(mockChannel.assertQueue).toHaveBeenCalledTimes(3);
-      expect(mockChannel.bindQueue).toHaveBeenCalledTimes(3);
-      expect(mockChannel.consume).toHaveBeenCalledTimes(3);
+      expect(mockChannel.assertQueue).toHaveBeenCalledTimes(7);
+      expect(mockChannel.bindQueue).toHaveBeenCalledTimes(7);
+      expect(mockChannel.consume).toHaveBeenCalledTimes(7);
     });
 
     it("binds to the correct routing keys", async () => {
@@ -126,6 +158,10 @@ describe("EventsService", () => {
       expect(routingKeys).toContain("inventory.room.upserted");
       expect(routingKeys).toContain("inventory.price.updated");
       expect(routingKeys).toContain("inventory.room.deleted");
+      expect(routingKeys).toContain("tax.rule.upserted");
+      expect(routingKeys).toContain("tax.rule.deleted");
+      expect(routingKeys).toContain("partner.fee.upserted");
+      expect(routingKeys).toContain("partner.fee.deleted");
     });
   });
 

@@ -25,6 +25,9 @@ export interface RoomIndexRecord {
   capacity: number;
   amenities: string[];
   base_price_usd: number;
+  tax_rate_pct: number;
+  flat_fee_per_night_usd: number;
+  flat_fee_per_stay_usd: number;
   stars: number;
   rating: number;
   review_count: number;
@@ -41,7 +44,9 @@ export class PropertiesRepository {
       INSERT INTO room_search_index (
         room_id, property_id, partner_id, property_name, city, country,
         neighborhood, lat, lon, room_type, bed_type, view_type, capacity,
-        amenities, base_price_usd, stars, rating, review_count,
+        amenities, base_price_usd, tax_rate_pct,
+        flat_fee_per_night_usd, flat_fee_per_stay_usd,
+        stars, rating, review_count,
         thumbnail_url, is_active, last_synced_at
       ) VALUES (
         ${r.room_id}::uuid,
@@ -59,6 +64,9 @@ export class PropertiesRepository {
         ${r.capacity},
         ${sql.raw(`ARRAY[${r.amenities.map((a) => `'${a.replace(/'/g, "''")}'`).join(",")}]`)}::text[],
         ${r.base_price_usd},
+        ${r.tax_rate_pct},
+        ${r.flat_fee_per_night_usd},
+        ${r.flat_fee_per_stay_usd},
         ${r.stars},
         ${r.rating},
         ${r.review_count},
@@ -67,26 +75,29 @@ export class PropertiesRepository {
         NOW()
       )
       ON CONFLICT (room_id) DO UPDATE SET
-        property_id    = EXCLUDED.property_id,
-        partner_id     = EXCLUDED.partner_id,
-        property_name  = EXCLUDED.property_name,
-        city           = EXCLUDED.city,
-        country        = EXCLUDED.country,
-        neighborhood   = EXCLUDED.neighborhood,
-        lat            = EXCLUDED.lat,
-        lon            = EXCLUDED.lon,
-        room_type      = EXCLUDED.room_type,
-        bed_type       = EXCLUDED.bed_type,
-        view_type      = EXCLUDED.view_type,
-        capacity       = EXCLUDED.capacity,
-        amenities      = EXCLUDED.amenities,
-        base_price_usd = EXCLUDED.base_price_usd,
-        stars          = EXCLUDED.stars,
-        rating         = EXCLUDED.rating,
-        review_count   = EXCLUDED.review_count,
-        thumbnail_url  = EXCLUDED.thumbnail_url,
-        is_active      = EXCLUDED.is_active,
-        last_synced_at = NOW()
+        property_id            = EXCLUDED.property_id,
+        partner_id             = EXCLUDED.partner_id,
+        property_name          = EXCLUDED.property_name,
+        city                   = EXCLUDED.city,
+        country                = EXCLUDED.country,
+        neighborhood           = EXCLUDED.neighborhood,
+        lat                    = EXCLUDED.lat,
+        lon                    = EXCLUDED.lon,
+        room_type              = EXCLUDED.room_type,
+        bed_type               = EXCLUDED.bed_type,
+        view_type              = EXCLUDED.view_type,
+        capacity               = EXCLUDED.capacity,
+        amenities              = EXCLUDED.amenities,
+        base_price_usd         = EXCLUDED.base_price_usd,
+        tax_rate_pct           = EXCLUDED.tax_rate_pct,
+        flat_fee_per_night_usd = EXCLUDED.flat_fee_per_night_usd,
+        flat_fee_per_stay_usd  = EXCLUDED.flat_fee_per_stay_usd,
+        stars                  = EXCLUDED.stars,
+        rating                 = EXCLUDED.rating,
+        review_count           = EXCLUDED.review_count,
+        thumbnail_url          = EXCLUDED.thumbnail_url,
+        is_active              = EXCLUDED.is_active,
+        last_synced_at         = NOW()
     `.execute(this.db);
   }
 
@@ -98,6 +109,7 @@ export class PropertiesRepository {
       .select([
         "rsi.room_id",
         "rsi.property_id",
+        "rsi.partner_id",
         "rsi.property_name",
         "rsi.city",
         "rsi.country",
@@ -112,6 +124,9 @@ export class PropertiesRepository {
         "rsi.view_type",
         "rsi.capacity",
         "rsi.base_price_usd",
+        "rsi.tax_rate_pct",
+        "rsi.flat_fee_per_night_usd",
+        "rsi.flat_fee_per_stay_usd",
         sql<string | null>`(
           SELECT rpp.price_usd::text
           FROM room_price_periods rpp
@@ -142,6 +157,7 @@ export class PropertiesRepository {
       .select([
         "rsi.room_id",
         "rsi.property_id",
+        "rsi.partner_id",
         "rsi.property_name",
         "rsi.city",
         "rsi.country",
@@ -156,6 +172,9 @@ export class PropertiesRepository {
         "rsi.view_type",
         "rsi.capacity",
         "rsi.base_price_usd",
+        "rsi.tax_rate_pct",
+        "rsi.flat_fee_per_night_usd",
+        "rsi.flat_fee_per_stay_usd",
         sql<string | null>`NULL`.as("avail_price_usd"),
       ])
       .where("rsi.is_active", "=", true)
@@ -212,5 +231,53 @@ export class PropertiesRepository {
       .where("room_id", "=", roomId)
       .executeTakeFirst();
     return row?.city;
+  }
+
+  async bulkUpdateRoomSearchIndex(
+    country: string,
+    city: string,
+    taxRatePct: number,
+  ): Promise<void> {
+    const rows = await this.db
+      .selectFrom("room_search_index")
+      .select("room_id")
+      .where("country", "=", country)
+      .where(sql<boolean>`LOWER(city) = ${city.toLowerCase()}`)
+      .execute();
+
+    const ids = rows.map((r) => r.room_id);
+    for (let i = 0; i < ids.length; i += 500) {
+      const chunk = ids.slice(i, i + 500);
+      await this.db
+        .updateTable("room_search_index")
+        .set({ tax_rate_pct: String(taxRatePct) })
+        .where("room_id", "in", chunk)
+        .execute();
+    }
+  }
+
+  async bulkUpdateFlatFees(
+    partnerId: string,
+    flatFeePerNightUsd: number,
+    flatFeePerStayUsd: number,
+  ): Promise<void> {
+    const rows = await this.db
+      .selectFrom("room_search_index")
+      .select("room_id")
+      .where("partner_id", "=", partnerId)
+      .execute();
+
+    const ids = rows.map((r) => r.room_id);
+    for (let i = 0; i < ids.length; i += 500) {
+      const chunk = ids.slice(i, i + 500);
+      await this.db
+        .updateTable("room_search_index")
+        .set({
+          flat_fee_per_night_usd: String(flatFeePerNightUsd),
+          flat_fee_per_stay_usd: String(flatFeePerStayUsd),
+        })
+        .where("room_id", "in", chunk)
+        .execute();
+    }
   }
 }

@@ -7,7 +7,7 @@ const db = new Kysely<SearchDatabase>({
     pool: new Pool({
       connectionString:
         process.env.DATABASE_URL ??
-        "postgres://postgres:postgres@localhost:5432/search_service",
+        "postgres://postgres:postgres@localhost:5433/search_service",
     }),
   }),
 });
@@ -241,6 +241,8 @@ async function seed() {
     .insertInto("room_search_index")
     .values([
       // ── Cancún: Gran Caribe Resort (5★) ──────────────────────────────────
+      // tax_rate_pct: MX IVA 16% + Cancún ISH 3% = 19%
+      // flat_fee_per_night_usd: Partner 1 Resort Fee $25/night
       {
         room_id: ROOM(1),
         property_id: PROP_CANCUN_1,
@@ -266,6 +268,9 @@ async function seed() {
           "gym",
         ],
         base_price_usd: "320.00",
+        tax_rate_pct: "19.0000",
+        flat_fee_per_night_usd: "25.00",
+        flat_fee_per_stay_usd: "0.00",
         stars: 5,
         rating: "4.7",
         review_count: 842,
@@ -296,6 +301,9 @@ async function seed() {
           "gym",
         ],
         base_price_usd: "580.00",
+        tax_rate_pct: "19.0000",
+        flat_fee_per_night_usd: "25.00",
+        flat_fee_per_stay_usd: "0.00",
         stars: 5,
         rating: "4.7",
         review_count: 842,
@@ -318,6 +326,9 @@ async function seed() {
         capacity: 2,
         amenities: ["pool", "wifi", "ac", "restaurant", "parking"],
         base_price_usd: "145.00",
+        tax_rate_pct: "19.0000",
+        flat_fee_per_night_usd: "25.00",
+        flat_fee_per_stay_usd: "0.00",
         stars: 4,
         rating: "4.2",
         review_count: 519,
@@ -346,6 +357,9 @@ async function seed() {
           "beach_access",
         ],
         base_price_usd: "195.00",
+        tax_rate_pct: "19.0000",
+        flat_fee_per_night_usd: "25.00",
+        flat_fee_per_stay_usd: "0.00",
         stars: 4,
         rating: "4.2",
         review_count: 519,
@@ -375,12 +389,16 @@ async function seed() {
           "spa",
         ],
         base_price_usd: "265.00",
+        tax_rate_pct: "19.0000",
+        flat_fee_per_night_usd: "25.00",
+        flat_fee_per_stay_usd: "0.00",
         stars: 4,
         rating: "4.2",
         review_count: 519,
         thumbnail_url: "https://placehold.co/400x300?text=Playa+Azul",
       },
       // ── Cancún: Hostal Sol (3★) ───────────────────────────────────────────
+      // flat_fee_per_stay_usd: Partner 2 Cleaning Fee $15/stay
       {
         room_id: ROOM(6),
         property_id: PROP_CANCUN_3,
@@ -397,6 +415,9 @@ async function seed() {
         capacity: 2,
         amenities: ["wifi", "ac", "parking"],
         base_price_usd: "65.00",
+        tax_rate_pct: "19.0000",
+        flat_fee_per_night_usd: "0.00",
+        flat_fee_per_stay_usd: "15.00",
         stars: 3,
         rating: "3.8",
         review_count: 204,
@@ -418,12 +439,17 @@ async function seed() {
         capacity: 2,
         amenities: ["wifi", "ac"],
         base_price_usd: "55.00",
+        tax_rate_pct: "19.0000",
+        flat_fee_per_night_usd: "0.00",
+        flat_fee_per_stay_usd: "15.00",
         stars: 3,
         rating: "3.8",
         review_count: 204,
         thumbnail_url: "https://placehold.co/400x300?text=Hostal+Sol",
       },
       // ── CDMX: Hotel Histórico (5★) ────────────────────────────────────────
+      // tax_rate_pct: MX IVA 16% + CDMX ISH 3% = 19%
+      // flat_fee_per_stay_usd: Partner 2 Cleaning Fee $15/stay
       {
         room_id: ROOM(8),
         property_id: PROP_CDMX_1,
@@ -448,6 +474,9 @@ async function seed() {
           "parking",
         ],
         base_price_usd: "280.00",
+        tax_rate_pct: "19.0000",
+        flat_fee_per_night_usd: "0.00",
+        flat_fee_per_stay_usd: "15.00",
         stars: 5,
         rating: "4.6",
         review_count: 631,
@@ -478,6 +507,9 @@ async function seed() {
           "pet_friendly",
         ],
         base_price_usd: "650.00",
+        tax_rate_pct: "19.0000",
+        flat_fee_per_night_usd: "0.00",
+        flat_fee_per_stay_usd: "15.00",
         stars: 5,
         rating: "4.6",
         review_count: 631,
@@ -500,6 +532,9 @@ async function seed() {
         capacity: 2,
         amenities: ["wifi", "breakfast", "ac", "pet_friendly"],
         base_price_usd: "110.00",
+        tax_rate_pct: "19.0000",
+        flat_fee_per_night_usd: "0.00",
+        flat_fee_per_stay_usd: "15.00",
         stars: 4,
         rating: "4.4",
         review_count: 387,

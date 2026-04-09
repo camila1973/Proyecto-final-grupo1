@@ -10,5 +10,7 @@ module.exports = {
     'src/**/*.(t|j)s',
     '!src/main.ts',
     '!src/**/*.module.ts',
+    '!src/database/migrate.ts',
+    '!src/database/migrations/**',
   ],
 };

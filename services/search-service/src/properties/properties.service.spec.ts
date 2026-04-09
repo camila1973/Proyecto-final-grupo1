@@ -25,6 +25,9 @@ const mockRoom = {
   capacity: 2,
   base_price_usd: "200",
   avail_price_usd: "180",
+  tax_rate_pct: "0",
+  flat_fee_per_night_usd: "0",
+  flat_fee_per_stay_usd: "0",
 };
 
 const mockProperty = {
@@ -45,6 +48,9 @@ const mockProperty = {
     capacity: 2,
     basePriceUsd: 200,
     priceUsd: 180,
+    taxRatePct: 0,
+    estimatedTotalUsd: 720,
+    hasFlatFees: false,
   },
 };
 
@@ -99,7 +105,13 @@ function makeServices(candidateRows = [mockRoom]) {
     mockFacets,
     inventoryClient as unknown as InventoryClientService,
   );
-  return { service, repo, cache, mockFacets, inventoryClient };
+  return {
+    service,
+    repo,
+    cache,
+    mockFacets,
+    inventoryClient,
+  };
 }
 
 // ─── tests ────────────────────────────────────────────────────────────────────
@@ -205,6 +217,29 @@ describe("PropertiesService", () => {
       const result = (await service.searchProperties(baseDto)) as any;
       expect(result.facets).toBeDefined();
       expect(result.facets.priceRange.currency).toBe("USD");
+    });
+
+    it("passes computed nights to selectBestRoomPerProperty", async () => {
+      const { service, mockFacets } = makeServices();
+      // checkIn=2026-04-01, checkOut=2026-04-05 → 4 nights
+      await service.searchProperties(baseDto);
+      expect(mockFacets.selectBestRoomPerProperty).toHaveBeenCalledWith(
+        expect.anything(),
+        4,
+      );
+    });
+
+    it("passes nights=0 when no dates provided", async () => {
+      const { service, mockFacets } = makeServices();
+      await service.searchProperties({
+        ...baseDto,
+        checkIn: undefined,
+        checkOut: undefined,
+      });
+      expect(mockFacets.selectBestRoomPerProperty).toHaveBeenCalledWith(
+        expect.anything(),
+        0,
+      );
     });
   });
 

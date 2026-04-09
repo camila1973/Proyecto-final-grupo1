@@ -60,6 +60,7 @@ describe("ReservationsService", () => {
     findAll: jest.Mock;
     findById: jest.Mock;
     toResponse: jest.Mock;
+    confirm: jest.Mock;
   };
   let roomLocationCache: { findByRoomId: jest.Mock };
 
@@ -76,11 +77,13 @@ describe("ReservationsService", () => {
       findAll: jest.fn().mockResolvedValue([row, row]),
       findById: jest.fn().mockResolvedValue(row),
       toResponse: jest.fn().mockImplementation((r) => ({ id: r.id })),
+      confirm: jest.fn(),
     };
     service = new ReservationsService(
       fareCalculator as any,
       reservationsRepo as any,
       roomLocationCache as any,
+      { publish: jest.fn() } as any,
     );
   });
 
@@ -218,6 +221,52 @@ describe("ReservationsService", () => {
 
       await expect(service.findOne("bad-id")).rejects.toThrow(
         NotFoundException,
+      );
+    });
+  });
+
+  // ─── confirm ────────────────────────────────────────────────────────────────
+
+  describe("confirm", () => {
+    it("confirms the reservation and returns mapped response", async () => {
+      const confirmedRow = makeRow({ status: "confirmed" });
+      reservationsRepo.confirm = jest.fn().mockResolvedValue(confirmedRow);
+
+      const result = await service.confirm("res-uuid");
+
+      expect(reservationsRepo.confirm).toHaveBeenCalledWith("res-uuid");
+      expect(reservationsRepo.toResponse).toHaveBeenCalledWith(confirmedRow);
+      expect(result).toEqual({ id: confirmedRow.id });
+    });
+
+    it("publishes booking.confirmed event with financial totals", async () => {
+      const confirmedRow = makeRow({
+        status: "confirmed",
+        grand_total_usd: "522.00",
+        tax_total_usd: "72.00",
+        fee_total_usd: "0.00",
+      });
+      reservationsRepo.confirm = jest.fn().mockResolvedValue(confirmedRow);
+      const publisher = { publish: jest.fn() };
+      service = new (
+        await import("./reservations.service.js")
+      ).ReservationsService(
+        fareCalculator as any,
+        reservationsRepo as any,
+        roomLocationCache as any,
+        publisher as any,
+      );
+
+      await service.confirm("res-uuid");
+
+      expect(publisher.publish).toHaveBeenCalledWith(
+        "booking.confirmed",
+        expect.objectContaining({
+          reservationId: confirmedRow.id,
+          grandTotalUsd: 522,
+          taxTotalUsd: 72,
+          feeTotalUsd: 0,
+        }),
       );
     });
   });

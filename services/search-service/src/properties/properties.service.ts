@@ -26,6 +26,18 @@ export class PropertiesService {
       return JSON.parse(cached) as object;
     }
 
+    const nights =
+      dto.checkIn && dto.checkOut
+        ? Math.max(
+            0,
+            Math.round(
+              (new Date(dto.checkOut).getTime() -
+                new Date(dto.checkIn).getTime()) /
+                (1000 * 60 * 60 * 24),
+            ),
+          )
+        : 0;
+
     const candidates = await this.repo.findCandidates(dto);
 
     let available = candidates;
@@ -51,12 +63,16 @@ export class PropertiesService {
     });
 
     const facetData = this.facets.computeFacets(available, dto);
-    const properties = this.facets.selectBestRoomPerProperty(filtered);
+    const properties = this.facets.selectBestRoomPerProperty(filtered, nights);
+
     const sorted = this.facets.sortProperties(properties, dto.sort);
 
     const total = sorted.length;
     const offset = (dto.page - 1) * dto.pageSize;
     const paginated = sorted.slice(offset, offset + dto.pageSize);
+
+    // Strip internal _partnerId before serializing
+    const results = paginated.map(({ _partnerId: _, ...rest }) => rest);
 
     const response = {
       meta: {
@@ -66,7 +82,7 @@ export class PropertiesService {
         totalPages: Math.ceil(total / dto.pageSize),
         searchId: randomUUID(),
       },
-      results: paginated,
+      results,
       facets: facetData,
     };
 
@@ -117,9 +133,11 @@ export class PropertiesService {
     if (cached) return JSON.parse(cached) as object;
 
     const candidates = await this.repo.findFeatured(limit * 5);
-    const properties = this.facets.selectBestRoomPerProperty(candidates);
+    const properties = this.facets.selectBestRoomPerProperty(candidates, 0);
     const sorted = this.facets.sortProperties(properties, "relevance");
-    const results = sorted.slice(0, limit);
+    const results = sorted
+      .slice(0, limit)
+      .map(({ _partnerId: _, ...rest }) => rest);
 
     const response = {
       results,

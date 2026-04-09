@@ -17,6 +17,22 @@ import {
   RoomDeletedHandler,
   type RoomDeletedPayload,
 } from "./handlers/room-deleted.handler.js";
+import {
+  TaxRuleUpsertedHandler,
+  type TaxRuleUpsertedPayload,
+} from "./handlers/tax-rule-upserted.handler.js";
+import {
+  TaxRuleDeletedHandler,
+  type TaxRuleDeletedPayload,
+} from "./handlers/tax-rule-deleted.handler.js";
+import {
+  PartnerFeeUpsertedHandler,
+  type PartnerFeeUpsertedPayload,
+} from "./handlers/partner-fee-upserted.handler.js";
+import {
+  PartnerFeeDeletedHandler,
+  type PartnerFeeDeletedPayload,
+} from "./handlers/partner-fee-deleted.handler.js";
 
 // Lazily imported when MESSAGE_BROKER_TYPE=pubsub
 type PubSubSubscription = import("@google-cloud/pubsub").Subscription;
@@ -46,6 +62,10 @@ export class EventsService implements OnModuleInit, OnModuleDestroy {
     private readonly roomUpserted: RoomUpsertedHandler,
     private readonly availabilityUpdated: AvailabilityUpdatedHandler,
     private readonly roomDeleted: RoomDeletedHandler,
+    private readonly taxRuleUpserted: TaxRuleUpsertedHandler,
+    private readonly taxRuleDeleted: TaxRuleDeletedHandler,
+    private readonly partnerFeeUpserted: PartnerFeeUpsertedHandler,
+    private readonly partnerFeeDeleted: PartnerFeeDeletedHandler,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -70,6 +90,29 @@ export class EventsService implements OnModuleInit, OnModuleDestroy {
         queue: "search.inventory.room.deleted",
         routingKey: "inventory.room.deleted",
         handler: (p) => this.roomDeleted.handle(p as RoomDeletedPayload),
+      },
+      {
+        queue: "search.tax.rule.upserted",
+        routingKey: "tax.rule.upserted",
+        handler: (p) =>
+          this.taxRuleUpserted.handle(p as TaxRuleUpsertedPayload),
+      },
+      {
+        queue: "search.tax.rule.deleted",
+        routingKey: "tax.rule.deleted",
+        handler: (p) => this.taxRuleDeleted.handle(p as TaxRuleDeletedPayload),
+      },
+      {
+        queue: "search.partner.fee.upserted",
+        routingKey: "partner.fee.upserted",
+        handler: (p) =>
+          this.partnerFeeUpserted.handle(p as PartnerFeeUpsertedPayload),
+      },
+      {
+        queue: "search.partner.fee.deleted",
+        routingKey: "partner.fee.deleted",
+        handler: (p) =>
+          this.partnerFeeDeleted.handle(p as PartnerFeeDeletedPayload),
       },
     ];
 

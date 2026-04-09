@@ -21,6 +21,7 @@
   "recommendations": {
     "title": "Recomendaciones para ti",
     "per_night": "por noche",
+    "taxes_not_included": "Impuestos y cargos no incluidos",
     "book": "Reservar"
   },
   "property_detail": {
@@ -62,9 +63,15 @@
     "card": {
       "nights_one": "por noche",
       "nights_other": "por {{count}} noches",
+      "incl_taxes_only": "incl. impuestos",
+      "incl_taxes_fees": "incl. impuestos y cargos",
       "guests_one": "huésped",
       "guests_other": "huéspedes",
-      "book": "Reservar"
+      "book": "Reservar",
+      "estimated_total": "~{{amount}} total",
+      "flat_fees_disclaimer": "+ cargos",
+      "incl_taxes": "~{{amount}} incl. impuestos",
+      "flat_fees_may_apply": "Cargos adicionales pueden aplicar"
     }
   },
   "register": {

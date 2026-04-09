@@ -16,6 +16,9 @@ const EFFECTIVE_FROM = "2020-01-01";
 
 // ─── UUIDs — must match inventory-service/scripts/seed.ts ─────────────────────
 
+const PARTNER_1 = "a1000000-0000-0000-0000-000000000001";
+const PARTNER_2 = "a1000000-0000-0000-0000-000000000002";
+
 const PROP_CANCUN_1 = "b1000000-0000-0000-0000-000000000001";
 const PROP_CANCUN_2 = "b1000000-0000-0000-0000-000000000002";
 const PROP_CANCUN_3 = "b1000000-0000-0000-0000-000000000003";
@@ -24,6 +27,9 @@ const PROP_CDMX_2 = "b1000000-0000-0000-0000-000000000005";
 
 const ROOM = (n: number) =>
   `c1000000-0000-0000-0000-${String(n).padStart(12, "0")}`;
+
+const FEE = (n: number) =>
+  `d1000000-0000-0000-0000-${String(n).padStart(12, "0")}`;
 
 // ─── Tax rules ────────────────────────────────────────────────────────────────
 // city values are stored lowercase-normalised to match TaxRulesRepository.findApplicable
@@ -216,6 +222,39 @@ const PRICE_PERIODS = [
 const PRICE_PERIOD_FROM = "2026-01-01";
 const PRICE_PERIOD_TO = "2027-12-31";
 
+// ─── Partner fees ─────────────────────────────────────────────────────────────
+// Sample fees for the two seeded partners.
+// IDs are stable (d1000000-...) so search-service seed can reference them.
+
+const PARTNER_FEES = [
+  // Partner 1 — resort fee applied per night across all Cancún properties
+  {
+    id: FEE(1),
+    partner_id: PARTNER_1,
+    property_id: null as string | null,
+    fee_name: "Resort Fee",
+    fee_type: "FLAT_PER_NIGHT",
+    rate: null as number | null,
+    flat_amount: 25.0,
+    currency: "USD",
+    effective_from: EFFECTIVE_FROM,
+    effective_to: null as string | null,
+  },
+  // Partner 2 — one-time cleaning fee per stay
+  {
+    id: FEE(2),
+    partner_id: PARTNER_2,
+    property_id: null as string | null,
+    fee_name: "Cleaning Fee",
+    fee_type: "FLAT_PER_STAY",
+    rate: null as number | null,
+    flat_amount: 15.0,
+    currency: "USD",
+    effective_from: EFFECTIVE_FROM,
+    effective_to: null as string | null,
+  },
+];
+
 // ─── Seed ─────────────────────────────────────────────────────────────────────
 
 async function seed() {
@@ -284,6 +323,41 @@ async function seed() {
     .execute();
   for (const p of PRICE_PERIODS) {
     console.log(`  ✓ ${p.room_id.slice(-4)} → $${p.price_usd}/night`);
+  }
+
+  // Partner fees
+  console.log(`Seeding ${PARTNER_FEES.length} partner fee entries...`);
+  await db
+    .insertInto("partner_fees")
+    .values(
+      PARTNER_FEES.map((f) => ({
+        id: f.id,
+        partner_id: f.partner_id,
+        property_id: f.property_id ?? undefined,
+        fee_name: f.fee_name,
+        fee_type: f.fee_type,
+        rate: f.rate ?? undefined,
+        flat_amount: f.flat_amount ?? undefined,
+        currency: f.currency,
+        effective_from: f.effective_from,
+        effective_to: f.effective_to ?? undefined,
+        is_active: true,
+      })),
+    )
+    .onConflict((oc) =>
+      oc.column("id").doUpdateSet((eb) => ({
+        fee_name: eb.ref("excluded.fee_name"),
+        fee_type: eb.ref("excluded.fee_type"),
+        flat_amount: eb.ref("excluded.flat_amount"),
+        rate: eb.ref("excluded.rate"),
+        is_active: eb.ref("excluded.is_active"),
+      })),
+    )
+    .execute();
+  for (const f of PARTNER_FEES) {
+    console.log(
+      `  ✓ ${f.fee_name} (${f.fee_type}) → partner ${f.partner_id.slice(-4)}`,
+    );
   }
 
   console.log("Seed complete.");

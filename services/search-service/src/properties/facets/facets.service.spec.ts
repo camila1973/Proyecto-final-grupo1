@@ -6,6 +6,7 @@ function makeRoom(overrides: Partial<CandidateRoom> = {}): CandidateRoom {
   return {
     room_id: "room-1",
     property_id: "prop-1",
+    partner_id: "partner-1",
     property_name: "Hotel A",
     city: "Lisbon",
     country: "Portugal",
@@ -21,6 +22,9 @@ function makeRoom(overrides: Partial<CandidateRoom> = {}): CandidateRoom {
     capacity: 2,
     base_price_usd: "150.00",
     avail_price_usd: null,
+    tax_rate_pct: "16",
+    flat_fee_per_night_usd: "0",
+    flat_fee_per_stay_usd: "0",
     ...overrides,
   };
 }
@@ -314,6 +318,78 @@ describe("FacetsService", () => {
     });
   });
 
+  // ─── estimatedTotalUsd formula ────────────────────────────────────────────
+
+  describe("estimatedTotalUsd formula", () => {
+    it("dateless (nights=0): price × (1 + tax/100) + flatPerNight", () => {
+      // base $150, tax 16%, flatNight $10, flatStay $30
+      const rooms = [
+        makeRoom({
+          base_price_usd: "150",
+          tax_rate_pct: "16",
+          flat_fee_per_night_usd: "10",
+          flat_fee_per_stay_usd: "30",
+        }),
+      ];
+      const result = service.selectBestRoomPerProperty(rooms, 0);
+      // 150 × 1.16 + 10 = 174 + 10 = 184
+      expect(result[0].bestRoom.estimatedTotalUsd).toBeCloseTo(184, 2);
+    });
+
+    it("dated (nights=3): price × nights × (1 + tax/100) + flatNight × nights + flatStay", () => {
+      const rooms = [
+        makeRoom({
+          base_price_usd: "150",
+          tax_rate_pct: "16",
+          flat_fee_per_night_usd: "10",
+          flat_fee_per_stay_usd: "30",
+        }),
+      ];
+      const result = service.selectBestRoomPerProperty(rooms, 3);
+      // 150 × 3 × 1.16 + 10 × 3 + 30 = 522 + 30 + 30 = 582
+      expect(result[0].bestRoom.estimatedTotalUsd).toBeCloseTo(582, 2);
+    });
+
+    it("hasFlatFees=true when flat_fee_per_night_usd > 0", () => {
+      const rooms = [
+        makeRoom({ flat_fee_per_night_usd: "10", flat_fee_per_stay_usd: "0" }),
+      ];
+      const result = service.selectBestRoomPerProperty(rooms, 0);
+      expect(result[0].bestRoom.hasFlatFees).toBe(true);
+    });
+
+    it("hasFlatFees=true when flat_fee_per_stay_usd > 0", () => {
+      const rooms = [
+        makeRoom({ flat_fee_per_night_usd: "0", flat_fee_per_stay_usd: "50" }),
+      ];
+      const result = service.selectBestRoomPerProperty(rooms, 0);
+      expect(result[0].bestRoom.hasFlatFees).toBe(true);
+    });
+
+    it("hasFlatFees=false when both flat fee columns are 0", () => {
+      const rooms = [
+        makeRoom({ flat_fee_per_night_usd: "0", flat_fee_per_stay_usd: "0" }),
+      ];
+      const result = service.selectBestRoomPerProperty(rooms, 0);
+      expect(result[0].bestRoom.hasFlatFees).toBe(false);
+    });
+
+    it("Colombia (IVA 19% + INC 8% = 27%): correct per-night estimate", () => {
+      const rooms = [
+        makeRoom({
+          base_price_usd: "200",
+          tax_rate_pct: "27",
+          flat_fee_per_night_usd: "0",
+          flat_fee_per_stay_usd: "0",
+        }),
+      ];
+      const result = service.selectBestRoomPerProperty(rooms, 0);
+      // 200 × 1.27 = 254
+      expect(result[0].bestRoom.estimatedTotalUsd).toBeCloseTo(254, 2);
+      expect(result[0].bestRoom.taxRatePct).toBe(27);
+    });
+  });
+
   // ─── sortProperties ───────────────────────────────────────────────────────
 
   describe("sortProperties", () => {
@@ -340,6 +416,9 @@ describe("FacetsService", () => {
         capacity: 2,
         basePriceUsd: price,
         priceUsd: price,
+        taxRatePct: 0,
+        estimatedTotalUsd: price,
+        hasFlatFees: false,
       },
     });
 

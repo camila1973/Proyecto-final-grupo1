@@ -36,6 +36,9 @@ export type RoomSearchIndexTable = {
   capacity: number;
   amenities: string[];
   base_price_usd: string;
+  tax_rate_pct: Generated<string>; // pre-summed percentage rate for this location (e.g. 27.0 for Colombia)
+  flat_fee_per_night_usd: Generated<string>; // pre-summed FLAT_PER_NIGHT fees for this partner (USD)
+  flat_fee_per_stay_usd: Generated<string>; // pre-summed FLAT_PER_STAY fees for this partner (USD)
   stars: number;
   rating: Generated<string>;
   review_count: Generated<number>;

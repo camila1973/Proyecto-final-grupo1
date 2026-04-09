@@ -1,6 +1,7 @@
 import { RoomUpsertedHandler } from "./room-upserted.handler.js";
 import type { PropertiesRepository } from "../../properties/properties.repository.js";
 import type { PropertiesService } from "../../properties/properties.service.js";
+import type { BookingClientService } from "../../booking/booking-client.service.js";
 import type { RoomUpsertedPayload } from "./room-upserted.handler.js";
 
 const makePayload = (
@@ -36,16 +37,26 @@ describe("RoomUpsertedHandler", () => {
   let propertiesService: jest.Mocked<
     Pick<PropertiesService, "invalidateCityCache">
   >;
+  let bookingClient: jest.Mocked<
+    Pick<BookingClientService, "getTaxRules" | "getPartnerFees">
+  >;
 
   beforeEach(() => {
-    repo = { upsertRoom: jest.fn().mockResolvedValue(undefined) };
+    repo = {
+      upsertRoom: jest.fn().mockResolvedValue(undefined),
+    };
     propertiesService = {
       invalidateCityCache: jest.fn().mockResolvedValue(undefined),
+    };
+    bookingClient = {
+      getTaxRules: jest.fn().mockResolvedValue([]),
+      getPartnerFees: jest.fn().mockResolvedValue([]),
     };
 
     handler = new RoomUpsertedHandler(
       repo as unknown as PropertiesRepository,
       propertiesService as unknown as PropertiesService,
+      bookingClient as unknown as BookingClientService,
     );
   });
 
@@ -72,10 +83,96 @@ describe("RoomUpsertedHandler", () => {
         review_count: payload.reviewCount,
         thumbnail_url: payload.thumbnailUrl,
         is_active: payload.isActive,
+        tax_rate_pct: 0,
+        flat_fee_per_night_usd: 0,
+        flat_fee_per_stay_usd: 0,
       }),
     );
     expect(propertiesService.invalidateCityCache).toHaveBeenCalledWith(
       "Cancún",
+    );
+  });
+
+  it("populates tax_rate_pct from booking-service tax rules", async () => {
+    bookingClient.getTaxRules.mockResolvedValue([
+      {
+        id: "t1",
+        country: "Mexico",
+        city: null,
+        tax_name: "IVA",
+        tax_type: "PERCENTAGE",
+        rate: "16",
+        flat_amount: null,
+        currency: "USD",
+        is_active: true,
+      },
+    ]);
+
+    await handler.handle(makePayload());
+
+    expect(repo.upsertRoom).toHaveBeenCalledWith(
+      expect.objectContaining({ tax_rate_pct: 16 }),
+    );
+  });
+
+  it("populates flat fee columns from booking-service partner fees", async () => {
+    bookingClient.getPartnerFees.mockResolvedValue([
+      {
+        id: "f1",
+        partner_id: "p1",
+        fee_name: "Resort Fee",
+        fee_type: "FLAT_PER_NIGHT",
+        rate: null,
+        flat_amount: "25",
+        currency: "USD",
+        is_active: true,
+      },
+      {
+        id: "f2",
+        partner_id: "p1",
+        fee_name: "Cleaning Fee",
+        fee_type: "FLAT_PER_STAY",
+        rate: null,
+        flat_amount: "50",
+        currency: "USD",
+        is_active: true,
+      },
+    ]);
+
+    await handler.handle(makePayload());
+
+    expect(repo.upsertRoom).toHaveBeenCalledWith(
+      expect.objectContaining({
+        flat_fee_per_night_usd: 25,
+        flat_fee_per_stay_usd: 50,
+      }),
+    );
+  });
+
+  it("defaults flat fees to 0 when getPartnerFees throws", async () => {
+    bookingClient.getPartnerFees.mockRejectedValue(
+      new Error("booking-service down"),
+    );
+
+    await handler.handle(makePayload());
+
+    expect(repo.upsertRoom).toHaveBeenCalledWith(
+      expect.objectContaining({
+        flat_fee_per_night_usd: 0,
+        flat_fee_per_stay_usd: 0,
+      }),
+    );
+  });
+
+  it("defaults tax_rate_pct to 0 when getTaxRules throws", async () => {
+    bookingClient.getTaxRules.mockRejectedValue(
+      new Error("booking-service down"),
+    );
+
+    await handler.handle(makePayload());
+
+    expect(repo.upsertRoom).toHaveBeenCalledWith(
+      expect.objectContaining({ tax_rate_pct: 0 }),
     );
   });
 

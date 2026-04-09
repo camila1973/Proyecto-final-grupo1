@@ -82,6 +82,9 @@ describe("PropertiesRepository", () => {
         capacity: 2,
         amenities: ["wifi"],
         base_price_usd: 200,
+        tax_rate_pct: 16,
+        flat_fee_per_night_usd: 0,
+        flat_fee_per_stay_usd: 0,
         stars: 4,
         rating: 4.0,
         review_count: 10,
@@ -112,6 +115,9 @@ describe("PropertiesRepository", () => {
           capacity: 2,
           amenities: ["O'Brien suite"],
           base_price_usd: 100,
+          tax_rate_pct: 16,
+          flat_fee_per_night_usd: 0,
+          flat_fee_per_stay_usd: 0,
           stars: 3,
           rating: 3.5,
           review_count: 5,
@@ -159,6 +165,115 @@ describe("PropertiesRepository", () => {
       const { repo } = makeRepo(chain);
       const city = await repo.findRoomCity("unknown");
       expect(city).toBeUndefined();
+    });
+  });
+
+  describe("bulkUpdateRoomSearchIndex", () => {
+    function makeBulkDb(roomIds: string[]) {
+      const execute = jest
+        .fn()
+        .mockResolvedValueOnce(roomIds.map((id) => ({ room_id: id })));
+      const selectChain: Record<string, jest.Mock> = {};
+      selectChain.select = jest.fn().mockReturnThis();
+      selectChain.where = jest.fn().mockReturnThis();
+      selectChain.execute = execute;
+
+      const updateChain: Record<string, jest.Mock> = {};
+      updateChain.set = jest.fn().mockReturnThis();
+      updateChain.where = jest.fn().mockReturnThis();
+      updateChain.execute = jest.fn().mockResolvedValue(undefined);
+
+      const db = {
+        selectFrom: jest.fn().mockReturnValue(selectChain),
+        updateTable: jest.fn().mockReturnValue(updateChain),
+      } as unknown as Kysely<SearchDatabase>;
+      return { db, selectExecute: execute, updateExecute: updateChain.execute };
+    }
+
+    it("selects room IDs then updates tax_rate_pct", async () => {
+      const { db } = makeBulkDb(["r1", "r2"]);
+      const repo = new PropertiesRepository(db);
+      await repo.bulkUpdateRoomSearchIndex("MX", "cancún", 16);
+      expect(db.selectFrom).toHaveBeenCalledWith("room_search_index");
+      expect(db.updateTable).toHaveBeenCalledWith("room_search_index");
+    });
+
+    it("processes rooms in batches of 500", async () => {
+      const ids = Array.from({ length: 501 }, (_, i) => `r${i}`);
+      const execute = jest
+        .fn()
+        .mockResolvedValueOnce(ids.map((id) => ({ room_id: id })));
+      const selectChain: Record<string, jest.Mock> = {
+        select: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        execute,
+      };
+      const updateChain: Record<string, jest.Mock> = {
+        set: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        execute: jest.fn().mockResolvedValue(undefined),
+      };
+      const db = {
+        selectFrom: jest.fn().mockReturnValue(selectChain),
+        updateTable: jest.fn().mockReturnValue(updateChain),
+      } as unknown as Kysely<SearchDatabase>;
+      const repo = new PropertiesRepository(db);
+
+      await repo.bulkUpdateRoomSearchIndex("MX", "cancún", 16);
+      // 2 UPDATE calls (500 + 1)
+      expect(updateChain.execute).toHaveBeenCalledTimes(2);
+    });
+
+    it("does nothing when no rooms match", async () => {
+      const { db } = makeBulkDb([]);
+      const repo = new PropertiesRepository(db);
+      await repo.bulkUpdateRoomSearchIndex("MX", "cancún", 16);
+      expect(db.updateTable).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("bulkUpdateFlatFees", () => {
+    it("selects room IDs by partner_id then updates flat fee columns", async () => {
+      const selectExecute = jest
+        .fn()
+        .mockResolvedValueOnce([{ room_id: "r1" }]);
+      const selectChain: Record<string, jest.Mock> = {
+        select: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        execute: selectExecute,
+      };
+      const updateChain: Record<string, jest.Mock> = {
+        set: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        execute: jest.fn().mockResolvedValue(undefined),
+      };
+      const db = {
+        selectFrom: jest.fn().mockReturnValue(selectChain),
+        updateTable: jest.fn().mockReturnValue(updateChain),
+      } as unknown as Kysely<SearchDatabase>;
+      const repo = new PropertiesRepository(db);
+
+      await repo.bulkUpdateFlatFees("partner-1", 25, 50);
+      expect(db.selectFrom).toHaveBeenCalledWith("room_search_index");
+      expect(db.updateTable).toHaveBeenCalledWith("room_search_index");
+      expect(updateChain.execute).toHaveBeenCalledTimes(1);
+    });
+
+    it("does nothing when no rooms match", async () => {
+      const selectExecute = jest.fn().mockResolvedValueOnce([]);
+      const selectChain: Record<string, jest.Mock> = {
+        select: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        execute: selectExecute,
+      };
+      const db = {
+        selectFrom: jest.fn().mockReturnValue(selectChain),
+        updateTable: jest.fn(),
+      } as unknown as Kysely<SearchDatabase>;
+      const repo = new PropertiesRepository(db);
+
+      await repo.bulkUpdateFlatFees("partner-1", 25, 50);
+      expect(db.updateTable).not.toHaveBeenCalled();
     });
   });
 });

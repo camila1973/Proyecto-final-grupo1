@@ -343,9 +343,12 @@ services:
       NODE_ENV: production
       PORT: 3007
       DATABASE_URL: postgres://postgres:postgres@partners-db:5432/travelhub
+      BOOKING_SERVICE_URL: http://booking-service:3004
     depends_on:
       partners-db:
         condition: service_healthy
+      booking-service:
+        condition: service_started
 
   # ─── Integration Service ──────────────────────────────────────────────────────
   integration-db:

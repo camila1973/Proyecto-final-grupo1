@@ -32,6 +32,7 @@ export default function HotelCard({ name, location, price, img, onClick }: Hotel
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>{location}</Typography>
         <Typography variant="h6" fontWeight="bold" color="text.primary">{formatPrice(price, currency)}</Typography>
         <Typography variant="caption" color="text.secondary">{t('recommendations.per_night')}</Typography>
+        <Typography variant="caption" color="text.secondary" display="block">{t('recommendations.taxes_not_included')}</Typography>
       </CardContent>
       <CardActions sx={{ px: 2, pb: 2, pt: 1 }}>
         <Button

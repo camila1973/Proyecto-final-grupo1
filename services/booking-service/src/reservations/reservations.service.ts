@@ -5,6 +5,7 @@ import {
 } from "../fare/fare-calculator.service.js";
 import { RoomLocationCacheRepository } from "../room-location-cache/room-location-cache.repository.js";
 import { ReservationsRepository } from "./reservations.repository.js";
+import { EventsPublisher } from "../events/events.publisher.js";
 import {
   CreateReservationDto,
   PreviewReservationDto,
@@ -16,6 +17,7 @@ export class ReservationsService {
     private readonly fareCalculator: FareCalculatorService,
     private readonly reservationsRepo: ReservationsRepository,
     private readonly roomLocationCache: RoomLocationCacheRepository,
+    private readonly publisher: EventsPublisher,
   ) {}
 
   async preview(dto: PreviewReservationDto): Promise<FareBreakdown> {
@@ -76,6 +78,26 @@ export class ReservationsService {
 
   async findOne(id: string) {
     const row = await this.reservationsRepo.findById(id);
+    return this.reservationsRepo.toResponse(row);
+  }
+
+  async confirm(id: string) {
+    const row = await this.reservationsRepo.confirm(id);
+    this.publisher.publish("booking.confirmed", {
+      routingKey: "booking.confirmed",
+      reservationId: row.id,
+      partnerId: row.partner_id,
+      propertyId: row.property_id,
+      roomId: row.room_id,
+      guestId: row.guest_id,
+      checkIn: row.check_in,
+      checkOut: row.check_out,
+      fareBreakdown: row.fare_breakdown,
+      grandTotalUsd: row.grand_total_usd ? parseFloat(row.grand_total_usd) : 0,
+      taxTotalUsd: row.tax_total_usd ? parseFloat(row.tax_total_usd) : 0,
+      feeTotalUsd: row.fee_total_usd ? parseFloat(row.fee_total_usd) : 0,
+      timestamp: new Date().toISOString(),
+    });
     return this.reservationsRepo.toResponse(row);
   }
 }

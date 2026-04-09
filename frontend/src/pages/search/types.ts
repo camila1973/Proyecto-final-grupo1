@@ -28,6 +28,9 @@ export interface BestRoom {
   capacity: number;
   basePriceUsd: number;
   priceUsd: number | null;
+  taxRatePct: number;
+  estimatedTotalUsd: number;
+  hasFlatFees: boolean;
 }
 
 export interface SearchResult {
