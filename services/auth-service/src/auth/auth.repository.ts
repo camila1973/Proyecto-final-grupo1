@@ -191,6 +191,11 @@ export class AuthRepository implements OnModuleInit, OnModuleDestroy {
         .addColumn("created_at", "timestamptz", (column) => column.notNull())
         .execute();
 
+      // Drop mfa_secret if it exists (leftover from TOTP implementation)
+      await sql`
+        ALTER TABLE auth_users DROP COLUMN IF EXISTS mfa_secret
+      `.execute(this.db);
+
       await this.db.schema
         .createTable("auth_login_challenges")
         .ifNotExists()
@@ -212,6 +217,13 @@ export class AuthRepository implements OnModuleInit, OnModuleDestroy {
           (constraint) => constraint.onDelete("cascade"),
         )
         .execute();
+
+      // Add otp_code_hash and attempts if the table existed without them
+      await sql`
+        ALTER TABLE auth_login_challenges
+          ADD COLUMN IF NOT EXISTS otp_code_hash text,
+          ADD COLUMN IF NOT EXISTS attempts integer NOT NULL DEFAULT 0
+      `.execute(this.db);
 
       await this.db.schema
         .createIndex("idx_auth_login_challenges_expires_at")

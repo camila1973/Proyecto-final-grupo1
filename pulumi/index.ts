@@ -11,10 +11,10 @@ const REGION = gcpConfig.get("region") ?? "us-central1";
 const LABELS = { project: "travelhub" };
 
 const appConfig = new pulumi.Config();
-const smtpHost = appConfig.get("smtpHost") ?? "smtp.gmail.com";
+const smtpHost = appConfig.get("smtpHost");
 const smtpPort = appConfig.get("smtpPort") ?? "587";
-const smtpUser = appConfig.get("smtpUser") ?? "";
-const smtpPass = appConfig.getSecret("smtpPass") ?? pulumi.output("");
+const smtpUser = appConfig.get("smtpUser");
+const smtpPass = appConfig.getSecret("smtpPass");
 const smtpFrom = appConfig.get("smtpFrom") ?? smtpUser;
 
 // ─── Service definitions ──────────────────────────────────────────────────────
@@ -209,18 +209,22 @@ for (const svc of MICROSERVICES) {
   dbUrlSecrets[svc.name] = secret;
 }
 
-// ─── Secret Manager — SMTP password ──────────────────────────────────────────
+// ─── Secret Manager — SMTP password (only when SMTP is configured) ───────────
 
-const smtpPassSecret = new gcp.secretmanager.Secret("secret-smtp-pass", {
-  secretId: "travelhub-smtp-pass",
-  replication: { auto: {} },
-  labels: LABELS,
-});
-
-new gcp.secretmanager.SecretVersion("secret-smtp-pass-version", {
-  secret: smtpPassSecret.id,
-  secretData: smtpPass,
-});
+const smtpPassSecret = smtpPass
+  ? (() => {
+      const secret = new gcp.secretmanager.Secret("secret-smtp-pass", {
+        secretId: "travelhub-smtp-pass",
+        replication: { auto: {} },
+        labels: LABELS,
+      });
+      new gcp.secretmanager.SecretVersion("secret-smtp-pass-version", {
+        secret: secret.id,
+        secretData: smtpPass,
+      });
+      return secret;
+    })()
+  : null;
 
 // ─── Docker images ────────────────────────────────────────────────────────────
 
@@ -370,12 +374,12 @@ for (const svc of MICROSERVICES) {
     plainEnv["NOTIFICATION_SERVICE_URL"] = pulumi.interpolate`${runners["notification-service"]!.uri}`;
   }
 
-  if (svc.name === "notification-service") {
+  if (svc.name === "notification-service" && smtpHost && smtpUser && smtpPass) {
     plainEnv["SMTP_HOST"] = smtpHost;
     plainEnv["SMTP_PORT"] = smtpPort;
     plainEnv["SMTP_USER"] = smtpUser;
-    plainEnv["SMTP_FROM"] = smtpFrom;
-    secretEnvVars["SMTP_PASS"] = { secretId: smtpPassSecret.secretId };
+    plainEnv["SMTP_FROM"] = smtpFrom ?? smtpUser;
+    secretEnvVars["SMTP_PASS"] = { secretId: smtpPassSecret!.secretId };
   }
 
   if (svc.name === "integration-service") {

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import TextField from '@mui/material/TextField';
@@ -19,6 +19,10 @@ export default function MfaPage() {
   const [codeError, setCodeError] = useState<string | undefined>();
   const [apiError, setApiError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!challengeId) navigate({ to: '/login' });
+  }, [challengeId, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
