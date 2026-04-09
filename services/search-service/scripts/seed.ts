@@ -7,7 +7,7 @@ const db = new Kysely<SearchDatabase>({
     pool: new Pool({
       connectionString:
         process.env.DATABASE_URL ??
-        "postgres://postgres:postgres@localhost:5432/search_service",
+        "postgres://postgres:postgres@localhost:5433/search_service",
     }),
   }),
 });
@@ -30,7 +30,7 @@ const ROOM = (n: number) =>
 
 async function seed() {
   console.log("Truncating tables...");
-  await sql`TRUNCATE room_price_periods, room_search_index, taxonomy_values, taxonomy_categories RESTART IDENTITY CASCADE`.execute(
+  await sql`TRUNCATE partner_fees_cache, tax_rate_cache, room_price_periods, room_search_index, taxonomy_values, taxonomy_categories RESTART IDENTITY CASCADE`.execute(
     db,
   );
 
@@ -241,6 +241,7 @@ async function seed() {
     .insertInto("room_search_index")
     .values([
       // ── Cancún: Gran Caribe Resort (5★) ──────────────────────────────────
+      // tax_rate_pct: MX IVA 16% + Cancún ISH 3% = 19%
       {
         room_id: ROOM(1),
         property_id: PROP_CANCUN_1,
@@ -266,6 +267,7 @@ async function seed() {
           "gym",
         ],
         base_price_usd: "320.00",
+        tax_rate_pct: "19.0000",
         stars: 5,
         rating: "4.7",
         review_count: 842,
@@ -296,6 +298,7 @@ async function seed() {
           "gym",
         ],
         base_price_usd: "580.00",
+        tax_rate_pct: "19.0000",
         stars: 5,
         rating: "4.7",
         review_count: 842,
@@ -318,6 +321,7 @@ async function seed() {
         capacity: 2,
         amenities: ["pool", "wifi", "ac", "restaurant", "parking"],
         base_price_usd: "145.00",
+        tax_rate_pct: "19.0000",
         stars: 4,
         rating: "4.2",
         review_count: 519,
@@ -346,6 +350,7 @@ async function seed() {
           "beach_access",
         ],
         base_price_usd: "195.00",
+        tax_rate_pct: "19.0000",
         stars: 4,
         rating: "4.2",
         review_count: 519,
@@ -375,6 +380,7 @@ async function seed() {
           "spa",
         ],
         base_price_usd: "265.00",
+        tax_rate_pct: "19.0000",
         stars: 4,
         rating: "4.2",
         review_count: 519,
@@ -397,6 +403,7 @@ async function seed() {
         capacity: 2,
         amenities: ["wifi", "ac", "parking"],
         base_price_usd: "65.00",
+        tax_rate_pct: "19.0000",
         stars: 3,
         rating: "3.8",
         review_count: 204,
@@ -418,12 +425,14 @@ async function seed() {
         capacity: 2,
         amenities: ["wifi", "ac"],
         base_price_usd: "55.00",
+        tax_rate_pct: "19.0000",
         stars: 3,
         rating: "3.8",
         review_count: 204,
         thumbnail_url: "https://placehold.co/400x300?text=Hostal+Sol",
       },
       // ── CDMX: Hotel Histórico (5★) ────────────────────────────────────────
+      // tax_rate_pct: MX IVA 16% + CDMX ISH 3% = 19%
       {
         room_id: ROOM(8),
         property_id: PROP_CDMX_1,
@@ -448,6 +457,7 @@ async function seed() {
           "parking",
         ],
         base_price_usd: "280.00",
+        tax_rate_pct: "19.0000",
         stars: 5,
         rating: "4.6",
         review_count: 631,
@@ -478,6 +488,7 @@ async function seed() {
           "pet_friendly",
         ],
         base_price_usd: "650.00",
+        tax_rate_pct: "19.0000",
         stars: 5,
         rating: "4.6",
         review_count: 631,
@@ -500,6 +511,7 @@ async function seed() {
         capacity: 2,
         amenities: ["wifi", "breakfast", "ac", "pet_friendly"],
         base_price_usd: "110.00",
+        tax_rate_pct: "19.0000",
         stars: 4,
         rating: "4.4",
         review_count: 387,
@@ -641,6 +653,61 @@ async function seed() {
   ];
 
   await db.insertInto("room_price_periods").values(pricePeriods).execute();
+
+  // ── tax_rate_cache ─────────────────────────────────────────────────────────
+  // Pre-computed totals matching booking-service tax rules.
+  // Cancún and CDMX: MX IVA (16%) + city ISH (3%) = 19%.
+  // National fallback (city = '') used for MX rooms with no city-level rule.
+  console.log("Seeding tax_rate_cache...");
+  await db
+    .insertInto("tax_rate_cache")
+    .values([
+      { country: "MX", city: "", total_pct: "16.0000" },
+      { country: "MX", city: "cancún", total_pct: "19.0000" },
+      { country: "MX", city: "ciudad de méxico", total_pct: "19.0000" },
+    ])
+    .execute();
+  console.log("  ✓ MX national (16%), Cancún (19%), CDMX (19%)");
+
+  // ── partner_fees_cache ─────────────────────────────────────────────────────
+  // Mirrors booking-service partner_fees seed (stable IDs d1000000-...).
+  const FEE = (n: number) =>
+    `d1000000-0000-0000-0000-${String(n).padStart(12, "0")}`;
+  console.log("Seeding partner_fees_cache...");
+  await db
+    .insertInto("partner_fees_cache")
+    .values([
+      {
+        id: FEE(1),
+        partner_id: PARTNER_1,
+        property_id: null,
+        fee_name: "Resort Fee",
+        fee_type: "FLAT_PER_NIGHT",
+        rate: null,
+        flat_amount: "25.00",
+        currency: "USD",
+        effective_from: "2020-01-01",
+        effective_to: null,
+        is_active: true,
+      },
+      {
+        id: FEE(2),
+        partner_id: PARTNER_2,
+        property_id: null,
+        fee_name: "Cleaning Fee",
+        fee_type: "FLAT_PER_STAY",
+        rate: null,
+        flat_amount: "15.00",
+        currency: "USD",
+        effective_from: "2020-01-01",
+        effective_to: null,
+        is_active: true,
+      },
+    ])
+    .execute();
+  console.log(
+    "  ✓ Partner 1 Resort Fee ($25/night), Partner 2 Cleaning Fee ($15/stay)",
+  );
 
   console.log("✓ Seed complete.");
   await db.destroy();

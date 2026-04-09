@@ -7,6 +7,7 @@ import {
 import * as amqp from "amqplib";
 import { RoomLocationCacheRepository } from "../room-location-cache/room-location-cache.repository.js";
 import { PriceValidationCacheRepository } from "../price-validation-cache/price-validation-cache.repository.js";
+import { PartnerFeesRepository } from "../partner-fees/partner-fees.repository.js";
 
 // Lazily imported when MESSAGE_BROKER_TYPE=pubsub
 
@@ -31,6 +32,7 @@ export class EventsService implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly priceCache: PriceValidationCacheRepository,
     private readonly roomLocationCache: RoomLocationCacheRepository,
+    private readonly partnerFees: PartnerFeesRepository,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -50,6 +52,16 @@ export class EventsService implements OnModuleInit, OnModuleDestroy {
           const event = p as { snapshot: RoomUpsertedPayload };
           return this.handleRoomUpserted(event.snapshot);
         },
+      },
+      {
+        queue: "booking.partner.fee.upserted",
+        routingKey: "partner.fee.upserted",
+        handler: (p) => this.handleFeeUpserted(p as PartnerFeeUpsertedPayload),
+      },
+      {
+        queue: "booking.partner.fee.deleted",
+        routingKey: "partner.fee.deleted",
+        handler: (p) => this.handleFeeDeleted(p as PartnerFeeDeletedPayload),
       },
     ];
 
@@ -96,6 +108,18 @@ export class EventsService implements OnModuleInit, OnModuleDestroy {
     this.logger.debug(
       `Updated location cache for room ${snapshot.roomId} (${snapshot.country}/${snapshot.city})`,
     );
+  }
+
+  async handleFeeUpserted(event: PartnerFeeUpsertedPayload): Promise<void> {
+    await this.partnerFees.upsertFromEvent(event);
+    this.logger.debug(
+      `Upserted partner fee ${event.feeId} for partner ${event.partnerId}`,
+    );
+  }
+
+  async handleFeeDeleted(event: PartnerFeeDeletedPayload): Promise<void> {
+    await this.partnerFees.softDelete(event.feeId);
+    this.logger.debug(`Soft-deleted partner fee ${event.feeId}`);
   }
 
   // ─── RabbitMQ ────────────────────────────────────────────────────────────────
@@ -217,4 +241,22 @@ interface RoomUpsertedPayload {
   propertyId: string;
   country: string;
   city: string;
+}
+
+interface PartnerFeeUpsertedPayload {
+  feeId: string;
+  partnerId: string;
+  propertyId?: string;
+  feeName: string;
+  feeType: string;
+  rate?: number;
+  flatAmount?: number;
+  currency: string;
+  effectiveFrom: string;
+  effectiveTo?: string;
+}
+
+interface PartnerFeeDeletedPayload {
+  feeId: string;
+  partnerId: string;
 }

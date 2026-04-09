@@ -1,7 +1,11 @@
-import { Injectable, Inject } from "@nestjs/common";
+import { Injectable, Inject, NotFoundException } from "@nestjs/common";
 import { Kysely } from "kysely";
 import { KYSELY } from "../database/database.provider.js";
-import { Database } from "../database/database.types.js";
+import {
+  Database,
+  TaxRuleRow,
+  NewTaxRule,
+} from "../database/database.types.js";
 
 export interface TaxRule {
   id: string;
@@ -13,6 +17,22 @@ export interface TaxRule {
   flat_amount: string | null;
   currency: string;
 }
+
+type UpdateTaxRuleData = Partial<
+  Pick<
+    NewTaxRule,
+    | "country"
+    | "city"
+    | "tax_name"
+    | "tax_type"
+    | "rate"
+    | "flat_amount"
+    | "currency"
+    | "effective_from"
+    | "effective_to"
+    | "is_active"
+  >
+>;
 
 @Injectable()
 export class TaxRulesRepository {
@@ -70,5 +90,51 @@ export class TaxRulesRepository {
     }
 
     return Array.from(byName.values());
+  }
+
+  async insert(data: NewTaxRule): Promise<TaxRuleRow> {
+    const row = await this.db
+      .insertInto("tax_rules")
+      .values(data)
+      .returningAll()
+      .executeTakeFirstOrThrow();
+    return row;
+  }
+
+  async findAll(country?: string): Promise<TaxRuleRow[]> {
+    let query = this.db.selectFrom("tax_rules").selectAll();
+    if (country) {
+      query = query.where("country", "=", country);
+    }
+    return query.execute();
+  }
+
+  async findById(id: string): Promise<TaxRuleRow> {
+    const row = await this.db
+      .selectFrom("tax_rules")
+      .selectAll()
+      .where("id", "=", id)
+      .executeTakeFirst();
+    if (!row) throw new NotFoundException(`Tax rule ${id} not found`);
+    return row;
+  }
+
+  async update(id: string, data: UpdateTaxRuleData): Promise<TaxRuleRow> {
+    const row = await this.db
+      .updateTable("tax_rules")
+      .set({ ...data, updated_at: new Date() })
+      .where("id", "=", id)
+      .returningAll()
+      .executeTakeFirst();
+    if (!row) throw new NotFoundException(`Tax rule ${id} not found`);
+    return row;
+  }
+
+  async softDelete(id: string): Promise<void> {
+    await this.db
+      .updateTable("tax_rules")
+      .set({ is_active: false, updated_at: new Date() })
+      .where("id", "=", id)
+      .execute();
   }
 }

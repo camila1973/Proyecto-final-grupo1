@@ -1,6 +1,7 @@
 import { RoomUpsertedHandler } from "./room-upserted.handler.js";
 import type { PropertiesRepository } from "../../properties/properties.repository.js";
 import type { PropertiesService } from "../../properties/properties.service.js";
+import type { TaxRateCacheRepository } from "../../tax-cache/tax-rate-cache.repository.js";
 import type { RoomUpsertedPayload } from "./room-upserted.handler.js";
 
 const makePayload = (
@@ -36,16 +37,19 @@ describe("RoomUpsertedHandler", () => {
   let propertiesService: jest.Mocked<
     Pick<PropertiesService, "invalidateCityCache">
   >;
+  let taxRateCache: jest.Mocked<Pick<TaxRateCacheRepository, "lookup">>;
 
   beforeEach(() => {
     repo = { upsertRoom: jest.fn().mockResolvedValue(undefined) };
     propertiesService = {
       invalidateCityCache: jest.fn().mockResolvedValue(undefined),
     };
+    taxRateCache = { lookup: jest.fn().mockResolvedValue(0) };
 
     handler = new RoomUpsertedHandler(
       repo as unknown as PropertiesRepository,
       propertiesService as unknown as PropertiesService,
+      taxRateCache as unknown as TaxRateCacheRepository,
     );
   });
 
@@ -72,6 +76,7 @@ describe("RoomUpsertedHandler", () => {
         review_count: payload.reviewCount,
         thumbnail_url: payload.thumbnailUrl,
         is_active: payload.isActive,
+        tax_rate_pct: 0,
       }),
     );
     expect(propertiesService.invalidateCityCache).toHaveBeenCalledWith(

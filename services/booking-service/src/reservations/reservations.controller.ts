@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
   Body,
   Param,
   HttpCode,
@@ -39,5 +40,11 @@ export class ReservationsController {
   @Get(":id")
   findOne(@Param("id") id: string) {
     return this.reservationsService.findOne(id);
+  }
+
+  @Patch(":id/confirm")
+  @HttpCode(HttpStatus.OK)
+  confirm(@Param("id") id: string) {
+    return this.reservationsService.confirm(id);
   }
 }

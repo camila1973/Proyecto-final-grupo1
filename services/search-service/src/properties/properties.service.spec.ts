@@ -3,6 +3,7 @@ import type { PropertiesRepository } from "./properties.repository.js";
 import type { CacheService } from "../cache/cache.service.js";
 import type { FacetsService } from "./facets/facets.service.js";
 import type { InventoryClientService } from "../inventory/inventory-client.service.js";
+import type { PartnerFeesCacheRepository } from "../partner-fees-cache/partner-fees-cache.repository.js";
 import type { SearchPropertiesDto } from "./dto/search-properties.dto.js";
 
 // ─── fixtures ─────────────────────────────────────────────────────────────────
@@ -93,13 +94,33 @@ function makeServices(candidateRows = [mockRoom]) {
       .mockResolvedValue(candidateRows.map((r) => ({ roomId: r.room_id }))),
   };
 
+  const partnerFeesCache: jest.Mocked<
+    Pick<
+      PartnerFeesCacheRepository,
+      "getPartnersWithActiveFlatFees" | "getFlatFeeTotals"
+    >
+  > = {
+    getPartnersWithActiveFlatFees: jest
+      .fn()
+      .mockResolvedValue(new Set<string>()),
+    getFlatFeeTotals: jest.fn().mockResolvedValue(new Map<string, number>()),
+  };
+
   const service = new PropertiesService(
     repo as unknown as PropertiesRepository,
     cache as unknown as CacheService,
     mockFacets,
     inventoryClient as unknown as InventoryClientService,
+    partnerFeesCache as unknown as PartnerFeesCacheRepository,
   );
-  return { service, repo, cache, mockFacets, inventoryClient };
+  return {
+    service,
+    repo,
+    cache,
+    mockFacets,
+    inventoryClient,
+    partnerFeesCache,
+  };
 }
 
 // ─── tests ────────────────────────────────────────────────────────────────────

@@ -4,6 +4,7 @@ import {
   type RoomIndexRecord,
 } from "../../properties/properties.repository.js";
 import { PropertiesService } from "../../properties/properties.service.js";
+import { TaxRateCacheRepository } from "../../tax-cache/tax-rate-cache.repository.js";
 
 export interface RoomUpsertedPayload {
   roomId: string;
@@ -36,9 +37,14 @@ export class RoomUpsertedHandler {
   constructor(
     private readonly repo: PropertiesRepository,
     private readonly properties: PropertiesService,
+    private readonly taxRateCache: TaxRateCacheRepository,
   ) {}
 
   async handle(payload: RoomUpsertedPayload): Promise<void> {
+    const taxRatePct = await this.taxRateCache.lookup(
+      payload.country,
+      payload.city,
+    );
     const record: RoomIndexRecord = {
       room_id: payload.roomId,
       property_id: payload.propertyId,
@@ -55,6 +61,7 @@ export class RoomUpsertedHandler {
       capacity: payload.capacity,
       amenities: payload.amenities,
       base_price_usd: payload.basePriceUsd,
+      tax_rate_pct: taxRatePct,
       stars: payload.stars ?? 0,
       rating: payload.rating,
       review_count: payload.reviewCount,

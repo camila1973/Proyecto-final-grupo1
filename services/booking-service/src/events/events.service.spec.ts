@@ -37,14 +37,23 @@ function makeRoomLocationCache() {
   return { upsert: jest.fn().mockResolvedValue(undefined) };
 }
 
+function makePartnerFees() {
+  return {
+    upsertFromEvent: jest.fn().mockResolvedValue(undefined),
+    softDelete: jest.fn().mockResolvedValue(undefined),
+  };
+}
+
 function makeService() {
   const priceCache = makePriceCache();
   const roomLocationCache = makeRoomLocationCache();
+  const partnerFees = makePartnerFees();
   const service = new EventsService(
     priceCache as any,
     roomLocationCache as any,
+    partnerFees as any,
   );
-  return { service, priceCache, roomLocationCache };
+  return { service, priceCache, roomLocationCache, partnerFees };
 }
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
@@ -143,20 +152,28 @@ describe("EventsService", () => {
       );
     });
 
-    it("subscribes to both inventory queues when using RabbitMQ", async () => {
+    it("subscribes to all queues when using RabbitMQ", async () => {
       const { service } = makeService();
       process.env.MESSAGE_BROKER_TYPE = "rabbitmq";
 
       await service.onModuleInit();
 
-      // assertQueue should be called once per subscription (2 total)
-      expect(mockChannel.assertQueue).toHaveBeenCalledTimes(2);
+      // assertQueue should be called once per subscription (4 total)
+      expect(mockChannel.assertQueue).toHaveBeenCalledTimes(4);
       expect(mockChannel.assertQueue).toHaveBeenCalledWith(
         "booking.inventory.price.updated",
         { durable: true },
       );
       expect(mockChannel.assertQueue).toHaveBeenCalledWith(
         "booking.inventory.room.upserted",
+        { durable: true },
+      );
+      expect(mockChannel.assertQueue).toHaveBeenCalledWith(
+        "booking.partner.fee.upserted",
+        { durable: true },
+      );
+      expect(mockChannel.assertQueue).toHaveBeenCalledWith(
+        "booking.partner.fee.deleted",
         { durable: true },
       );
     });

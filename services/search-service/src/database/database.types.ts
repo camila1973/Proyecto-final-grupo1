@@ -36,6 +36,7 @@ export type RoomSearchIndexTable = {
   capacity: number;
   amenities: string[];
   base_price_usd: string;
+  tax_rate_pct: Generated<string>; // pre-summed percentage rate for this location (e.g. 27.0 for Colombia)
   stars: number;
   rating: Generated<string>;
   review_count: Generated<number>;
@@ -52,9 +53,32 @@ export type RoomPricePeriodsTable = {
   price_usd: string;
 };
 
+export type TaxRateCacheTable = {
+  country: string;
+  city: string;
+  total_pct: string; // NUMERIC returned as string by pg
+  updated_at: Generated<string>;
+};
+
+export type PartnerFeesCacheTable = {
+  id: string;
+  partner_id: string;
+  property_id: string | null;
+  fee_name: string;
+  fee_type: string;
+  rate: string | null;
+  flat_amount: string | null;
+  currency: string;
+  effective_from: string;
+  effective_to: string | null;
+  is_active: boolean;
+};
+
 export type SearchDatabase = {
   taxonomy_categories: TaxonomyCategoryTable;
   taxonomy_values: TaxonomyValueTable;
   room_search_index: RoomSearchIndexTable;
   room_price_periods: RoomPricePeriodsTable;
+  tax_rate_cache: TaxRateCacheTable;
+  partner_fees_cache: PartnerFeesCacheTable;
 };

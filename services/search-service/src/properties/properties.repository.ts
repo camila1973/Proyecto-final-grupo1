@@ -25,6 +25,7 @@ export interface RoomIndexRecord {
   capacity: number;
   amenities: string[];
   base_price_usd: number;
+  tax_rate_pct: number;
   stars: number;
   rating: number;
   review_count: number;
@@ -41,7 +42,7 @@ export class PropertiesRepository {
       INSERT INTO room_search_index (
         room_id, property_id, partner_id, property_name, city, country,
         neighborhood, lat, lon, room_type, bed_type, view_type, capacity,
-        amenities, base_price_usd, stars, rating, review_count,
+        amenities, base_price_usd, tax_rate_pct, stars, rating, review_count,
         thumbnail_url, is_active, last_synced_at
       ) VALUES (
         ${r.room_id}::uuid,
@@ -59,6 +60,7 @@ export class PropertiesRepository {
         ${r.capacity},
         ${sql.raw(`ARRAY[${r.amenities.map((a) => `'${a.replace(/'/g, "''")}'`).join(",")}]`)}::text[],
         ${r.base_price_usd},
+        ${r.tax_rate_pct},
         ${r.stars},
         ${r.rating},
         ${r.review_count},
@@ -81,6 +83,7 @@ export class PropertiesRepository {
         capacity       = EXCLUDED.capacity,
         amenities      = EXCLUDED.amenities,
         base_price_usd = EXCLUDED.base_price_usd,
+        tax_rate_pct   = EXCLUDED.tax_rate_pct,
         stars          = EXCLUDED.stars,
         rating         = EXCLUDED.rating,
         review_count   = EXCLUDED.review_count,
@@ -98,6 +101,7 @@ export class PropertiesRepository {
       .select([
         "rsi.room_id",
         "rsi.property_id",
+        "rsi.partner_id",
         "rsi.property_name",
         "rsi.city",
         "rsi.country",
@@ -112,6 +116,7 @@ export class PropertiesRepository {
         "rsi.view_type",
         "rsi.capacity",
         "rsi.base_price_usd",
+        "rsi.tax_rate_pct",
         sql<string | null>`(
           SELECT rpp.price_usd::text
           FROM room_price_periods rpp
@@ -142,6 +147,7 @@ export class PropertiesRepository {
       .select([
         "rsi.room_id",
         "rsi.property_id",
+        "rsi.partner_id",
         "rsi.property_name",
         "rsi.city",
         "rsi.country",
@@ -156,6 +162,7 @@ export class PropertiesRepository {
         "rsi.view_type",
         "rsi.capacity",
         "rsi.base_price_usd",
+        "rsi.tax_rate_pct",
         sql<string | null>`NULL`.as("avail_price_usd"),
       ])
       .where("rsi.is_active", "=", true)

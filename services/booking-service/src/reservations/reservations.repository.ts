@@ -53,6 +53,21 @@ export class ReservationsRepository {
     return row;
   }
 
+  async confirm(id: string): Promise<ReservationRow> {
+    const row = await this.db
+      .updateTable("reservations")
+      .set({ status: "confirmed", updated_at: new Date() })
+      .where("id", "=", id)
+      .returningAll()
+      .executeTakeFirst();
+
+    if (!row) {
+      throw new NotFoundException(`Reservation ${id} not found`);
+    }
+
+    return row;
+  }
+
   toResponse(row: ReservationRow): ReservationResponse {
     return {
       id: row.id,

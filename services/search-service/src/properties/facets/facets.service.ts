@@ -6,6 +6,7 @@ import type { SearchPropertiesDto } from "../dto/search-properties.dto.js";
 export interface CandidateRoom {
   room_id: string;
   property_id: string;
+  partner_id: string;
   property_name: string;
   city: string;
   country: string;
@@ -20,6 +21,7 @@ export interface CandidateRoom {
   view_type: string;
   capacity: number;
   base_price_usd: string;
+  tax_rate_pct: string;
   avail_price_usd: string | null;
 }
 
@@ -34,6 +36,8 @@ export interface PropertyResult {
   reviewCount: number;
   thumbnailUrl: string;
   amenities: string[];
+  /** Internal field used for flat fee enrichment — not in final API response shape */
+  _partnerId?: string;
   bestRoom: {
     roomId: string;
     roomType: string;
@@ -41,6 +45,9 @@ export interface PropertyResult {
     capacity: number;
     basePriceUsd: number;
     priceUsd: number | null;
+    taxRatePct: number;
+    estimatedTotalUsd: number;
+    hasFlatFees: boolean;
   };
 }
 
@@ -177,6 +184,13 @@ export class FacetsService {
         return rp < cp ? room : cheapest;
       });
 
+      const price =
+        best.avail_price_usd != null
+          ? parseFloat(best.avail_price_usd)
+          : parseFloat(best.base_price_usd);
+      const taxRatePct = parseFloat(best.tax_rate_pct ?? "0");
+      const estimatedTotalUsd = price * (1 + taxRatePct / 100);
+
       results.push({
         id: best.property_id,
         name: best.property_name,
@@ -188,6 +202,7 @@ export class FacetsService {
         reviewCount: best.review_count,
         thumbnailUrl: best.thumbnail_url,
         amenities: [...new Set(propertyRooms.flatMap((r) => r.amenities))],
+        _partnerId: best.partner_id,
         bestRoom: {
           roomId: best.room_id,
           roomType: best.room_type,
@@ -198,6 +213,9 @@ export class FacetsService {
             best.avail_price_usd != null
               ? parseFloat(best.avail_price_usd)
               : null,
+          taxRatePct,
+          estimatedTotalUsd,
+          hasFlatFees: false, // enriched by PropertiesService
         },
       });
     }
