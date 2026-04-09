@@ -118,6 +118,17 @@ jobs:
       # - builds & pushes Docker images for all services
       # - creates/updates Cloud Run services
       # - provisions Cloud SQL, Memorystore, Pub/Sub, VPC, Artifact Registry
+      - name: Set SMTP config
+        working-directory: pulumi
+        env:
+          PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
+          GOOGLE_PROJECT: ${{ secrets.GCP_PROJECT_ID }}
+        run: |
+          pulumi config set --stack ${{ env.PULUMI_STACK }} smtpHost "smtp.gmail.com"
+          pulumi config set --stack ${{ env.PULUMI_STACK }} smtpUser "${{ secrets.SMTP_USER }}"
+          pulumi config set --stack ${{ env.PULUMI_STACK }} --secret smtpPass "${{ secrets.SMTP_PASS }}"
+          pulumi config set --stack ${{ env.PULUMI_STACK }} smtpFrom "${{ secrets.SMTP_FROM }}"
+
       - name: Deploy infrastructure + services (pulumi up)
         uses: pulumi/actions@v6
         with:

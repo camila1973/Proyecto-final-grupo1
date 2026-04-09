@@ -2,7 +2,8 @@
   "nav": {
     "language": "Español",
     "register": "Registro",
-    "login": "Iniciar sesion"
+    "login": "Iniciar sesión",
+    "logout": "Cerrar sesión"
   },
   "hero": {
     "title": "Encuentra el hotel perfecto para tus vacaciones.",
@@ -107,6 +108,35 @@
       "confirm_mismatch": "Las contraseñas no coinciden",
       "terms_required": "Debes aceptar los términos y condiciones",
       "email_taken": "Este correo ya está registrado",
+      "generic": "Ocurrió un error. Intenta de nuevo."
+    }
+  },
+  "login": {
+    "title": "Inicia sesión en tu cuenta",
+    "no_account": "¿No tienes una cuenta?",
+    "register_link": "Regístrate aquí",
+    "email_label": "CORREO ELECTRÓNICO",
+    "password_label": "CONTRASEÑA",
+    "submit": "Iniciar sesión",
+    "errors": {
+      "email_required": "El correo electrónico es requerido",
+      "email_invalid": "Formato de correo inválido",
+      "password_required": "La contraseña es requerida",
+      "invalid_credentials": "Correo o contraseña incorrectos",
+      "generic": "Ocurrió un error. Intenta de nuevo."
+    }
+  },
+  "mfa": {
+    "title": "Revisa tu correo",
+    "description": "Te enviamos un código de verificación de 6 dígitos. Expira en 5 minutos.",
+    "code_label": "CÓDIGO DE VERIFICACIÓN",
+    "submit": "Verificar",
+    "try_again_link": "Intentar iniciar sesión de nuevo",
+    "errors": {
+      "code_invalid": "Ingresa un código válido de 6 dígitos",
+      "invalid_code": "Código incorrecto, intenta de nuevo",
+      "expired": "El código ha expirado.",
+      "too_many_attempts": "Demasiados intentos fallidos.",
       "generic": "Ocurrió un error. Intenta de nuevo."
     }
   },

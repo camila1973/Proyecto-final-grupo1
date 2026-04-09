@@ -1,3 +1,4 @@
+// Infrastructure entry point
 import * as pulumi from "@pulumi/pulumi";
 import * as gcp from "@pulumi/gcp";
 import * as docker from "@pulumi/docker";
@@ -10,16 +11,23 @@ const PROJECT = gcpConfig.require("project");
 const REGION = gcpConfig.get("region") ?? "us-central1";
 const LABELS = { project: "travelhub" };
 
+const appConfig = new pulumi.Config();
+const smtpHost = appConfig.get("smtpHost");
+const smtpPort = appConfig.get("smtpPort") ?? "587";
+const smtpUser = appConfig.get("smtpUser");
+const smtpPass = appConfig.getSecret("smtpPass");
+const smtpFrom = appConfig.get("smtpFrom") ?? smtpUser;
+
 // ─── Service definitions ──────────────────────────────────────────────────────
 
 const SERVICES = [
   { name: "api-gateway",          port: 3000, db: null                   },
   // inventory before search — search-service needs INVENTORY_SERVICE_URL at creation time
   { name: "inventory-service",    port: 3003, db: "inventory"            },
+  { name: "notification-service", port: 3006, db: "notification"         },
   { name: "auth-service",         port: 3001, db: "auth"                 },
   { name: "booking-service",      port: 3004, db: "booking"              },
   { name: "payment-service",      port: 3005, db: "payment"              },
-  { name: "notification-service", port: 3006, db: "notification"         },
   { name: "partners-service",     port: 3007, db: "partners"             },
   { name: "search-service",       port: 3002, db: "search"               },
   // integration last — needs inventory, booking, and payment URLs
@@ -202,6 +210,23 @@ for (const svc of MICROSERVICES) {
   dbUrlSecrets[svc.name] = secret;
 }
 
+// ─── Secret Manager — SMTP password (only when SMTP is configured) ───────────
+
+const smtpPassSecret = smtpPass
+  ? (() => {
+      const secret = new gcp.secretmanager.Secret("secret-smtp-pass", {
+        secretId: "travelhub-smtp-pass",
+        replication: { auto: {} },
+        labels: LABELS,
+      });
+      new gcp.secretmanager.SecretVersion("secret-smtp-pass-version", {
+        secret: secret.id,
+        secretData: smtpPass,
+      });
+      return secret;
+    })()
+  : null;
+
 // ─── Docker images ────────────────────────────────────────────────────────────
 
 const gcpAuth = gcp.organizations.getClientConfigOutput({});
@@ -344,6 +369,18 @@ for (const svc of MICROSERVICES) {
   if (svc.name === "inventory-service") {
     plainEnv["MESSAGE_BROKER_TYPE"] = "pubsub";
     plainEnv["PUBSUB_PROJECT_ID"]   = PROJECT;
+  }
+
+  if (svc.name === "auth-service") {
+    plainEnv["NOTIFICATION_SERVICE_URL"] = pulumi.interpolate`${runners["notification-service"]!.uri}`;
+  }
+
+  if (svc.name === "notification-service" && smtpHost && smtpUser && smtpPass) {
+    plainEnv["SMTP_HOST"] = smtpHost;
+    plainEnv["SMTP_PORT"] = smtpPort;
+    plainEnv["SMTP_USER"] = smtpUser;
+    plainEnv["SMTP_FROM"] = smtpFrom ?? smtpUser;
+    secretEnvVars["SMTP_PASS"] = { secretId: smtpPassSecret!.secretId };
   }
 
   if (svc.name === "integration-service") {

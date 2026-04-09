@@ -2,6 +2,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { createMemoryHistory, createRouter, createRootRoute, RouterProvider } from '@tanstack/react-router';
 import Navbar from './Navbar';
 import { LocaleProvider } from '../context/LocaleContext';
+import { AuthProvider } from '../context/AuthContext';
 import { setupTestI18n } from '../i18n/test-utils';
 import en from '../i18n/locales/en.json';
 import es from '../i18n/locales/es.json';
@@ -12,9 +13,11 @@ function renderNavbar(initialLanguage: 'es' | 'en' = 'es') {
   i18n.changeLanguage(initialLanguage);
   const rootRoute = createRootRoute({
     component: () => (
-      <LocaleProvider initialLanguage={initialLanguage}>
-        <Navbar />
-      </LocaleProvider>
+      <AuthProvider>
+        <LocaleProvider initialLanguage={initialLanguage}>
+          <Navbar />
+        </LocaleProvider>
+      </AuthProvider>
     ),
   });
   const router = createRouter({

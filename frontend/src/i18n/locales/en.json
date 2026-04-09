@@ -2,7 +2,8 @@
   "nav": {
     "language": "English",
     "register": "Register",
-    "login": "Sign in"
+    "login": "Sign in",
+    "logout": "Sign out"
   },
   "hero": {
     "title": "Find the perfect hotel for your vacation.",
@@ -107,6 +108,35 @@
       "confirm_mismatch": "Passwords do not match",
       "terms_required": "You must accept the terms and conditions",
       "email_taken": "This email is already registered",
+      "generic": "Something went wrong. Please try again."
+    }
+  },
+  "login": {
+    "title": "Sign in to your account",
+    "no_account": "Don't have an account?",
+    "register_link": "Register here",
+    "email_label": "EMAIL ADDRESS",
+    "password_label": "PASSWORD",
+    "submit": "Sign in",
+    "errors": {
+      "email_required": "Email address is required",
+      "email_invalid": "Invalid email format",
+      "password_required": "Password is required",
+      "invalid_credentials": "Invalid email or password",
+      "generic": "Something went wrong. Please try again."
+    }
+  },
+  "mfa": {
+    "title": "Check your email",
+    "description": "We sent a 6-digit verification code to your email. It expires in 5 minutes.",
+    "code_label": "VERIFICATION CODE",
+    "submit": "Verify",
+    "try_again_link": "Try logging in again",
+    "errors": {
+      "code_invalid": "Please enter a valid 6-digit code",
+      "invalid_code": "Incorrect code, please try again",
+      "expired": "The code has expired.",
+      "too_many_attempts": "Too many failed attempts.",
       "generic": "Something went wrong. Please try again."
     }
   },

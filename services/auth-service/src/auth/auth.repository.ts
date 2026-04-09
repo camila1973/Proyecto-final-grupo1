@@ -13,13 +13,14 @@ type AuthUsersTable = {
   email: string;
   role: UserRole;
   password_hash: string;
-  mfa_secret: string;
   created_at: string;
 };
 
 type AuthLoginChallengesTable = {
   id: string;
   user_id: string;
+  otp_code_hash: string;
+  attempts: Generated<number>;
   expires_at: string;
   created_at: Generated<string>;
 };
@@ -90,7 +91,6 @@ export class AuthRepository implements OnModuleInit, OnModuleDestroy {
     email: string;
     role: UserRole;
     passwordHash: string;
-    mfaSecret: string;
     createdAt: string;
   }): Promise<void> {
     await this.db
@@ -100,7 +100,6 @@ export class AuthRepository implements OnModuleInit, OnModuleDestroy {
         email: params.email,
         role: params.role,
         password_hash: params.passwordHash,
-        mfa_secret: params.mfaSecret,
         created_at: params.createdAt,
       })
       .executeTakeFirstOrThrow();
@@ -135,6 +134,7 @@ export class AuthRepository implements OnModuleInit, OnModuleDestroy {
   async createChallenge(params: {
     id: string;
     userId: string;
+    otpCodeHash: string;
     expiresAt: string;
   }): Promise<void> {
     await this.db
@@ -142,6 +142,7 @@ export class AuthRepository implements OnModuleInit, OnModuleDestroy {
       .values({
         id: params.id,
         user_id: params.userId,
+        otp_code_hash: params.otpCodeHash,
         expires_at: params.expiresAt,
       })
       .executeTakeFirstOrThrow();
@@ -150,10 +151,18 @@ export class AuthRepository implements OnModuleInit, OnModuleDestroy {
   async findChallengeById(id: string): Promise<DbChallenge | null> {
     const row = await this.db
       .selectFrom("auth_login_challenges")
-      .select(["id", "user_id", "expires_at"])
+      .select(["id", "user_id", "otp_code_hash", "attempts", "expires_at"])
       .where("id", "=", id)
       .executeTakeFirst();
     return row ?? null;
+  }
+
+  async incrementChallengeAttempts(id: string): Promise<void> {
+    await this.db
+      .updateTable("auth_login_challenges")
+      .set((eb) => ({ attempts: eb("attempts", "+", 1) }))
+      .where("id", "=", id)
+      .executeTakeFirst();
   }
 
   async deleteChallengeById(id: string): Promise<void> {
@@ -179,15 +188,23 @@ export class AuthRepository implements OnModuleInit, OnModuleDestroy {
         .addColumn("email", "text", (column) => column.notNull().unique())
         .addColumn("role", "text", (column) => column.notNull())
         .addColumn("password_hash", "text", (column) => column.notNull())
-        .addColumn("mfa_secret", "text", (column) => column.notNull())
         .addColumn("created_at", "timestamptz", (column) => column.notNull())
         .execute();
+
+      // Drop mfa_secret if it exists (leftover from TOTP implementation)
+      await sql`
+        ALTER TABLE auth_users DROP COLUMN IF EXISTS mfa_secret
+      `.execute(this.db);
 
       await this.db.schema
         .createTable("auth_login_challenges")
         .ifNotExists()
         .addColumn("id", "text", (column) => column.primaryKey())
         .addColumn("user_id", "text", (column) => column.notNull())
+        .addColumn("otp_code_hash", "text", (column) => column.notNull())
+        .addColumn("attempts", "integer", (column) =>
+          column.notNull().defaultTo(0),
+        )
         .addColumn("expires_at", "timestamptz", (column) => column.notNull())
         .addColumn("created_at", "timestamptz", (column) =>
           column.notNull().defaultTo(sql`NOW()`),
@@ -200,6 +217,13 @@ export class AuthRepository implements OnModuleInit, OnModuleDestroy {
           (constraint) => constraint.onDelete("cascade"),
         )
         .execute();
+
+      // Add otp_code_hash and attempts if the table existed without them
+      await sql`
+        ALTER TABLE auth_login_challenges
+          ADD COLUMN IF NOT EXISTS otp_code_hash text,
+          ADD COLUMN IF NOT EXISTS attempts integer NOT NULL DEFAULT 0
+      `.execute(this.db);
 
       await this.db.schema
         .createIndex("idx_auth_login_challenges_expires_at")
