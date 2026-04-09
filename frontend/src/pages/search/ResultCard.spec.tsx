@@ -83,8 +83,8 @@ describe('ResultCard', () => {
     expect(screen.getByText(/Zona Hotelera/)).toBeInTheDocument();
   });
 
-  it('shows per-night price using priceUsd when available (280 USD → COP)', () => {
-    // 280 USD * 4200 COP/USD = 1,176,000 COP — look for "176"
+  it('shows estimatedTotalUsd as main price (1300 USD → COP)', () => {
+    // estimatedTotalUsd=1300, 1300*4200=5,460,000 COP — look for "460"
     renderCard(
       <ResultCard
         result={makeResult()}
@@ -94,11 +94,11 @@ describe('ResultCard', () => {
         onBook={jest.fn()}
       />,
     );
-    expect(screen.getByText(/176/)).toBeInTheDocument();
+    expect(screen.getByText(/460/)).toBeInTheDocument();
   });
 
-  it('shows per-night price using basePriceUsd when priceUsd is null (320 USD → COP)', () => {
-    // 320 USD * 4200 = 1,344,000 COP — look for "344"
+  it('shows estimatedTotalUsd even when priceUsd is null', () => {
+    // estimatedTotalUsd=1300, 1300*4200=5,460,000 COP — look for "460"
     renderCard(
       <ResultCard
         result={makeResult({
@@ -114,22 +114,20 @@ describe('ResultCard', () => {
         onBook={jest.fn()}
       />,
     );
-    expect(screen.getByText(/344/)).toBeInTheDocument();
+    expect(screen.getByText(/460/)).toBeInTheDocument();
   });
 
-  it('shows estimated total label with "total" when dates are provided (nights > 0)', () => {
-    // estimatedTotalUsd=1300, 1300*4200=5,460,000 — look for "460"
+  it('shows nights label when dates are provided (nights > 0)', () => {
     renderCard(
       <ResultCard
-        result={makeResult({ bestRoom: { roomId: 'r1', roomType: 'suite', bedType: 'king', capacity: 2, basePriceUsd: 320, priceUsd: 280, taxRatePct: 16, estimatedTotalUsd: 1300, hasFlatFees: false } })}
+        result={makeResult()}
         nights={4}
         amenityLabels={amenityLabels}
         roomTypeLabels={roomTypeLabels}
         onBook={jest.fn()}
       />,
     );
-    expect(screen.getByText(/total/)).toBeInTheDocument();
-    expect(screen.getByText(/460/)).toBeInTheDocument();
+    expect(screen.getByText(/4 noches/)).toBeInTheDocument();
   });
 
   it('shows incl. impuestos label when no dates (nights=0)', () => {
@@ -177,7 +175,7 @@ describe('ResultCard', () => {
     expect(screen.queryByText(/cargos/)).not.toBeInTheDocument();
   });
 
-  it('shows "flat fees may apply" note when no dates (nights=0)', () => {
+  it('shows "por noche, incl. impuestos" when nights=0 and no flat fees', () => {
     renderCard(
       <ResultCard
         result={makeResult()}
@@ -187,8 +185,8 @@ describe('ResultCard', () => {
         onBook={jest.fn()}
       />,
     );
-    // dateless mode always shows the flat fees may apply note
-    expect(screen.getByText(/Cargos adicionales/)).toBeInTheDocument();
+    expect(screen.getByText(/por noche/)).toBeInTheDocument();
+    expect(screen.getByText(/incl\. impuestos/)).toBeInTheDocument();
   });
 
   it('shows at most 3 amenities', () => {
