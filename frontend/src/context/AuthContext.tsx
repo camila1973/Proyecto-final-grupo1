@@ -1,22 +1,11 @@
-import { createContext, useContext, useState } from 'react';
-
-type AuthUser = {
-  id: string;
-  email: string;
-  role: string;
-};
+import { useState } from 'react';
+import { AuthContext } from './auth-context';
+import type { AuthUser } from './auth-context';
 
 type AuthState = {
   token: string | null;
   user: AuthUser | null;
 };
-
-type AuthContextValue = AuthState & {
-  login: (token: string, user: AuthUser) => void;
-  logout: () => void;
-};
-
-const AuthContext = createContext<AuthContextValue | null>(null);
 
 function loadFromStorage(): AuthState {
   try {
@@ -51,10 +40,4 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       {children}
     </AuthContext.Provider>
   );
-}
-
-export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used inside AuthProvider');
-  return ctx;
 }

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from '@tanstack/react-router';
 import { useLocale, LANGUAGES, type Language } from '../context/LocaleContext';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import Button from '@mui/material/Button';
 
 export default function Navbar() {

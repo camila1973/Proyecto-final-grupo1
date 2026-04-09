@@ -5,7 +5,7 @@ import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
 import Alert from '@mui/material/Alert';
 import { API_BASE } from '../env';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 
 type MfaSearch = { challengeId: string };
 
