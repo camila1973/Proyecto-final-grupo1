@@ -63,3 +63,5 @@ Thumbs.db
 *.pem
 .cache
 .nx/polygraph
+.claude/worktrees
+.claude/settings.local.json
