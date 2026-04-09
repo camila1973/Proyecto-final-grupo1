@@ -97,6 +97,7 @@ services:
       NODE_ENV: production
       PORT: 3001
       DATABASE_URL: postgres://postgres:postgres@auth-db:5432/travelhub?sslmode=disable
+      NOTIFICATION_SERVICE_URL: http://notification-service:3006
     depends_on:
       auth-db:
         condition: service_healthy

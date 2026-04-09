@@ -4,7 +4,14 @@ import {
   Injectable,
   UnauthorizedException,
 } from "@nestjs/common";
-import { createHmac, randomBytes, scryptSync, timingSafeEqual } from "crypto";
+import {
+  createHash,
+  createHmac,
+  randomBytes,
+  randomInt,
+  scryptSync,
+  timingSafeEqual,
+} from "crypto";
 import type {
   LoginBody,
   LoginMfaResponse,
@@ -22,7 +29,8 @@ export class AuthService {
   private readonly jwtSecret =
     process.env.AUTH_JWT_SECRET ?? "travelhub-dev-jwt-secret-change-me";
   private readonly jwtIssuer = "travelhub-auth-service";
-  private readonly mfaIssuer = "TravelHub";
+  private readonly notificationServiceUrl =
+    process.env.NOTIFICATION_SERVICE_URL ?? "http://localhost:3006";
 
   constructor(private readonly authRepository: AuthRepository) {}
 
@@ -37,7 +45,6 @@ export class AuthService {
     }
 
     const userId = this.generateId("usr");
-    const mfaSecret = this.generateBase32Secret();
     const createdAt = new Date().toISOString();
 
     await this.authRepository.createUser({
@@ -45,7 +52,6 @@ export class AuthService {
       email: normalizedEmail,
       role: body.role ?? "guest",
       passwordHash: this.hashPassword(body.password),
-      mfaSecret,
       createdAt,
     });
 
@@ -54,12 +60,6 @@ export class AuthService {
       email: normalizedEmail,
       role: body.role ?? "guest",
       createdAt,
-      mfa: {
-        required: true,
-        type: "totp",
-        secret: mfaSecret,
-        otpauthUrl: this.getOtpAuthUrl(normalizedEmail, mfaSecret),
-      },
     };
   }
 
@@ -74,17 +74,23 @@ export class AuthService {
 
     await this.authRepository.purgeExpiredChallenges();
 
+    const otp = this.generateOtp();
+    const otpHash = this.hashOtp(otp);
     const challengeId = this.generateId("mfa");
+
     await this.authRepository.createChallenge({
       id: challengeId,
       userId: user.id,
+      otpCodeHash: otpHash,
       expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
     });
+
+    await this.sendOtpEmail(user.email, user.id, otp);
 
     return {
       mfaRequired: true,
       challengeId,
-      challengeType: "totp",
+      challengeType: "email_otp",
       expiresIn: 300,
       user: {
         id: user.id,
@@ -111,14 +117,34 @@ export class AuthService {
       throw new UnauthorizedException("Login challenge expired");
     }
 
+    if (challenge.attempts >= 3) {
+      await this.authRepository.deleteChallengeById(challenge.id);
+      throw new UnauthorizedException(
+        "Too many failed attempts, please login again",
+      );
+    }
+
     const user = await this.authRepository.findUserById(challenge.user_id);
     if (!user) {
       await this.authRepository.deleteChallengeById(challenge.id);
       throw new UnauthorizedException("Invalid login challenge");
     }
 
-    const isCodeValid = this.verifyTotpCode(user.mfa_secret, body.code);
+    const submittedHash = this.hashOtp(body.code.trim());
+    const isCodeValid = timingSafeEqual(
+      Buffer.from(submittedHash, "hex"),
+      Buffer.from(challenge.otp_code_hash, "hex"),
+    );
+
     if (!isCodeValid) {
+      const newAttempts = challenge.attempts + 1;
+      if (newAttempts >= 3) {
+        await this.authRepository.deleteChallengeById(challenge.id);
+        throw new UnauthorizedException(
+          "Too many failed attempts, please login again",
+        );
+      }
+      await this.authRepository.incrementChallengeAttempts(challenge.id);
       throw new UnauthorizedException("Invalid MFA code");
     }
 
@@ -148,6 +174,37 @@ export class AuthService {
       role: user.role,
       createdAt: user.created_at,
     }));
+  }
+
+  private generateOtp(): string {
+    return randomInt(0, 1_000_000).toString().padStart(6, "0");
+  }
+
+  private hashOtp(otp: string): string {
+    return createHash("sha256").update(otp).digest("hex");
+  }
+
+  private async sendOtpEmail(
+    email: string,
+    userId: string,
+    otp: string,
+  ): Promise<void> {
+    try {
+      await fetch(`${this.notificationServiceUrl}/notifications/send`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: email,
+          userId,
+          channel: "email",
+          subject: "Your TravelHub verification code",
+          message: `Your verification code is: ${otp}\n\nThis code expires in 5 minutes.`,
+        }),
+      });
+    } catch {
+      // Non-blocking: log but don't fail the login flow
+      console.error("Failed to send OTP email");
+    }
   }
 
   private createAccessToken(user: PublicUser): string {
@@ -207,96 +264,6 @@ export class AuthService {
 
   private generateId(prefix: string): string {
     return `${prefix}_${randomBytes(8).toString("hex")}`;
-  }
-
-  private getOtpAuthUrl(email: string, secret: string): string {
-    const label = encodeURIComponent(`${this.mfaIssuer}:${email}`);
-    const issuer = encodeURIComponent(this.mfaIssuer);
-    return `otpauth://totp/${label}?secret=${secret}&issuer=${issuer}&algorithm=SHA1&digits=6&period=30`;
-  }
-
-  private generateBase32Secret(): string {
-    const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
-    const bytes = randomBytes(20);
-    let bits = 0;
-    let value = 0;
-    let output = "";
-
-    for (const byte of bytes) {
-      value = (value << 8) | byte;
-      bits += 8;
-      while (bits >= 5) {
-        output += alphabet[(value >>> (bits - 5)) & 31];
-        bits -= 5;
-      }
-    }
-
-    if (bits > 0) {
-      output += alphabet[(value << (5 - bits)) & 31];
-    }
-
-    return output;
-  }
-
-  private verifyTotpCode(secret: string, code: string): boolean {
-    const sanitizedCode = code.replace(/\s/g, "");
-    if (!/^\d{6}$/.test(sanitizedCode)) {
-      return false;
-    }
-
-    const currentCounter = Math.floor(Date.now() / 1000 / 30);
-    for (let offset = -1; offset <= 1; offset++) {
-      const expectedCode = this.generateTotpCode(
-        secret,
-        currentCounter + offset,
-      );
-      if (
-        timingSafeEqual(Buffer.from(expectedCode), Buffer.from(sanitizedCode))
-      ) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  private generateTotpCode(secret: string, counter: number): string {
-    const key = this.decodeBase32(secret);
-    const counterBuffer = Buffer.alloc(8);
-    counterBuffer.writeBigUInt64BE(BigInt(counter));
-
-    const hmac = createHmac("sha1", key).update(counterBuffer).digest();
-    const offset = hmac[hmac.length - 1] & 0x0f;
-    const binaryCode =
-      ((hmac[offset] & 0x7f) << 24) |
-      ((hmac[offset + 1] & 0xff) << 16) |
-      ((hmac[offset + 2] & 0xff) << 8) |
-      (hmac[offset + 3] & 0xff);
-
-    return (binaryCode % 1_000_000).toString().padStart(6, "0");
-  }
-
-  private decodeBase32(secret: string): Buffer {
-    const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
-    const normalized = secret.replace(/=+$/g, "").toUpperCase();
-
-    let bits = 0;
-    let value = 0;
-    const bytes: number[] = [];
-
-    for (const char of normalized) {
-      const index = alphabet.indexOf(char);
-      if (index === -1) {
-        throw new BadRequestException("Invalid MFA secret");
-      }
-      value = (value << 5) | index;
-      bits += 5;
-      if (bits >= 8) {
-        bytes.push((value >>> (bits - 8)) & 0xff);
-        bits -= 8;
-      }
-    }
-
-    return Buffer.from(bytes);
   }
 
   private base64UrlEncode(input: string): string {

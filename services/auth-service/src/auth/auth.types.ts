@@ -24,18 +24,12 @@ export type PublicUser = {
 
 export type RegisterResponse = PublicUser & {
   createdAt: string;
-  mfa: {
-    required: true;
-    type: "totp";
-    secret: string;
-    otpauthUrl: string;
-  };
 };
 
 export type LoginResponse = {
   mfaRequired: true;
   challengeId: string;
-  challengeType: "totp";
+  challengeType: "email_otp";
   expiresIn: 300;
   user: PublicUser;
 };
@@ -54,12 +48,13 @@ export type DbUser = {
   email: string;
   role: UserRole;
   password_hash: string;
-  mfa_secret: string;
   created_at: string;
 };
 
 export type DbChallenge = {
   id: string;
   user_id: string;
+  otp_code_hash: string;
+  attempts: number;
   expires_at: string;
 };
