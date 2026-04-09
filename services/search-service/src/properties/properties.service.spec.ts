@@ -30,27 +30,28 @@ const mockRoom = {
   flat_fee_per_stay_usd: "0",
 };
 
-const mockProperty = {
-  id: "p1",
-  name: "Hotel A",
-  city: "Lisbon",
-  countryCode: "PT",
-  neighborhood: null,
-  stars: 4,
-  rating: 4.0,
-  reviewCount: 10,
-  thumbnailUrl: "",
-  amenities: ["wifi"],
-  bestRoom: {
-    roomId: "r1",
-    roomType: "suite",
-    bedType: "king",
-    capacity: 2,
-    basePriceUsd: 200,
-    priceUsd: 180,
-    taxRatePct: 0,
-    estimatedTotalUsd: 720,
-    hasFlatFees: false,
+const mockRoomResult = {
+  roomId: "r1",
+  roomType: "suite",
+  bedType: "king",
+  viewType: "ocean",
+  capacity: 2,
+  basePriceUsd: 200,
+  priceUsd: 180,
+  taxRatePct: 0,
+  estimatedTotalUsd: 720,
+  hasFlatFees: false,
+  property: {
+    id: "p1",
+    name: "Hotel A",
+    city: "Lisbon",
+    countryCode: "PT",
+    neighborhood: null,
+    stars: 4,
+    rating: 4.0,
+    reviewCount: 10,
+    thumbnailUrl: "",
+    amenities: ["wifi"],
   },
 };
 
@@ -67,8 +68,11 @@ const baseDto: SearchPropertiesDto = {
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
 function makeServices(candidateRows = [mockRoom]) {
-  const repo: jest.Mocked<Pick<PropertiesRepository, "findCandidates">> = {
+  const repo: jest.Mocked<
+    Pick<PropertiesRepository, "findCandidates" | "findByPropertyId">
+  > = {
     findCandidates: jest.fn().mockResolvedValue(candidateRows),
+    findByPropertyId: jest.fn().mockResolvedValue(candidateRows),
   };
 
   const cache: jest.Mocked<Pick<CacheService, "get" | "set" | "scanDel">> = {
@@ -87,8 +91,9 @@ function makeServices(candidateRows = [mockRoom]) {
       stars: [],
       priceRange: { min: 180, max: 180, currency: "USD" },
     }),
-    selectBestRoomPerProperty: jest.fn().mockReturnValue([mockProperty]),
-    sortProperties: jest.fn().mockReturnValue([mockProperty]),
+    selectCheapestRoomPerProperty: jest.fn().mockReturnValue([mockRoomResult]),
+    sortRooms: jest.fn().mockReturnValue([mockRoomResult]),
+    mapAllRooms: jest.fn().mockReturnValue([mockRoomResult]),
   } as any;
 
   const inventoryClient: jest.Mocked<
@@ -142,10 +147,10 @@ describe("PropertiesService", () => {
       expect(typeof result.meta.searchId).toBe("string");
     });
 
-    it("returns the sorted properties as results", async () => {
+    it("returns the sorted rooms as results", async () => {
       const { service } = makeServices();
       const result = (await service.searchProperties(baseDto)) as any;
-      expect(result.results).toEqual([mockProperty]);
+      expect(result.results).toEqual([mockRoomResult]);
     });
 
     it("stores serialised response in cache with 5-minute TTL", async () => {
@@ -219,11 +224,11 @@ describe("PropertiesService", () => {
       expect(result.facets.priceRange.currency).toBe("USD");
     });
 
-    it("passes computed nights to selectBestRoomPerProperty", async () => {
+    it("passes computed nights to selectCheapestRoomPerProperty", async () => {
       const { service, mockFacets } = makeServices();
       // checkIn=2026-04-01, checkOut=2026-04-05 → 4 nights
       await service.searchProperties(baseDto);
-      expect(mockFacets.selectBestRoomPerProperty).toHaveBeenCalledWith(
+      expect(mockFacets.selectCheapestRoomPerProperty).toHaveBeenCalledWith(
         expect.anything(),
         4,
       );
@@ -236,7 +241,7 @@ describe("PropertiesService", () => {
         checkIn: undefined,
         checkOut: undefined,
       });
-      expect(mockFacets.selectBestRoomPerProperty).toHaveBeenCalledWith(
+      expect(mockFacets.selectCheapestRoomPerProperty).toHaveBeenCalledWith(
         expect.anything(),
         0,
       );
@@ -291,11 +296,11 @@ describe("PropertiesService", () => {
   describe("pagination", () => {
     it("slices results according to page and pageSize", async () => {
       const { service, mockFacets } = makeServices();
-      const props = Array.from({ length: 7 }, (_, i) => ({
-        ...mockProperty,
-        id: `p${i}`,
+      const rooms = Array.from({ length: 7 }, (_, i) => ({
+        ...mockRoomResult,
+        property: { ...mockRoomResult.property, id: `p${i}` },
       }));
-      mockFacets.sortProperties.mockReturnValue(props);
+      mockFacets.sortRooms.mockReturnValue(rooms);
 
       const result = (await service.searchProperties({
         ...baseDto,
@@ -304,14 +309,14 @@ describe("PropertiesService", () => {
       })) as any;
 
       expect(result.results).toHaveLength(3);
-      expect(result.results[0].id).toBe("p3");
+      expect(result.results[0].property.id).toBe("p3");
       expect(result.meta.total).toBe(7);
       expect(result.meta.totalPages).toBe(3);
     });
 
     it("returns empty results for a page beyond total", async () => {
       const { service, mockFacets } = makeServices();
-      mockFacets.sortProperties.mockReturnValue([mockProperty]);
+      mockFacets.sortRooms.mockReturnValue([mockRoomResult]);
 
       const result = (await service.searchProperties({
         ...baseDto,
@@ -402,6 +407,83 @@ describe("PropertiesService", () => {
       const key2 = (cache.set as jest.Mock).mock.calls[0][0] as string;
 
       expect(key1).toBe(key2);
+    });
+  });
+
+  describe("getPropertyRooms", () => {
+    it("queries repo with propertyId and passes dates/guests through", async () => {
+      const { service, repo } = makeServices();
+      await service.getPropertyRooms("p1", {
+        checkIn: "2026-04-01",
+        checkOut: "2026-04-05",
+        guests: 2,
+      });
+      expect(repo.findByPropertyId).toHaveBeenCalledWith("p1", {
+        checkIn: "2026-04-01",
+        checkOut: "2026-04-05",
+        guests: 2,
+      });
+    });
+
+    it("hoists shared property info to top level", async () => {
+      const { service } = makeServices();
+      const result = (await service.getPropertyRooms("p1", {})) as any;
+      expect(result.property).toEqual(mockRoomResult.property);
+    });
+
+    it("strips property and _partnerId from each room entry", async () => {
+      const { service } = makeServices();
+      const result = (await service.getPropertyRooms("p1", {})) as any;
+      expect(result.rooms[0].property).toBeUndefined();
+      expect(result.rooms[0]._partnerId).toBeUndefined();
+    });
+
+    it("room entries include roomId, roomType, bedType, viewType, pricing fields", async () => {
+      const { service } = makeServices();
+      const result = (await service.getPropertyRooms("p1", {})) as any;
+      const room = result.rooms[0];
+      expect(room.roomId).toBe(mockRoomResult.roomId);
+      expect(room.roomType).toBe(mockRoomResult.roomType);
+      expect(room.bedType).toBe(mockRoomResult.bedType);
+      expect(room.viewType).toBe(mockRoomResult.viewType);
+      expect(room.estimatedTotalUsd).toBeDefined();
+    });
+
+    it("returns { property: null, rooms: [] } when no rooms found", async () => {
+      const { service, mockFacets } = makeServices();
+      mockFacets.mapAllRooms.mockReturnValue([]);
+      const result = (await service.getPropertyRooms("p1", {})) as any;
+      expect(result.property).toBeNull();
+      expect(result.rooms).toEqual([]);
+    });
+
+    it("calls inventoryClient when dates are provided", async () => {
+      const { service, inventoryClient } = makeServices();
+      await service.getPropertyRooms("p1", {
+        checkIn: "2026-04-01",
+        checkOut: "2026-04-05",
+      });
+      expect(inventoryClient.checkAvailability).toHaveBeenCalledWith({
+        roomIds: [mockRoom.room_id],
+        fromDate: "2026-04-01",
+        toDate: "2026-04-05",
+      });
+    });
+
+    it("skips inventoryClient when no dates provided", async () => {
+      const { service, inventoryClient } = makeServices();
+      await service.getPropertyRooms("p1", {});
+      expect(inventoryClient.checkAvailability).not.toHaveBeenCalled();
+    });
+
+    it("passes computed nights to mapAllRooms", async () => {
+      const { service, mockFacets } = makeServices();
+      await service.getPropertyRooms("p1", {
+        checkIn: "2026-04-01",
+        checkOut: "2026-04-05",
+      });
+      // 4 nights
+      expect(mockFacets.mapAllRooms).toHaveBeenCalledWith(expect.anything(), 4);
     });
   });
 });

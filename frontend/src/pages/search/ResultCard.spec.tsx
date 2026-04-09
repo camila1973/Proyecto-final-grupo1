@@ -15,30 +15,35 @@ function renderCard(ui: React.ReactElement) {
 const amenityLabels = { wifi: 'WiFi', pool: 'Piscina', spa: 'Spa', gym: 'Gimnasio' };
 const roomTypeLabels = { suite: 'Suite', standard: 'Estándar', deluxe: 'Deluxe' };
 
-function makeResult(overrides: Partial<SearchResult> = {}): SearchResult {
+function makeResult(
+  overrides: Partial<Omit<SearchResult, 'property'>> & { property?: Partial<SearchResult['property']> } = {},
+): SearchResult {
+  const { property: propertyOverrides, ...roomOverrides } = overrides;
   return {
-    id: 'p1',
-    name: 'Gran Caribe Resort',
-    city: 'Cancún',
-    countryCode: 'MX',
-    neighborhood: 'Zona Hotelera',
-    thumbnailUrl: 'https://placehold.co/400x300',
-    amenities: ['wifi', 'pool', 'spa', 'gym'],
-    stars: 5,
-    rating: 4.7,
-    reviewCount: 842,
-    bestRoom: {
-      roomId: 'r1',
-      roomType: 'suite',
-      bedType: 'king',
-      capacity: 2,
-      basePriceUsd: 320,
-      priceUsd: 280,
-      taxRatePct: 16,
-      estimatedTotalUsd: 1300,
-      hasFlatFees: false,
+    roomId: 'r1',
+    roomType: 'suite',
+    bedType: 'king',
+    viewType: 'city',
+    capacity: 2,
+    basePriceUsd: 320,
+    priceUsd: 280,
+    taxRatePct: 16,
+    estimatedTotalUsd: 1300,
+    hasFlatFees: false,
+    ...roomOverrides,
+    property: {
+      id: 'p1',
+      name: 'Gran Caribe Resort',
+      city: 'Cancún',
+      countryCode: 'MX',
+      neighborhood: 'Zona Hotelera',
+      thumbnailUrl: 'https://placehold.co/400x300',
+      amenities: ['wifi', 'pool', 'spa', 'gym'],
+      stars: 5,
+      rating: 4.7,
+      reviewCount: 842,
+      ...propertyOverrides,
     },
-    ...overrides,
   };
 }
 
@@ -73,7 +78,7 @@ describe('ResultCard', () => {
   it('renders neighborhood when present', () => {
     renderCard(
       <ResultCard
-        result={makeResult({ neighborhood: 'Zona Hotelera' })}
+        result={makeResult({ property: { neighborhood: 'Zona Hotelera' } })}
         nights={4}
         amenityLabels={amenityLabels}
         roomTypeLabels={roomTypeLabels}
@@ -101,13 +106,7 @@ describe('ResultCard', () => {
     // estimatedTotalUsd=1300, 1300*4200=5,460,000 COP — look for "460"
     renderCard(
       <ResultCard
-        result={makeResult({
-          bestRoom: {
-            roomId: 'r1', roomType: 'suite', bedType: 'king', capacity: 2,
-            basePriceUsd: 320, priceUsd: null,
-            taxRatePct: 16, estimatedTotalUsd: 1300, hasFlatFees: false,
-          },
-        })}
+        result={makeResult({ priceUsd: null })}
         nights={3}
         amenityLabels={amenityLabels}
         roomTypeLabels={roomTypeLabels}
@@ -146,13 +145,7 @@ describe('ResultCard', () => {
   it('shows flat fees disclaimer when hasFlatFees=true and nights > 0', () => {
     renderCard(
       <ResultCard
-        result={makeResult({
-          bestRoom: {
-            roomId: 'r1', roomType: 'suite', bedType: 'king', capacity: 2,
-            basePriceUsd: 320, priceUsd: 280,
-            taxRatePct: 16, estimatedTotalUsd: 1350, hasFlatFees: true,
-          },
-        })}
+        result={makeResult({ estimatedTotalUsd: 1350, hasFlatFees: true })}
         nights={4}
         amenityLabels={amenityLabels}
         roomTypeLabels={roomTypeLabels}
@@ -165,7 +158,7 @@ describe('ResultCard', () => {
   it('does not show flat fees disclaimer when hasFlatFees=false', () => {
     renderCard(
       <ResultCard
-        result={makeResult({ bestRoom: { roomId: 'r1', roomType: 'suite', bedType: 'king', capacity: 2, basePriceUsd: 320, priceUsd: 280, taxRatePct: 16, estimatedTotalUsd: 1300, hasFlatFees: false } })}
+        result={makeResult({ hasFlatFees: false })}
         nights={4}
         amenityLabels={amenityLabels}
         roomTypeLabels={roomTypeLabels}
@@ -192,7 +185,7 @@ describe('ResultCard', () => {
   it('shows at most 3 amenities', () => {
     renderCard(
       <ResultCard
-        result={makeResult({ amenities: ['wifi', 'pool', 'spa', 'gym'] })}
+        result={makeResult({ property: { amenities: ['wifi', 'pool', 'spa', 'gym'] } })}
         nights={2}
         amenityLabels={amenityLabels}
         roomTypeLabels={roomTypeLabels}
@@ -208,7 +201,7 @@ describe('ResultCard', () => {
   it('resolves amenity labels via the label map', () => {
     renderCard(
       <ResultCard
-        result={makeResult({ amenities: ['pool'] })}
+        result={makeResult({ property: { amenities: ['pool'] } })}
         nights={2}
         amenityLabels={amenityLabels}
         roomTypeLabels={roomTypeLabels}
@@ -221,7 +214,7 @@ describe('ResultCard', () => {
   it('falls back to code when amenity label is not in map', () => {
     renderCard(
       <ResultCard
-        result={makeResult({ amenities: ['beach_access'] })}
+        result={makeResult({ property: { amenities: ['beach_access'] } })}
         nights={2}
         amenityLabels={amenityLabels}
         roomTypeLabels={roomTypeLabels}

@@ -16,8 +16,6 @@ const mockProperty = {
   city: 'Bogotá',
   countryCode: 'CO',
   neighborhood: 'Chapinero',
-  lat: 4.65,
-  lon: -74.05,
   stars: 4,
   rating: 4.5,
   reviewCount: 120,
@@ -27,25 +25,23 @@ const mockProperty = {
 
 const mockRooms = [
   {
-    id: 'r1',
-    propertyId: 'prop_001',
+    roomId: 'r1',
     roomType: 'suite',
     bedType: 'king',
     viewType: 'city',
     capacity: 2,
-    totalRooms: 5,
-    basePriceUsd: '150.00',
-    status: 'active',
+    basePriceUsd: 150,
+    priceUsd: 130,
+    taxRatePct: 16,
+    estimatedTotalUsd: 1205.6,
+    hasFlatFees: false,
   },
 ];
 
-function mockFetch(propertyOk = true, rooms = mockRooms) {
-  (global.fetch as jest.Mock).mockImplementation((url: string) => {
-    if (url.includes('/rooms')) {
-      return Promise.resolve({ ok: true, json: () => Promise.resolve(rooms) });
-    }
-    if (!propertyOk) return Promise.resolve({ ok: false });
-    return Promise.resolve({ ok: true, json: () => Promise.resolve(mockProperty) });
+function mockFetch(ok = true, rooms = mockRooms, property = mockProperty) {
+  (global.fetch as jest.Mock).mockResolvedValue({
+    ok,
+    json: () => Promise.resolve({ property: ok ? property : null, rooms: ok ? rooms : [] }),
   });
 }
 
@@ -84,6 +80,22 @@ describe('PropertyDetailPage', () => {
     expect(await screen.findByText(es.property_detail.loading)).toBeInTheDocument();
   });
 
+  it('calls the search rooms endpoint with propertyId', async () => {
+    mockFetch();
+    renderPage('prop_001');
+    await screen.findByText('Hotel Test');
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/search/properties/prop_001/rooms'),
+    );
+  });
+
+  it('makes only one fetch call', async () => {
+    mockFetch();
+    renderPage();
+    await screen.findByText('Hotel Test');
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
+
   it('shows property details after successful fetch', async () => {
     mockFetch();
     renderPage();
@@ -94,7 +106,16 @@ describe('PropertyDetailPage', () => {
   });
 
   it('shows error state when fetch fails', async () => {
-    mockFetch(false);
+    (global.fetch as jest.Mock).mockResolvedValue({ ok: false });
+    renderPage();
+    expect(await screen.findByText(es.property_detail.error)).toBeInTheDocument();
+  });
+
+  it('shows error state when property is null', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ property: null, rooms: [] }),
+    });
     renderPage();
     expect(await screen.findByText(es.property_detail.error)).toBeInTheDocument();
   });
@@ -109,5 +130,18 @@ describe('PropertyDetailPage', () => {
     mockFetch();
     renderPage();
     expect(await screen.findByText('Reservar')).toBeInTheDocument();
+  });
+
+  it('renders room type label', async () => {
+    mockFetch();
+    renderPage();
+    expect(await screen.findByText('Suite')).toBeInTheDocument();
+  });
+
+  it('shows estimatedTotalUsd as the total price (taxes included)', async () => {
+    mockFetch();
+    renderPage();
+    // estimatedTotalUsd = 1205.6 → formatted; label must include taxes note
+    expect(await screen.findByText(/impuestos incl\./)).toBeInTheDocument();
   });
 });

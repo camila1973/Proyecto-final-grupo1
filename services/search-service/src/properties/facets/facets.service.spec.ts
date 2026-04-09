@@ -252,16 +252,16 @@ describe("FacetsService", () => {
     });
   });
 
-  // ─── selectBestRoomPerProperty ────────────────────────────────────────────
+  // ─── selectCheapestRoomPerProperty ───────────────────────────────────────
 
-  describe("selectBestRoomPerProperty", () => {
+  describe("selectCheapestRoomPerProperty", () => {
     it("returns one result per property", () => {
       const rooms = [
         makeRoom({ room_id: "r1", property_id: "p1", base_price_usd: "100" }),
         makeRoom({ room_id: "r2", property_id: "p1", base_price_usd: "80" }),
         makeRoom({ room_id: "r3", property_id: "p2", base_price_usd: "200" }),
       ];
-      expect(service.selectBestRoomPerProperty(rooms)).toHaveLength(2);
+      expect(service.selectCheapestRoomPerProperty(rooms)).toHaveLength(2);
     });
 
     it("selects the cheapest room per property by base_price_usd", () => {
@@ -269,8 +269,8 @@ describe("FacetsService", () => {
         makeRoom({ room_id: "r1", property_id: "p1", base_price_usd: "200" }),
         makeRoom({ room_id: "r2", property_id: "p1", base_price_usd: "80" }),
       ];
-      const result = service.selectBestRoomPerProperty(rooms);
-      expect(result[0].bestRoom.roomId).toBe("r2");
+      const result = service.selectCheapestRoomPerProperty(rooms);
+      expect(result[0].roomId).toBe("r2");
     });
 
     it("prefers avail_price_usd over base_price_usd for sorting", () => {
@@ -288,14 +288,14 @@ describe("FacetsService", () => {
           avail_price_usd: "100",
         }),
       ];
-      const result = service.selectBestRoomPerProperty(rooms);
-      expect(result[0].bestRoom.roomId).toBe("r2");
+      const result = service.selectCheapestRoomPerProperty(rooms);
+      expect(result[0].roomId).toBe("r2");
     });
 
     it("exposes priceUsd as null when no availability", () => {
       const rooms = [makeRoom({ avail_price_usd: null })];
-      const result = service.selectBestRoomPerProperty(rooms);
-      expect(result[0].bestRoom.priceUsd).toBeNull();
+      const result = service.selectCheapestRoomPerProperty(rooms);
+      expect(result[0].priceUsd).toBeNull();
     });
 
     it("unions amenities across all rooms of a property", () => {
@@ -311,8 +311,8 @@ describe("FacetsService", () => {
           amenities: ["gym", "spa"],
         }),
       ];
-      const result = service.selectBestRoomPerProperty(rooms);
-      expect(result[0].amenities).toEqual(
+      const result = service.selectCheapestRoomPerProperty(rooms);
+      expect(result[0].property.amenities).toEqual(
         expect.arrayContaining(["wifi", "pool", "gym", "spa"]),
       );
     });
@@ -331,9 +331,9 @@ describe("FacetsService", () => {
           flat_fee_per_stay_usd: "30",
         }),
       ];
-      const result = service.selectBestRoomPerProperty(rooms, 0);
+      const result = service.selectCheapestRoomPerProperty(rooms, 0);
       // 150 × 1.16 + 10 = 174 + 10 = 184
-      expect(result[0].bestRoom.estimatedTotalUsd).toBeCloseTo(184, 2);
+      expect(result[0].estimatedTotalUsd).toBeCloseTo(184, 2);
     });
 
     it("dated (nights=3): price × nights × (1 + tax/100) + flatNight × nights + flatStay", () => {
@@ -345,33 +345,33 @@ describe("FacetsService", () => {
           flat_fee_per_stay_usd: "30",
         }),
       ];
-      const result = service.selectBestRoomPerProperty(rooms, 3);
+      const result = service.selectCheapestRoomPerProperty(rooms, 3);
       // 150 × 3 × 1.16 + 10 × 3 + 30 = 522 + 30 + 30 = 582
-      expect(result[0].bestRoom.estimatedTotalUsd).toBeCloseTo(582, 2);
+      expect(result[0].estimatedTotalUsd).toBeCloseTo(582, 2);
     });
 
     it("hasFlatFees=true when flat_fee_per_night_usd > 0", () => {
       const rooms = [
         makeRoom({ flat_fee_per_night_usd: "10", flat_fee_per_stay_usd: "0" }),
       ];
-      const result = service.selectBestRoomPerProperty(rooms, 0);
-      expect(result[0].bestRoom.hasFlatFees).toBe(true);
+      const result = service.selectCheapestRoomPerProperty(rooms, 0);
+      expect(result[0].hasFlatFees).toBe(true);
     });
 
     it("hasFlatFees=true when flat_fee_per_stay_usd > 0", () => {
       const rooms = [
         makeRoom({ flat_fee_per_night_usd: "0", flat_fee_per_stay_usd: "50" }),
       ];
-      const result = service.selectBestRoomPerProperty(rooms, 0);
-      expect(result[0].bestRoom.hasFlatFees).toBe(true);
+      const result = service.selectCheapestRoomPerProperty(rooms, 0);
+      expect(result[0].hasFlatFees).toBe(true);
     });
 
     it("hasFlatFees=false when both flat fee columns are 0", () => {
       const rooms = [
         makeRoom({ flat_fee_per_night_usd: "0", flat_fee_per_stay_usd: "0" }),
       ];
-      const result = service.selectBestRoomPerProperty(rooms, 0);
-      expect(result[0].bestRoom.hasFlatFees).toBe(false);
+      const result = service.selectCheapestRoomPerProperty(rooms, 0);
+      expect(result[0].hasFlatFees).toBe(false);
     });
 
     it("Colombia (IVA 19% + INC 8% = 27%): correct per-night estimate", () => {
@@ -383,83 +383,179 @@ describe("FacetsService", () => {
           flat_fee_per_stay_usd: "0",
         }),
       ];
-      const result = service.selectBestRoomPerProperty(rooms, 0);
+      const result = service.selectCheapestRoomPerProperty(rooms, 0);
       // 200 × 1.27 = 254
-      expect(result[0].bestRoom.estimatedTotalUsd).toBeCloseTo(254, 2);
-      expect(result[0].bestRoom.taxRatePct).toBe(27);
+      expect(result[0].estimatedTotalUsd).toBeCloseTo(254, 2);
+      expect(result[0].taxRatePct).toBe(27);
     });
   });
 
-  // ─── sortProperties ───────────────────────────────────────────────────────
+  // ─── sortRooms ────────────────────────────────────────────────────────────
 
-  describe("sortProperties", () => {
-    const makeProperty = (
+  describe("sortRooms", () => {
+    const makeRoomResult = (
       id: string,
       price: number,
       stars: number,
       rating: number,
-    ): ReturnType<FacetsService["selectBestRoomPerProperty"]>[0] => ({
-      id: id,
-      name: `Hotel ${id}`,
-      city: "Lisbon",
-      countryCode: "PT",
-      neighborhood: null,
-      stars,
-      rating,
-      reviewCount: 10,
-      thumbnailUrl: "",
-      amenities: [],
-      bestRoom: {
-        roomId: `room-${id}`,
-        roomType: "suite",
-        bedType: "king",
-        capacity: 2,
-        basePriceUsd: price,
-        priceUsd: price,
-        taxRatePct: 0,
-        estimatedTotalUsd: price,
-        hasFlatFees: false,
+    ): ReturnType<FacetsService["selectCheapestRoomPerProperty"]>[0] => ({
+      roomId: `room-${id}`,
+      roomType: "suite",
+      bedType: "king",
+      viewType: "ocean",
+      capacity: 2,
+      basePriceUsd: price,
+      priceUsd: price,
+      taxRatePct: 0,
+      estimatedTotalUsd: price,
+      hasFlatFees: false,
+      property: {
+        id,
+        name: `Hotel ${id}`,
+        city: "Lisbon",
+        countryCode: "PT",
+        neighborhood: null,
+        stars,
+        rating,
+        reviewCount: 10,
+        thumbnailUrl: "",
+        amenities: [],
       },
     });
 
     it("sorts by price_asc", () => {
-      const props = [
-        makeProperty("p1", 200, 4, 4.0),
-        makeProperty("p2", 100, 3, 3.5),
+      const rooms = [
+        makeRoomResult("p1", 200, 4, 4.0),
+        makeRoomResult("p2", 100, 3, 3.5),
       ];
-      const sorted = service.sortProperties(props, "price_asc");
-      expect(sorted[0].id).toBe("p2");
+      const sorted = service.sortRooms(rooms, "price_asc");
+      expect(sorted[0].property.id).toBe("p2");
     });
 
     it("sorts by price_desc", () => {
-      const props = [
-        makeProperty("p1", 100, 4, 4.0),
-        makeProperty("p2", 200, 3, 3.5),
+      const rooms = [
+        makeRoomResult("p1", 100, 4, 4.0),
+        makeRoomResult("p2", 200, 3, 3.5),
       ];
-      const sorted = service.sortProperties(props, "price_desc");
-      expect(sorted[0].id).toBe("p2");
+      const sorted = service.sortRooms(rooms, "price_desc");
+      expect(sorted[0].property.id).toBe("p2");
     });
 
     it("sorts by stars_desc, then rating desc as tiebreaker", () => {
-      const props = [
-        makeProperty("p1", 100, 4, 3.5),
-        makeProperty("p2", 200, 4, 4.5),
-        makeProperty("p3", 150, 5, 3.0),
+      const rooms = [
+        makeRoomResult("p1", 100, 4, 3.5),
+        makeRoomResult("p2", 200, 4, 4.5),
+        makeRoomResult("p3", 150, 5, 3.0),
       ];
-      const sorted = service.sortProperties(props, "stars_desc");
-      expect(sorted[0].id).toBe("p3");
-      expect(sorted[1].id).toBe("p2");
-      expect(sorted[2].id).toBe("p1");
+      const sorted = service.sortRooms(rooms, "stars_desc");
+      expect(sorted[0].property.id).toBe("p3");
+      expect(sorted[1].property.id).toBe("p2");
+      expect(sorted[2].property.id).toBe("p1");
     });
 
     it("does not mutate the original array", () => {
-      const props = [
-        makeProperty("p1", 200, 4, 4.0),
-        makeProperty("p2", 100, 4, 4.0),
+      const rooms = [
+        makeRoomResult("p1", 200, 4, 4.0),
+        makeRoomResult("p2", 100, 4, 4.0),
       ];
-      const original = [...props];
-      service.sortProperties(props, "price_asc");
-      expect(props[0].id).toBe(original[0].id);
+      const original = [...rooms];
+      service.sortRooms(rooms, "price_asc");
+      expect(rooms[0].property.id).toBe(original[0].property.id);
+    });
+  });
+
+  // ─── mapAllRooms ──────────────────────────────────────────────────────────
+
+  describe("mapAllRooms", () => {
+    it("returns empty array when given no rooms", () => {
+      expect(service.mapAllRooms([])).toEqual([]);
+    });
+
+    it("returns one result per room (no grouping)", () => {
+      const rooms = [
+        makeRoom({ room_id: "r1", property_id: "p1", base_price_usd: "100" }),
+        makeRoom({ room_id: "r2", property_id: "p1", base_price_usd: "200" }),
+        makeRoom({ room_id: "r3", property_id: "p1", base_price_usd: "150" }),
+      ];
+      expect(service.mapAllRooms(rooms)).toHaveLength(3);
+    });
+
+    it("maps roomId, roomType, bedType, viewType, capacity correctly", () => {
+      const room = makeRoom({
+        room_id: "r1",
+        room_type: "suite",
+        bed_type: "king",
+        view_type: "ocean",
+        capacity: 3,
+      });
+      const result = service.mapAllRooms([room]);
+      expect(result[0].roomId).toBe("r1");
+      expect(result[0].roomType).toBe("suite");
+      expect(result[0].bedType).toBe("king");
+      expect(result[0].viewType).toBe("ocean");
+      expect(result[0].capacity).toBe(3);
+    });
+
+    it("computes estimatedTotalUsd using the same formula as selectCheapestRoomPerProperty", () => {
+      // base $150, tax 16%, 3 nights, flatNight $10, flatStay $30
+      const room = makeRoom({
+        base_price_usd: "150",
+        tax_rate_pct: "16",
+        flat_fee_per_night_usd: "10",
+        flat_fee_per_stay_usd: "30",
+      });
+      const result = service.mapAllRooms([room], 3);
+      // 150 × 3 × 1.16 + 10 × 3 + 30 = 522 + 30 + 30 = 582
+      expect(result[0].estimatedTotalUsd).toBeCloseTo(582, 2);
+    });
+
+    it("uses avail_price_usd when present", () => {
+      const room = makeRoom({
+        base_price_usd: "200",
+        avail_price_usd: "120",
+      });
+      const result = service.mapAllRooms([room], 0);
+      expect(result[0].priceUsd).toBe(120);
+      expect(result[0].basePriceUsd).toBe(200);
+    });
+
+    it("sets priceUsd to null when avail_price_usd is null", () => {
+      const room = makeRoom({ avail_price_usd: null });
+      const result = service.mapAllRooms([room]);
+      expect(result[0].priceUsd).toBeNull();
+    });
+
+    it("unions amenities across all rooms in property.amenities", () => {
+      const rooms = [
+        makeRoom({ room_id: "r1", amenities: ["wifi", "pool"] }),
+        makeRoom({ room_id: "r2", amenities: ["gym", "spa"] }),
+      ];
+      const result = service.mapAllRooms(rooms);
+      expect(result[0].property.amenities).toEqual(
+        expect.arrayContaining(["wifi", "pool", "gym", "spa"]),
+      );
+      expect(result[1].property.amenities).toEqual(
+        expect.arrayContaining(["wifi", "pool", "gym", "spa"]),
+      );
+    });
+
+    it("exposes the same property info on every room result", () => {
+      const rooms = [
+        makeRoom({
+          room_id: "r1",
+          property_id: "p1",
+          property_name: "Grand Hotel",
+        }),
+        makeRoom({
+          room_id: "r2",
+          property_id: "p1",
+          property_name: "Grand Hotel",
+        }),
+      ];
+      const result = service.mapAllRooms(rooms);
+      expect(result[0].property.id).toBe("p1");
+      expect(result[1].property.id).toBe("p1");
+      expect(result[0].property.name).toBe("Grand Hotel");
     });
   });
 

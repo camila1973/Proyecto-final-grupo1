@@ -169,7 +169,7 @@ export default function SearchPage() {
 
           {results.map((result) => (
             <ResultCard
-              key={result.id}
+              key={result.roomId}
               result={result}
               nights={nights}
               amenityLabels={amenityLabels}
@@ -177,7 +177,7 @@ export default function SearchPage() {
               onBook={() =>
                 navigate({
                   to: '/properties/$propertyId',
-                  params: { propertyId: result.id },
+                  params: { propertyId: result.property.id },
                   search: {
                     checkIn: urlCheckIn,
                     checkOut: urlCheckOut,

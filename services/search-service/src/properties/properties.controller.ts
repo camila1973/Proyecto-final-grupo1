@@ -1,4 +1,10 @@
-import { BadRequestException, Controller, Get, Query } from "@nestjs/common";
+import {
+  BadRequestException,
+  Controller,
+  Get,
+  Param,
+  Query,
+} from "@nestjs/common";
 import { PropertiesService } from "./properties.service.js";
 import type {
   SearchPropertiesDto,
@@ -26,6 +32,35 @@ export class PropertiesController {
   searchProperties(@Query() query: Record<string, string>) {
     const dto = this.parseQuery(query);
     return this.propertiesService.searchProperties(dto);
+  }
+
+  @Get("properties/:propertyId/rooms")
+  getPropertyRooms(
+    @Param("propertyId") propertyId: string,
+    @Query() query: Record<string, string>,
+  ) {
+    const { checkIn, checkOut, guests } = query;
+
+    if (checkIn && isNaN(new Date(checkIn).getTime())) {
+      throw new BadRequestException("checkIn must be a valid ISO 8601 date");
+    }
+    if (checkOut && isNaN(new Date(checkOut).getTime())) {
+      throw new BadRequestException("checkOut must be a valid ISO 8601 date");
+    }
+    if (checkIn && checkOut && new Date(checkOut) <= new Date(checkIn)) {
+      throw new BadRequestException("checkOut must be after checkIn");
+    }
+
+    const guestsNum = guests ? parseInt(guests, 10) : undefined;
+    if (guestsNum !== undefined && (isNaN(guestsNum) || guestsNum < 1)) {
+      throw new BadRequestException("guests must be a positive integer");
+    }
+
+    return this.propertiesService.getPropertyRooms(propertyId, {
+      checkIn: checkIn || undefined,
+      checkOut: checkOut || undefined,
+      guests: guestsNum,
+    });
   }
 
   @Get("cities")

@@ -27,29 +27,30 @@ export interface CandidateRoom {
   avail_price_usd: string | null;
 }
 
-export interface PropertyResult {
-  id: string;
-  name: string;
-  city: string;
-  countryCode: string;
-  neighborhood: string | null;
-  stars: number;
-  rating: number;
-  reviewCount: number;
-  thumbnailUrl: string;
-  amenities: string[];
+export interface RoomSearchResult {
+  roomId: string;
+  roomType: string;
+  bedType: string;
+  viewType: string;
+  capacity: number;
+  basePriceUsd: number;
+  priceUsd: number | null;
+  taxRatePct: number;
+  estimatedTotalUsd: number;
+  hasFlatFees: boolean;
   /** Internal field used for flat fee enrichment — not in final API response shape */
   _partnerId?: string;
-  bestRoom: {
-    roomId: string;
-    roomType: string;
-    bedType: string;
-    capacity: number;
-    basePriceUsd: number;
-    priceUsd: number | null;
-    taxRatePct: number;
-    estimatedTotalUsd: number;
-    hasFlatFees: boolean;
+  property: {
+    id: string;
+    name: string;
+    city: string;
+    countryCode: string;
+    neighborhood: string | null;
+    stars: number;
+    rating: number;
+    reviewCount: number;
+    thumbnailUrl: string;
+    amenities: string[];
   };
 }
 
@@ -164,10 +165,10 @@ export class FacetsService {
     };
   }
 
-  selectBestRoomPerProperty(
+  selectCheapestRoomPerProperty(
     rooms: CandidateRoom[],
     nights = 0,
-  ): PropertyResult[] {
+  ): RoomSearchResult[] {
     const byProperty = new Map<string, CandidateRoom[]>();
     for (const room of rooms) {
       const list = byProperty.get(room.property_id) ?? [];
@@ -175,7 +176,7 @@ export class FacetsService {
       byProperty.set(room.property_id, list);
     }
 
-    const results: PropertyResult[] = [];
+    const results: RoomSearchResult[] = [];
     for (const [, propertyRooms] of byProperty) {
       const best = propertyRooms.reduce((cheapest, room) => {
         const cp =
@@ -189,46 +190,25 @@ export class FacetsService {
         return rp < cp ? room : cheapest;
       });
 
-      const price =
-        best.avail_price_usd != null
-          ? parseFloat(best.avail_price_usd)
-          : parseFloat(best.base_price_usd);
-      const taxRatePct = parseFloat(best.tax_rate_pct ?? "0");
-      const flatPerNight = parseFloat(best.flat_fee_per_night_usd ?? "0");
-      const flatPerStay = parseFloat(best.flat_fee_per_stay_usd ?? "0");
-      const hasFlatFees = flatPerNight > 0 || flatPerStay > 0;
-      const estimatedTotalUsd =
-        nights > 0
-          ? price * nights * (1 + taxRatePct / 100) +
-            flatPerNight * nights +
-            flatPerStay
-          : price * (1 + taxRatePct / 100) + flatPerNight;
-
       results.push({
-        id: best.property_id,
-        name: best.property_name,
-        city: best.city,
-        countryCode: best.country,
-        neighborhood: best.neighborhood,
-        stars: best.stars,
-        rating: parseFloat(best.rating),
-        reviewCount: best.review_count,
-        thumbnailUrl: best.thumbnail_url,
-        amenities: [...new Set(propertyRooms.flatMap((r) => r.amenities))],
+        ...this.computePricing(best, nights),
+        roomId: best.room_id,
+        roomType: best.room_type,
+        bedType: best.bed_type,
+        viewType: best.view_type,
+        capacity: best.capacity,
         _partnerId: best.partner_id,
-        bestRoom: {
-          roomId: best.room_id,
-          roomType: best.room_type,
-          bedType: best.bed_type,
-          capacity: best.capacity,
-          basePriceUsd: parseFloat(best.base_price_usd),
-          priceUsd:
-            best.avail_price_usd != null
-              ? parseFloat(best.avail_price_usd)
-              : null,
-          taxRatePct,
-          estimatedTotalUsd,
-          hasFlatFees,
+        property: {
+          id: best.property_id,
+          name: best.property_name,
+          city: best.city,
+          countryCode: best.country,
+          neighborhood: best.neighborhood,
+          stars: best.stars,
+          rating: parseFloat(best.rating),
+          reviewCount: best.review_count,
+          thumbnailUrl: best.thumbnail_url,
+          amenities: [...new Set(propertyRooms.flatMap((r) => r.amenities))],
         },
       });
     }
@@ -236,38 +216,113 @@ export class FacetsService {
     return results;
   }
 
-  sortProperties(
-    properties: PropertyResult[],
+  /**
+   * Maps every candidate room to a RoomSearchResult without grouping by property.
+   * All rooms must belong to the same property — property.amenities is the union
+   * across all of them.
+   */
+  mapAllRooms(rooms: CandidateRoom[], nights = 0): RoomSearchResult[] {
+    if (rooms.length === 0) return [];
+
+    const propertyAmenities = [...new Set(rooms.flatMap((r) => r.amenities))];
+    const first = rooms[0];
+
+    return rooms.map((room) => ({
+      ...this.computePricing(room, nights),
+      roomId: room.room_id,
+      roomType: room.room_type,
+      bedType: room.bed_type,
+      viewType: room.view_type,
+      capacity: room.capacity,
+      _partnerId: room.partner_id,
+      property: {
+        id: first.property_id,
+        name: first.property_name,
+        city: first.city,
+        countryCode: first.country,
+        neighborhood: first.neighborhood,
+        stars: first.stars,
+        rating: parseFloat(first.rating),
+        reviewCount: first.review_count,
+        thumbnailUrl: first.thumbnail_url,
+        amenities: propertyAmenities,
+      },
+    }));
+  }
+
+  sortRooms(
+    rooms: RoomSearchResult[],
     sort: SearchPropertiesDto["sort"],
-  ): PropertyResult[] {
-    const copy = [...properties];
+  ): RoomSearchResult[] {
+    const copy = [...rooms];
     switch (sort) {
       case "price_asc":
         copy.sort(
           (a, b) =>
-            (a.bestRoom.priceUsd ?? a.bestRoom.basePriceUsd) -
-            (b.bestRoom.priceUsd ?? b.bestRoom.basePriceUsd),
+            (a.priceUsd ?? a.basePriceUsd) - (b.priceUsd ?? b.basePriceUsd),
         );
         break;
       case "price_desc":
         copy.sort(
           (a, b) =>
-            (b.bestRoom.priceUsd ?? b.bestRoom.basePriceUsd) -
-            (a.bestRoom.priceUsd ?? a.bestRoom.basePriceUsd),
+            (b.priceUsd ?? b.basePriceUsd) - (a.priceUsd ?? a.basePriceUsd),
         );
         break;
       case "stars_desc":
-        copy.sort((a, b) => b.stars - a.stars || b.rating - a.rating);
+        copy.sort(
+          (a, b) =>
+            b.property.stars - a.property.stars ||
+            b.property.rating - a.property.rating,
+        );
         break;
       case "relevance":
       default:
-        copy.sort((a, b) => b.stars - a.stars || b.rating - a.rating);
+        copy.sort(
+          (a, b) =>
+            b.property.stars - a.property.stars ||
+            b.property.rating - a.property.rating,
+        );
         break;
     }
     return copy;
   }
 
   // ─── private helpers ───────────────────────────────────────────────────────
+
+  private computePricing(
+    room: CandidateRoom,
+    nights: number,
+  ): Pick<
+    RoomSearchResult,
+    | "basePriceUsd"
+    | "priceUsd"
+    | "taxRatePct"
+    | "estimatedTotalUsd"
+    | "hasFlatFees"
+  > {
+    const price =
+      room.avail_price_usd != null
+        ? parseFloat(room.avail_price_usd)
+        : parseFloat(room.base_price_usd);
+    const taxRatePct = parseFloat(room.tax_rate_pct ?? "0");
+    const flatPerNight = parseFloat(room.flat_fee_per_night_usd ?? "0");
+    const flatPerStay = parseFloat(room.flat_fee_per_stay_usd ?? "0");
+    const hasFlatFees = flatPerNight > 0 || flatPerStay > 0;
+    const estimatedTotalUsd =
+      nights > 0
+        ? price * nights * (1 + taxRatePct / 100) +
+          flatPerNight * nights +
+          flatPerStay
+        : price * (1 + taxRatePct / 100) + flatPerNight;
+    return {
+      basePriceUsd: parseFloat(room.base_price_usd),
+      priceUsd:
+        room.avail_price_usd != null ? parseFloat(room.avail_price_usd) : null,
+      taxRatePct,
+      estimatedTotalUsd,
+      hasFlatFees,
+    };
+  }
 
   private countByField(
     rooms: CandidateRoom[],

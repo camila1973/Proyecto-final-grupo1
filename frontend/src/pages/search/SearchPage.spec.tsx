@@ -22,17 +22,28 @@ jest.mock('@tanstack/react-router', () => ({
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
 const mockSearchResult = {
-  id: 'p1',
-  name: 'Gran Caribe Resort',
-  city: 'Cancún',
-  countryCode: 'MX',
-  neighborhood: 'Zona Hotelera',
-  thumbnailUrl: 'https://placehold.co/400x300',
-  amenities: ['wifi', 'pool'],
-  stars: 5,
-  rating: 4.7,
-  reviewCount: 842,
-  bestRoom: { roomId: 'r1', roomType: 'suite', bedType: 'king', capacity: 2, basePriceUsd: 320, priceUsd: 280 },
+  roomId: 'r1',
+  roomType: 'suite',
+  bedType: 'king',
+  viewType: 'city',
+  capacity: 2,
+  basePriceUsd: 320,
+  priceUsd: 280,
+  taxRatePct: 16,
+  estimatedTotalUsd: 1300,
+  hasFlatFees: false,
+  property: {
+    id: 'p1',
+    name: 'Gran Caribe Resort',
+    city: 'Cancún',
+    countryCode: 'MX',
+    neighborhood: 'Zona Hotelera',
+    thumbnailUrl: 'https://placehold.co/400x300',
+    amenities: ['wifi', 'pool'],
+    stars: 5,
+    rating: 4.7,
+    reviewCount: 842,
+  },
 };
 
 const mockSearchResponse = {

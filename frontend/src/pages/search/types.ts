@@ -21,30 +21,29 @@ export interface TaxonomyResponse {
 // code → label lookup built from taxonomy API response
 export type LabelMap = Record<string, string>;
 
-export interface BestRoom {
+export interface SearchResult {
   roomId: string;
   roomType: string;
   bedType: string;
+  viewType: string;
   capacity: number;
   basePriceUsd: number;
   priceUsd: number | null;
   taxRatePct: number;
   estimatedTotalUsd: number;
   hasFlatFees: boolean;
-}
-
-export interface SearchResult {
-  id: string;
-  name: string;
-  city: string;
-  countryCode: string;
-  neighborhood: string | null;
-  thumbnailUrl: string;
-  amenities: string[];
-  stars: number;
-  rating: number;
-  reviewCount: number;
-  bestRoom: BestRoom;
+  property: {
+    id: string;
+    name: string;
+    city: string;
+    countryCode: string;
+    neighborhood: string | null;
+    stars: number;
+    rating: number;
+    reviewCount: number;
+    thumbnailUrl: string;
+    amenities: string[];
+  };
 }
 
 export interface FacetItem {
