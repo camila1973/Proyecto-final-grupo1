@@ -258,6 +258,8 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: travelhub
+    ports:
+      - "5437:5432"
     volumes:
       - payment_pg_data:/var/lib/postgresql/data
     networks:
@@ -279,9 +281,21 @@ services:
       NODE_ENV: production
       PORT: 3005
       DATABASE_URL: postgres://postgres:postgres@payment-db:5432/travelhub
+      BOOKING_SERVICE_URL: http://booking-service:3004
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
+      STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-noreply@travelhub.com}
     depends_on:
       payment-db:
         condition: service_healthy
+      booking-service:
+        condition: service_started
 
   # ─── Notification Service ─────────────────────────────────────────────────────
   notification-db:

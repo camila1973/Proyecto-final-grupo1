@@ -18,6 +18,11 @@ const smtpUser = appConfig.get("smtpUser");
 const smtpPass = appConfig.getSecret("smtpPass");
 const smtpFrom = appConfig.get("smtpFrom") ?? smtpUser;
 
+// Stripe — required for payment-service
+const stripeSecretKey       = appConfig.getSecret("stripeSecretKey");
+const stripeWebhookSecret   = appConfig.getSecret("stripeWebhookSecret");
+const stripePublishableKey  = appConfig.get("stripePublishableKey");
+
 // ─── Service definitions ──────────────────────────────────────────────────────
 
 const SERVICES = [
@@ -227,6 +232,38 @@ const smtpPassSecret = smtpPass
     })()
   : null;
 
+// ─── Secret Manager — Stripe keys (payment-service) ──────────────────────────
+
+const stripeSecretKeySecret = stripeSecretKey
+  ? (() => {
+      const secret = new gcp.secretmanager.Secret("secret-stripe-secret-key", {
+        secretId: "travelhub-stripe-secret-key",
+        replication: { auto: {} },
+        labels: LABELS,
+      });
+      new gcp.secretmanager.SecretVersion("secret-stripe-secret-key-version", {
+        secret: secret.id,
+        secretData: stripeSecretKey,
+      });
+      return secret;
+    })()
+  : null;
+
+const stripeWebhookSecretSecret = stripeWebhookSecret
+  ? (() => {
+      const secret = new gcp.secretmanager.Secret("secret-stripe-webhook-secret", {
+        secretId: "travelhub-stripe-webhook-secret",
+        replication: { auto: {} },
+        labels: LABELS,
+      });
+      new gcp.secretmanager.SecretVersion("secret-stripe-webhook-secret-version", {
+        secret: secret.id,
+        secretData: stripeWebhookSecret,
+      });
+      return secret;
+    })()
+  : null;
+
 // ─── Docker images ────────────────────────────────────────────────────────────
 
 const gcpAuth = gcp.organizations.getClientConfigOutput({});
@@ -383,6 +420,31 @@ for (const svc of MICROSERVICES) {
     secretEnvVars["SMTP_PASS"] = { secretId: smtpPassSecret!.secretId };
   }
 
+  if (svc.name === "payment-service") {
+    plainEnv["BOOKING_SERVICE_URL"] = pulumi.interpolate`${runners["booking-service"]!.uri}`;
+    // SMTP — same config shared with notification-service
+    if (smtpHost && smtpUser) {
+      plainEnv["SMTP_HOST"] = smtpHost;
+      plainEnv["SMTP_PORT"] = smtpPort;
+      plainEnv["SMTP_USER"] = smtpUser;
+      plainEnv["SMTP_FROM"] = smtpFrom ?? smtpUser;
+    }
+    if (smtpPassSecret) {
+      secretEnvVars["SMTP_PASS"] = { secretId: smtpPassSecret.secretId };
+    }
+    // Stripe secrets injected at runtime via Secret Manager
+    if (stripeSecretKeySecret) {
+      secretEnvVars["STRIPE_SECRET_KEY"] = { secretId: stripeSecretKeySecret.secretId };
+    }
+    if (stripeWebhookSecretSecret) {
+      secretEnvVars["STRIPE_WEBHOOK_SECRET"] = { secretId: stripeWebhookSecretSecret.secretId };
+    }
+    // Publishable key is non-secret (embedded in frontend build) — still useful here as reference
+    if (stripePublishableKey) {
+      plainEnv["STRIPE_PUBLISHABLE_KEY"] = stripePublishableKey;
+    }
+  }
+
   if (svc.name === "integration-service") {
     plainEnv["REDIS_HOST"]            = redisInstance.host;
     plainEnv["REDIS_PORT"]            = "6379";
@@ -444,11 +506,13 @@ runners["api-gateway"] = makeCloudRun(
 
 // ─── Outputs ──────────────────────────────────────────────────────────────────
 
-export const gatewayUrl       = runners["api-gateway"]!.uri;
-export const frontendBucket   = frontendBucketResource.name;
-export const frontendUrl      = pulumi.interpolate`https://storage.googleapis.com/${frontendBucketResource.name}/index.html`;
-export const dbConnectionName = sqlConnectionName;
-export const redisHost        = redisInstance.host;
+export const gatewayUrl           = runners["api-gateway"]!.uri;
+export const frontendBucket       = frontendBucketResource.name;
+export const frontendUrl          = pulumi.interpolate`https://storage.googleapis.com/${frontendBucketResource.name}/index.html`;
+export const dbConnectionName     = sqlConnectionName;
+export const redisHost            = redisInstance.host;
 // Secret output — used by the seed CI workflow to construct localhost DATABASE_URLs
 // via Cloud SQL Auth Proxy. Encrypted in Pulumi state with PULUMI_CONFIG_PASSPHRASE.
-export const dbPasswordSecret = pulumi.secret(dbPassword.result);
+export const dbPasswordSecret     = pulumi.secret(dbPassword.result);
+// Stripe publishable key — needed when building the frontend with VITE_STRIPE_PUBLISHABLE_KEY
+export const stripePublishableKeyOut = stripePublishableKey ?? "";

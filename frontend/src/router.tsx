@@ -10,6 +10,8 @@ import RegisterPage from './pages/RegisterPage';
 import RegisterSuccess from './pages/RegisterSuccess';
 import LoginPage from './pages/LoginPage';
 import MfaPage from './pages/MfaPage';
+import CheckoutPage from './pages/checkout/index';
+import BookingConfirmationPage from './pages/booking/confirmation';
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -82,7 +84,48 @@ const mfaRoute = createRoute({
   component: MfaPage,
 });
 
-const routeTree = rootRoute.addChildren([homeRoute, searchRoute, propertyRoute, registerRoute, registerSuccessRoute, loginRoute, mfaRoute]);
+const checkoutRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/checkout',
+  validateSearch: (search: Record<string, unknown>) => ({
+    roomId: (search.roomId as string) ?? '',
+    propertyId: (search.propertyId as string) ?? '',
+    partnerId: (search.partnerId as string) ?? '',
+    checkIn: (search.checkIn as string) ?? '',
+    checkOut: (search.checkOut as string) ?? '',
+    guests: (search.guests as string) ?? '1',
+    propertyName: (search.propertyName as string) ?? '',
+    roomType: (search.roomType as string) ?? '',
+    totalUsd: (search.totalUsd as string) ?? '0',
+  }),
+  component: CheckoutPage,
+});
+
+const bookingConfirmationRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/booking/confirmation',
+  validateSearch: (search: Record<string, unknown>) => ({
+    reservationId: (search.reservationId as string) ?? '',
+    propertyName: (search.propertyName as string) ?? '',
+    roomType: (search.roomType as string) ?? '',
+    checkIn: (search.checkIn as string) ?? '',
+    checkOut: (search.checkOut as string) ?? '',
+    totalUsd: (search.totalUsd as string) ?? '0',
+  }),
+  component: BookingConfirmationPage,
+});
+
+const routeTree = rootRoute.addChildren([
+  homeRoute,
+  searchRoute,
+  propertyRoute,
+  registerRoute,
+  registerSuccessRoute,
+  loginRoute,
+  mfaRoute,
+  checkoutRoute,
+  bookingConfirmationRoute,
+]);
 
 export function createAppRouter() {
   return createRouter({

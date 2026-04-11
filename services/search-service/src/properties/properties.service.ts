@@ -188,7 +188,10 @@ export class PropertiesService {
     // All rooms share the same property — hoist it to the top level
     const { property } = roomResults[0];
     const rooms = roomResults.map(
-      ({ property: _, _partnerId: __, ...roomFields }) => roomFields,
+      ({ property: _, _partnerId: partnerId, ...roomFields }) => ({
+        ...roomFields,
+        partnerId,
+      }),
     );
 
     return { property, rooms };

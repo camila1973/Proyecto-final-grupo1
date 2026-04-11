@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useParams, useSearch } from '@tanstack/react-router';
+import { useParams, useSearch, useNavigate } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { useLocale } from '../context/LocaleContext';
 import { formatPrice } from '../utils/currency';
@@ -28,6 +28,7 @@ interface SearchRoom {
   basePriceUsd: number;
   priceUsd: number | null;
   taxRatePct: number;
+  partnerId: string;
   estimatedTotalUsd: number;
   hasFlatFees: boolean;
 }
@@ -99,6 +100,7 @@ const BED_TYPE_LABELS: Record<string, string> = {
 export default function PropertyDetailPage() {
   const { t } = useTranslation();
   const { currency } = useLocale();
+  const navigate = useNavigate();
   const { propertyId } = useParams({ from: '/properties/$propertyId' });
   const { checkIn: qCheckIn, checkOut: qCheckOut, guests: qGuests } = useSearch({ from: '/properties/$propertyId' });
   const [checkIn, setCheckIn] = useState<Dayjs | null>(qCheckIn ? dayjs(qCheckIn) : dayjs());
@@ -333,6 +335,20 @@ export default function PropertyDetailPage() {
                       color="warning"
                       startIcon={<BookmarkIcon fontSize="small" />}
                       sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 2, px: 3 }}
+                      onClick={() => void navigate({
+                        to: '/checkout',
+                        search: {
+                          roomId: room.roomId,
+                          propertyId,
+                          partnerId: room.partnerId ?? '',
+                          checkIn: fromDate ?? '',
+                          checkOut: toDate ?? '',
+                          guests: String(guests),
+                          propertyName: property.name,
+                          roomType: ROOM_TYPE_LABELS[room.roomType] ?? room.roomType,
+                          totalUsd: String(room.estimatedTotalUsd),
+                        },
+                      })}
                     >
                       Reservar
                     </Button>
