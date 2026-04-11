@@ -32,6 +32,29 @@ jest.mock("amqplib", () => {
   };
 });
 
+jest.mock("@google-cloud/pubsub", () => {
+  const subs = new Map<string, any>();
+  class PubSub {
+    subscription(name: string) {
+      if (!subs.has(name)) {
+        const handlers: Record<string, (arg: any) => void> = {};
+        const sub = {
+          on: jest.fn((event: string, cb: (arg: any) => void) => {
+            handlers[event] = cb;
+            return sub;
+          }),
+          removeAllListeners: jest.fn(),
+          close: jest.fn().mockResolvedValue(undefined),
+          __emitMessage: (msg: any) => handlers.message?.(msg),
+        };
+        subs.set(name, sub);
+      }
+      return subs.get(name);
+    }
+  }
+  return { PubSub, __subs: subs };
+});
+
 import * as amqpMod from "amqplib";
 const mockChannel = (amqpMod as any).__mockChannel as {
   assertExchange: jest.Mock;
@@ -97,6 +120,11 @@ describe("EventsService", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const pubSub = require("@google-cloud/pubsub") as {
+      __subs: Map<string, unknown>;
+    };
+    pubSub.__subs.clear();
     // Reset all mock implementations that may have changed
     mockChannel.ack.mockReset();
     mockChannel.nack.mockReset();
@@ -162,6 +190,74 @@ describe("EventsService", () => {
       expect(routingKeys).toContain("tax.rule.deleted");
       expect(routingKeys).toContain("partner.fee.upserted");
       expect(routingKeys).toContain("partner.fee.deleted");
+    });
+
+    it("connects to Pub/Sub and registers expected subscriptions", async () => {
+      process.env.MESSAGE_BROKER_TYPE = "pubsub";
+
+      await service.onModuleInit();
+
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const pubSub = require("@google-cloud/pubsub") as {
+        __subs: Map<string, unknown>;
+      };
+      expect(pubSub.__subs.has("search-inventory-room-upserted")).toBe(true);
+      expect(pubSub.__subs.has("search-inventory-price-updated")).toBe(true);
+      expect(pubSub.__subs.has("search-inventory-room-deleted")).toBe(true);
+      expect(pubSub.__subs.has("search-tax-rule-upserted")).toBe(true);
+      expect(pubSub.__subs.has("search-tax-rule-deleted")).toBe(true);
+      expect(pubSub.__subs.has("search-partner-fee-upserted")).toBe(true);
+      expect(pubSub.__subs.has("search-partner-fee-deleted")).toBe(true);
+    });
+  });
+
+  describe("Pub/Sub dispatch", () => {
+    it("acks Pub/Sub message when handler succeeds", async () => {
+      process.env.MESSAGE_BROKER_TYPE = "pubsub";
+
+      await service.onModuleInit();
+
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const pubSub = require("@google-cloud/pubsub") as {
+        __subs: Map<string, any>;
+      };
+      const sub = pubSub.__subs.get("search-inventory-price-updated");
+
+      const message = {
+        data: Buffer.from(JSON.stringify({ roomId: "r1", pricePeriods: [] })),
+        ack: jest.fn(),
+        nack: jest.fn(),
+      };
+
+      sub.__emitMessage(message);
+      await new Promise((resolve) => setTimeout(resolve, 20));
+
+      expect(handlers.availabilityUpdated.handle).toHaveBeenCalled();
+      expect(message.ack).toHaveBeenCalled();
+      expect(message.nack).not.toHaveBeenCalled();
+    });
+
+    it("nacks Pub/Sub message when payload is invalid JSON", async () => {
+      process.env.MESSAGE_BROKER_TYPE = "pubsub";
+
+      await service.onModuleInit();
+
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const pubSub = require("@google-cloud/pubsub") as {
+        __subs: Map<string, any>;
+      };
+      const sub = pubSub.__subs.get("search-inventory-price-updated");
+
+      const message = {
+        data: Buffer.from("not-json"),
+        ack: jest.fn(),
+        nack: jest.fn(),
+      };
+
+      sub.__emitMessage(message);
+
+      expect(message.ack).not.toHaveBeenCalled();
+      expect(message.nack).toHaveBeenCalled();
     });
   });
 

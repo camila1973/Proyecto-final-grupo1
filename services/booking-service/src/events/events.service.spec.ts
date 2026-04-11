@@ -20,6 +20,30 @@ jest.mock("amqplib", () => ({
   connect: jest.fn().mockResolvedValue(mockConnection),
 }));
 
+jest.mock("@google-cloud/pubsub", () => {
+  const subs = new Map<string, any>();
+  class PubSub {
+    subscription(name: string) {
+      if (!subs.has(name)) {
+        const handlers: Record<string, (arg: any) => void> = {};
+        const sub = {
+          on: jest.fn((event: string, cb: (arg: any) => void) => {
+            handlers[event] = cb;
+            return sub;
+          }),
+          removeAllListeners: jest.fn(),
+          close: jest.fn().mockResolvedValue(undefined),
+          __emitMessage: (msg: any) => handlers.message?.(msg),
+          __emitError: (err: unknown) => handlers.error?.(err),
+        };
+        subs.set(name, sub);
+      }
+      return subs.get(name);
+    }
+  }
+  return { PubSub, __subs: subs };
+});
+
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const amqp = require("amqplib") as { connect: jest.Mock };
 
@@ -63,6 +87,11 @@ describe("EventsService", () => {
     jest.clearAllMocks();
     delete process.env.MESSAGE_BROKER_TYPE;
     delete process.env.MESSAGE_BROKER_URL;
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const pubSub = require("@google-cloud/pubsub") as {
+      __subs: Map<string, unknown>;
+    };
+    pubSub.__subs.clear();
   });
 
   // ─── handlePriceUpdated ───────────────────────────────────────────────────
@@ -176,6 +205,76 @@ describe("EventsService", () => {
         "booking.partner.fee.deleted",
         { durable: true },
       );
+    });
+
+    it("connects to Pub/Sub and registers expected subscriptions", async () => {
+      const { service } = makeService();
+      process.env.MESSAGE_BROKER_TYPE = "pubsub";
+
+      await service.onModuleInit();
+
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const pubSub = require("@google-cloud/pubsub") as {
+        __subs: Map<string, unknown>;
+      };
+      expect(pubSub.__subs.has("booking-inventory-price-updated")).toBe(true);
+      expect(pubSub.__subs.has("booking-inventory-room-upserted")).toBe(true);
+      expect(pubSub.__subs.has("booking-partner-fee-upserted")).toBe(true);
+      expect(pubSub.__subs.has("booking-partner-fee-deleted")).toBe(true);
+    });
+  });
+
+  describe("Pub/Sub message dispatch", () => {
+    it("acks Pub/Sub message when handler succeeds", async () => {
+      const { service, priceCache } = makeService();
+      process.env.MESSAGE_BROKER_TYPE = "pubsub";
+
+      await service.onModuleInit();
+
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const pubSub = require("@google-cloud/pubsub") as {
+        __subs: Map<string, any>;
+      };
+      const sub = pubSub.__subs.get("booking-inventory-price-updated");
+
+      const message = {
+        data: Buffer.from(
+          JSON.stringify({ roomId: "room-1", pricePeriods: [] }),
+        ),
+        ack: jest.fn(),
+        nack: jest.fn(),
+      };
+
+      sub.__emitMessage(message);
+      await new Promise((r) => setTimeout(r, 10));
+
+      expect(priceCache.replaceForRoom).toHaveBeenCalledWith("room-1", []);
+      expect(message.ack).toHaveBeenCalled();
+      expect(message.nack).not.toHaveBeenCalled();
+    });
+
+    it("nacks Pub/Sub message on invalid JSON", async () => {
+      const { service } = makeService();
+      process.env.MESSAGE_BROKER_TYPE = "pubsub";
+
+      await service.onModuleInit();
+
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const pubSub = require("@google-cloud/pubsub") as {
+        __subs: Map<string, any>;
+      };
+      const sub = pubSub.__subs.get("booking-inventory-price-updated");
+
+      const message = {
+        data: Buffer.from("not-json"),
+        ack: jest.fn(),
+        nack: jest.fn(),
+      };
+
+      sub.__emitMessage(message);
+
+      expect(message.ack).not.toHaveBeenCalled();
+      expect(message.nack).toHaveBeenCalled();
     });
   });
 

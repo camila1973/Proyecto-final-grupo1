@@ -7,8 +7,12 @@ module.exports = {
   coverageDirectory: '../../coverage/integration-service',
   coverageReporters: ['lcov', 'text-summary'],
   collectCoverageFrom: [
-    '**/*.(t|j)s',
-    '!migrations/**',
-    '!scripts/**',
+    'src/**/*.(t|j)s',
+    '!src/main.ts',
+    '!src/**/*.module.ts',
+    '!src/database/migrate.ts',
+    '!src/database/database.provider.ts',
+    '!src/database/database.types.ts',
+    '!src/database/migrations/**',
   ],
 };
