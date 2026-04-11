@@ -8,7 +8,7 @@ import {
   useElements,
 } from '@stripe/react-stripe-js';
 import { AuthContext } from '../../context/auth-context';
-import { API_BASE } from '../../env';
+import { API_BASE, STRIPE_PUBLISHABLE_KEY } from '../../env';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
@@ -18,9 +18,7 @@ import Typography from '@mui/material/Typography';
 import Divider from '@mui/material/Divider';
 import Alert from '@mui/material/Alert';
 
-const stripePromise = loadStripe(
-  (import.meta as any).env?.VITE_STRIPE_PUBLISHABLE_KEY ?? '',
-);
+const stripePromise = loadStripe(STRIPE_PUBLISHABLE_KEY);
 
 interface FareBreakdown {
   nights: number;
