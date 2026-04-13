@@ -7,6 +7,15 @@ on:
         description: 'Version tag (e.g. v1.0.0)'
         required: true
         type: string
+      build_strategy:
+        description: 'Build strategy'
+        required: true
+        type: choice
+        default: eas-cloud
+        options:
+          - eas-cloud
+          - github-actions
+          - self-hosted
 
 concurrency:
   group: publish-release
@@ -72,10 +81,11 @@ jobs:
           echo "sha=$SHA" >> "$GITHUB_OUTPUT"
           echo "Tagged $SHA as $TAG"
 
-  # ── 3. Build with EAS (Android APK + iOS Simulator) ───────────────────────────
-  build:
-    name: Build (EAS)
+  # ── 3a. Build — EAS Cloud ─────────────────────────────────────────────────────
+  build-eas-cloud:
+    name: Build / EAS Cloud
     needs: tag
+    if: ${{ github.event.inputs.build_strategy == 'eas-cloud' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -132,10 +142,226 @@ jobs:
           retention-days: 7
           if-no-files-found: error
 
-  # ── 4. Create GitHub Release ──────────────────────────────────────────────────
+  # ── 3b. Build — GitHub Actions (Android) ──────────────────────────────────────
+  build-gh-android:
+    name: Build / GitHub Actions / Android
+    needs: tag
+    if: ${{ github.event.inputs.build_strategy == 'github-actions' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.tag.outputs.sha }}
+
+      - uses: ./.github/actions/setup
+
+      - name: Set app version in app.json
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          SEMVER="${VERSION#v}"
+          node -e "
+            const fs = require('fs');
+            const cfg = JSON.parse(fs.readFileSync('mobile/app.json', 'utf8'));
+            cfg.expo.version = '$SEMVER';
+            cfg.expo.android = cfg.expo.android ?? {};
+            cfg.expo.android.versionCode = parseInt('$SEMVER'.replace(/\./g, ''));
+            fs.writeFileSync('mobile/app.json', JSON.stringify(cfg, null, 2));
+          "
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Expo + EAS CLI
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Build Android (local)
+        working-directory: mobile
+        env:
+          ANDROID_HOME: /usr/local/lib/android/sdk
+        run: |
+          mkdir -p ../artifacts
+          eas build \
+            --platform android \
+            --profile preview \
+            --non-interactive \
+            --local \
+            --output "../artifacts/travelhub-${{ github.event.inputs.version }}.apk"
+
+      - name: Upload Android artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: travelhub-builds-android
+          path: "artifacts/travelhub-${{ github.event.inputs.version }}.apk"
+          retention-days: 7
+          if-no-files-found: error
+
+  # ── 3c. Build — GitHub Actions (iOS) ──────────────────────────────────────────
+  build-gh-ios:
+    name: Build / GitHub Actions / iOS
+    needs: tag
+    if: ${{ github.event.inputs.build_strategy == 'github-actions' }}
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.tag.outputs.sha }}
+
+      - uses: ./.github/actions/setup
+
+      - name: Set app version in app.json
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          SEMVER="${VERSION#v}"
+          node -e "
+            const fs = require('fs');
+            const cfg = JSON.parse(fs.readFileSync('mobile/app.json', 'utf8'));
+            cfg.expo.version = '$SEMVER';
+            cfg.expo.android = cfg.expo.android ?? {};
+            cfg.expo.android.versionCode = parseInt('$SEMVER'.replace(/\./g, ''));
+            fs.writeFileSync('mobile/app.json', JSON.stringify(cfg, null, 2));
+          "
+
+      - name: Setup Expo + EAS CLI
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Build iOS (local)
+        working-directory: mobile
+        run: |
+          mkdir -p ../artifacts
+          eas build \
+            --platform ios \
+            --profile preview \
+            --non-interactive \
+            --local \
+            --output "../artifacts/travelhub-${{ github.event.inputs.version }}-ios-simulator.tar.gz"
+
+      - name: Upload iOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: travelhub-builds-ios
+          path: "artifacts/travelhub-${{ github.event.inputs.version }}-ios-simulator.tar.gz"
+          retention-days: 7
+          if-no-files-found: error
+
+  # ── 3d. Build — Self-hosted (Android + iOS) ───────────────────────────────────
+  build-self-hosted:
+    name: Build / Self-hosted / Android + iOS
+    needs: tag
+    if: ${{ github.event.inputs.build_strategy == 'self-hosted' }}
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.tag.outputs.sha }}
+
+      - uses: ./.github/actions/setup
+
+      - name: Set app version in app.json
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          SEMVER="${VERSION#v}"
+          node -e "
+            const fs = require('fs');
+            const cfg = JSON.parse(fs.readFileSync('mobile/app.json', 'utf8'));
+            cfg.expo.version = '$SEMVER';
+            cfg.expo.android = cfg.expo.android ?? {};
+            cfg.expo.android.versionCode = parseInt('$SEMVER'.replace(/\./g, ''));
+            fs.writeFileSync('mobile/app.json', JSON.stringify(cfg, null, 2));
+          "
+
+      - name: Setup Expo + EAS CLI
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Build Android + iOS (local)
+        working-directory: mobile
+        run: |
+          mkdir -p ../artifacts
+          eas build \
+            --platform android \
+            --profile preview \
+            --non-interactive \
+            --local \
+            --output "../artifacts/travelhub-${{ github.event.inputs.version }}.apk"
+          eas build \
+            --platform ios \
+            --profile preview \
+            --non-interactive \
+            --local \
+            --output "../artifacts/travelhub-${{ github.event.inputs.version }}-ios-simulator.tar.gz"
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: travelhub-builds
+          path: artifacts/
+          retention-days: 7
+          if-no-files-found: error
+
+  # ── 4. Collect artifacts (fan-in) ─────────────────────────────────────────────
+  collect:
+    name: Collect artifacts
+    needs: [tag, build-eas-cloud, build-gh-android, build-gh-ios, build-self-hosted]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check at least one build succeeded
+        run: |
+          EAS="${{ needs.build-eas-cloud.result }}"
+          GH_A="${{ needs.build-gh-android.result }}"
+          GH_I="${{ needs.build-gh-ios.result }}"
+          SH="${{ needs.build-self-hosted.result }}"
+          if [[ "$EAS" != "success" && "$GH_A" != "success" && "$GH_I" != "success" && "$SH" != "success" ]]; then
+            echo "::error::No build job succeeded. Cannot create release."
+            exit 1
+          fi
+
+      - name: Download EAS Cloud artifacts
+        if: ${{ needs.build-eas-cloud.result == 'success' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: travelhub-builds
+          path: artifacts/
+
+      - name: Download GitHub Actions artifacts
+        if: ${{ needs.build-gh-android.result == 'success' || needs.build-gh-ios.result == 'success' }}
+        uses: actions/download-artifact@v4
+        with:
+          pattern: travelhub-builds-*
+          path: artifacts/
+          merge-multiple: true
+
+      - name: Download self-hosted artifacts
+        if: ${{ needs.build-self-hosted.result == 'success' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: travelhub-builds
+          path: artifacts/
+
+      - name: Upload unified artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: travelhub-release-builds
+          path: artifacts/
+          retention-days: 7
+          if-no-files-found: error
+
+  # ── 5. Create GitHub Release ──────────────────────────────────────────────────
   release:
     name: Create release
-    needs: [tag, build]
+    needs: [tag, collect]
+    if: needs.collect.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -146,7 +372,7 @@ jobs:
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
-          name: travelhub-builds
+          name: travelhub-release-builds
           path: artifacts/
 
       - name: Generate changelog
