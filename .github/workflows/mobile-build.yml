@@ -12,17 +12,9 @@ on:
           - android
           - ios
           - all
-      release_tag:
-        description: 'GitHub release tag to attach artifacts to (e.g. v1.0.0). Leave empty to skip.'
-        required: false
-        type: string
-
 concurrency:
   group: mobile-build-${{ github.event.inputs.platform }}
   cancel-in-progress: false
-
-permissions:
-  contents: write # required by gh release upload
 
 env:
   NX_DAEMON: 'false'
@@ -78,13 +70,3 @@ jobs:
           retention-days: 30
           if-no-files-found: error
 
-      - name: Attach to GitHub release
-        if: ${{ github.event.inputs.release_tag != '' }}
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          for FILE in artifacts/*; do
-            gh release upload "${{ github.event.inputs.release_tag }}" "$FILE" \
-              --repo "${{ github.repository }}" \
-              --clobber
-          done
