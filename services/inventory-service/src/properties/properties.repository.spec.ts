@@ -141,6 +141,47 @@ describe("PropertiesRepository", () => {
     });
   });
 
+  describe("findByIdWithRooms", () => {
+    it("returns undefined when property is not found", async () => {
+      const db = makeChain({ executeTakeFirst: undefined });
+      const repo = makeRepo(db);
+      const result = await repo.findByIdWithRooms("missing");
+      expect(result).toBeUndefined();
+    });
+
+    it("returns property with rooms when property exists", async () => {
+      const ROOM_ROW = {
+        id: "room-1",
+        property_id: "prop-1",
+        room_type: "double",
+        bed_type: "queen",
+        view_type: "ocean",
+        capacity: 2,
+        total_rooms: 5,
+        base_price_usd: "150.00",
+        status: "active",
+        created_at: new Date("2026-01-01T00:00:00Z"),
+        updated_at: new Date("2026-01-01T00:00:00Z"),
+      };
+      const db = makeChain({
+        executeTakeFirst: PROPERTY_ROW,
+        execute: [ROOM_ROW],
+      });
+      const repo = makeRepo(db);
+      const result = await repo.findByIdWithRooms("prop-1");
+      expect(result?.property.id).toBe("prop-1");
+      expect(result?.rooms).toHaveLength(1);
+    });
+
+    it("returns property with empty rooms when no active rooms exist", async () => {
+      const db = makeChain({ executeTakeFirst: PROPERTY_ROW, execute: [] });
+      const repo = makeRepo(db);
+      const result = await repo.findByIdWithRooms("prop-1");
+      expect(result?.property.id).toBe("prop-1");
+      expect(result?.rooms).toEqual([]);
+    });
+  });
+
   describe("softDelete", () => {
     it("sets status to inactive", async () => {
       const db = makeChain({ execute: [] });

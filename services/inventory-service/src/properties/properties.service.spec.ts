@@ -13,11 +13,35 @@ const PROPERTY_ROW = {
   status: "active",
   country_code: "MX",
   partner_id: "partner-1",
+  neighborhood: "Centro",
+  lat: 21.1,
+  lon: -86.8,
+  rating: "4.5",
+  review_count: 120,
+  thumbnail_url: "https://example.com/thumb.jpg",
+  amenities: ["wifi", "pool"],
   created_at: NOW,
   updated_at: NOW,
 };
 
-function makeService(overrides: Partial<PropertiesRepository> = {}) {
+const ROOM_ROW = {
+  id: "room-1",
+  property_id: "prop-1",
+  room_type: "double",
+  bed_type: "queen",
+  view_type: "ocean",
+  capacity: 2,
+  total_rooms: 5,
+  base_price_usd: "150.00",
+  status: "active",
+  created_at: NOW,
+  updated_at: NOW,
+};
+
+function makeService(
+  overrides: Partial<PropertiesRepository> = {},
+  eventsOverrides: any = {},
+) {
   const repo = {
     create: jest.fn().mockResolvedValue(PROPERTY_ROW),
     findAll: jest.fn().mockResolvedValue([PROPERTY_ROW]),
@@ -30,7 +54,7 @@ function makeService(overrides: Partial<PropertiesRepository> = {}) {
     softDelete: jest.fn().mockResolvedValue(undefined),
     ...overrides,
   } as unknown as PropertiesRepository;
-  const events = { publish: jest.fn() } as any;
+  const events = { publish: jest.fn(), ...eventsOverrides };
   return new PropertiesService(repo, events);
 }
 
@@ -110,6 +134,83 @@ describe("PropertiesService", () => {
       const service = makeService({ softDelete });
       await service.remove("prop-1");
       expect(softDelete).toHaveBeenCalledWith("prop-1");
+    });
+  });
+
+  describe("findDetail", () => {
+    it("returns null when property is not found", async () => {
+      const service = makeService({
+        findByIdWithRooms: jest.fn().mockResolvedValue(undefined),
+      });
+      const result = await service.findDetail("missing");
+      expect(result).toBeNull();
+    });
+
+    it("returns property with rooms when found", async () => {
+      const service = makeService({
+        findByIdWithRooms: jest
+          .fn()
+          .mockResolvedValue({ property: PROPERTY_ROW, rooms: [ROOM_ROW] }),
+      });
+      const result = await service.findDetail("prop-1");
+      expect(result?.id).toBe("prop-1");
+      expect(result?.rooms).toHaveLength(1);
+      expect(result?.rooms?.[0].roomId).toBe("room-1");
+    });
+
+    it("returns property with empty rooms array when property has no rooms", async () => {
+      const service = makeService({
+        findByIdWithRooms: jest
+          .fn()
+          .mockResolvedValue({ property: PROPERTY_ROW, rooms: [] }),
+      });
+      const result = await service.findDetail("prop-1");
+      expect(result?.rooms).toEqual([]);
+    });
+  });
+
+  describe("update publishes events for each room", () => {
+    it("publishes inventory.room.upserted for each active room after update", async () => {
+      const publish = jest.fn();
+      const service = makeService(
+        {
+          findByIdWithRooms: jest
+            .fn()
+            .mockResolvedValue({ property: PROPERTY_ROW, rooms: [ROOM_ROW] }),
+        },
+        { publish },
+      );
+      await service.update("prop-1", { city: "CDMX" });
+      expect(publish).toHaveBeenCalledWith(
+        "inventory.room.upserted",
+        expect.objectContaining({ routingKey: "inventory.room.upserted" }),
+      );
+    });
+
+    it("does not publish events when property has no rooms", async () => {
+      const publish = jest.fn();
+      const service = makeService(
+        {
+          findByIdWithRooms: jest
+            .fn()
+            .mockResolvedValue({ property: PROPERTY_ROW, rooms: [] }),
+        },
+        { publish },
+      );
+      await service.update("prop-1", { city: "CDMX" });
+      expect(publish).not.toHaveBeenCalled();
+    });
+
+    it("does not publish events when findByIdWithRooms returns undefined", async () => {
+      const publish = jest.fn();
+      const service = makeService(
+        {
+          findByIdWithRooms: jest.fn().mockResolvedValue(undefined),
+        },
+        { publish },
+      );
+      await service.update("prop-1", { city: "CDMX" });
+      expect(publish).not.toHaveBeenCalled();
     });
   });
 });

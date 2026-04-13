@@ -173,6 +173,18 @@ describe("RoomsService", () => {
     });
   });
 
+  describe("update - basePriceUsd branch", () => {
+    it("passes undefined for base_price_usd when basePriceUsd is not provided", async () => {
+      const repoUpdate = jest.fn().mockResolvedValue(ROOM_ROW);
+      const service = makeService({ repo: { update: repoUpdate } });
+      await service.update("room-1", "partner-1", {}); // no basePriceUsd
+      expect(repoUpdate).toHaveBeenCalledWith(
+        "room-1",
+        expect.objectContaining({ base_price_usd: undefined }),
+      );
+    });
+  });
+
   describe("remove", () => {
     it("soft-deletes the room and publishes deleted event", async () => {
       const publish = jest.fn();

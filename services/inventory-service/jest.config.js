@@ -8,7 +8,11 @@ module.exports = {
   coverageReporters: ['lcov', 'text-summary'],
   collectCoverageFrom: [
     '**/*.(t|j)s',
-    '!migrations/**',
+    '!**/migrations/**',
     '!scripts/**',
+    '!**/main.ts',
+    '!**/migrate.ts',
+    '!**/*.module.ts',
+    '!**/*.config.{ts,js}',
   ],
 };

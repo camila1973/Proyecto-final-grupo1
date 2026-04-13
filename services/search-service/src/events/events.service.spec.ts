@@ -7,6 +7,23 @@ import type { TaxRuleDeletedHandler } from "./handlers/tax-rule-deleted.handler.
 import type { PartnerFeeUpsertedHandler } from "./handlers/partner-fee-upserted.handler.js";
 import type { PartnerFeeDeletedHandler } from "./handlers/partner-fee-deleted.handler.js";
 
+// ─── @google-cloud/pubsub mock ────────────────────────────────────────────────
+jest.mock("@google-cloud/pubsub", () => {
+  const mockSub = {
+    on: jest.fn(),
+    removeAllListeners: jest.fn(),
+    close: jest.fn().mockResolvedValue({}),
+  };
+  const mockClient = {
+    subscription: jest.fn().mockReturnValue(mockSub),
+  };
+  return {
+    PubSub: jest.fn().mockReturnValue(mockClient),
+    __mockSub: mockSub,
+    __mockClient: mockClient,
+  };
+});
+
 // ─── amqplib mock ─────────────────────────────────────────────────────────────
 // jest.mock is hoisted before variable declarations, so define mocks inside the factory
 // and expose them via module properties for test access.
@@ -32,6 +49,7 @@ jest.mock("amqplib", () => {
   };
 });
 
+import * as pubsubMod from "@google-cloud/pubsub";
 import * as amqpMod from "amqplib";
 const mockChannel = (amqpMod as any).__mockChannel as {
   assertExchange: jest.Mock;
@@ -45,6 +63,15 @@ const mockChannel = (amqpMod as any).__mockChannel as {
 const mockConnection = (amqpMod as any).__mockConnection as {
   createChannel: jest.Mock;
   close: jest.Mock;
+};
+
+const mockPubSubSub = (pubsubMod as any).__mockSub as {
+  on: jest.Mock;
+  removeAllListeners: jest.Mock;
+  close: jest.Mock;
+};
+const mockPubSubClient = (pubsubMod as any).__mockClient as {
+  subscription: jest.Mock;
 };
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -257,6 +284,147 @@ describe("EventsService", () => {
       expect(() => cb(null)).not.toThrow();
       expect(mockChannel.ack).not.toHaveBeenCalled();
       expect(mockChannel.nack).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("Pub/Sub", () => {
+    beforeEach(() => {
+      mockPubSubSub.on.mockReset();
+      mockPubSubSub.removeAllListeners.mockReset();
+      mockPubSubSub.close.mockReset().mockResolvedValue({});
+      mockPubSubClient.subscription.mockClear();
+    });
+
+    it("connects to Pub/Sub when MESSAGE_BROKER_TYPE is pubsub", async () => {
+      process.env.MESSAGE_BROKER_TYPE = "pubsub";
+
+      await service.onModuleInit();
+
+      expect(pubsubMod.PubSub).toHaveBeenCalled();
+      // 7 subscriptions registered
+      expect(mockPubSubClient.subscription).toHaveBeenCalledTimes(7);
+      expect(mockPubSubSub.on).toHaveBeenCalledWith(
+        "message",
+        expect.any(Function),
+      );
+    });
+
+    it("converts queue dots to hyphens for Pub/Sub subscription names", async () => {
+      process.env.MESSAGE_BROKER_TYPE = "pubsub";
+
+      await service.onModuleInit();
+
+      const subscriptionNames = mockPubSubClient.subscription.mock.calls.map(
+        ([name]: [string]) => name,
+      );
+      expect(subscriptionNames).toContain("search-inventory-room-upserted");
+      expect(subscriptionNames).toContain("search-tax-rule-upserted");
+      expect(subscriptionNames).toContain("search-partner-fee-deleted");
+    });
+
+    it("acks Pub/Sub message after successful handler", async () => {
+      process.env.MESSAGE_BROKER_TYPE = "pubsub";
+
+      // Capture the message listener for the first subscription
+      let messageListener: ((msg: any) => void) | undefined;
+      mockPubSubSub.on.mockImplementation(
+        (event: string, cb: (msg: any) => void) => {
+          if (event === "message" && !messageListener) messageListener = cb;
+        },
+      );
+
+      await service.onModuleInit();
+
+      const mockMsg = {
+        data: Buffer.from(JSON.stringify({ snapshot: { roomId: "r1" } })),
+        ack: jest.fn(),
+        nack: jest.fn(),
+      };
+
+      messageListener!(mockMsg);
+      await new Promise((r) => setTimeout(r, 20));
+
+      expect(mockMsg.ack).toHaveBeenCalled();
+    });
+
+    it("nacks Pub/Sub message when JSON is invalid", async () => {
+      process.env.MESSAGE_BROKER_TYPE = "pubsub";
+
+      let messageListener: ((msg: any) => void) | undefined;
+      mockPubSubSub.on.mockImplementation(
+        (event: string, cb: (msg: any) => void) => {
+          if (event === "message" && !messageListener) messageListener = cb;
+        },
+      );
+
+      await service.onModuleInit();
+
+      const mockMsg = {
+        data: Buffer.from("not valid json }{"),
+        ack: jest.fn(),
+        nack: jest.fn(),
+      };
+
+      messageListener!(mockMsg);
+
+      expect(mockMsg.nack).toHaveBeenCalled();
+    });
+
+    it("nacks Pub/Sub message when handler throws", async () => {
+      process.env.MESSAGE_BROKER_TYPE = "pubsub";
+
+      handlers.roomUpserted.handle.mockRejectedValue(new Error("handler fail"));
+
+      let messageListener: ((msg: any) => void) | undefined;
+      mockPubSubSub.on.mockImplementation(
+        (event: string, cb: (msg: any) => void) => {
+          if (event === "message" && !messageListener) messageListener = cb;
+        },
+      );
+
+      await service.onModuleInit();
+
+      const mockMsg = {
+        data: Buffer.from(JSON.stringify({ snapshot: { roomId: "r1" } })),
+        ack: jest.fn(),
+        nack: jest.fn(),
+      };
+
+      messageListener!(mockMsg);
+      await new Promise((r) => setTimeout(r, 20));
+
+      expect(mockMsg.nack).toHaveBeenCalled();
+    });
+
+    it("logs Pub/Sub subscription errors without throwing", async () => {
+      process.env.MESSAGE_BROKER_TYPE = "pubsub";
+
+      let errorListener: ((err: Error) => void) | undefined;
+      mockPubSubSub.on.mockImplementation((event: string, cb: any) => {
+        if (event === "error") errorListener = cb;
+      });
+
+      await service.onModuleInit();
+
+      expect(() => errorListener!(new Error("sub error"))).not.toThrow();
+    });
+
+    it("does not throw when Pub/Sub connect fails", async () => {
+      process.env.MESSAGE_BROKER_TYPE = "pubsub";
+      (pubsubMod.PubSub as unknown as jest.Mock).mockImplementationOnce(() => {
+        throw new Error("pubsub unavailable");
+      });
+
+      await expect(service.onModuleInit()).resolves.not.toThrow();
+    });
+
+    it("cleans up Pub/Sub subscriptions on destroy", async () => {
+      process.env.MESSAGE_BROKER_TYPE = "pubsub";
+      await service.onModuleInit();
+      await service.onModuleDestroy();
+
+      expect(mockPubSubSub.removeAllListeners).toHaveBeenCalled();
+      expect(mockPubSubSub.close).toHaveBeenCalled();
     });
   });
 });

@@ -127,6 +127,22 @@ pnpm generate-hmac --secret secret-partner-1 --file /tmp/payload.json
 
 Output: raw hex signature + a ready-to-paste `curl` snippet with the `X-TravelHub-Signature` header.
 
+To send a webhook event, use the signature with the partner endpoint:
+
+```bash
+# Local
+curl -X POST http://localhost:3008/webhooks/<partnerId>/events \
+  -H 'X-TravelHub-Signature: <signature>' \
+  -H 'Content-Type: application/json' \
+  -d '<json>'
+
+# Production
+curl -X POST https://travelhub-integration-service-317344419928.us-central1.run.app/webhooks/<partnerId>/events \
+  -H 'X-TravelHub-Signature: <signature>' \
+  -H 'Content-Type: application/json' \
+  -d '<json>'
+```
+
 Seeded signing secrets (set by `integration-service:seed`):
 
 | Partner | `partner_id` | Signing secret |
