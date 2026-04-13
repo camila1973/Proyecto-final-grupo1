@@ -64,4 +64,65 @@ describe("PartnerFeeDeletedHandler", () => {
       handler.handle({ feeId: "fee-1", partnerId: "partner-1" }),
     ).resolves.not.toThrow();
   });
+
+  it("excludes inactive fees from flat totals", async () => {
+    const bookingClient = makeBookingClient([
+      { fee_type: "FLAT_PER_NIGHT", flat_amount: "30", is_active: false },
+    ]);
+    const repo = makeRepo();
+    const handler = new PartnerFeeDeletedHandler(
+      bookingClient as any,
+      repo as any,
+    );
+
+    await handler.handle({ feeId: "fee-1", partnerId: "partner-1" });
+
+    expect(repo.bulkUpdateFlatFees).toHaveBeenCalledWith("partner-1", 0, 0);
+  });
+
+  it("aggregates FLAT_PER_STAY fees correctly", async () => {
+    const bookingClient = makeBookingClient([
+      { fee_type: "FLAT_PER_STAY", flat_amount: "75", is_active: true },
+    ]);
+    const repo = makeRepo();
+    const handler = new PartnerFeeDeletedHandler(
+      bookingClient as any,
+      repo as any,
+    );
+
+    await handler.handle({ feeId: "fee-1", partnerId: "partner-1" });
+
+    expect(repo.bulkUpdateFlatFees).toHaveBeenCalledWith("partner-1", 0, 75);
+  });
+
+  it("treats null flat_amount as 0", async () => {
+    const bookingClient = makeBookingClient([
+      { fee_type: "FLAT_PER_NIGHT", flat_amount: null, is_active: true },
+      { fee_type: "FLAT_PER_STAY", flat_amount: null, is_active: true },
+    ]);
+    const repo = makeRepo();
+    const handler = new PartnerFeeDeletedHandler(
+      bookingClient as any,
+      repo as any,
+    );
+
+    await handler.handle({ feeId: "fee-1", partnerId: "partner-1" });
+
+    expect(repo.bulkUpdateFlatFees).toHaveBeenCalledWith("partner-1", 0, 0);
+  });
+
+  it("excludes PERCENTAGE fee types from flat totals", async () => {
+    const bookingClient = makeBookingClient([
+      { fee_type: "PERCENTAGE", flat_amount: null, is_active: true },
+    ]);
+    const repo = makeRepo();
+    const handler = new PartnerFeeDeletedHandler(
+      bookingClient as any,
+      repo as any,
+    );
+
+    await handler.handle({ feeId: "fee-1", partnerId: "partner-1" });
+
+    expect(repo.bulkUpdateFlatFees).toHaveBeenCalledWith("partner-1", 0, 0);
+  });
 });
