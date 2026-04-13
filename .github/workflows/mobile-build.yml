@@ -12,8 +12,9 @@ on:
           - android
           - ios
           - all
+
 concurrency:
-  group: mobile-build-${{ github.event.inputs.platform }}
+  group: mobile-build-${{ github.event.inputs.platform }}-${{ github.ref }}
   cancel-in-progress: false
 
 env:
@@ -23,8 +24,9 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 
 jobs:
-  build:
-    name: EAS Build / ${{ github.event.inputs.platform }}
+  build-android:
+    if: ${{ github.event.inputs.platform == 'android' || github.event.inputs.platform == 'all' }}
+    name: EAS Local Build / Android
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -32,41 +34,72 @@ jobs:
       - name: Setup (pnpm + Node + deps)
         uses: ./.github/actions/setup
 
-      # Authenticates eas-cli to the Expo account using the EXPO_TOKEN secret.
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
       - name: Setup Expo + EAS CLI
         uses: expo/expo-github-action@v8
         with:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
 
-      # --wait: block until the remote build completes (default with --json).
-      # Output is a JSON array — one object per platform — each with artifacts.buildUrl.
-      - name: Build with EAS
+      - name: Build Android (local)
         working-directory: mobile
+        env:
+          ANDROID_HOME: /usr/local/lib/android/sdk
         run: |
           eas build \
-            --platform ${{ github.event.inputs.platform }} \
+            --platform android \
             --profile preview \
             --non-interactive \
-            --json \
-            --wait \
-            > eas-output.json
+            --local \
+            --output ../artifacts/app.apk
 
-      - name: Download artifacts from EAS
-        run: |
-          mkdir -p artifacts
-          jq -r '.[].artifacts.buildUrl' mobile/eas-output.json | while read -r URL; do
-            [ -z "$URL" ] && continue
-            FILENAME=$(basename "$URL" | cut -d'?' -f1)
-            echo "Downloading $FILENAME"
-            curl -fsSL -o "artifacts/$FILENAME" "$URL"
-          done
-
-      - name: Upload to Actions artifacts
+      - name: Upload Android artifact
         uses: actions/upload-artifact@v4
         with:
-          name: mobile-preview-${{ github.run_id }}
-          path: artifacts/
+          name: android-preview-${{ github.run_id }}
+          path: artifacts/app.apk
           retention-days: 30
           if-no-files-found: error
 
+  build-ios:
+    if: ${{ github.event.inputs.platform == 'ios' || github.event.inputs.platform == 'all' }}
+    name: EAS Local Build / iOS
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup (pnpm + Node + deps)
+        uses: ./.github/actions/setup
+
+      - name: Setup Expo + EAS CLI
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install CocoaPods dependencies
+        working-directory: mobile
+        run: npx expo install --check 2>/dev/null || true
+
+      - name: Build iOS (local)
+        working-directory: mobile
+        run: |
+          eas build \
+            --platform ios \
+            --profile preview \
+            --non-interactive \
+            --local \
+            --output ../artifacts/app.tar.gz
+
+      - name: Upload iOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-preview-${{ github.run_id }}
+          path: artifacts/app.tar.gz
+          retention-days: 30
+          if-no-files-found: error
