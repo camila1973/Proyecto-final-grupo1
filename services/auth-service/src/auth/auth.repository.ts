@@ -1,90 +1,12 @@
-import {
-  Injectable,
-  InternalServerErrorException,
-  OnModuleDestroy,
-  OnModuleInit,
-} from "@nestjs/common";
-import { Generated, Kysely, PostgresDialect, sql } from "kysely";
-import { Pool } from "pg";
+import { Inject, Injectable } from "@nestjs/common";
+import { Kysely, sql } from "kysely";
+import type { AuthDatabase } from "../database/database.types";
+import { KYSELY } from "../database/database.provider";
 import type { DbChallenge, DbUser, UserRole } from "./auth.types";
 
-type AuthUsersTable = {
-  id: string;
-  email: string;
-  role: UserRole;
-  password_hash: string;
-  created_at: string;
-};
-
-type AuthLoginChallengesTable = {
-  id: string;
-  user_id: string;
-  otp_code_hash: string;
-  attempts: Generated<number>;
-  expires_at: string;
-  created_at: Generated<string>;
-};
-
-type AuthDatabase = {
-  auth_users: AuthUsersTable;
-  auth_login_challenges: AuthLoginChallengesTable;
-};
-
 @Injectable()
-export class AuthRepository implements OnModuleInit, OnModuleDestroy {
-  private readonly pool: Pool;
-  private readonly db: Kysely<AuthDatabase>;
-
-  private readonly connectionString: string;
-
-  constructor() {
-    this.connectionString =
-      process.env.DATABASE_URL ??
-      "postgres://postgres:postgres@localhost:5432/travelhub";
-    this.pool = new Pool({
-      connectionString: this.connectionString,
-      ssl: this.connectionString.includes("localhost")
-        ? false
-        : { rejectUnauthorized: false },
-    });
-    this.db = new Kysely<AuthDatabase>({
-      dialect: new PostgresDialect({ pool: this.pool }),
-    });
-  }
-
-  async onModuleInit(): Promise<void> {
-    await this.ensureDatabase();
-    await this.initializeSchema();
-  }
-
-  private async ensureDatabase(): Promise<void> {
-    const url = new URL(this.connectionString);
-    const targetDb = url.pathname.slice(1);
-    if (!targetDb || targetDb === "postgres") return;
-    url.pathname = "/postgres";
-    const adminPool = new Pool({
-      connectionString: url.toString(),
-      ssl: this.connectionString.includes("localhost")
-        ? false
-        : { rejectUnauthorized: false },
-    });
-    try {
-      const { rows } = await adminPool.query<{ exists: boolean }>(
-        "SELECT 1 FROM pg_database WHERE datname = $1",
-        [targetDb],
-      );
-      if (rows.length === 0) {
-        await adminPool.query(`CREATE DATABASE "${targetDb}"`);
-      }
-    } finally {
-      await adminPool.end();
-    }
-  }
-
-  async onModuleDestroy(): Promise<void> {
-    await this.db.destroy();
-    await this.pool.end();
-  }
+export class AuthRepository {
+  constructor(@Inject(KYSELY) private readonly db: Kysely<AuthDatabase>) {}
 
   async createUser(params: {
     id: string;
@@ -177,64 +99,5 @@ export class AuthRepository implements OnModuleInit, OnModuleDestroy {
       DELETE FROM auth_login_challenges
       WHERE expires_at < NOW()
     `.execute(this.db);
-  }
-
-  private async initializeSchema(): Promise<void> {
-    try {
-      await this.db.schema
-        .createTable("auth_users")
-        .ifNotExists()
-        .addColumn("id", "text", (column) => column.primaryKey())
-        .addColumn("email", "text", (column) => column.notNull().unique())
-        .addColumn("role", "text", (column) => column.notNull())
-        .addColumn("password_hash", "text", (column) => column.notNull())
-        .addColumn("created_at", "timestamptz", (column) => column.notNull())
-        .execute();
-
-      // Drop mfa_secret if it exists (leftover from TOTP implementation)
-      await sql`
-        ALTER TABLE auth_users DROP COLUMN IF EXISTS mfa_secret
-      `.execute(this.db);
-
-      await this.db.schema
-        .createTable("auth_login_challenges")
-        .ifNotExists()
-        .addColumn("id", "text", (column) => column.primaryKey())
-        .addColumn("user_id", "text", (column) => column.notNull())
-        .addColumn("otp_code_hash", "text", (column) => column.notNull())
-        .addColumn("attempts", "integer", (column) =>
-          column.notNull().defaultTo(0),
-        )
-        .addColumn("expires_at", "timestamptz", (column) => column.notNull())
-        .addColumn("created_at", "timestamptz", (column) =>
-          column.notNull().defaultTo(sql`NOW()`),
-        )
-        .addForeignKeyConstraint(
-          "auth_login_challenges_user_id_fkey",
-          ["user_id"],
-          "auth_users",
-          ["id"],
-          (constraint) => constraint.onDelete("cascade"),
-        )
-        .execute();
-
-      // Add otp_code_hash and attempts if the table existed without them
-      await sql`
-        ALTER TABLE auth_login_challenges
-          ADD COLUMN IF NOT EXISTS otp_code_hash text,
-          ADD COLUMN IF NOT EXISTS attempts integer NOT NULL DEFAULT 0
-      `.execute(this.db);
-
-      await this.db.schema
-        .createIndex("idx_auth_login_challenges_expires_at")
-        .ifNotExists()
-        .on("auth_login_challenges")
-        .column("expires_at")
-        .execute();
-    } catch (error) {
-      throw new InternalServerErrorException(
-        `Failed to initialize auth schema: ${String(error)}`,
-      );
-    }
   }
 }
