@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
-import { View, ScrollView, StyleSheet, Platform, FlatList } from 'react-native';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { View, ScrollView, StyleSheet, Platform, FlatList, Pressable } from 'react-native';
 import {
   Appbar,
   Text,
@@ -19,6 +19,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
+
+import { Calendar } from 'react-native-calendars';
 
 import { DrawerMenu } from '@/components/drawer-menu';
 import { getFeatured, getCitySuggestions } from '@/services/search-api';
@@ -42,11 +44,6 @@ function addDays(iso: string, n: number): string {
   return toIso(d);
 }
 
-const MONTHS = [
-  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
-];
-
 const CATEGORIES = ['Todos', 'Villas', 'Hoteles', 'Apartamentos'];
 
 // ─── Date Picker Modal ─────────────────────────────────────────────────────────
@@ -64,8 +61,6 @@ function DatePickerModal({ visible, checkIn, checkOut, onConfirm, onCancel }: Da
   const [localIn, setLocalIn] = useState(checkIn);
   const [localOut, setLocalOut] = useState(checkOut);
   const [selecting, setSelecting] = useState<'in' | 'out'>('in');
-  const [viewYear, setViewYear] = useState(() => new Date().getFullYear());
-  const [viewMonth, setViewMonth] = useState(() => new Date().getMonth());
   const today = toIso(new Date());
 
   useEffect(() => {
@@ -74,20 +69,8 @@ function DatePickerModal({ visible, checkIn, checkOut, onConfirm, onCancel }: Da
     setSelecting('in');
   }, [visible, checkIn, checkOut]);
 
-  function prevMonth() {
-    if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1); }
-    else setViewMonth(m => m - 1);
-  }
-  function nextMonth() {
-    if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y + 1); }
-    else setViewMonth(m => m + 1);
-  }
-
-  function daysInMonth(y: number, m: number) { return new Date(y, m + 1, 0).getDate(); }
-  function firstDayOfMonth(y: number, m: number) { return new Date(y, m, 1).getDay(); }
-
-  function selectDay(day: number) {
-    const iso = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  function handleDayPress(day: { dateString: string }) {
+    const iso = day.dateString;
     if (selecting === 'in') {
       setLocalIn(iso);
       if (!localOut || localOut <= iso) setLocalOut(addDays(iso, 1));
@@ -98,21 +81,41 @@ function DatePickerModal({ visible, checkIn, checkOut, onConfirm, onCancel }: Da
     }
   }
 
-  const totalDays = daysInMonth(viewYear, viewMonth);
-  const firstDay = firstDayOfMonth(viewYear, viewMonth);
-  const cells: (number | null)[] = Array(firstDay).fill(null);
-  for (let d = 1; d <= totalDays; d++) cells.push(d);
+  const markedDates = useMemo(() => {
+    if (!localIn) return {};
+    const marks: Record<string, { startingDay?: boolean; endingDay?: boolean; color: string; textColor: string }> = {};
+    const primary = theme.colors.primary;
+    const light = theme.colors.primaryContainer;
+    const onPrimary = theme.colors.onPrimary;
+    const onLight = theme.colors.onPrimaryContainer;
 
-  const cellIso = (day: number) =>
-    `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    if (!localOut || localIn === localOut) {
+      marks[localIn] = { startingDay: true, endingDay: true, color: primary, textColor: onPrimary };
+      return marks;
+    }
+
+    let cursor = localIn;
+    while (cursor <= localOut) {
+      const isStart = cursor === localIn;
+      const isEnd = cursor === localOut;
+      marks[cursor] = {
+        ...(isStart && { startingDay: true }),
+        ...(isEnd && { endingDay: true }),
+        color: isStart || isEnd ? primary : light,
+        textColor: isStart || isEnd ? onPrimary : onLight,
+      };
+      cursor = addDays(cursor, 1);
+    }
+    return marks;
+  }, [localIn, localOut, theme]);
 
   const nights = localIn && localOut
-    ? Math.max(0, Math.round((new Date(localOut).getTime() - new Date(localIn).getTime()) / 86400000))
+    ? Math.max(0, Math.round((new Date(localOut + 'T00:00:00').getTime() - new Date(localIn + 'T00:00:00').getTime()) / 86400000))
     : 0;
 
   return (
     <Portal>
-      <PaperModal visible={visible} onDismiss={onCancel} contentContainerStyle={dpStyles.container}>
+      <PaperModal visible={visible} onDismiss={onCancel} contentContainerStyle={[dpStyles.container, { backgroundColor: theme.colors.surface }]}>
         <Text variant="titleMedium" style={dpStyles.title}>Selecciona fechas</Text>
 
         {/* Check-in / Check-out tabs */}
@@ -122,17 +125,16 @@ function DatePickerModal({ visible, checkIn, checkOut, onConfirm, onCancel }: Da
             const label = tab === 'in' ? 'Check-in' : 'Check-out';
             const value = tab === 'in' ? localIn : localOut;
             return (
-              <Surface
+              <Pressable
                 key={tab}
                 style={[dpStyles.tab, isActive && { backgroundColor: theme.colors.primaryContainer }]}
-                elevation={0}
-                onTouchEnd={() => setSelecting(tab)}
+                onPress={() => setSelecting(tab)}
               >
                 <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>{label}</Text>
                 <Text variant="bodyMedium" style={[dpStyles.tabDate, isActive && { color: theme.colors.primary, fontWeight: '700' }]}>
                   {value ? formatDisplay(value) : 'Seleccionar'}
                 </Text>
-              </Surface>
+              </Pressable>
             );
           })}
         </View>
@@ -143,54 +145,19 @@ function DatePickerModal({ visible, checkIn, checkOut, onConfirm, onCancel }: Da
           </Text>
         )}
 
-        {/* Month nav */}
-        <View style={dpStyles.monthNav}>
-          <IconButton icon="chevron-left" onPress={prevMonth} size={20} />
-          <Text variant="titleSmall">{MONTHS[viewMonth]} {viewYear}</Text>
-          <IconButton icon="chevron-right" onPress={nextMonth} size={20} />
-        </View>
+        <Calendar
+          markingType="period"
+          markedDates={markedDates}
+          onDayPress={handleDayPress}
+          minDate={today}
+          theme={{
+            todayTextColor: theme.colors.primary,
+            arrowColor: theme.colors.primary,
+          }}
+          style={dpStyles.calendar}
+        />
 
-        {/* Day labels */}
-        <View style={dpStyles.dayLabels}>
-          {['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa'].map(d => (
-            <Text key={d} variant="labelSmall" style={[dpStyles.dayLabel, { color: theme.colors.onSurfaceVariant }]}>{d}</Text>
-          ))}
-        </View>
-
-        {/* Grid */}
-        <View style={dpStyles.grid}>
-          {cells.map((day, i) => {
-            if (day === null) return <View key={`e-${i}`} style={dpStyles.cell} />;
-            const iso = cellIso(day);
-            const past = iso < today;
-            const selected = iso === localIn || iso === localOut;
-            const inRange = localIn && localOut && iso > localIn && iso < localOut;
-            return (
-              <View
-                key={day}
-                style={[
-                  dpStyles.cell,
-                  inRange && { backgroundColor: theme.colors.primaryContainer },
-                  selected && { backgroundColor: theme.colors.primary, borderRadius: 20 },
-                ]}
-              >
-                <Text
-                  onPress={() => !past && selectDay(day)}
-                  variant="bodySmall"
-                  style={[
-                    dpStyles.cellText,
-                    past && { color: theme.colors.outline },
-                    selected && { color: theme.colors.onPrimary, fontWeight: '700' },
-                  ]}
-                >
-                  {day}
-                </Text>
-              </View>
-            );
-          })}
-        </View>
-
-        <Divider style={{ marginVertical: 12 }} />
+        <Divider style={{ marginVertical: 8 }} />
 
         <View style={dpStyles.actions}>
           <Button mode="text" onPress={onCancel}>Cancelar</Button>
@@ -218,6 +185,7 @@ interface GuestsPickerModalProps {
 }
 
 function GuestsPickerModal({ visible, guests, rooms, onConfirm, onCancel }: GuestsPickerModalProps) {
+  const theme = useTheme();
   const [localGuests, setLocalGuests] = useState(guests);
   const [localRooms, setLocalRooms] = useState(rooms);
 
@@ -228,7 +196,7 @@ function GuestsPickerModal({ visible, guests, rooms, onConfirm, onCancel }: Gues
 
   return (
     <Portal>
-      <PaperModal visible={visible} onDismiss={onCancel} contentContainerStyle={gpStyles.container}>
+      <PaperModal visible={visible} onDismiss={onCancel} contentContainerStyle={[gpStyles.container, { backgroundColor: theme.colors.surface }]}>
         <Text variant="titleMedium" style={gpStyles.title}>Viajeros y habitaciones</Text>
 
         {[
@@ -411,7 +379,7 @@ export default function HomeScreen() {
         <Surface style={[styles.searchCard, { backgroundColor: theme.colors.surfaceVariant }]} elevation={0}>
 
           {/* City */}
-          <View style={styles.fieldWrapper}>
+          <View style={[styles.fieldWrapper, { zIndex: 20 }]}>
             <TextInput
               label="¿A dónde viajas?"
               value={city}
@@ -435,29 +403,29 @@ export default function HomeScreen() {
           </View>
 
           {/* Dates */}
-          <TextInput
-            label="Fechas de estadía"
-            value={dateLabel()}
-            mode="outlined"
-            editable={false}
-            onPressIn={() => setShowDatePicker(true)}
-            left={<TextInput.Icon icon="calendar-range" />}
-            placeholder="Check-in  →  Check-out"
-            testID="btn-date"
-            style={styles.fieldWrapper}
-          />
+          <Pressable onPress={() => setShowDatePicker(true)} testID="btn-date" style={styles.fieldWrapper}>
+            <TextInput
+              label="Fechas de estadía"
+              value={dateLabel()}
+              mode="outlined"
+              editable={false}
+              pointerEvents="none"
+              left={<TextInput.Icon icon="calendar-range" />}
+              placeholder="Check-in  →  Check-out"
+            />
+          </Pressable>
 
           {/* Guests */}
-          <TextInput
-            label="¿Quiénes viajan?"
-            value={guestsLabel()}
-            mode="outlined"
-            editable={false}
-            onPressIn={() => setShowGuestPicker(true)}
-            left={<TextInput.Icon icon="account-group-outline" />}
-            testID="btn-guests"
-            style={styles.fieldWrapper}
-          />
+          <Pressable onPress={() => setShowGuestPicker(true)} testID="btn-guests" style={styles.fieldWrapper}>
+            <TextInput
+              label="¿Quiénes viajan?"
+              value={guestsLabel()}
+              mode="outlined"
+              editable={false}
+              pointerEvents="none"
+              left={<TextInput.Icon icon="account-group-outline" />}
+            />
+          </Pressable>
 
           {/* Search button */}
           <Button
@@ -516,7 +484,7 @@ const styles = StyleSheet.create({
   headline: { paddingHorizontal: 16, marginTop: 24, marginBottom: 8 },
   headlineTitle: { fontWeight: '800', marginBottom: 6, lineHeight: 30 },
   searchCard: { margin: 16, borderRadius: 16, padding: 16, gap: 4 },
-  fieldWrapper: { marginBottom: 8, zIndex: 10 },
+  fieldWrapper: { marginBottom: 8 },
   suggestions: {
     position: 'absolute',
     top: 56,
@@ -547,7 +515,7 @@ const cardStyles = StyleSheet.create({
 
 const dpStyles = StyleSheet.create({
   container: {
-    margin: 20, backgroundColor: '#fff',
+    margin: 20,
     borderRadius: 16, padding: 20,
     paddingBottom: Platform.OS === 'ios' ? 32 : 20,
   },
@@ -556,18 +524,13 @@ const dpStyles = StyleSheet.create({
   tab: { flex: 1, padding: 10, alignItems: 'center', borderRadius: 10 },
   tabDate: { fontSize: 14, fontWeight: '600', marginTop: 2 },
   nights: { textAlign: 'center', marginBottom: 4 },
-  monthNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  dayLabels: { flexDirection: 'row', marginTop: 4, marginBottom: 2 },
-  dayLabel: { flex: 1, textAlign: 'center' },
-  grid: { flexDirection: 'row', flexWrap: 'wrap' },
-  cell: { width: `${100 / 7}%`, aspectRatio: 1, alignItems: 'center', justifyContent: 'center' },
-  cellText: { textAlign: 'center', lineHeight: 28 },
+  calendar: { borderRadius: 8, marginBottom: 4 },
   actions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8 },
 });
 
 const gpStyles = StyleSheet.create({
   container: {
-    margin: 20, backgroundColor: '#fff',
+    margin: 20,
     borderRadius: 16, padding: 24,
     paddingBottom: Platform.OS === 'ios' ? 32 : 20,
   },
