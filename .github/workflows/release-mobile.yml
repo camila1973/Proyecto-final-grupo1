@@ -109,10 +109,14 @@ jobs:
 
       - name: Generate Android native project
         working-directory: mobile
-        run: npx expo prebuild --platform android --clean --no-install
+        env:
+          NODE_ENV: production
+        run: npx expo prebuild --platform android --clean
 
       - name: Build debug APK
         working-directory: mobile/android
+        env:
+          NODE_ENV: production
         run: ./gradlew assembleDebug
 
       - name: Collect APK

@@ -56,12 +56,18 @@ jobs:
 
       # Generates the android/ native project from app.json — no native code is
       # committed to the repo so this must run on every build.
+      # NODE_ENV=production ensures Expo reads app.json correctly during the Gradle build.
+      # --no-install is omitted so post-install hooks (e.g. expo-splash-screen) run fully.
       - name: Generate Android native project
         working-directory: mobile
-        run: npx expo prebuild --platform android --clean --no-install
+        env:
+          NODE_ENV: production
+        run: npx expo prebuild --platform android --clean
 
       - name: Build debug APK
         working-directory: mobile/android
+        env:
+          NODE_ENV: production
         run: ./gradlew assembleDebug
 
       - name: Collect APK
