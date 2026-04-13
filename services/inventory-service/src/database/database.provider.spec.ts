@@ -38,7 +38,7 @@ describe("DatabaseProvider", () => {
     );
     mockSql.mockReturnValue({
       execute: jest.fn().mockResolvedValue(undefined),
-    } as ReturnType<typeof sql>);
+    } as unknown as ReturnType<typeof sql>);
     provider = new DatabaseProvider();
   });
 
