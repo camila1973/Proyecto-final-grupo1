@@ -411,7 +411,7 @@ describe("EventsService", () => {
 
     it("does not throw when Pub/Sub connect fails", async () => {
       process.env.MESSAGE_BROKER_TYPE = "pubsub";
-      (pubsubMod.PubSub as jest.Mock).mockImplementationOnce(() => {
+      (pubsubMod.PubSub as unknown as jest.Mock).mockImplementationOnce(() => {
         throw new Error("pubsub unavailable");
       });
 
