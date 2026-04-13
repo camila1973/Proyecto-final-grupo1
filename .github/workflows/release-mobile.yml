@@ -105,10 +105,21 @@ jobs:
           token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Build APK (EAS)
+        id: eas-build
         working-directory: mobile
-        run: eas build --platform android --profile release --non-interactive --output ../travelhub-${{ github.event.inputs.version }}.apk
+        run: |
+          BUILD_JSON=$(eas build --platform android --profile release --non-interactive --json 2>/dev/null)
+          echo "build_json=$BUILD_JSON" >> "$GITHUB_OUTPUT"
+          APK_URL=$(echo "$BUILD_JSON" | jq -r '.[0].artifacts.applicationArchiveUrl // .[0].artifacts.buildUrl // empty')
+          echo "apk_url=$APK_URL" >> "$GITHUB_OUTPUT"
+          echo "APK URL: $APK_URL"
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Download APK from EAS
+        run: |
+          curl -L "${{ steps.eas-build.outputs.apk_url }}" \
+            -o travelhub-${{ github.event.inputs.version }}.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
