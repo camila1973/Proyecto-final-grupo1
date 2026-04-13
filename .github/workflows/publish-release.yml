@@ -361,6 +361,7 @@ jobs:
   release:
     name: Create release
     needs: [tag, collect]
+    if: needs.collect.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
