@@ -2,12 +2,9 @@ import { Pool } from "pg";
 import { Kysely, sql } from "kysely";
 import { DatabaseProvider } from "./database.provider";
 
-const mockPoolEnd = jest.fn().mockResolvedValue(undefined);
-const mockSqlExecute = jest.fn().mockResolvedValue(undefined);
-
 jest.mock("pg", () => ({
   Pool: jest.fn().mockImplementation(() => ({
-    end: mockPoolEnd,
+    end: jest.fn().mockResolvedValue(undefined),
     on: jest.fn(),
     connect: jest.fn(),
   })),
@@ -16,7 +13,9 @@ jest.mock("pg", () => ({
 jest.mock("kysely", () => ({
   Kysely: jest.fn().mockImplementation(() => ({ __isMockKysely: true })),
   PostgresDialect: jest.fn().mockImplementation(() => ({})),
-  sql: jest.fn().mockReturnValue({ execute: mockSqlExecute }),
+  sql: jest
+    .fn()
+    .mockReturnValue({ execute: jest.fn().mockResolvedValue(undefined) }),
 }));
 
 const MockPool = Pool as jest.MockedClass<typeof Pool>;
@@ -28,6 +27,18 @@ describe("DatabaseProvider", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    // Re-setup the mock return values after clearAllMocks resets them
+    MockPool.mockImplementation(
+      () =>
+        ({
+          end: jest.fn().mockResolvedValue(undefined),
+          on: jest.fn(),
+          connect: jest.fn(),
+        }) as unknown as Pool,
+    );
+    mockSql.mockReturnValue({
+      execute: jest.fn().mockResolvedValue(undefined),
+    } as ReturnType<typeof sql>);
     provider = new DatabaseProvider();
   });
 
@@ -77,9 +88,18 @@ describe("DatabaseProvider", () => {
 
   describe("onModuleDestroy", () => {
     it("ends the connection pool", async () => {
-      mockPoolEnd.mockClear();
-      await provider.onModuleDestroy();
-      expect(mockPoolEnd).toHaveBeenCalled();
+      const mockEnd = jest.fn().mockResolvedValue(undefined);
+      MockPool.mockImplementationOnce(
+        () =>
+          ({
+            end: mockEnd,
+            on: jest.fn(),
+            connect: jest.fn(),
+          }) as unknown as Pool,
+      );
+      const p = new DatabaseProvider();
+      await p.onModuleDestroy();
+      expect(mockEnd).toHaveBeenCalled();
     });
   });
 });
