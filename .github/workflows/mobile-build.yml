@@ -112,7 +112,7 @@ jobs:
         env:
           NODE_ENV: production
           EXPO_PUBLIC_API_URL: ${{ github.event.inputs.api_url }}
-        run: npx expo prebuild --platform ios --clean
+        run: npx expo prebuild --platform ios --clean --no-install
 
       - name: Install CocoaPods dependencies
         working-directory: mobile/ios
