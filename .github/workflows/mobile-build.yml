@@ -16,6 +16,11 @@ on:
         description: 'GitHub release tag to attach artifacts to (e.g. v1.0.0). Leave empty to skip.'
         required: false
         type: string
+      api_url:
+        description: 'API base URL baked into the app (e.g. http://10.0.2.2:3000 for Android emulator, http://localhost:3000 for iOS Simulator)'
+        required: false
+        default: 'http://10.0.2.2:3000'
+        type: string
 
 concurrency:
   group: mobile-build-${{ github.event.inputs.platform }}
@@ -62,12 +67,14 @@ jobs:
         working-directory: mobile
         env:
           NODE_ENV: production
+          EXPO_PUBLIC_API_URL: ${{ github.event.inputs.api_url }}
         run: npx expo prebuild --platform android --clean
 
       - name: Build debug APK
         working-directory: mobile/android
         env:
           NODE_ENV: production
+          EXPO_PUBLIC_API_URL: ${{ github.event.inputs.api_url }}
         run: ./gradlew assembleDebug
 
       - name: Collect APK
@@ -102,15 +109,22 @@ jobs:
 
       - name: Generate iOS native project
         working-directory: mobile
-        run: npx expo prebuild --platform ios --clean --no-install
+        env:
+          NODE_ENV: production
+          EXPO_PUBLIC_API_URL: ${{ github.event.inputs.api_url }}
+        run: npx expo prebuild --platform ios --clean
 
       - name: Install CocoaPods dependencies
         working-directory: mobile/ios
         run: pod install
 
       # CODE_SIGNING_ALLOWED=NO disables all signing — valid for simulator builds.
+      # EXPO_PUBLIC_API_URL is inherited by Metro when it bundles the JS during the build.
       - name: Build for iOS Simulator
         working-directory: mobile
+        env:
+          NODE_ENV: production
+          EXPO_PUBLIC_API_URL: ${{ github.event.inputs.api_url }}
         run: |
           xcodebuild \
             -workspace ios/mobile.xcworkspace \
