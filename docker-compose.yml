@@ -105,6 +105,8 @@ services:
   # ─── Shared infrastructure (Redis + RabbitMQ) ────────────────────────────────
   redis:
     image: redis:7-alpine
+    ports:
+      - "6379:6379"
     volumes:
       - redis_data:/data
     networks:
