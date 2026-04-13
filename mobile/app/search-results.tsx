@@ -34,40 +34,40 @@ function nightsBetween(checkIn: string, checkOut: string): number {
 // ─── Property Card ─────────────────────────────────────────────────────────────
 
 function PropertyCard({ item, nights }: { item: PropertyResult; nights: number }) {
-  const pricePerNight = item.pricePerNight ?? item.totalPrice ?? null;
-  const totalPrice = nights > 0 && pricePerNight != null ? pricePerNight * nights : null;
+  const pricePerNight = item.priceUsd ?? item.basePriceUsd ?? null;
+  const totalPrice = nights > 0 ? item.estimatedTotalUsd : null;
 
   return (
     <View style={cardStyles.card}>
       <Image
-        source={item.thumbnail_url || 'https://via.placeholder.com/360x180'}
+        source={item.property.thumbnailUrl || 'https://via.placeholder.com/360x180'}
         style={cardStyles.image}
         contentFit="cover"
       />
 
       <View style={cardStyles.body}>
         <View style={cardStyles.topRow}>
-          <Text style={cardStyles.name} numberOfLines={2}>{item.property_name}</Text>
-          {item.stars > 0 && (
+          <Text style={cardStyles.name} numberOfLines={2}>{item.property.name}</Text>
+          {item.property.stars > 0 && (
             <View style={cardStyles.starsBox}>
-              <Text style={cardStyles.starsText}>{'★'.repeat(item.stars)}</Text>
+              <Text style={cardStyles.starsText}>{'★'.repeat(item.property.stars)}</Text>
             </View>
           )}
         </View>
 
         <Text style={cardStyles.location} numberOfLines={1}>
-          {[item.neighborhood, item.city, item.country].filter(Boolean).join(', ')}
+          {[item.property.neighborhood, item.property.city, item.property.countryCode].filter(Boolean).join(', ')}
         </Text>
 
-        {item.review_count > 0 && (
+        {item.property.reviewCount > 0 && (
           <Text style={cardStyles.rating}>
-            {item.rating.toFixed(1)} ★  ({item.review_count} reseñas)
+            {item.property.rating.toFixed(1)} ★  ({item.property.reviewCount} reseñas)
           </Text>
         )}
 
         <View style={cardStyles.footer}>
           <View>
-            <Text style={cardStyles.roomType}>{item.room_type}</Text>
+            <Text style={cardStyles.roomType}>{item.roomType}</Text>
             <Text style={cardStyles.capacity}>Hasta {item.capacity} personas</Text>
           </View>
           {pricePerNight != null && (
@@ -203,7 +203,7 @@ export default function SearchResultsScreen() {
       ) : (
         <FlatList
           data={data?.results ?? []}
-          keyExtractor={item => item.property_id}
+          keyExtractor={item => item.roomId}
           renderItem={({ item }) => <PropertyCard item={item} nights={nights} />}
           contentContainerStyle={styles.list}
           onEndReached={handleLoadMore}

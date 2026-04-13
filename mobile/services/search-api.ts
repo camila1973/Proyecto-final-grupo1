@@ -10,20 +10,28 @@ export interface SearchParams {
 }
 
 export interface PropertyResult {
-  property_id: string;
-  property_name: string;
-  city: string;
-  country: string;
-  neighborhood: string | null;
-  stars: number;
-  rating: number;
-  review_count: number;
-  thumbnail_url: string;
-  room_type: string;
-  bed_type: string;
+  roomId: string;
+  roomType: string;
+  bedType: string;
+  viewType: string;
   capacity: number;
-  pricePerNight: number | null;
-  totalPrice: number | null;
+  basePriceUsd: number;
+  priceUsd: number | null;
+  taxRatePct: number;
+  estimatedTotalUsd: number;
+  hasFlatFees: boolean;
+  property: {
+    id: string;
+    name: string;
+    city: string;
+    countryCode: string;
+    neighborhood: string | null;
+    stars: number;
+    rating: number;
+    reviewCount: number;
+    thumbnailUrl: string;
+    amenities: string[];
+  };
 }
 
 export interface SearchResponse {

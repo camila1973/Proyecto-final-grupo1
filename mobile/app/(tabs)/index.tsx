@@ -259,11 +259,11 @@ function GuestsPickerModal({ visible, guests, rooms, onConfirm, onCancel }: Gues
 // ─── Featured Card ─────────────────────────────────────────────────────────────
 
 function FeaturedCard({ item }: { item: PropertyResult }) {
-  const price = item.pricePerNight ?? item.totalPrice;
+  const price = item.priceUsd ?? item.basePriceUsd;
   return (
     <Card style={cardStyles.card} mode="elevated">
       <Image
-        source={item.thumbnail_url || 'https://via.placeholder.com/140x100'}
+        source={item.property.thumbnailUrl || 'https://via.placeholder.com/140x100'}
         style={cardStyles.image}
         contentFit="cover"
       />
@@ -273,9 +273,9 @@ function FeaturedCard({ item }: { item: PropertyResult }) {
         </View>
       )}
       <Card.Content style={cardStyles.content}>
-        <Text variant="labelMedium" numberOfLines={1}>{item.property_name}</Text>
-        <Text variant="labelSmall" numberOfLines={1} style={cardStyles.city}>{item.city}</Text>
-        {item.stars > 0 && <Text style={cardStyles.stars}>{'★'.repeat(item.stars)}</Text>}
+        <Text variant="labelMedium" numberOfLines={1}>{item.property.name}</Text>
+        <Text variant="labelSmall" numberOfLines={1} style={cardStyles.city}>{item.property.city}</Text>
+        {item.property.stars > 0 && <Text style={cardStyles.stars}>{'★'.repeat(item.property.stars)}</Text>}
       </Card.Content>
     </Card>
   );
@@ -363,7 +363,7 @@ export default function HomeScreen() {
           ) : featured.length > 0 ? (
             <FlatList
               data={featured}
-              keyExtractor={item => item.property_id}
+              keyExtractor={item => item.roomId}
               renderItem={({ item }) => <FeaturedCard item={item} />}
               horizontal
               showsHorizontalScrollIndicator={false}
