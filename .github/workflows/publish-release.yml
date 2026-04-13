@@ -72,9 +72,9 @@ jobs:
           echo "sha=$SHA" >> "$GITHUB_OUTPUT"
           echo "Tagged $SHA as $TAG"
 
-  # ── 3. Build APK with EAS ─────────────────────────────────────────────────────
+  # ── 3a. Build Android debug APK ───────────────────────────────────────────────
   build-apk:
-    name: Build APK
+    name: Build Android APK
     needs: tag
     runs-on: ubuntu-latest
     steps:
@@ -98,17 +98,33 @@ jobs:
             fs.writeFileSync('mobile/app.json', JSON.stringify(cfg, null, 2));
           "
 
-      - name: Setup EAS
-        uses: expo/expo-github-action@v8
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
         with:
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
+          java-version: '17'
+          distribution: temurin
 
-      - name: Build APK (EAS)
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Generate Android native project
         working-directory: mobile
-        run: eas build --platform android --profile release --non-interactive --output ../travelhub-${{ github.event.inputs.version }}.apk
         env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          NODE_ENV: production
+          EXPO_PUBLIC_API_URL: ${{ secrets.EXPO_PUBLIC_API_URL }}
+        run: npx expo prebuild --platform android --clean
+
+      - name: Build debug APK
+        working-directory: mobile/android
+        env:
+          NODE_ENV: production
+          EXPO_PUBLIC_API_URL: ${{ secrets.EXPO_PUBLIC_API_URL }}
+        run: ./gradlew assembleDebug
+
+      - name: Collect APK
+        run: |
+          SRC=$(find mobile/android/app/build/outputs/apk/debug -name "*.apk" | head -1)
+          cp "$SRC" travelhub-${{ github.event.inputs.version }}.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
@@ -117,10 +133,62 @@ jobs:
           path: travelhub-${{ github.event.inputs.version }}.apk
           retention-days: 7
 
+  # ── 3b. Build iOS Simulator .app ──────────────────────────────────────────────
+  build-ios:
+    name: Build iOS Simulator
+    needs: tag
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.tag.outputs.sha }}
+
+      - uses: ./.github/actions/setup
+
+      - name: Generate iOS native project
+        working-directory: mobile
+        env:
+          NODE_ENV: production
+          EXPO_PUBLIC_API_URL: ${{ secrets.EXPO_PUBLIC_API_URL }}
+        run: npx expo prebuild --platform ios --clean --no-install
+
+      - name: Install CocoaPods dependencies
+        working-directory: mobile/ios
+        run: pod install
+
+      # CODE_SIGNING_ALLOWED=NO disables all signing — valid for simulator builds.
+      # EXPO_PUBLIC_API_URL is inherited by Metro when it bundles the JS during the build.
+      - name: Build for iOS Simulator
+        working-directory: mobile
+        env:
+          NODE_ENV: production
+          EXPO_PUBLIC_API_URL: ${{ secrets.EXPO_PUBLIC_API_URL }}
+        run: |
+          xcodebuild \
+            -workspace ios/mobile.xcworkspace \
+            -scheme mobile \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -derivedDataPath ./build \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Zip .app bundle
+        run: |
+          APP=$(find mobile/build -name "*.app" -maxdepth 6 | head -1)
+          zip -r travelhub-${{ github.event.inputs.version }}-ios-simulator.zip "$APP"
+
+      - name: Upload iOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: travelhub-ios-simulator
+          path: travelhub-${{ github.event.inputs.version }}-ios-simulator.zip
+          retention-days: 7
+
   # ── 4. Create GitHub Release ──────────────────────────────────────────────────
   release:
     name: Create release
-    needs: [tag, build-apk]
+    needs: [tag, build-apk, build-ios]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -132,6 +200,11 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: travelhub-apk
+
+      - name: Download iOS simulator app
+        uses: actions/download-artifact@v4
+        with:
+          name: travelhub-ios-simulator
 
       - name: Generate changelog
         id: changelog
@@ -157,8 +230,16 @@ jobs:
             fi
             echo ""
             echo "### Install"
-            echo "Download \`travelhub-$TAG.apk\` and install it on your Android device."
-            echo "You may need to enable _Install from unknown sources_ in your device settings."
+            echo "**Android emulator:** download \`travelhub-$TAG.apk\` and run:"
+            echo "\`\`\`"
+            echo "adb install travelhub-$TAG.apk"
+            echo "\`\`\`"
+            echo ""
+            echo "**iOS Simulator:** download \`travelhub-$TAG-ios-simulator.zip\`, unzip, then run:"
+            echo "\`\`\`"
+            echo "xcrun simctl install booted mobile.app"
+            echo "xcrun simctl launch booted com.travelhub.mobile"
+            echo "\`\`\`"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
@@ -168,6 +249,8 @@ jobs:
           tag_name: ${{ github.event.inputs.version }}
           name: TravelHub Mobile ${{ github.event.inputs.version }}
           body: ${{ steps.changelog.outputs.body }}
-          files: travelhub-${{ github.event.inputs.version }}.apk
+          files: |
+            travelhub-${{ github.event.inputs.version }}.apk
+            travelhub-${{ github.event.inputs.version }}-ios-simulator.zip
           draft: false
           prerelease: ${{ contains(github.event.inputs.version, '-') }}

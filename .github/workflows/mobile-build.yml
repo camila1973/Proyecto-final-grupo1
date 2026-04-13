@@ -1,0 +1,181 @@
+name: Mobile Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Target platform'
+        required: true
+        type: choice
+        default: android
+        options:
+          - android
+          - ios
+          - all
+      release_tag:
+        description: 'GitHub release tag to attach artifacts to (e.g. v1.0.0). Leave empty to skip.'
+        required: false
+        type: string
+      api_url:
+        description: 'API base URL baked into the app (e.g. http://10.0.2.2:3000 for Android emulator, http://localhost:3000 for iOS Simulator)'
+        required: false
+        default: 'http://10.0.2.2:3000'
+        type: string
+
+concurrency:
+  group: mobile-build-${{ github.event.inputs.platform }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write # required by gh release upload
+
+env:
+  NX_DAEMON: 'false'
+  NX_TUI: 'false'
+  HUSKY: '0'
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Android — debug APK, runs on any Android emulator, no signing required
+  # ---------------------------------------------------------------------------
+  build-android:
+    name: Android APK (debug)
+    if: ${{ github.event.inputs.platform == 'android' || github.event.inputs.platform == 'all' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup (pnpm + Node + deps)
+        uses: ./.github/actions/setup
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: temurin
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      # Generates the android/ native project from app.json — no native code is
+      # committed to the repo so this must run on every build.
+      # NODE_ENV=production ensures Expo reads app.json correctly during the Gradle build.
+      # --no-install is omitted so post-install hooks (e.g. expo-splash-screen) run fully.
+      - name: Generate Android native project
+        working-directory: mobile
+        env:
+          NODE_ENV: production
+          EXPO_PUBLIC_API_URL: ${{ github.event.inputs.api_url }}
+        run: npx expo prebuild --platform android --clean
+
+      - name: Build debug APK
+        working-directory: mobile/android
+        env:
+          NODE_ENV: production
+          EXPO_PUBLIC_API_URL: ${{ github.event.inputs.api_url }}
+        run: ./gradlew assembleDebug
+
+      - name: Collect APK
+        id: apk
+        run: |
+          SRC=$(find mobile/android/app/build/outputs/apk/debug -name "*.apk" | head -1)
+          cp "$SRC" app-debug.apk
+          echo "path=app-debug.apk" >> "$GITHUB_OUTPUT"
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-debug-${{ github.run_id }}
+          path: ${{ steps.apk.outputs.path }}
+          retention-days: 30
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------
+  # iOS — simulator .app bundle (zipped), no signing required
+  # Install with: xcrun simctl install booted TravelHub.app
+  # ---------------------------------------------------------------------------
+  build-ios:
+    name: iOS Simulator .app
+    if: ${{ github.event.inputs.platform == 'ios' || github.event.inputs.platform == 'all' }}
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup (pnpm + Node + deps)
+        uses: ./.github/actions/setup
+
+      - name: Generate iOS native project
+        working-directory: mobile
+        env:
+          NODE_ENV: production
+          EXPO_PUBLIC_API_URL: ${{ github.event.inputs.api_url }}
+        run: npx expo prebuild --platform ios --clean --no-install
+
+      - name: Install CocoaPods dependencies
+        working-directory: mobile/ios
+        run: pod install
+
+      # CODE_SIGNING_ALLOWED=NO disables all signing — valid for simulator builds.
+      # EXPO_PUBLIC_API_URL is inherited by Metro when it bundles the JS during the build.
+      - name: Build for iOS Simulator
+        working-directory: mobile
+        env:
+          NODE_ENV: production
+          EXPO_PUBLIC_API_URL: ${{ github.event.inputs.api_url }}
+        run: |
+          xcodebuild \
+            -workspace ios/mobile.xcworkspace \
+            -scheme mobile \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -derivedDataPath ./build \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Zip .app bundle
+        run: |
+          APP=$(find mobile/build -name "*.app" -maxdepth 6 | head -1)
+          zip -r mobile.app.zip "$APP"
+
+      - name: Upload simulator app
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-simulator-${{ github.run_id }}
+          path: mobile.app.zip
+          retention-days: 30
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------
+  # Attach artifacts to a GitHub release (only when release_tag is provided)
+  # ---------------------------------------------------------------------------
+  upload-to-release:
+    name: Attach to GitHub Release
+    if: |
+      always() &&
+      github.event.inputs.release_tag != '' &&
+      (needs.build-android.result == 'success' || needs.build-android.result == 'skipped') &&
+      (needs.build-ios.result == 'success' || needs.build-ios.result == 'skipped') &&
+      (needs.build-android.result == 'success' || needs.build-ios.result == 'success')
+    needs: [build-android, build-ios]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: Attach to GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for FILE in release-assets/*; do
+            echo "Uploading $(basename "$FILE") to release ${{ github.event.inputs.release_tag }}"
+            gh release upload "${{ github.event.inputs.release_tag }}" "$FILE" \
+              --repo "${{ github.repository }}" \
+              --clobber
+          done
