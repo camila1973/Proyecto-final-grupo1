@@ -12,8 +12,18 @@ on:
           - android
           - ios
           - all
+      build_strategy:
+        description: 'Build strategy'
+        required: true
+        type: choice
+        default: eas-cloud
+        options:
+          - eas-cloud
+          - github-actions
+          - self-hosted
+
 concurrency:
-  group: mobile-build-${{ github.event.inputs.platform }}
+  group: mobile-build-${{ github.event.inputs.platform }}-${{ github.ref }}
   cancel-in-progress: false
 
 env:
@@ -23,8 +33,10 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 
 jobs:
-  build:
-    name: EAS Build / ${{ github.event.inputs.platform }}
+  # ── Strategy: EAS Cloud ────────────────────────────────────────────────────────
+  build-eas-cloud:
+    if: ${{ github.event.inputs.build_strategy == 'eas-cloud' }}
+    name: EAS Cloud / ${{ github.event.inputs.platform }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -32,15 +44,12 @@ jobs:
       - name: Setup (pnpm + Node + deps)
         uses: ./.github/actions/setup
 
-      # Authenticates eas-cli to the Expo account using the EXPO_TOKEN secret.
       - name: Setup Expo + EAS CLI
         uses: expo/expo-github-action@v8
         with:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
 
-      # --wait: block until the remote build completes (default with --json).
-      # Output is a JSON array — one object per platform — each with artifacts.buildUrl.
       - name: Build with EAS
         working-directory: mobile
         run: |
@@ -70,3 +79,124 @@ jobs:
           retention-days: 30
           if-no-files-found: error
 
+  # ── Strategy: GitHub Actions (Android — ubuntu-latest) ────────────────────────
+  build-gh-android:
+    if: ${{ github.event.inputs.build_strategy == 'github-actions' && github.event.inputs.platform != 'ios' }}
+    name: GitHub Actions Local / Android
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup (pnpm + Node + deps)
+        uses: ./.github/actions/setup
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Expo + EAS CLI
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Build Android (local)
+        working-directory: mobile
+        env:
+          ANDROID_HOME: /usr/local/lib/android/sdk
+        run: |
+          mkdir -p ../artifacts
+          eas build \
+            --platform android \
+            --profile preview \
+            --non-interactive \
+            --local \
+            --output ../artifacts/app.apk
+
+      - name: Upload Android artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-preview-android-${{ github.run_id }}
+          path: artifacts/app.apk
+          retention-days: 30
+          if-no-files-found: error
+
+  # ── Strategy: GitHub Actions (iOS — macos-latest) ─────────────────────────────
+  build-gh-ios:
+    if: ${{ github.event.inputs.build_strategy == 'github-actions' && github.event.inputs.platform != 'android' }}
+    name: GitHub Actions Local / iOS
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup (pnpm + Node + deps)
+        uses: ./.github/actions/setup
+
+      - name: Setup Expo + EAS CLI
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Build iOS (local)
+        working-directory: mobile
+        run: |
+          mkdir -p ../artifacts
+          eas build \
+            --platform ios \
+            --profile preview \
+            --non-interactive \
+            --local \
+            --output ../artifacts/app.tar.gz
+
+      - name: Upload iOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-preview-ios-${{ github.run_id }}
+          path: artifacts/app.tar.gz
+          retention-days: 30
+          if-no-files-found: error
+
+  # ── Strategy: Self-hosted (always builds both platforms) ──────────────────────
+  build-self-hosted:
+    if: ${{ github.event.inputs.build_strategy == 'self-hosted' }}
+    name: Self-hosted Local / Android + iOS
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup (pnpm + Node + deps)
+        uses: ./.github/actions/setup
+
+      - name: Setup Expo + EAS CLI
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Build Android + iOS (local)
+        working-directory: mobile
+        run: |
+          mkdir -p ../artifacts
+          eas build \
+            --platform android \
+            --profile preview \
+            --non-interactive \
+            --local \
+            --output ../artifacts/app.apk
+          eas build \
+            --platform ios \
+            --profile preview \
+            --non-interactive \
+            --local \
+            --output ../artifacts/app.tar.gz
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-preview-${{ github.run_id }}
+          path: artifacts/
+          retention-days: 30
+          if-no-files-found: error
