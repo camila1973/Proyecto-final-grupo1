@@ -314,7 +314,7 @@ function makeCloudRun(
         connector: vpcConnector.id,
         egress: "PRIVATE_RANGES_ONLY",
       },
-      scaling: { minInstanceCount: 0, maxInstanceCount: 1 },
+      scaling: { minInstanceCount: 1, maxInstanceCount: 1 },
       containers: [{
         image: img.imageName,
         ports: [{ containerPort: 8080 }],
