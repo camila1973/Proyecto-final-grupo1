@@ -116,6 +116,12 @@ async function seed() {
 
   const client = await pool.connect();
   try {
+    // ── Truncate ──────────────────────────────────────────────────────────────
+    console.log("Clearing tables...");
+    await client.query(
+      "TRUNCATE external_id_map, pms_registrations RESTART IDENTITY CASCADE",
+    );
+
     // ── PMS registrations ────────────────────────────────────────────────────
     console.log("Seeding pms_registrations...");
     await client.query(`
@@ -123,7 +129,6 @@ async function seed() {
       VALUES
         ('${PARTNER_1}', 'Partner 1 (Cancún properties)', 'generic', 'secret-partner-1', true),
         ('${PARTNER_2}', 'Partner 2 (CDMX + Cancún hostel)', 'generic', 'secret-partner-2', true)
-      ON CONFLICT DO NOTHING
     `);
 
     // ── External ID map — properties ─────────────────────────────────────────
@@ -131,8 +136,7 @@ async function seed() {
     for (const { partnerId, externalId, internalId } of EXT_PROPS) {
       await client.query(
         `INSERT INTO external_id_map (partner_id, entity_type, external_id, internal_id)
-         VALUES ($1, 'property', $2, $3)
-         ON CONFLICT (partner_id, entity_type, external_id) DO NOTHING`,
+         VALUES ($1, 'property', $2, $3)`,
         [partnerId, externalId, internalId],
       );
     }
@@ -142,8 +146,7 @@ async function seed() {
     for (const { partnerId, externalId, internalId } of EXT_ROOMS) {
       await client.query(
         `INSERT INTO external_id_map (partner_id, entity_type, external_id, internal_id)
-         VALUES ($1, 'room', $2, $3)
-         ON CONFLICT (partner_id, entity_type, external_id) DO NOTHING`,
+         VALUES ($1, 'room', $2, $3)`,
         [partnerId, externalId, internalId],
       );
     }

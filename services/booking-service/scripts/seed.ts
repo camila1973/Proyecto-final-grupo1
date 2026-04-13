@@ -1,4 +1,4 @@
-import { Kysely, PostgresDialect } from "kysely";
+import { Kysely, PostgresDialect, sql } from "kysely";
 import { Pool } from "pg";
 import type { Database } from "../src/database/database.types.js";
 
@@ -259,10 +259,9 @@ const PARTNER_FEES = [
 
 async function seed() {
   console.log("Clearing tables...");
-  await db.deleteFrom("partner_fees").execute();
-  await db.deleteFrom("tax_rules").execute();
-  await db.deleteFrom("price_validation_cache").execute();
-  await db.deleteFrom("room_location_cache").execute();
+  await sql`TRUNCATE partner_fees, tax_rules, price_validation_cache, room_location_cache RESTART IDENTITY CASCADE`.execute(
+    db,
+  );
 
   // Tax rules
   console.log(`Seeding ${TAX_RULES.length} tax rules...`);
