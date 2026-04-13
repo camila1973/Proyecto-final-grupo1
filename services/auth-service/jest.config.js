@@ -6,5 +6,13 @@ module.exports = {
   moduleFileExtensions: ['ts', 'js', 'html'],
   coverageDirectory: '../../coverage/auth-service',
   coverageReporters: ['lcov', 'text-summary'],
-  collectCoverageFrom: ['**/*.(t|j)s'],
+  collectCoverageFrom: [
+    '**/*.(t|j)s',
+    '!**/migrations/**',
+    '!scripts/**',
+    '!**/main.ts',
+    '!**/migrate.ts',
+    '!**/*.module.ts',
+    '!**/*.config.{ts,js}',
+  ],
 };

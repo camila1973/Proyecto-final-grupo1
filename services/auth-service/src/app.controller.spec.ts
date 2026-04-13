@@ -41,6 +41,25 @@ describe("AppController", () => {
     });
   });
 
+  describe("getUsers", () => {
+    it("delegates to authService.getUsers and returns the result", async () => {
+      const users = [
+        {
+          id: "usr_1",
+          email: "a@b.com",
+          role: "guest" as const,
+          createdAt: "2024-01-01",
+        },
+      ];
+      mockAuthService.getUsers.mockResolvedValue(users);
+
+      const result = await appController.getUsers();
+
+      expect(mockAuthService.getUsers).toHaveBeenCalled();
+      expect(result).toEqual(users);
+    });
+  });
+
   describe("register + login + mfa", () => {
     it("should register a new account and authenticate with email OTP", async () => {
       const registration: RegisterResponse = {
