@@ -1,0 +1,173 @@
+name: Release Mobile
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g. v1.0.0)'
+        required: true
+        type: string
+
+concurrency:
+  group: release-mobile
+  cancel-in-progress: false
+
+permissions:
+  contents: write  # needed to create tags and releases
+
+env:
+  NX_DAEMON: 'false'
+  NX_TUI: 'false'
+  HUSKY: '0'
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
+jobs:
+  # ── 1. Validate input & run tests ─────────────────────────────────────────────
+  validate:
+    name: Validate & test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate version format
+        run: |
+          if ! echo "${{ github.event.inputs.version }}" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::Version must follow semver format: v1.2.3"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - uses: ./.github/actions/setup
+
+      - name: Run mobile tests
+        run: pnpm exec nx test mobile --passWithNoTests --outputStyle=static
+
+  # ── 2. Tag the commit ─────────────────────────────────────────────────────────
+  tag:
+    name: Tag commit
+    needs: validate
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.tag.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Create and push tag
+        id: tag
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          TAG="${{ github.event.inputs.version }}"
+          SHA=$(git rev-parse HEAD)
+
+          git tag -a "$TAG" "$SHA" -m "Release $TAG"
+          git push origin "$TAG"
+
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "Tagged $SHA as $TAG"
+
+  # ── 3. Build APK with EAS ─────────────────────────────────────────────────────
+  build-apk:
+    name: Build APK
+    needs: tag
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.tag.outputs.sha }}
+
+      - uses: ./.github/actions/setup
+
+      - name: Set app version in app.json
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          # Strip leading 'v' for the version field (v1.2.3 → 1.2.3)
+          SEMVER="${VERSION#v}"
+          node -e "
+            const fs = require('fs');
+            const cfg = JSON.parse(fs.readFileSync('mobile/app.json', 'utf8'));
+            cfg.expo.version = '$SEMVER';
+            cfg.expo.android = cfg.expo.android ?? {};
+            cfg.expo.android.versionCode = parseInt('$SEMVER'.replace(/\./g, ''));
+            fs.writeFileSync('mobile/app.json', JSON.stringify(cfg, null, 2));
+          "
+
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Build APK (EAS)
+        working-directory: mobile
+        run: eas build --platform android --profile release --non-interactive --output ../travelhub-${{ github.event.inputs.version }}.apk
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: travelhub-apk
+          path: travelhub-${{ github.event.inputs.version }}.apk
+          retention-days: 7
+
+  # ── 4. Create GitHub Release ──────────────────────────────────────────────────
+  release:
+    name: Create release
+    needs: [tag, build-apk]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.tag.outputs.sha }}
+          fetch-depth: 0
+
+      - name: Download APK
+        uses: actions/download-artifact@v4
+        with:
+          name: travelhub-apk
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          TAG="${{ github.event.inputs.version }}"
+          PREVIOUS_TAG=$(git tag --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sed -n '2p')
+
+          if [ -n "$PREVIOUS_TAG" ]; then
+            COMMITS=$(git log "$PREVIOUS_TAG"..HEAD --pretty=format:"- %s (%h)" -- mobile/ services/ 2>/dev/null || echo "")
+          else
+            COMMITS=$(git log --pretty=format:"- %s (%h)" --max-count=20 -- mobile/ services/ 2>/dev/null || echo "")
+          fi
+
+          {
+            echo "body<<EOF"
+            echo "## TravelHub Mobile $TAG"
+            echo ""
+            echo "### Changes"
+            if [ -n "$COMMITS" ]; then
+              echo "$COMMITS"
+            else
+              echo "- Initial release"
+            fi
+            echo ""
+            echo "### Install"
+            echo "Download \`travelhub-$TAG.apk\` and install it on your Android device."
+            echo "You may need to enable _Install from unknown sources_ in your device settings."
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.version }}
+          name: TravelHub Mobile ${{ github.event.inputs.version }}
+          body: ${{ steps.changelog.outputs.body }}
+          files: travelhub-${{ github.event.inputs.version }}.apk
+          draft: false
+          prerelease: ${{ contains(github.event.inputs.version, '-') }}
