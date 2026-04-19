@@ -53,15 +53,19 @@ export class PropertiesService {
       available = candidates.filter((r) => availableIds.has(r.room_id));
     }
 
-    const filtered = this.facets.applyFilters(available, {
-      roomType: dto.exact ? dto.roomType : undefined,
-      bedType: dto.exact ? dto.bedType : undefined,
-      viewType: dto.exact ? dto.viewType : undefined,
-      amenities: dto.exact ? dto.amenities : undefined,
-      stars: dto.exact ? dto.stars : undefined,
-      priceMin: dto.priceMin,
-      priceMax: dto.priceMax,
-    });
+    const filtered = this.facets.applyFilters(
+      available,
+      {
+        roomType: dto.exact ? dto.roomType : undefined,
+        bedType: dto.exact ? dto.bedType : undefined,
+        viewType: dto.exact ? dto.viewType : undefined,
+        amenities: dto.exact ? dto.amenities : undefined,
+        stars: dto.stars,
+        priceMin: dto.priceMin,
+        priceMax: dto.priceMax,
+      },
+      nights,
+    );
 
     const facetData = this.facets.computeFacets(available, dto);
     const rooms = this.facets.selectCheapestRoomPerProperty(filtered, nights);

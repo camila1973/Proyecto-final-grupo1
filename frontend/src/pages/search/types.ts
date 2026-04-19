@@ -56,7 +56,10 @@ export interface SearchResponse {
   results: SearchResult[];
   facets: {
     roomTypes: FacetItem[];
+    bedTypes: FacetItem[];
+    viewTypes: FacetItem[];
     amenities: FacetItem[];
+    stars: FacetItem[];
     priceRange: { min: number; max: number; currency: string };
   };
 }

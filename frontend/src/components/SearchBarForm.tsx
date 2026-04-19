@@ -155,6 +155,13 @@ export default function SearchBarForm({
         checkIn: checkIn?.format('YYYY-MM-DD') ?? todayISO(),
         checkOut: checkOut?.format('YYYY-MM-DD') ?? offsetDateISO(2),
         guests: Math.max(1, guests),
+        priceMin: undefined,
+        priceMax: undefined,
+        amenities: undefined,
+        roomTypes: undefined,
+        bedTypes: undefined,
+        viewTypes: undefined,
+        stars: undefined,
       },
     });
   }

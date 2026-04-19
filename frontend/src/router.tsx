@@ -40,6 +40,13 @@ const searchRoute = createRoute({
     checkIn: (search.checkIn as string) ?? '',
     checkOut: (search.checkOut as string) ?? '',
     guests: Number(search.guests ?? 2),
+    priceMin: (search.priceMin as string) || undefined,
+    priceMax: (search.priceMax as string) || undefined,
+    amenities: (search.amenities as string) || undefined,
+    roomTypes: (search.roomTypes as string) || undefined,
+    bedTypes: (search.bedTypes as string) || undefined,
+    viewTypes: (search.viewTypes as string) || undefined,
+    stars: (search.stars as string) || undefined,
   }),
   component: SearchPage,
 });
