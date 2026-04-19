@@ -1,6 +1,7 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import { getLocales } from 'expo-localization';
+import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import en from './locales/en';
@@ -26,15 +27,19 @@ i18n
     },
   });
 
-// Apply saved language preference (overrides device default)
-AsyncStorage.getItem(LANG_KEY).then(saved => {
-  if (saved && supportedLangs.includes(saved) && saved !== i18n.language) {
-    i18n.changeLanguage(saved);
-  }
-});
+// Apply saved language preference (overrides device default — native only)
+if (Platform.OS !== 'web') {
+  AsyncStorage.getItem(LANG_KEY).then(saved => {
+    if (saved && supportedLangs.includes(saved) && saved !== i18n.language) {
+      i18n.changeLanguage(saved);
+    }
+  });
+}
 
 export async function saveLanguage(lang: string) {
-  await AsyncStorage.setItem(LANG_KEY, lang);
+  if (Platform.OS !== 'web') {
+    await AsyncStorage.setItem(LANG_KEY, lang);
+  }
 }
 
 export default i18n;
