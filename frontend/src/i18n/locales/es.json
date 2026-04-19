@@ -43,7 +43,17 @@
     "available": "Disponible",
     "unavailable": "No disponible",
     "loading": "Cargando detalles de la propiedad...",
-    "error": "No se pudieron cargar los detalles de la propiedad."
+    "error": "No se pudieron cargar los detalles de la propiedad.",
+    "about": "Acerca del hotel",
+    "about_description": "{{name}} está ubicado en {{address}}. Ofrece instalaciones de primera clase y un servicio excepcional para garantizar la comodidad de sus huéspedes durante toda su estadía.",
+    "rooms_found_one": "{{count}} habitación disponible encontrada",
+    "rooms_found_other": "{{count}} habitaciones disponibles encontradas",
+    "guests_label": "Huéspedes",
+    "capacity_for_one": "Capacidad para {{count}} huésped",
+    "capacity_for_other": "Capacidad para {{count}} huéspedes",
+    "has_bed": "Posee {{bed}}",
+    "nights_incl_taxes_one": "por {{count}} noche · impuestos incl.",
+    "nights_incl_taxes_other": "por {{count}} noches · impuestos incl."
   },
   "search": {
     "error_city_required": "Por favor ingresa un destino.",
@@ -56,9 +66,10 @@
     "filters": {
       "title": "Filtros",
       "clear": "Borrar filtros",
-      "price_label": "PRECIO POR NOCHE ({{currency}})",
+      "price_label": "PRECIO TOTAL ({{currency}})",
       "price_from": "DESDE",
-      "price_to": "HASTA"
+      "price_to": "HASTA",
+      "stars_label": "ESTRELLAS"
     },
     "card": {
       "nights_one": "por noche",
@@ -138,6 +149,47 @@
       "expired": "El código ha expirado.",
       "too_many_attempts": "Demasiados intentos fallidos.",
       "generic": "Ocurrió un error. Intenta de nuevo."
+    }
+  },
+  "taxonomies": {
+    "categories": {
+      "amenities": "Amenidades",
+      "room_type": "Tipo de habitación",
+      "bed_type": "Tipo de cama",
+      "view_type": "Vista"
+    },
+    "amenities": {
+      "pool": "Piscina",
+      "wifi": "WiFi gratis",
+      "parking": "Estacionamiento",
+      "gym": "Gimnasio",
+      "spa": "Spa",
+      "restaurant": "Restaurante",
+      "breakfast": "Desayuno",
+      "ac": "Aire acondicionado",
+      "pet_friendly": "Acepta mascotas",
+      "beach_access": "Acceso a la playa"
+    },
+    "room_type": {
+      "standard": "Estándar",
+      "deluxe": "Deluxe",
+      "suite": "Suite",
+      "junior_suite": "Suite junior",
+      "penthouse": "Penthouse"
+    },
+    "bed_type": {
+      "single": "Individual",
+      "twin": "Doble con camas individuales",
+      "double": "Doble",
+      "queen": "Queen",
+      "king": "King"
+    },
+    "view_type": {
+      "garden": "Vista al jardín",
+      "city": "Vista a la ciudad",
+      "ocean": "Vista al mar",
+      "mountain": "Vista a la montaña",
+      "pool": "Vista a la piscina"
     }
   },
   "footer": {

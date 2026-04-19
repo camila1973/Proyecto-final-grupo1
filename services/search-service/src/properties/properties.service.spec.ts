@@ -175,10 +175,11 @@ describe("PropertiesService", () => {
       expect(mockFacets.applyFilters).toHaveBeenCalledWith(
         expect.anything(),
         expect.objectContaining({ stars: [4, 5], priceMax: 400 }),
+        4,
       );
     });
 
-    it("passes only price filters to applyFilters when exact=false", async () => {
+    it("does not pass category filters to applyFilters when exact=false", async () => {
       const { service, mockFacets } = makeServices();
       await service.searchProperties({
         ...baseDto,
@@ -188,16 +189,22 @@ describe("PropertiesService", () => {
       });
       expect(mockFacets.applyFilters).toHaveBeenCalledWith(
         expect.anything(),
-        expect.objectContaining({ roomType: undefined, stars: undefined }),
+        expect.objectContaining({ roomType: undefined, stars: [5] }),
+        4,
       );
     });
 
-    it("passes only price filters to applyFilters when exact is undefined", async () => {
+    it("does not pass category filters to applyFilters when exact is undefined", async () => {
       const { service, mockFacets } = makeServices();
-      await service.searchProperties({ ...baseDto, roomType: ["suite"] });
+      await service.searchProperties({
+        ...baseDto,
+        roomType: ["suite"],
+        stars: [4],
+      });
       expect(mockFacets.applyFilters).toHaveBeenCalledWith(
         expect.anything(),
-        expect.objectContaining({ roomType: undefined }),
+        expect.objectContaining({ roomType: undefined, stars: [4] }),
+        4,
       );
     });
 
@@ -289,6 +296,7 @@ describe("PropertiesService", () => {
       expect(mockFacets.applyFilters).toHaveBeenCalledWith(
         [roomA],
         expect.anything(),
+        4,
       );
     });
   });

@@ -24,14 +24,19 @@ export function resolveLabel(map: LabelMap, code: string): string {
   return map[code] ?? code;
 }
 
-export function buildLabelMap(categories: TaxonomyCategory[], categoryCode: string): LabelMap {
+export function buildLabelMap(
+  categories: TaxonomyCategory[],
+  categoryCode: string,
+  t: (key: string, options?: { defaultValue?: string }) => string,
+): LabelMap {
   const cat = categories.find((c) => c.code === categoryCode);
   if (!cat) return {};
   // Index by both code and id so facets that return either key resolve correctly
   const entries: [string, string][] = [];
   for (const v of cat.values) {
-    entries.push([v.code, v.label]);
-    entries.push([String(v.id), v.label]);
+    const label = t(`taxonomies.${categoryCode}.${v.code}`, { defaultValue: v.label });
+    entries.push([v.code, label]);
+    entries.push([String(v.id), label]);
   }
   return Object.fromEntries(entries);
 }

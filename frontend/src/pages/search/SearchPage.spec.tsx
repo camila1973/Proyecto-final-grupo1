@@ -51,15 +51,18 @@ const mockSearchResponse = {
   results: [mockSearchResult],
   facets: {
     roomTypes: [{ id: 'suite', count: 1 }],
+    bedTypes: [{ id: 'king', count: 1 }],
+    viewTypes: [{ id: 'ocean', count: 1 }],
     amenities: [{ id: 'wifi', count: 1 }],
-    priceRange: { min: 280, max: 280, currency: 'USD' },
+    stars: [{ id: 5, count: 1 }],
+    priceRange: { min: 200, max: 500, currency: 'USD' },
   },
 };
 
 const emptySearchResponse = {
   meta: { total: 0, page: 1, pageSize: 20, totalPages: 0 },
   results: [],
-  facets: { roomTypes: [], amenities: [], priceRange: { min: 0, max: 0, currency: 'USD' } },
+  facets: { roomTypes: [], bedTypes: [], viewTypes: [], amenities: [], stars: [], priceRange: { min: 0, max: 0, currency: 'USD' } },
 };
 
 const taxonomyResponse = { categories: [] };
@@ -93,13 +96,23 @@ function renderPage() {
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
 describe('SearchPage', () => {
+  const baseSearch = {
+    city: 'Cancún',
+    countryCode: '',
+    checkIn: '2026-04-01',
+    checkOut: '2026-04-05',
+    guests: 2,
+    priceMin: undefined,
+    priceMax: undefined,
+    amenities: undefined,
+    roomTypes: undefined,
+    bedTypes: undefined,
+    viewTypes: undefined,
+    stars: undefined,
+  };
+
   beforeEach(() => {
-    mockUseSearch.mockReturnValue({
-      city: 'Cancún',
-      checkIn: '2026-04-01',
-      checkOut: '2026-04-05',
-      guests: 2,
-    });
+    mockUseSearch.mockReturnValue(baseSearch);
     global.fetch = jest.fn();
   });
 
@@ -178,49 +191,58 @@ describe('SearchPage', () => {
       (global.fetch as jest.Mock).mockImplementation(makeFetchMock(mockSearchResponse));
     });
 
-    it('does not show the clear button initially', async () => {
+    it('does not show the clear button when no filter params are in the URL', async () => {
       renderPage();
       await screen.findByText('Gran Caribe Resort');
       expect(screen.queryByText(es.search.filters.clear)).not.toBeInTheDocument();
     });
 
-    it('shows clear button after entering a price filter', async () => {
+    it('shows clear button when filter params are present in the URL', async () => {
+      mockUseSearch.mockReturnValue({ ...baseSearch, priceMin: '500000' });
       renderPage();
       await screen.findByText('Gran Caribe Resort');
-      const priceMinInput = screen.getByPlaceholderText('0');
-      fireEvent.change(priceMinInput, { target: { value: '500000' } });
-      await waitFor(() => {
-        expect(screen.getByText(es.search.filters.clear)).toBeInTheDocument();
-      });
+      expect(screen.getByText(es.search.filters.clear)).toBeInTheDocument();
     });
 
-    it('hides clear button after clearing all filters', async () => {
+    it('calls navigate with priceMin when price slider min changes', async () => {
       renderPage();
       await screen.findByText('Gran Caribe Resort');
-      const priceMinInput = screen.getByPlaceholderText('0');
-      fireEvent.change(priceMinInput, { target: { value: '500000' } });
-      await waitFor(() => screen.getByText(es.search.filters.clear));
+      const sliders = screen.getAllByRole('slider');
+      fireEvent.keyDown(sliders[0], { key: 'ArrowRight' });
+      fireEvent.keyUp(sliders[0]);
+      await waitFor(() => expect(mockNavigate).toHaveBeenCalled());
+      const { search } = mockNavigate.mock.calls[0][0];
+      expect(search).toMatchObject({ priceMin: '201' });
+    });
+
+    it('calls navigate to clear all filters when clear button is clicked', async () => {
+      mockUseSearch.mockReturnValue({ ...baseSearch, amenities: 'wifi' });
+      renderPage();
+      await screen.findByText('Gran Caribe Resort');
       fireEvent.click(screen.getByText(es.search.filters.clear));
-      await waitFor(() => {
-        expect(screen.queryByText(es.search.filters.clear)).not.toBeInTheDocument();
-      });
+      await waitFor(() => expect(mockNavigate).toHaveBeenCalled());
+      const { search } = mockNavigate.mock.calls[0][0];
+      expect(search.amenities).toBeUndefined();
+      expect(search.priceMin).toBeUndefined();
+      expect(search.stars).toBeUndefined();
     });
 
-    it('toggles amenity checkbox on and off', async () => {
+    it('calls navigate when a filter checkbox is clicked', async () => {
       renderPage();
       await screen.findByText('Gran Caribe Resort');
       const [checkbox] = screen.getAllByRole('checkbox');
       fireEvent.click(checkbox);
-      await waitFor(() => expect(checkbox).toBeChecked());
-      fireEvent.click(checkbox);
-      await waitFor(() => expect(checkbox).not.toBeChecked());
+      await waitFor(() => expect(mockNavigate).toHaveBeenCalled());
+      const { search } = mockNavigate.mock.calls[0][0];
+      // First checkbox is the 5-star filter
+      expect(search.stars).toBe('5');
     });
   });
 
   describe('URL params', () => {
     it('pre-fills city input from URL search params', async () => {
       (global.fetch as jest.Mock).mockImplementation(makeFetchMock(emptySearchResponse));
-      mockUseSearch.mockReturnValue({ city: 'Barcelona', checkIn: '', checkOut: '', guests: 1 });
+      mockUseSearch.mockReturnValue({ ...baseSearch, city: 'Barcelona', guests: 1 });
       renderPage();
       await screen.findByText(es.search.empty);
       expect(screen.getByDisplayValue('Barcelona')).toBeInTheDocument();
