@@ -65,7 +65,8 @@ export default {
   register: {
     title: 'My Account',
     heading: 'Create account',
-    fullName: 'Full name',
+    firstName: 'First name',
+    lastName: 'Last name',
     email: 'Email address',
     password: 'Password',
     confirmPassword: 'Confirm password',

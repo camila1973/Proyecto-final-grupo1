@@ -1,12 +1,14 @@
 export interface RegisterFields {
-  fullName: string;
+  firstName: string;
+  lastName: string;
   email: string;
   password: string;
   confirmPassword: string;
 }
 
 export interface RegisterErrors {
-  fullName?: string;
+  firstName?: string;
+  lastName?: string;
   email?: string;
   password?: string;
   confirmPassword?: string;
@@ -31,20 +33,16 @@ export function validateEmail(email: string): string | undefined {
   return undefined;
 }
 
-export function splitFullName(fullName: string): { firstName: string; lastName: string } {
-  const idx = fullName.trim().indexOf(' ');
-  if (idx === -1) return { firstName: fullName.trim(), lastName: '' };
-  return {
-    firstName: fullName.slice(0, idx).trim(),
-    lastName: fullName.slice(idx + 1).trim(),
-  };
-}
 
 export function validateRegisterFields(fields: RegisterFields): RegisterErrors {
   const errors: RegisterErrors = {};
 
-  if (!fields.fullName.trim()) {
-    errors.fullName = 'El nombre completo es requerido';
+  if (!fields.firstName.trim()) {
+    errors.firstName = 'El nombre es requerido';
+  }
+
+  if (!fields.lastName.trim()) {
+    errors.lastName = 'El apellido es requerido';
   }
 
   const emailError = validateEmail(fields.email);

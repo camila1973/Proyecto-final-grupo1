@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { AppCard } from '@/components/ui/app-card';
-import { validateRegisterFields, hasErrors, splitFullName } from './register-validation';
+import { validateRegisterFields, hasErrors } from './register-validation';
 import type { RegisterFields, RegisterErrors } from './register-validation';
 
 const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
@@ -16,7 +16,8 @@ export default function RegisterScreen() {
   const { t } = useTranslation();
 
   const [fields, setFields] = useState<RegisterFields>({
-    fullName: '',
+    firstName: '',
+    lastName: '',
     email: '',
     password: '',
     confirmPassword: '',
@@ -50,7 +51,8 @@ export default function RegisterScreen() {
         body: JSON.stringify({
           email: fields.email.trim().toLowerCase(),
           password: fields.password,
-          ...splitFullName(fields.fullName),
+          firstName: fields.firstName.trim(),
+          lastName: fields.lastName.trim(),
         }),
       });
 
@@ -91,17 +93,30 @@ export default function RegisterScreen() {
           ) : null}
 
           <TextInput
-            label={t('register.fullName')}
-            value={fields.fullName}
-            onChangeText={update('fullName')}
+            label={t('register.firstName')}
+            value={fields.firstName}
+            onChangeText={update('firstName')}
             mode="outlined"
             autoCapitalize="words"
             left={<TextInput.Icon icon="account-outline" />}
             style={styles.input}
-            error={!!errors.fullName}
-            testID="input-fullName"
+            error={!!errors.firstName}
+            testID="input-firstName"
           />
-          {errors.fullName ? <HelperText type="error" visible>{errors.fullName}</HelperText> : null}
+          {errors.firstName ? <HelperText type="error" visible>{errors.firstName}</HelperText> : null}
+
+          <TextInput
+            label={t('register.lastName')}
+            value={fields.lastName}
+            onChangeText={update('lastName')}
+            mode="outlined"
+            autoCapitalize="words"
+            left={<TextInput.Icon icon="account-outline" />}
+            style={styles.input}
+            error={!!errors.lastName}
+            testID="input-lastName"
+          />
+          {errors.lastName ? <HelperText type="error" visible>{errors.lastName}</HelperText> : null}
 
           <TextInput
             label={t('register.email')}
