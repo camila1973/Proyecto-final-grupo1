@@ -76,7 +76,7 @@ jobs:
         with:
           name: mobile-preview-${{ github.run_id }}
           path: artifacts/
-          retention-days: 30
+          retention-days: 1
           if-no-files-found: error
 
   # ── Strategy: GitHub Actions (Android — ubuntu-latest) ────────────────────────
@@ -120,7 +120,7 @@ jobs:
         with:
           name: mobile-preview-android-${{ github.run_id }}
           path: artifacts/app.apk
-          retention-days: 30
+          retention-days: 1
           if-no-files-found: error
 
   # ── Strategy: GitHub Actions (iOS — macos-latest) ─────────────────────────────
@@ -156,7 +156,7 @@ jobs:
         with:
           name: mobile-preview-ios-${{ github.run_id }}
           path: artifacts/app.tar.gz
-          retention-days: 30
+          retention-days: 1
           if-no-files-found: error
 
   # ── Strategy: Self-hosted (always builds both platforms) ──────────────────────
@@ -198,5 +198,5 @@ jobs:
         with:
           name: mobile-preview-${{ github.run_id }}
           path: artifacts/
-          retention-days: 30
+          retention-days: 1
           if-no-files-found: error

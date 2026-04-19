@@ -139,7 +139,6 @@ jobs:
         with:
           name: travelhub-builds
           path: artifacts/
-          retention-days: 7
           if-no-files-found: error
 
   # ── 3b. Build — GitHub Actions (Android) ──────────────────────────────────────
@@ -198,7 +197,7 @@ jobs:
         with:
           name: travelhub-builds-android
           path: "artifacts/travelhub-${{ github.event.inputs.version }}.apk"
-          retention-days: 7
+
           if-no-files-found: error
 
   # ── 3c. Build — GitHub Actions (iOS) ──────────────────────────────────────────
@@ -249,7 +248,7 @@ jobs:
         with:
           name: travelhub-builds-ios
           path: "artifacts/travelhub-${{ github.event.inputs.version }}-ios-simulator.tar.gz"
-          retention-days: 7
+
           if-no-files-found: error
 
   # ── 3d. Build — Self-hosted (Android + iOS) ───────────────────────────────────
@@ -306,7 +305,7 @@ jobs:
         with:
           name: travelhub-builds
           path: artifacts/
-          retention-days: 7
+
           if-no-files-found: error
 
   # ── 4. Collect artifacts (fan-in) ─────────────────────────────────────────────
@@ -354,7 +353,7 @@ jobs:
         with:
           name: travelhub-release-builds
           path: artifacts/
-          retention-days: 7
+
           if-no-files-found: error
 
   # ── 5. Create GitHub Release ──────────────────────────────────────────────────
