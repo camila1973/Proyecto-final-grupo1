@@ -24,6 +24,8 @@
     "generate-hmac": "npx tsx services/integration-service/scripts/generate-hmac.ts",
     "serve:frontend": "nx serve frontend",
     "start:mobile": "nx start mobile",
+    "run:ios": "nx run-ios mobile",
+    "run:android": "nx run-android mobile",
     "test": "NX_DAEMON=false NX_TUI=false nx run-many -t test --outputStyle=static",
     "lint": "NX_DAEMON=false NX_TUI=false nx run-many -t lint --outputStyle=static",
     "lint:fix": "NX_DAEMON=false NX_TUI=false nx run-many -t lint --fix --outputStyle=static",

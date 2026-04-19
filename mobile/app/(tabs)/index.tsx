@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { View, ScrollView, StyleSheet, Platform, FlatList, Pressable } from 'react-native';
+import { View, ScrollView, StyleSheet, Platform, Pressable } from 'react-native';
 import {
   Appbar,
   Text,
@@ -22,7 +22,6 @@ import { useRouter } from 'expo-router';
 
 import { Calendar } from 'react-native-calendars';
 
-import { DrawerMenu } from '@/components/drawer-menu';
 import { getFeatured, getCitySuggestions } from '@/services/search-api';
 import type { PropertyResult, CitySuggestion } from '@/services/search-api';
 
@@ -255,7 +254,6 @@ export default function HomeScreen() {
   const router = useRouter();
   const theme = useTheme();
 
-  const [drawerOpen, setDrawerOpen] = useState(false);
   const [city, setCity] = useState('');
   const [checkIn, setCheckIn] = useState('');
   const [checkOut, setCheckOut] = useState('');
@@ -313,12 +311,11 @@ export default function HomeScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
+    <SafeAreaView style={styles.safeArea} edges={[]}>
       {/* AppBar */}
-      <Appbar.Header style={{ backgroundColor: theme.colors.surface }} elevated>
-        <Appbar.Action icon="menu" onPress={() => setDrawerOpen(true)} testID="btn-menu" />
+      <Appbar.Header style={{ backgroundColor: theme.colors.surface, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
         <Appbar.Content title="TravelHub" titleStyle={[styles.brandName, { color: theme.colors.primary }]} />
-        <Appbar.Action icon="account-circle-outline" onPress={() => {}} />
+        <Appbar.Action icon="bell-outline" onPress={() => router.push('/notifications')} />
       </Appbar.Header>
 
       <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
@@ -329,14 +326,13 @@ export default function HomeScreen() {
           {featuredLoading ? (
             <ActivityIndicator animating style={{ marginVertical: 20 }} />
           ) : featured.length > 0 ? (
-            <FlatList
-              data={featured}
-              keyExtractor={item => item.roomId}
-              renderItem={({ item }) => <FeaturedCard item={item} />}
+            <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}
-            />
+            >
+              {featured.map(item => <FeaturedCard key={item.roomId} item={item} />)}
+            </ScrollView>
           ) : (
             <Text variant="bodySmall" style={[styles.emptyText, { color: theme.colors.onSurfaceVariant }]}>
               No hay propiedades destacadas
@@ -379,7 +375,7 @@ export default function HomeScreen() {
         <Surface style={[styles.searchCard, { backgroundColor: theme.colors.surfaceVariant }]} elevation={0}>
 
           {/* City */}
-          <View style={[styles.fieldWrapper, { zIndex: 20 }]}>
+          <View style={[styles.fieldWrapper, { zIndex: 10 }]}>
             <TextInput
               label="¿A dónde viajas?"
               value={city}
@@ -446,9 +442,6 @@ export default function HomeScreen() {
         <View style={{ height: 32 }} />
       </ScrollView>
 
-      {/* Drawer */}
-      <DrawerMenu visible={drawerOpen} onClose={() => setDrawerOpen(false)} />
-
       {/* Date picker */}
       <DatePickerModal
         visible={showDatePicker}
@@ -473,7 +466,7 @@ export default function HomeScreen() {
 // ─── Styles ────────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1 },
+  safeArea: { flex: 1, backgroundColor: '#fff' },
   brandName: { fontSize: 18, fontWeight: '800', letterSpacing: 0.5 },
   section: { marginTop: 20 },
   sectionTitle: { paddingHorizontal: 16, marginBottom: 12 },
@@ -483,7 +476,7 @@ const styles = StyleSheet.create({
   emptyText: { paddingHorizontal: 16 },
   headline: { paddingHorizontal: 16, marginTop: 24, marginBottom: 8 },
   headlineTitle: { fontWeight: '800', marginBottom: 6, lineHeight: 30 },
-  searchCard: { margin: 16, borderRadius: 16, padding: 16, gap: 4 },
+  searchCard: { margin: 16, borderRadius: 16, padding: 16, gap: 4, overflow: 'visible', zIndex: 1 },
   fieldWrapper: { marginBottom: 8 },
   suggestions: {
     position: 'absolute',
@@ -493,7 +486,6 @@ const styles = StyleSheet.create({
     zIndex: 100,
     borderRadius: 8,
     maxHeight: 200,
-    overflow: 'hidden',
   },
   searchBtn: { marginTop: 8, borderRadius: 10 },
   searchBtnContent: { paddingVertical: 6 },
