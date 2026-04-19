@@ -40,7 +40,7 @@ function PropertyCard({ item, nights }: { item: PropertyResult; nights: number }
   return (
     <View style={cardStyles.card}>
       <Image
-        source={item.property.thumbnailUrl || 'https://via.placeholder.com/360x180'}
+        source="https://cf.bstatic.com/xdata/images/hotel/max1024x768/484083124.jpg?k=f129efcf29b69ac37463eb551c3fd79e43e3a66a223194e917d3844c721ee338&o="
         style={cardStyles.image}
         contentFit="cover"
       />
@@ -162,27 +162,22 @@ export default function SearchResultsScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+      {/* Results bar with back + city info */}
+      <View style={styles.resultsBar}>
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} testID="btn-back">
           <Text style={styles.backText}>←</Text>
         </TouchableOpacity>
-        <View style={styles.headerCenter}>
+        <View style={styles.resultsCenter}>
           <Text style={styles.headerCity} numberOfLines={1}>{city}</Text>
           <Text style={styles.headerSub} numberOfLines={1}>{buildSubtitle()}</Text>
+          {!loading && data && (
+            <Text style={styles.resultsCount}>
+              {data.meta.total} {data.meta.total === 1 ? 'hospedaje' : 'hospedajes'} encontrados
+            </Text>
+          )}
         </View>
-        <View style={{ width: 40 }} />
       </View>
-
-      {/* Results count */}
-      {!loading && data && (
-        <View style={styles.resultsBar}>
-          <Text style={styles.resultsCount}>
-            {data.meta.total} {data.meta.total === 1 ? 'hospedaje' : 'hospedajes'} encontrados
-          </Text>
-        </View>
-      )}
 
       {/* Content */}
       {loading ? (
@@ -223,30 +218,30 @@ export default function SearchResultsScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#f8f9ff',
   },
-  header: {
+  resultsBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
     paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: '#fff',
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: '#e5e7eb',
-    backgroundColor: '#fff',
   },
   backBtn: {
     width: 40,
     height: 40,
     alignItems: 'center',
     justifyContent: 'center',
+    marginRight: 4,
   },
   backText: {
     fontSize: 22,
     color: BRAND,
   },
-  headerCenter: {
+  resultsCenter: {
     flex: 1,
-    alignItems: 'center',
   },
   headerCity: {
     fontSize: 16,
@@ -258,17 +253,11 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     marginTop: 1,
   },
-  resultsBar: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    backgroundColor: '#f9fafb',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#e5e7eb',
-  },
   resultsCount: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#6b7280',
     fontWeight: '500',
+    marginTop: 2,
   },
   centered: {
     flex: 1,

@@ -8,12 +8,12 @@ const DRAWER_WIDTH = Dimensions.get('window').width * 0.75;
 interface MenuItem {
   label: string;
   icon: string;
-  href: '/' | '/explore' | '/register';
+  href: '/' | '/trips' | '/register';
 }
 
 const MENU_ITEMS: MenuItem[] = [
   { label: 'Inicio',       icon: 'home-outline',        href: '/' },
-  { label: 'Explorar',     icon: 'compass-outline',     href: '/explore' },
+  { label: 'Reservas',     icon: 'calendar-check-outline', href: '/trips' },
   { label: 'Crear cuenta', icon: 'account-plus-outline', href: '/register' },
 ];
 

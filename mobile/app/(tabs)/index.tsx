@@ -1,12 +1,11 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { View, ScrollView, StyleSheet, Platform, FlatList, Pressable } from 'react-native';
+import { View, ScrollView, StyleSheet, Platform, Pressable } from 'react-native';
 import {
   Appbar,
   Text,
   TextInput,
   Button,
   Chip,
-  Card,
   ActivityIndicator,
   Surface,
   List,
@@ -16,13 +15,14 @@ import {
   IconButton,
   Divider,
 } from 'react-native-paper';
+import { AppCard } from '@/components/ui/app-card';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 
 import { Calendar } from 'react-native-calendars';
 
-import { DrawerMenu } from '@/components/drawer-menu';
 import { getFeatured, getCitySuggestions } from '@/services/search-api';
 import type { PropertyResult, CitySuggestion } from '@/services/search-api';
 
@@ -58,6 +58,7 @@ interface DatePickerModalProps {
 
 function DatePickerModal({ visible, checkIn, checkOut, onConfirm, onCancel }: DatePickerModalProps) {
   const theme = useTheme();
+  const { t } = useTranslation();
   const [localIn, setLocalIn] = useState(checkIn);
   const [localOut, setLocalOut] = useState(checkOut);
   const [selecting, setSelecting] = useState<'in' | 'out'>('in');
@@ -116,13 +117,13 @@ function DatePickerModal({ visible, checkIn, checkOut, onConfirm, onCancel }: Da
   return (
     <Portal>
       <PaperModal visible={visible} onDismiss={onCancel} contentContainerStyle={[dpStyles.container, { backgroundColor: theme.colors.surface }]}>
-        <Text variant="titleMedium" style={dpStyles.title}>Selecciona fechas</Text>
+        <Text variant="titleMedium" style={dpStyles.title}>{t('datePicker.title')}</Text>
 
         {/* Check-in / Check-out tabs */}
         <View style={dpStyles.tabs}>
           {(['in', 'out'] as const).map((tab) => {
             const isActive = selecting === tab;
-            const label = tab === 'in' ? 'Check-in' : 'Check-out';
+            const label = tab === 'in' ? t('datePicker.checkin') : t('datePicker.checkout');
             const value = tab === 'in' ? localIn : localOut;
             return (
               <Pressable
@@ -132,7 +133,7 @@ function DatePickerModal({ visible, checkIn, checkOut, onConfirm, onCancel }: Da
               >
                 <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>{label}</Text>
                 <Text variant="bodyMedium" style={[dpStyles.tabDate, isActive && { color: theme.colors.primary, fontWeight: '700' }]}>
-                  {value ? formatDisplay(value) : 'Seleccionar'}
+                  {value ? formatDisplay(value) : t('datePicker.select')}
                 </Text>
               </Pressable>
             );
@@ -141,7 +142,7 @@ function DatePickerModal({ visible, checkIn, checkOut, onConfirm, onCancel }: Da
 
         {nights > 0 && (
           <Text variant="labelMedium" style={[dpStyles.nights, { color: theme.colors.onSurfaceVariant }]}>
-            {nights} {nights === 1 ? 'noche' : 'noches'}
+            {t('datePicker.night', { count: nights })}
           </Text>
         )}
 
@@ -160,13 +161,13 @@ function DatePickerModal({ visible, checkIn, checkOut, onConfirm, onCancel }: Da
         <Divider style={{ marginVertical: 8 }} />
 
         <View style={dpStyles.actions}>
-          <Button mode="text" onPress={onCancel}>Cancelar</Button>
+          <Button mode="text" onPress={onCancel}>{t('datePicker.cancel')}</Button>
           <Button
             mode="contained"
             onPress={() => localIn && localOut && onConfirm(localIn, localOut)}
             disabled={!localIn || !localOut}
           >
-            OK
+            {t('datePicker.ok')}
           </Button>
         </View>
       </PaperModal>
@@ -186,6 +187,7 @@ interface GuestsPickerModalProps {
 
 function GuestsPickerModal({ visible, guests, rooms, onConfirm, onCancel }: GuestsPickerModalProps) {
   const theme = useTheme();
+  const { t } = useTranslation();
   const [localGuests, setLocalGuests] = useState(guests);
   const [localRooms, setLocalRooms] = useState(rooms);
 
@@ -197,11 +199,11 @@ function GuestsPickerModal({ visible, guests, rooms, onConfirm, onCancel }: Gues
   return (
     <Portal>
       <PaperModal visible={visible} onDismiss={onCancel} contentContainerStyle={[gpStyles.container, { backgroundColor: theme.colors.surface }]}>
-        <Text variant="titleMedium" style={gpStyles.title}>Viajeros y habitaciones</Text>
+        <Text variant="titleMedium" style={gpStyles.title}>{t('guestPicker.title')}</Text>
 
         {[
-          { label: 'Viajeros', value: localGuests, set: setLocalGuests, min: 1, max: 20 },
-          { label: 'Habitaciones', value: localRooms, set: setLocalRooms, min: 1, max: 10 },
+          { label: t('guestPicker.travelers'), value: localGuests, set: setLocalGuests, min: 1, max: 20 },
+          { label: t('guestPicker.rooms'), value: localRooms, set: setLocalRooms, min: 1, max: 10 },
         ].map(({ label, value, set, min, max }) => (
           <View key={label} style={gpStyles.row}>
             <Text variant="bodyLarge">{label}</Text>
@@ -216,8 +218,8 @@ function GuestsPickerModal({ visible, guests, rooms, onConfirm, onCancel }: Gues
         <Divider style={{ marginVertical: 8 }} />
 
         <View style={gpStyles.actions}>
-          <Button mode="text" onPress={onCancel}>Cancelar</Button>
-          <Button mode="contained" onPress={() => onConfirm(localGuests, localRooms)}>OK</Button>
+          <Button mode="text" onPress={onCancel}>{t('guestPicker.cancel')}</Button>
+          <Button mode="contained" onPress={() => onConfirm(localGuests, localRooms)}>{t('guestPicker.ok')}</Button>
         </View>
       </PaperModal>
     </Portal>
@@ -229,7 +231,7 @@ function GuestsPickerModal({ visible, guests, rooms, onConfirm, onCancel }: Gues
 function FeaturedCard({ item }: { item: PropertyResult }) {
   const price = item.priceUsd ?? item.basePriceUsd;
   return (
-    <Card style={cardStyles.card} mode="elevated">
+    <AppCard style={cardStyles.card}>
       <Image
         source={item.property.thumbnailUrl || 'https://via.placeholder.com/140x100'}
         style={cardStyles.image}
@@ -240,12 +242,12 @@ function FeaturedCard({ item }: { item: PropertyResult }) {
           <Text variant="labelSmall" style={cardStyles.badgeText}>${Math.round(price)}/n</Text>
         </View>
       )}
-      <Card.Content style={cardStyles.content}>
+      <View style={cardStyles.content}>
         <Text variant="labelMedium" numberOfLines={1}>{item.property.name}</Text>
         <Text variant="labelSmall" numberOfLines={1} style={cardStyles.city}>{item.property.city}</Text>
         {item.property.stars > 0 && <Text style={cardStyles.stars}>{'★'.repeat(item.property.stars)}</Text>}
-      </Card.Content>
-    </Card>
+      </View>
+    </AppCard>
   );
 }
 
@@ -253,9 +255,9 @@ function FeaturedCard({ item }: { item: PropertyResult }) {
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const theme = useTheme();
 
-  const [drawerOpen, setDrawerOpen] = useState(false);
   const [city, setCity] = useState('');
   const [checkIn, setCheckIn] = useState('');
   const [checkOut, setCheckOut] = useState('');
@@ -301,7 +303,7 @@ export default function HomeScreen() {
   }
 
   function guestsLabel() {
-    return `${guests} ${guests === 1 ? 'Viajero' : 'Viajeros'} · ${rooms} ${rooms === 1 ? 'Habitación' : 'Habitaciones'}`;
+    return `${t('home.travelers', { count: guests })} · ${t('home.room', { count: rooms })}`;
   }
 
   function handleSearch() {
@@ -313,42 +315,101 @@ export default function HomeScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
+    <SafeAreaView style={styles.safeArea} edges={[]}>
       {/* AppBar */}
-      <Appbar.Header style={{ backgroundColor: theme.colors.surface }} elevated>
-        <Appbar.Action icon="menu" onPress={() => setDrawerOpen(true)} testID="btn-menu" />
-        <Appbar.Content title="TravelHub" titleStyle={[styles.brandName, { color: theme.colors.primary }]} />
-        <Appbar.Action icon="account-circle-outline" onPress={() => {}} />
+      <Appbar.Header style={{ backgroundColor: theme.colors.surface, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
+        <Appbar.Content title={t('home.title')} titleStyle={[styles.brandName, { color: theme.colors.primary }]} />
+        <Appbar.Action icon="bell-outline" onPress={() => router.push('/notifications')} />
       </Appbar.Header>
 
       <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
-        {/* Featured */}
-        <View style={styles.section}>
-          <Text variant="titleMedium" style={styles.sectionTitle}>Más Populares</Text>
-          {featuredLoading ? (
-            <ActivityIndicator animating style={{ marginVertical: 20 }} />
-          ) : featured.length > 0 ? (
-            <FlatList
-              data={featured}
-              keyExtractor={item => item.roomId}
-              renderItem={({ item }) => <FeaturedCard item={item} />}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}
-            />
-          ) : (
-            <Text variant="bodySmall" style={[styles.emptyText, { color: theme.colors.onSurfaceVariant }]}>
-              No hay propiedades destacadas
-            </Text>
-          )}
+        {/* Hero */}
+        <View style={[styles.hero, { backgroundColor: theme.colors.primary }]}>
+          <Text variant="headlineSmall" style={styles.headlineTitle}>
+            {t('home.headline')}
+          </Text>
+          <Text variant="bodyMedium" style={styles.headlineSub}>
+            {t('home.subheadline')}
+          </Text>
+
+          {/* Search form */}
+          <AppCard style={styles.searchCard}>
+
+            {/* City */}
+            <View style={[styles.fieldWrapper, { zIndex: 10 }]}>
+              <TextInput
+                label={t('home.searchCity')}
+                value={city}
+                onChangeText={onCityChange}
+                mode="outlined"
+                left={<TextInput.Icon icon="map-marker-outline" />}
+                style={styles.fieldInput}
+                testID="input-city"
+              />
+              {showSuggestions && (
+                <Surface style={styles.suggestions} elevation={3}>
+                  {suggestions.map(s => (
+                    <List.Item
+                      key={s.id}
+                      title={`${s.city}, ${s.country}`}
+                      onPress={() => selectSuggestion(s)}
+                      left={props => <List.Icon {...props} icon="city" />}
+                    />
+                  ))}
+                </Surface>
+              )}
+            </View>
+
+            {/* Dates */}
+            <Pressable onPress={() => setShowDatePicker(true)} testID="btn-date" style={styles.fieldWrapper}>
+              <TextInput
+                label={t('home.searchDates')}
+                value={dateLabel()}
+                mode="outlined"
+                editable={false}
+                pointerEvents="none"
+                left={<TextInput.Icon icon="calendar-range" />}
+                placeholder={t('home.checkinPlaceholder')}
+                style={styles.fieldInput}
+              />
+            </Pressable>
+
+            {/* Guests */}
+            <Pressable onPress={() => setShowGuestPicker(true)} testID="btn-guests" style={styles.fieldWrapper}>
+              <TextInput
+                label={t('home.searchGuests')}
+                value={guestsLabel()}
+                mode="outlined"
+                editable={false}
+                pointerEvents="none"
+                left={<TextInput.Icon icon="account-group-outline" />}
+                style={styles.fieldInput}
+              />
+            </Pressable>
+
+            {/* Search button */}
+            <Button
+              mode="contained"
+              icon="magnify"
+              onPress={handleSearch}
+              disabled={!city.trim()}
+              contentStyle={styles.searchBtnContent}
+              style={styles.searchBtn}
+              buttonColor={theme.colors.secondary}
+              textColor={theme.colors.onSecondary}
+              testID="btn-search"
+            >
+              {t('home.searchBtn')}
+            </Button>
+          </AppCard>
         </View>
 
-        {/* Category chips */}
+        {/* Recommended */}
         <View style={styles.section}>
           <View style={styles.tabsRow}>
-            <Text variant="titleMedium" style={styles.sectionTitle}>Recomendados</Text>
-            <Text variant="labelMedium" style={{ color: theme.colors.primary }}>Ver todos</Text>
+            <Text variant="titleMedium">{t('home.recommended')}</Text>
+            <Text variant="labelMedium" style={{ color: theme.colors.primary }}>{t('home.seeAll')}</Text>
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
             {CATEGORIES.map((cat, i) => (
@@ -363,91 +424,27 @@ export default function HomeScreen() {
               </Chip>
             ))}
           </ScrollView>
-        </View>
-
-        {/* Headline */}
-        <View style={styles.headline}>
-          <Text variant="headlineSmall" style={[styles.headlineTitle, { color: theme.colors.primary }]}>
-            Encuentra el hotel perfecto para tus vacaciones.
-          </Text>
-          <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-            Explora entre más de 1200 opciones...
-          </Text>
-        </View>
-
-        {/* Search form */}
-        <Surface style={[styles.searchCard, { backgroundColor: theme.colors.surfaceVariant }]} elevation={0}>
-
-          {/* City */}
-          <View style={[styles.fieldWrapper, { zIndex: 20 }]}>
-            <TextInput
-              label="¿A dónde viajas?"
-              value={city}
-              onChangeText={onCityChange}
-              mode="outlined"
-              left={<TextInput.Icon icon="map-marker-outline" />}
-              testID="input-city"
-            />
-            {showSuggestions && (
-              <Surface style={styles.suggestions} elevation={3}>
-                {suggestions.map(s => (
-                  <List.Item
-                    key={s.id}
-                    title={`${s.city}, ${s.country}`}
-                    onPress={() => selectSuggestion(s)}
-                    left={props => <List.Icon {...props} icon="city" />}
-                  />
-                ))}
-              </Surface>
+          <View style={styles.cardsRow}>
+            {featuredLoading ? (
+              <ActivityIndicator animating style={{ marginVertical: 20 }} />
+            ) : featured.length > 0 ? (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}
+              >
+                {featured.map(item => <FeaturedCard key={item.roomId} item={item} />)}
+              </ScrollView>
+            ) : (
+              <Text variant="bodySmall" style={[styles.emptyText, { color: theme.colors.onSurfaceVariant }]}>
+                {t('home.noFeatured')}
+              </Text>
             )}
           </View>
-
-          {/* Dates */}
-          <Pressable onPress={() => setShowDatePicker(true)} testID="btn-date" style={styles.fieldWrapper}>
-            <TextInput
-              label="Fechas de estadía"
-              value={dateLabel()}
-              mode="outlined"
-              editable={false}
-              pointerEvents="none"
-              left={<TextInput.Icon icon="calendar-range" />}
-              placeholder="Check-in  →  Check-out"
-            />
-          </Pressable>
-
-          {/* Guests */}
-          <Pressable onPress={() => setShowGuestPicker(true)} testID="btn-guests" style={styles.fieldWrapper}>
-            <TextInput
-              label="¿Quiénes viajan?"
-              value={guestsLabel()}
-              mode="outlined"
-              editable={false}
-              pointerEvents="none"
-              left={<TextInput.Icon icon="account-group-outline" />}
-            />
-          </Pressable>
-
-          {/* Search button */}
-          <Button
-            mode="contained"
-            icon="magnify"
-            onPress={handleSearch}
-            disabled={!city.trim()}
-            contentStyle={styles.searchBtnContent}
-            style={styles.searchBtn}
-            buttonColor={theme.colors.secondary}
-            textColor={theme.colors.onSecondary}
-            testID="btn-search"
-          >
-            Buscar
-          </Button>
-        </Surface>
+        </View>
 
         <View style={{ height: 32 }} />
       </ScrollView>
-
-      {/* Drawer */}
-      <DrawerMenu visible={drawerOpen} onClose={() => setDrawerOpen(false)} />
 
       {/* Date picker */}
       <DatePickerModal
@@ -473,18 +470,21 @@ export default function HomeScreen() {
 // ─── Styles ────────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1 },
+  safeArea: { flex: 1, backgroundColor: '#f8f9ff' },
   brandName: { fontSize: 18, fontWeight: '800', letterSpacing: 0.5 },
   section: { marginTop: 20 },
   sectionTitle: { paddingHorizontal: 16, marginBottom: 12 },
-  tabsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingRight: 16, marginBottom: 12 },
+  tabsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, marginBottom: 12 },
   chips: { paddingHorizontal: 16, gap: 8 },
   chip: { marginRight: 4 },
+  cardsRow: { marginTop: 16 },
   emptyText: { paddingHorizontal: 16 },
-  headline: { paddingHorizontal: 16, marginTop: 24, marginBottom: 8 },
-  headlineTitle: { fontWeight: '800', marginBottom: 6, lineHeight: 30 },
-  searchCard: { margin: 16, borderRadius: 16, padding: 16, gap: 4 },
+  hero: { paddingTop: 28, paddingBottom: 32, paddingHorizontal: 16, zIndex: 1 },
+  headlineTitle: { fontWeight: '800', color: '#fff', lineHeight: 30, marginBottom: 6 },
+  headlineSub: { color: 'rgba(255,255,255,0.75)', marginBottom: 20 },
+  searchCard: { padding: 16, gap: 4, overflow: 'visible', zIndex: 1 },
   fieldWrapper: { marginBottom: 8 },
+  fieldInput: { backgroundColor: '#fff' },
   suggestions: {
     position: 'absolute',
     top: 56,
@@ -493,15 +493,14 @@ const styles = StyleSheet.create({
     zIndex: 100,
     borderRadius: 8,
     maxHeight: 200,
-    overflow: 'hidden',
   },
   searchBtn: { marginTop: 8, borderRadius: 10 },
   searchBtnContent: { paddingVertical: 6 },
 });
 
 const cardStyles = StyleSheet.create({
-  card: { width: 140, marginBottom: 4 },
-  image: { width: 140, height: 100, borderTopLeftRadius: 12, borderTopRightRadius: 12 },
+  card: { width: 140, marginBottom: 4, overflow: 'hidden' },
+  image: { width: 140, height: 100 },
   badge: {
     position: 'absolute', top: 8, right: 8,
     backgroundColor: 'rgba(0,0,0,0.55)',
