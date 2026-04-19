@@ -10,10 +10,12 @@
  *
  * Profiles:
  *   smoke — 3 VUs for 2 min. Quick sanity check after deploy.
- *   load  — ramp to 30 VUs over 3 min, hold 9 min, ramp down 3 min.
+ *   load  — ramp to 30 VUs over 2 min, hold 4 min, ramp down 2 min.
  */
 
 import { check } from "k6";
+import { textSummary } from "https://jslib.k6.io/k6-summary/0.0.2/index.js";
+import { htmlReport } from "https://raw.githubusercontent.com/benc-uk/k6-reporter/main/dist/bundle.js";
 import { Trend } from "k6/metrics";
 import { searchThresholds } from "../lib/thresholds.js";
 import { get } from "../lib/http.js";
@@ -44,9 +46,9 @@ const PROFILES = {
         executor: "ramping-vus",
         startVUs: 0,
         stages: [
-          { duration: "3m", target: 30 },
-          { duration: "9m", target: 30 },
-          { duration: "3m", target: 0  },
+          { duration: "2m", target: 30 },
+          { duration: "4m", target: 30 },
+          { duration: "2m", target: 0  },
         ],
         gracefulRampDown: "30s",
       },
@@ -76,94 +78,87 @@ export const options = {
   batchPerHost: 6,
 };
 
+// ─── Summary ─────────────────────────────────────────────────────────────────
+
+export function handleSummary(data) {
+  return {
+    "results/summary.html": htmlReport(data),
+    stdout: textSummary(data, { indent: " ", enableColors: true }),
+  };
+}
+
 // ─── VU loop ─────────────────────────────────────────────────────────────────
 
 export default function () {
   const roll = Math.random();
 
   if (roll < 0.40) {
-    doPropertySearch();
+    const city = randomItem(CITIES);
+    const { checkIn, checkOut } = randomDatePair();
+    const guests = randomItem([1, 2]);
+
+    const searchUrl =
+      `${GATEWAY_URL}/api/search/properties` +
+      `?city=${encodeURIComponent(city)}` +
+      `&checkIn=${checkIn}` +
+      `&checkOut=${checkOut}` +
+      `&guests=${guests}`;
+
+    const searchRes = get(searchUrl, { name: "property_search" });
+
+    const searchOk = check(searchRes, {
+      "property_search 200": (r) => r.status === 200,
+      "property_search has results": (r) => {
+        try { return Array.isArray(JSON.parse(r.body).results); } catch { return false; }
+      },
+    });
+
+    if (searchOk && searchRes.status === 200) {
+      let body;
+      try { body = JSON.parse(searchRes.body); } catch { return; }
+
+      searchResultCount.add(body.results ? body.results.length : 0);
+
+      const propertyId =
+        (body.results && body.results.length > 0)
+          ? body.results[0].property.id
+          : randomItem(PROPERTY_IDS);
+
+      const roomsUrl =
+        `${GATEWAY_URL}/api/search/properties/${propertyId}/rooms` +
+        `?checkIn=${checkIn}` +
+        `&checkOut=${checkOut}` +
+        `&guests=${guests}`;
+
+      const roomsRes = get(roomsUrl, { name: "room_detail" });
+
+      check(roomsRes, {
+        "room_detail 200": (r) => r.status === 200,
+      });
+    }
   } else if (roll < 0.80) {
-    doCityAutocomplete();
+    const q = randomItem(CITY_PREFIXES);
+    const url = `${GATEWAY_URL}/api/search/cities?q=${encodeURIComponent(q)}`;
+    const res = get(url, { name: "city_autocomplete" });
+
+    check(res, {
+      "city_autocomplete 200": (r) => r.status === 200,
+      "city_autocomplete has suggestions": (r) => {
+        try { return Array.isArray(JSON.parse(r.body).suggestions); } catch { return false; }
+      },
+    });
   } else {
-    doFeatured();
+    const url = `${GATEWAY_URL}/api/search/featured?limit=20`;
+    const res = get(url, { name: "featured" });
+
+    check(res, {
+      "featured 200": (r) => r.status === 200,
+      "featured has results": (r) => {
+        try { return Array.isArray(JSON.parse(r.body).results); } catch { return false; }
+      },
+    });
   }
 
   // Think time: 0.5s–2s between iterations
   jitter(500, 1500);
-}
-
-// ─── Behaviors ───────────────────────────────────────────────────────────────
-
-function doPropertySearch() {
-  const city = randomItem(CITIES);
-  const { checkIn, checkOut } = randomDatePair();
-  const guests = randomItem([1, 2]);
-
-  const searchUrl =
-    `${GATEWAY_URL}/api/search/properties` +
-    `?city=${encodeURIComponent(city)}` +
-    `&checkIn=${checkIn}` +
-    `&checkOut=${checkOut}` +
-    `&guests=${guests}`;
-
-  const searchRes = get(searchUrl, { endpoint: "property_search" });
-
-  const searchOk = check(searchRes, {
-    "property search: status 200": (r) => r.status === 200,
-    "property search: has results array": (r) => {
-      try { return Array.isArray(JSON.parse(r.body).results); } catch { return false; }
-    },
-  });
-
-  if (searchOk && searchRes.status === 200) {
-    let body;
-    try { body = JSON.parse(searchRes.body); } catch { return; }
-
-    searchResultCount.add(body.total ?? 0);
-
-    // Follow up with a room detail request to simulate browsing behavior.
-    // Pick a property from the response if available, otherwise use a seeded ID.
-    const propertyId =
-      (body.results && body.results.length > 0)
-        ? body.results[0].propertyId
-        : randomItem(PROPERTY_IDS);
-
-    const roomsUrl =
-      `${GATEWAY_URL}/api/search/properties/${propertyId}/rooms` +
-      `?checkIn=${checkIn}` +
-      `&checkOut=${checkOut}` +
-      `&guests=${guests}`;
-
-    const roomsRes = get(roomsUrl, { endpoint: "room_detail" });
-
-    check(roomsRes, {
-      "room detail: status 200 or 404": (r) => r.status === 200 || r.status === 404,
-    });
-  }
-}
-
-function doCityAutocomplete() {
-  const q = randomItem(CITY_PREFIXES);
-  const url = `${GATEWAY_URL}/api/search/cities?q=${encodeURIComponent(q)}`;
-  const res = get(url, { endpoint: "city_autocomplete" });
-
-  check(res, {
-    "city autocomplete: status 200": (r) => r.status === 200,
-    "city autocomplete: array response": (r) => {
-      try { return Array.isArray(JSON.parse(r.body)); } catch { return false; }
-    },
-  });
-}
-
-function doFeatured() {
-  const url = `${GATEWAY_URL}/api/search/featured?limit=20`;
-  const res = get(url, { endpoint: "featured" });
-
-  check(res, {
-    "featured: status 200": (r) => r.status === 200,
-    "featured: has results": (r) => {
-      try { return Array.isArray(JSON.parse(r.body)); } catch { return false; }
-    },
-  });
 }
