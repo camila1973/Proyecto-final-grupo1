@@ -159,7 +159,7 @@ export default function SearchPage() {
         <div className="flex-1 min-w-0">
           <div className="mb-6">
             {!isError && results.length > 0 && (
-              <p className="text-sm text-gray-700">
+              <p className="text-sm text-gray-700 text-right">
                 <span className="font-bold">{t('search.results_count', { count: total })}</span>
                 {urlCity ? ` ${t('search.results_city', { city: urlCity })}` : ''}
               </p>
