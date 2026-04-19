@@ -218,7 +218,7 @@ export default function SearchResultsScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#f8f9ff',
   },
   resultsBar: {
     flexDirection: 'row',

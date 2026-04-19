@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { StyleSheet, KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
 import { Text, Appbar, TextInput, Button, TouchableRipple, Icon , useTheme } from 'react-native-paper';
+import { AppCard } from '@/components/ui/app-card';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -15,14 +16,14 @@ export default function AccountScreen() {
   const [showPassword, setShowPassword] = useState(false);
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: '#fff' }]} edges={[]}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: '#f8f9ff' }]} edges={[]}>
       <Appbar.Header style={{ backgroundColor: theme.colors.surface, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
         <Appbar.Content title={t('account.title')} />
       </Appbar.Header>
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-
+          <AppCard style={styles.card}>
           <Text variant="headlineSmall" style={[styles.heading, { color: theme.colors.onBackground }]}>
             {t('account.heading')}
           </Text>
@@ -82,6 +83,7 @@ export default function AccountScreen() {
           >
             {t('account.signup')}
           </Button>
+          </AppCard>
 
           <View style={styles.spacer} />
 
@@ -107,8 +109,9 @@ export default function AccountScreen() {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1 },
-  content: { padding: 24, flexGrow: 1 },
-  heading: { fontWeight: '700', marginBottom: 20 },
+  content: { padding: 16, flexGrow: 1 },
+  card: { padding: 24 },
+  heading: { fontWeight: '700', marginBottom: 16 },
   input: { marginBottom: 12, backgroundColor: '#fff' },
   btnContent: { paddingVertical: 6 },
   btn: { borderRadius: 10, marginBottom: 12 },

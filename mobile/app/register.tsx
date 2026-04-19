@@ -4,6 +4,7 @@ import { Text, Appbar, TextInput, Button, HelperText, Checkbox , useTheme } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
+import { AppCard } from '@/components/ui/app-card';
 import { validateRegisterFields, hasErrors, splitFullName } from './register-validation';
 import type { RegisterFields, RegisterErrors } from './register-validation';
 
@@ -71,7 +72,7 @@ export default function RegisterScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: '#fff' }]} edges={['bottom']}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: '#f8f9ff' }]} edges={['bottom']}>
       <Appbar.Header style={{ backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
         <Appbar.BackAction onPress={() => router.back()} />
         <Appbar.Content title={t('register.title')} />
@@ -79,6 +80,7 @@ export default function RegisterScreen() {
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+          <AppCard style={styles.card}>
 
           <Text variant="headlineSmall" style={[styles.heading, { color: theme.colors.onBackground }]}>
             {t('register.heading')}
@@ -191,6 +193,7 @@ export default function RegisterScreen() {
           >
             {t('register.submit')}
           </Button>
+          </AppCard>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -199,7 +202,8 @@ export default function RegisterScreen() {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1 },
-  content: { padding: 24, flexGrow: 1 },
+  content: { padding: 16, flexGrow: 1 },
+  card: { padding: 24 },
   heading: { fontWeight: '700', marginBottom: 20 },
   apiError: { marginBottom: 8, fontSize: 14 },
   input: { backgroundColor: '#fff', marginBottom: 24 },

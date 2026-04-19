@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import i18n, { saveLanguage } from '@/i18n';
+import { AppCard } from '@/components/ui/app-card';
 
 const LANGUAGES = [
   { label: 'Español', value: 'es' },
@@ -62,13 +63,14 @@ export default function SettingsScreen() {
   const countryLabel = COUNTRIES.find(c => c.value === country)?.label ?? '';
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: '#fff' }]} edges={['bottom']}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: '#f8f9ff' }]} edges={['bottom']}>
       <Appbar.Header style={{ backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
         <Appbar.BackAction onPress={() => router.back()} />
         <Appbar.Content title={t('settings.title')} />
       </Appbar.Header>
 
-      <List.Section>
+      <AppCard style={styles.card}>
+      <List.Section style={{ marginBottom: 0 }}>
         <List.Subheader>{t('settings.regional')}</List.Subheader>
         <List.Item
           title={t('settings.language')}
@@ -94,6 +96,7 @@ export default function SettingsScreen() {
           onPress={() => openPicker({ title: t('settings.country'), options: COUNTRIES, selected: country, onSelect: setCountry })}
         />
       </List.Section>
+      </AppCard>
 
       <Portal>
         <Modal
@@ -129,6 +132,7 @@ export default function SettingsScreen() {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1 },
+  card: { margin: 16, overflow: 'hidden' },
   modal: { margin: 24, borderRadius: 16, overflow: 'hidden', paddingTop: 20 },
   modalTitle: { fontWeight: '700', paddingHorizontal: 20, marginBottom: 8 },
   option: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14 },
