@@ -202,6 +202,21 @@ describe("ReservationsService", () => {
 
       expect(reservationsRepo.toResponse).toHaveBeenCalledTimes(2);
     });
+
+    it("filters by guestId when provided", async () => {
+      reservationsRepo.findByGuestId = jest.fn().mockResolvedValue([row]);
+      const result = await service.findAll("guest-uuid");
+
+      expect(reservationsRepo.findByGuestId).toHaveBeenCalledWith("guest-uuid");
+      expect(reservationsRepo.findAll).not.toHaveBeenCalled();
+      expect(result.total).toBe(1);
+    });
+
+    it("returns all when guestId is not provided", async () => {
+      await service.findAll();
+
+      expect(reservationsRepo.findAll).toHaveBeenCalled();
+    });
   });
 
   // ─── findOne ────────────────────────────────────────────────────────────────
