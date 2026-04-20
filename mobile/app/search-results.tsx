@@ -13,6 +13,7 @@ import { Image } from 'expo-image';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { searchProperties } from '@/services/search-api';
 import type { PropertyResult, SearchResponse } from '@/services/search-api';
+import { AppCard } from '@/components/ui/app-card';
 
 const BRAND = '#2d3a8c';
 const ACCENT = '#f5e642';
@@ -38,7 +39,7 @@ function PropertyCard({ item, nights }: { item: PropertyResult; nights: number }
   const totalPrice = nights > 0 ? item.estimatedTotalUsd : null;
 
   return (
-    <View style={cardStyles.card}>
+    <AppCard style={cardStyles.card}>
       <Image
         source="https://cf.bstatic.com/xdata/images/hotel/max1024x768/484083124.jpg?k=f129efcf29b69ac37463eb551c3fd79e43e3a66a223194e917d3844c721ee338&o="
         style={cardStyles.image}
@@ -80,7 +81,7 @@ function PropertyCard({ item, nights }: { item: PropertyResult; nights: number }
           )}
         </View>
       </View>
-    </View>
+    </AppCard>
   );
 }
 
@@ -300,16 +301,7 @@ const styles = StyleSheet.create({
 
 const cardStyles = StyleSheet.create({
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 14,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
   },
   image: {
     width: '100%',

@@ -11,7 +11,7 @@ export default function TripsScreen() {
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: '#f8f9ff' }]} edges={[]}>
       <Appbar.Header style={{ backgroundColor: theme.colors.surface, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
-        <Appbar.Content title={t('bookings.title')} />
+        <Appbar.Content title={t('bookings.title')} style={{ alignItems: 'center' }} />
       </Appbar.Header>
       <View style={styles.outer}>
         <AppCard style={styles.card}>

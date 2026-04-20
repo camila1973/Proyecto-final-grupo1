@@ -18,7 +18,7 @@ export default function AccountScreen() {
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: '#f8f9ff' }]} edges={[]}>
       <Appbar.Header style={{ backgroundColor: theme.colors.surface, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
-        <Appbar.Content title={t('account.title')} />
+        <Appbar.Content title={t('account.title')} style={{ alignItems: 'center' }} />
       </Appbar.Header>
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>

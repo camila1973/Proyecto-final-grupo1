@@ -20,7 +20,7 @@ export default function NotificationsScreen() {
     <SafeAreaView style={[styles.safeArea, { backgroundColor: '#f8f9ff' }]} edges={['bottom']}>
       <Appbar.Header style={{ backgroundColor: theme.colors.surface, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
         <Appbar.BackAction onPress={() => router.back()} />
-        <Appbar.Content title={t('notifications.title')} />
+        <Appbar.Content title={t('notifications.title')} style={{ alignItems: 'center' }} />
       </Appbar.Header>
 
       <AppCard style={styles.card}>
