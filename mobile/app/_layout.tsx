@@ -10,6 +10,7 @@ import '@/i18n';
 import { AnimatedSplash } from '@/components/animated-splash';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { paperTheme } from '@/constants/paper-theme';
+import { AuthProvider } from '@/context/AuthContext';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -29,6 +30,7 @@ export default function RootLayout() {
   const handleSplashEnd = useCallback(() => setSplashDone(true), []);
 
   return (
+    <AuthProvider>
     <PaperProvider theme={paperTheme}>
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
         <Stack>
@@ -46,5 +48,6 @@ export default function RootLayout() {
         <AnimatedSplash appReady={appReady} onAnimationEnd={handleSplashEnd} />
       )}
     </PaperProvider>
+    </AuthProvider>
   );
 }
