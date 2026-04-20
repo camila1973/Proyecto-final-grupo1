@@ -68,8 +68,10 @@ export class ReservationsService {
     };
   }
 
-  async findAll() {
-    const rows = await this.reservationsRepo.findAll();
+  async findAll(guestId?: string) {
+    const rows = guestId
+      ? await this.reservationsRepo.findByGuestId(guestId)
+      : await this.reservationsRepo.findAll();
     return {
       total: rows.length,
       reservations: rows.map((r) => this.reservationsRepo.toResponse(r)),
