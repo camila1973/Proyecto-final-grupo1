@@ -31,16 +31,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = async (newToken: string, newUser: AuthUser) => {
-    await AsyncStorage.multiSet([
-      [TOKEN_KEY, newToken],
-      [USER_KEY, JSON.stringify(newUser)],
+    await Promise.all([
+      AsyncStorage.setItem(TOKEN_KEY, newToken),
+      AsyncStorage.setItem(USER_KEY, JSON.stringify(newUser)),
     ]);
     setToken(newToken);
     setUser(newUser);
   };
 
   const logout = async () => {
-    await AsyncStorage.multiRemove([TOKEN_KEY, USER_KEY]);
+    await Promise.all([
+      AsyncStorage.removeItem(TOKEN_KEY),
+      AsyncStorage.removeItem(USER_KEY),
+    ]);
     setToken(null);
     setUser(null);
   };
