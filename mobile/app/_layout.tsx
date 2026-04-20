@@ -7,6 +7,7 @@ import '@/i18n';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { paperTheme } from '@/constants/paper-theme';
+import { AuthProvider } from '@/context/AuthContext';
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -16,6 +17,7 @@ export default function RootLayout() {
   const colorScheme = useColorScheme();
 
   return (
+    <AuthProvider>
     <PaperProvider theme={paperTheme}>
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
         <Stack>
@@ -30,5 +32,6 @@ export default function RootLayout() {
         <StatusBar style="auto" />
       </ThemeProvider>
     </PaperProvider>
+    </AuthProvider>
   );
 }
