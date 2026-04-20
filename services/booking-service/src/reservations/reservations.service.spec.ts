@@ -58,6 +58,7 @@ describe("ReservationsService", () => {
   let reservationsRepo: {
     insert: jest.Mock;
     findAll: jest.Mock;
+    findByGuestId: jest.Mock;
     findById: jest.Mock;
     toResponse: jest.Mock;
     confirm: jest.Mock;
@@ -75,6 +76,7 @@ describe("ReservationsService", () => {
     reservationsRepo = {
       insert: jest.fn().mockResolvedValue(row),
       findAll: jest.fn().mockResolvedValue([row, row]),
+      findByGuestId: jest.fn().mockResolvedValue([row]),
       findById: jest.fn().mockResolvedValue(row),
       toResponse: jest.fn().mockImplementation((r) => ({ id: r.id })),
       confirm: jest.fn(),
@@ -204,7 +206,6 @@ describe("ReservationsService", () => {
     });
 
     it("filters by guestId when provided", async () => {
-      reservationsRepo.findByGuestId = jest.fn().mockResolvedValue([row]);
       const result = await service.findAll("guest-uuid");
 
       expect(reservationsRepo.findByGuestId).toHaveBeenCalledWith("guest-uuid");
