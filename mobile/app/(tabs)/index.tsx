@@ -319,7 +319,7 @@ export default function HomeScreen() {
       {/* AppBar */}
       <Appbar.Header style={{ backgroundColor: theme.colors.surface, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
         <Image
-          source={require('@/assets/images/logo-vector.svg')}
+          source={require('@/assets/images/logo.png')}
           style={styles.appbarLogo}
           contentFit="contain"
         />
