@@ -1,12 +1,17 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
+import { useCallback, useEffect, useState } from 'react';
 import 'react-native-reanimated';
 import { PaperProvider } from 'react-native-paper';
 import '@/i18n';
 
+import { AnimatedSplash } from '@/components/animated-splash';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { paperTheme } from '@/constants/paper-theme';
+
+SplashScreen.preventAutoHideAsync();
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -14,6 +19,14 @@ export const unstable_settings = {
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+  const [appReady, setAppReady] = useState(false);
+  const [splashDone, setSplashDone] = useState(false);
+
+  useEffect(() => {
+    SplashScreen.hideAsync().then(() => setAppReady(true));
+  }, []);
+
+  const handleSplashEnd = useCallback(() => setSplashDone(true), []);
 
   return (
     <PaperProvider theme={paperTheme}>
@@ -29,6 +42,9 @@ export default function RootLayout() {
         </Stack>
         <StatusBar style="auto" />
       </ThemeProvider>
+      {!splashDone && (
+        <AnimatedSplash appReady={appReady} onAnimationEnd={handleSplashEnd} />
+      )}
     </PaperProvider>
   );
 }

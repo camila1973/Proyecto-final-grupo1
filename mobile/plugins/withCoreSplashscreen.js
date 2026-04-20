@@ -20,10 +20,16 @@ const SPLASH_VERSION = '31.0.13';
 const SPLASH_ARTIFACT = `host.exp.exponent:expo.modules.splashscreen:${SPLASH_VERSION}`;
 const CORE_SPLASH_ARTIFACT = 'androidx.core:core-splashscreen:1.0.1';
 const MARKER = '// expo-splash-screen local AAR';
+const ASYNC_STORAGE_MARKER = '// async-storage local AAR';
 
 function getMavenRepoPath() {
   const pkgJsonPath = require.resolve('expo-splash-screen/package.json');
   return path.join(path.dirname(pkgJsonPath), 'local-maven-repo');
+}
+
+function getAsyncStorageMavenRepoPath() {
+  const pkgJsonPath = require.resolve('@react-native-async-storage/async-storage/package.json');
+  return path.join(path.dirname(pkgJsonPath), 'android', 'local_repo');
 }
 
 /** Injects into `allprojects { repositories { ... } }` in project build.gradle */
@@ -33,6 +39,20 @@ function withSplashMavenRepoBuildGradle(config) {
 
     const repoEntry = `        maven { url '${getMavenRepoPath()}' } ${MARKER}`;
     // Match the repositories block inside allprojects
+    config.modResults.contents = config.modResults.contents.replace(
+      /(allprojects\s*\{(?:[^{}]|\{[^{}]*\})*repositories\s*\{)/s,
+      `$1\n${repoEntry}`
+    );
+    return config;
+  });
+}
+
+/** Injects async-storage local_repo into `allprojects { repositories { ... } }` in project build.gradle */
+function withAsyncStorageMavenRepoBuildGradle(config) {
+  return withProjectBuildGradle(config, (config) => {
+    if (config.modResults.contents.includes(ASYNC_STORAGE_MARKER)) return config;
+
+    const repoEntry = `        maven { url '${getAsyncStorageMavenRepoPath()}' } ${ASYNC_STORAGE_MARKER}`;
     config.modResults.contents = config.modResults.contents.replace(
       /(allprojects\s*\{(?:[^{}]|\{[^{}]*\})*repositories\s*\{)/s,
       `$1\n${repoEntry}`
@@ -85,5 +105,6 @@ module.exports = (config) => {
   config = withSplashMavenRepoBuildGradle(config);
   config = withSplashMavenRepoSettingsGradle(config);
   config = withSplashScreenDependency(config);
+  config = withAsyncStorageMavenRepoBuildGradle(config);
   return config;
 };
