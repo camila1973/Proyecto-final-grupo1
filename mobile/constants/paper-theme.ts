@@ -24,6 +24,8 @@ export const paperTheme = {
     surfaceVariant: '#eef2f8',
     onSurfaceVariant: '#4a5568',
     outline: '#d1d5db',
+    surfaceDisabled: '#f0e8b8',
+    onSurfaceDisabled: '#9b8826',
     error: '#dc2626',
     onError: '#ffffff',
   },

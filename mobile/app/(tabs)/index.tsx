@@ -318,7 +318,12 @@ export default function HomeScreen() {
     <SafeAreaView style={styles.safeArea} edges={[]}>
       {/* AppBar */}
       <Appbar.Header style={{ backgroundColor: theme.colors.surface, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
-        <Appbar.Content title={t('home.title')} titleStyle={[styles.brandName, { color: theme.colors.primary }]} style={{ alignItems: 'center' }} />
+        <Image
+          source={require('@/assets/images/logo-vector.svg')}
+          style={styles.appbarLogo}
+          contentFit="contain"
+        />
+        <View style={{ flex: 1 }} />
         <Appbar.Action icon="bell-outline" onPress={() => router.push('/notifications')} />
       </Appbar.Header>
 
@@ -473,7 +478,7 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#f8f9ff' },
-  brandName: { fontSize: 18, fontWeight: '800', letterSpacing: 0.5 },
+  appbarLogo: { width: 130, height: 35, marginLeft: 12 },
   section: { marginTop: 20 },
   sectionTitle: { paddingHorizontal: 16, marginBottom: 12 },
   tabsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, marginBottom: 12 },
