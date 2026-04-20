@@ -77,7 +77,7 @@ export default function RegisterScreen() {
     <SafeAreaView style={[styles.safeArea, { backgroundColor: '#f8f9ff' }]} edges={['bottom']}>
       <Appbar.Header style={{ backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
         <Appbar.BackAction onPress={() => router.back()} />
-        <Appbar.Content title={t('register.title')} />
+        <Appbar.Content title={t('register.title')} style={{ alignItems: 'center' }} />
       </Appbar.Header>
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>

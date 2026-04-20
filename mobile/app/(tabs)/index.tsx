@@ -318,7 +318,7 @@ export default function HomeScreen() {
     <SafeAreaView style={styles.safeArea} edges={[]}>
       {/* AppBar */}
       <Appbar.Header style={{ backgroundColor: theme.colors.surface, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
-        <Appbar.Content title={t('home.title')} titleStyle={[styles.brandName, { color: theme.colors.primary }]} />
+        <Appbar.Content title={t('home.title')} titleStyle={[styles.brandName, { color: theme.colors.primary }]} style={{ alignItems: 'center' }} />
         <Appbar.Action icon="bell-outline" onPress={() => router.push('/notifications')} />
       </Appbar.Header>
 
@@ -349,14 +349,16 @@ export default function HomeScreen() {
               />
               {showSuggestions && (
                 <Surface style={styles.suggestions} elevation={3}>
-                  {suggestions.map(s => (
-                    <List.Item
-                      key={s.id}
-                      title={`${s.city}, ${s.country}`}
-                      onPress={() => selectSuggestion(s)}
-                      left={props => <List.Icon {...props} icon="city" />}
-                    />
-                  ))}
+                  <ScrollView keyboardShouldPersistTaps="handled" nestedScrollEnabled>
+                    {suggestions.map(s => (
+                      <List.Item
+                        key={s.id}
+                        title={`${s.city}, ${s.country}`}
+                        onPress={() => selectSuggestion(s)}
+                        left={props => <List.Icon {...props} icon="city" />}
+                      />
+                    ))}
+                  </ScrollView>
                 </Surface>
               )}
             </View>
@@ -493,6 +495,8 @@ const styles = StyleSheet.create({
     zIndex: 100,
     borderRadius: 8,
     maxHeight: 200,
+    overflow: 'hidden',
+    backgroundColor: '#fff',
   },
   searchBtn: { marginTop: 8, borderRadius: 10 },
   searchBtnContent: { paddingVertical: 6 },
