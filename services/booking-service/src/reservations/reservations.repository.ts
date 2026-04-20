@@ -39,6 +39,14 @@ export class ReservationsRepository {
     return this.db.selectFrom("reservations").selectAll().execute();
   }
 
+  async findByGuestId(guestId: string): Promise<ReservationRow[]> {
+    return this.db
+      .selectFrom("reservations")
+      .where("guest_id", "=", guestId)
+      .selectAll()
+      .execute();
+  }
+
   async findById(id: string): Promise<ReservationRow> {
     const row = await this.db
       .selectFrom("reservations")
