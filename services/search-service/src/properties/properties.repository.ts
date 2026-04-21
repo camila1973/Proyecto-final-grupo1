@@ -28,6 +28,8 @@ export interface RoomIndexRecord {
   rating: number;
   review_count: number;
   thumbnail_url: string;
+  image_urls: string[];
+  description: Record<string, string>;
   is_active: boolean;
 }
 
@@ -43,7 +45,8 @@ export class PropertiesRepository {
         amenities, base_price_usd, tax_rate_pct,
         flat_fee_per_night_usd, flat_fee_per_stay_usd,
         stars, rating, review_count,
-        thumbnail_url, is_active, last_synced_at
+        thumbnail_url, image_urls, description,
+        is_active, last_synced_at
       ) VALUES (
         ${r.room_id}::uuid,
         ${r.property_id}::uuid,
@@ -67,6 +70,8 @@ export class PropertiesRepository {
         ${r.rating},
         ${r.review_count},
         ${r.thumbnail_url},
+        ${sql.raw(`ARRAY[${r.image_urls.map((u) => `'${u.replace(/'/g, "''")}'`).join(",")}]`)}::text[],
+        ${JSON.stringify(r.description ?? {})}::jsonb,
         ${r.is_active},
         NOW()
       )
@@ -92,6 +97,8 @@ export class PropertiesRepository {
         rating                 = EXCLUDED.rating,
         review_count           = EXCLUDED.review_count,
         thumbnail_url          = EXCLUDED.thumbnail_url,
+        image_urls             = EXCLUDED.image_urls,
+        description            = EXCLUDED.description,
         is_active              = EXCLUDED.is_active,
         last_synced_at         = NOW()
     `.execute(this.db);
@@ -114,6 +121,8 @@ export class PropertiesRepository {
         "rsi.rating",
         "rsi.review_count",
         "rsi.thumbnail_url",
+        "rsi.image_urls",
+        "rsi.description",
         "rsi.amenities",
         "rsi.room_type",
         "rsi.bed_type",
@@ -162,6 +171,8 @@ export class PropertiesRepository {
         "rsi.rating",
         "rsi.review_count",
         "rsi.thumbnail_url",
+        "rsi.image_urls",
+        "rsi.description",
         "rsi.amenities",
         "rsi.room_type",
         "rsi.bed_type",
@@ -200,6 +211,8 @@ export class PropertiesRepository {
         "rsi.rating",
         "rsi.review_count",
         "rsi.thumbnail_url",
+        "rsi.image_urls",
+        "rsi.description",
         "rsi.amenities",
         "rsi.room_type",
         "rsi.bed_type",

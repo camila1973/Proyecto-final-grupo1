@@ -14,6 +14,8 @@ function makeRoom(overrides: Partial<CandidateRoom> = {}): CandidateRoom {
     rating: "4.2",
     review_count: 100,
     thumbnail_url: "https://example.com/img.jpg",
+    image_urls: [],
+    description: {},
     amenities: ["wifi", "pool"],
     neighborhood: null,
     room_type: "suite",

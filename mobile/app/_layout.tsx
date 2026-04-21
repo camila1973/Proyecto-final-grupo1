@@ -19,6 +19,10 @@ export default function RootLayout() {
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
         <Stack.Screen name="register" options={{ title: 'Crear cuenta', headerBackTitle: 'Atrás' }} />
         <Stack.Screen name="register-success" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="property/[id]"
+          options={{ title: 'Detalles del hospedaje', headerBackTitle: 'Atrás' }}
+        />
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>

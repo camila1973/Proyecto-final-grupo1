@@ -39,7 +39,7 @@ export class PropertiesController {
     @Param("propertyId") propertyId: string,
     @Query() query: Record<string, string>,
   ) {
-    const { checkIn, checkOut, guests } = query;
+    const { checkIn, checkOut, guests, lang } = query;
 
     if (checkIn && isNaN(new Date(checkIn).getTime())) {
       throw new BadRequestException("checkIn must be a valid ISO 8601 date");
@@ -60,6 +60,29 @@ export class PropertiesController {
       checkIn: checkIn || undefined,
       checkOut: checkOut || undefined,
       guests: guestsNum,
+      language: lang?.trim() || undefined,
+    });
+  }
+
+  @Get("properties/:propertyId/reviews")
+  getPropertyReviews(
+    @Param("propertyId") propertyId: string,
+    @Query() query: Record<string, string>,
+  ) {
+    const { page, limit, lang } = query;
+    const pageNum = page ? Math.max(1, parseInt(page, 10)) : 1;
+    if (isNaN(pageNum)) {
+      throw new BadRequestException("page must be a positive integer");
+    }
+    const pageSize = limit ? Math.min(50, Math.max(1, parseInt(limit, 10))) : 5;
+    if (isNaN(pageSize)) {
+      throw new BadRequestException("limit must be a positive integer");
+    }
+
+    return this.propertiesService.getPropertyReviews(propertyId, {
+      page: pageNum,
+      pageSize,
+      language: lang?.trim() || undefined,
     });
   }
 
