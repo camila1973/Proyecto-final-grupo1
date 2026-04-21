@@ -63,3 +63,7 @@ Thumbs.db
 *.pem
 .cache
 .nx/polygraph
+
+# Load test results
+load-tests/results/*.json
+load-tests/results/*.html

@@ -1,25 +1,19 @@
 import { useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  ScrollView,
-  StyleSheet,
-  ActivityIndicator,
-  Platform,
-} from 'react-native';
+import { View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { Text, Appbar, TextInput, Button, HelperText, Checkbox , useTheme } from 'react-native-paper';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
+import { AppCard } from '@/components/ui/app-card';
 import { validateRegisterFields, hasErrors } from './register-validation';
 import type { RegisterFields, RegisterErrors } from './register-validation';
 
 const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
 
-const BRAND = '#2d3a8c';
-const ERROR_COLOR = '#dc2626';
-
 export default function RegisterScreen() {
+  const theme = useTheme();
   const router = useRouter();
+  const { t } = useTranslation();
 
   const [fields, setFields] = useState<RegisterFields>({
     firstName: '',
@@ -32,12 +26,13 @@ export default function RegisterScreen() {
   const [errors, setErrors] = useState<RegisterErrors>({});
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [accepted, setAccepted] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const update = (field: keyof RegisterFields) => (value: string) => {
-    setFields((prev) => ({ ...prev, [field]: value }));
-    if (errors[field]) setErrors((prev) => ({ ...prev, [field]: undefined }));
+    setFields(prev => ({ ...prev, [field]: value }));
+    if (errors[field]) setErrors(prev => ({ ...prev, [field]: undefined }));
   };
 
   const handleSubmit = async () => {
@@ -56,241 +51,180 @@ export default function RegisterScreen() {
         body: JSON.stringify({
           email: fields.email.trim().toLowerCase(),
           password: fields.password,
+          firstName: fields.firstName.trim(),
+          lastName: fields.lastName.trim(),
         }),
       });
 
       if (response.status === 409) {
-        setApiError('Este correo ya está registrado');
+        setApiError(t('register.errorEmailTaken'));
         return;
       }
       if (!response.ok) {
-        setApiError('Ocurrió un error. Intenta de nuevo.');
+        setApiError(t('register.errorGeneric'));
         return;
       }
 
       router.replace('/register-success');
     } catch {
-      setApiError('Ocurrió un error. Intenta de nuevo.');
+      setApiError(t('register.errorGeneric'));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      <Text style={styles.title}>Crea tu cuenta</Text>
-      <Text style={styles.subtitle}>
-        ¿Ya tienes una cuenta?{' '}
-        <Text style={styles.link} onPress={() => router.push('/login')}>
-          Inicia sesión aquí
-        </Text>
-      </Text>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: '#f8f9ff' }]} edges={['bottom']}>
+      <Appbar.Header style={{ backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
+        <Appbar.BackAction onPress={() => router.back()} />
+        <Appbar.Content title={t('register.title')} style={{ alignItems: 'center' }} />
+      </Appbar.Header>
 
-      {apiError ? <Text style={styles.apiError}>{apiError}</Text> : null}
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+          <AppCard style={styles.card}>
 
-      <View style={styles.row}>
-        <View style={styles.halfField}>
-          <Text style={styles.label}>NOMBRE</Text>
+          <Text variant="headlineSmall" style={[styles.heading, { color: theme.colors.onBackground }]}>
+            {t('register.heading')}
+          </Text>
+
+          {apiError ? (
+            <HelperText type="error" visible style={styles.apiError}>{apiError}</HelperText>
+          ) : null}
+
           <TextInput
-            style={[styles.input, errors.firstName ? styles.inputError : null]}
+            label={t('register.firstName')}
             value={fields.firstName}
             onChangeText={update('firstName')}
-            placeholder="Nombre"
+            mode="outlined"
             autoCapitalize="words"
+            left={<TextInput.Icon icon="account-outline" />}
+            style={styles.input}
+            error={!!errors.firstName}
             testID="input-firstName"
           />
-          {errors.firstName ? <Text style={styles.errorText}>{errors.firstName}</Text> : null}
-        </View>
-        <View style={styles.halfField}>
-          <Text style={styles.label}>APELLIDO</Text>
+          {errors.firstName ? <HelperText type="error" visible>{errors.firstName}</HelperText> : null}
+
           <TextInput
-            style={[styles.input, errors.lastName ? styles.inputError : null]}
+            label={t('register.lastName')}
             value={fields.lastName}
             onChangeText={update('lastName')}
-            placeholder="Apellido"
+            mode="outlined"
             autoCapitalize="words"
+            left={<TextInput.Icon icon="account-outline" />}
+            style={styles.input}
+            error={!!errors.lastName}
             testID="input-lastName"
           />
-          {errors.lastName ? <Text style={styles.errorText}>{errors.lastName}</Text> : null}
-        </View>
-      </View>
+          {errors.lastName ? <HelperText type="error" visible>{errors.lastName}</HelperText> : null}
 
-      <View style={styles.field}>
-        <Text style={styles.label}>CORREO ELECTRÓNICO</Text>
-        <TextInput
-          style={[styles.input, errors.email ? styles.inputError : null]}
-          value={fields.email}
-          onChangeText={update('email')}
-          placeholder="micorreo@example.com"
-          keyboardType="email-address"
-          autoCapitalize="none"
-          autoCorrect={false}
-          testID="input-email"
-        />
-        {errors.email ? <Text style={styles.errorText}>{errors.email}</Text> : null}
-      </View>
-
-      <View style={styles.field}>
-        <Text style={styles.label}>CONTRASEÑA</Text>
-        <View style={styles.passwordWrapper}>
           <TextInput
-            style={[styles.input, styles.passwordInput, errors.password ? styles.inputError : null]}
+            label={t('register.email')}
+            value={fields.email}
+            onChangeText={update('email')}
+            mode="outlined"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+            left={<TextInput.Icon icon="email-outline" />}
+            style={styles.input}
+            error={!!errors.email}
+            testID="input-email"
+          />
+          {errors.email ? <HelperText type="error" visible>{errors.email}</HelperText> : null}
+
+          <TextInput
+            label={t('register.password')}
             value={fields.password}
             onChangeText={update('password')}
+            mode="outlined"
             secureTextEntry={!showPassword}
             autoCapitalize="none"
             autoCorrect={false}
+            left={<TextInput.Icon icon="lock-outline" />}
+            right={
+              <TextInput.Icon
+                icon={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                onPress={() => setShowPassword(v => !v)}
+              />
+            }
+            style={styles.input}
+            error={!!errors.password}
             testID="input-password"
           />
-          <TouchableOpacity
-            style={styles.eyeButton}
-            onPress={() => setShowPassword((v) => !v)}
-            testID="toggle-password"
-          >
-            <Text style={styles.eyeText}>{showPassword ? '🙈' : '👁'}</Text>
-          </TouchableOpacity>
-        </View>
-        {errors.password ? <Text style={styles.errorText}>{errors.password}</Text> : null}
-      </View>
+          {errors.password ? <HelperText type="error" visible>{errors.password}</HelperText> : null}
 
-      <View style={styles.field}>
-        <Text style={styles.label}>CONFIRMAR CONTRASEÑA</Text>
-        <View style={styles.passwordWrapper}>
           <TextInput
-            style={[styles.input, styles.passwordInput, errors.confirmPassword ? styles.inputError : null]}
+            label={t('register.confirmPassword')}
             value={fields.confirmPassword}
             onChangeText={update('confirmPassword')}
+            mode="outlined"
             secureTextEntry={!showConfirm}
             autoCapitalize="none"
             autoCorrect={false}
+            left={<TextInput.Icon icon="lock-check-outline" />}
+            right={
+              <TextInput.Icon
+                icon={showConfirm ? 'eye-off-outline' : 'eye-outline'}
+                onPress={() => setShowConfirm(v => !v)}
+              />
+            }
+            style={styles.input}
+            error={!!errors.confirmPassword}
             testID="input-confirmPassword"
           />
-          <TouchableOpacity
-            style={styles.eyeButton}
-            onPress={() => setShowConfirm((v) => !v)}
-            testID="toggle-confirm"
-          >
-            <Text style={styles.eyeText}>{showConfirm ? '🙈' : '👁'}</Text>
-          </TouchableOpacity>
-        </View>
-        {errors.confirmPassword ? (
-          <Text style={styles.errorText}>{errors.confirmPassword}</Text>
-        ) : null}
-      </View>
+          {errors.confirmPassword ? <HelperText type="error" visible>{errors.confirmPassword}</HelperText> : null}
 
-      <TouchableOpacity
-        style={[styles.button, loading ? styles.buttonDisabled : null]}
-        onPress={handleSubmit}
-        disabled={loading}
-        testID="btn-submit"
-      >
-        {loading ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.buttonText}>Crear usuario</Text>
-        )}
-      </TouchableOpacity>
-    </ScrollView>
+          <View style={styles.checkboxRow}>
+            <Checkbox.Android
+              status={accepted ? 'checked' : 'unchecked'}
+              onPress={() => setAccepted(v => !v)}
+              color={theme.colors.primary}
+              uncheckedColor="#9ca3af"
+            />
+            <Text variant="bodySmall" style={[styles.checkboxLabel, { color: theme.colors.onSurfaceVariant }]}>
+              {t('register.acceptTerms')}
+              <Text variant="bodySmall" style={{ color: theme.colors.primary, textDecorationLine: 'underline' }}>
+                {t('register.termsLink')}
+              </Text>
+              {t('register.andThe')}
+              <Text variant="bodySmall" style={{ color: theme.colors.primary, textDecorationLine: 'underline' }}>
+                {t('register.privacyLink')}
+              </Text>
+              {t('register.ofTravelHub')}
+            </Text>
+          </View>
+
+          <Button
+            mode="contained"
+            onPress={handleSubmit}
+            loading={loading}
+            disabled={loading || !accepted}
+            buttonColor={theme.colors.primary}
+            textColor={theme.colors.onPrimary}
+            contentStyle={styles.btnContent}
+            style={styles.btn}
+            testID="btn-submit"
+          >
+            {t('register.submit')}
+          </Button>
+          </AppCard>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8f9ff',
-  },
-  content: {
-    padding: 24,
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: 'bold',
-    color: '#111827',
-    marginBottom: 6,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginBottom: 20,
-  },
-  link: {
-    color: BRAND,
-    textDecorationLine: 'underline',
-  },
-  apiError: {
-    backgroundColor: '#fef2f2',
-    color: ERROR_COLOR,
-    borderRadius: 6,
-    padding: 12,
-    marginBottom: 16,
-    fontSize: 14,
-  },
-  row: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 4,
-  },
-  halfField: {
-    flex: 1,
-    marginBottom: 12,
-  },
-  field: {
-    marginBottom: 12,
-  },
-  label: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#6b7280',
-    marginBottom: 4,
-    letterSpacing: 0.5,
-  },
-  input: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 15,
-    color: '#111827',
-  },
-  inputError: {
-    borderColor: ERROR_COLOR,
-  },
-  passwordWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  passwordInput: {
-    flex: 1,
-  },
-  eyeButton: {
-    position: 'absolute',
-    right: 10,
-    padding: 4,
-  },
-  eyeText: {
-    fontSize: 16,
-  },
-  errorText: {
-    color: ERROR_COLOR,
-    fontSize: 12,
-    marginTop: 3,
-  },
-  button: {
-    backgroundColor: BRAND,
-    borderRadius: 8,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
+  safeArea: { flex: 1 },
+  content: { padding: 16, flexGrow: 1 },
+  card: { padding: 24 },
+  heading: { fontWeight: '700', marginBottom: 20 },
+  apiError: { marginBottom: 8, fontSize: 14 },
+  input: { backgroundColor: '#fff', marginBottom: 24 },
+  btnContent: { paddingVertical: 6 },
+  btn: { borderRadius: 10, marginBottom: 12 },
+  checkboxRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 24 },
+  checkboxLabel: { flex: 1, paddingTop: 6, lineHeight: 20 },
+  loginHint: { textAlign: 'center', marginTop: 4 },
 });

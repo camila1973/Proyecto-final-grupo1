@@ -82,6 +82,20 @@ describe("ReservationsRepository", () => {
     });
   });
 
+  describe("findByGuestId", () => {
+    it("filters reservations by guest_id", async () => {
+      const rows = [makeRow()];
+      const db = makeDb({ many: rows });
+      const repo = new ReservationsRepository(db);
+
+      const result = await repo.findByGuestId("guest-uuid");
+
+      expect(db.selectFrom).toHaveBeenCalledWith("reservations");
+      expect(db.where).toHaveBeenCalledWith("guest_id", "=", "guest-uuid");
+      expect(result).toBe(rows);
+    });
+  });
+
   describe("findById", () => {
     it("returns the row when found", async () => {
       const row = makeRow();

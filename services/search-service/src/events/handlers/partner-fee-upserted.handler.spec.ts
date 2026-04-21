@@ -101,4 +101,27 @@ describe("PartnerFeeUpsertedHandler", () => {
       }),
     ).resolves.not.toThrow();
   });
+
+  it("treats null flat_amount as 0 for active flat fees", async () => {
+    const bookingClient = makeBookingClient([
+      { fee_type: "FLAT_PER_NIGHT", flat_amount: null, is_active: true },
+      { fee_type: "FLAT_PER_STAY", flat_amount: null, is_active: true },
+    ]);
+    const repo = makeRepo();
+    const handler = new PartnerFeeUpsertedHandler(
+      bookingClient as any,
+      repo as any,
+    );
+
+    await handler.handle({
+      feeId: "fee-1",
+      partnerId: "partner-1",
+      feeName: "Resort Fee",
+      feeType: "FLAT_PER_NIGHT",
+      currency: "USD",
+      effectiveFrom: "2026-01-01",
+    });
+
+    expect(repo.bulkUpdateFlatFees).toHaveBeenCalledWith("partner-1", 0, 0);
+  });
 });

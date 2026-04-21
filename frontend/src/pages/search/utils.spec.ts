@@ -154,6 +154,9 @@ describe('resolveLabel', () => {
 // ─── buildLabelMap ───────────────────────────────────────────────────────────
 
 describe('buildLabelMap', () => {
+  // t that returns the defaultValue so tests stay language-neutral
+  const mockT = (_key: string, opts?: { defaultValue?: string }) => opts?.defaultValue ?? _key;
+
   const categories: TaxonomyCategory[] = [
     {
       id: '1',
@@ -180,7 +183,7 @@ describe('buildLabelMap', () => {
   ];
 
   it('builds a code→label map for the matching category', () => {
-    expect(buildLabelMap(categories, 'amenity')).toEqual({
+    expect(buildLabelMap(categories, 'amenity', mockT)).toEqual({
       wifi: 'WiFi',
       pool: 'Piscina',
       v1: 'WiFi',
@@ -189,7 +192,7 @@ describe('buildLabelMap', () => {
   });
 
   it('builds a map for a different category', () => {
-    expect(buildLabelMap(categories, 'room_type')).toEqual({
+    expect(buildLabelMap(categories, 'room_type', mockT)).toEqual({
       suite: 'Suite',
       standard: 'Estándar',
       v3: 'Suite',
@@ -197,12 +200,25 @@ describe('buildLabelMap', () => {
     });
   });
 
+  it('uses translated label when t resolves a key', () => {
+    const translatingT = (key: string, opts?: { defaultValue?: string }) => {
+      if (key === 'taxonomies.amenity.wifi') return 'WiFi gratis';
+      return opts?.defaultValue ?? key;
+    };
+    expect(buildLabelMap(categories, 'amenity', translatingT)).toEqual({
+      wifi: 'WiFi gratis',
+      pool: 'Piscina',
+      v1: 'WiFi gratis',
+      v2: 'Piscina',
+    });
+  });
+
   it('returns empty object when category code is not found', () => {
-    expect(buildLabelMap(categories, 'view_type')).toEqual({});
+    expect(buildLabelMap(categories, 'view_type', mockT)).toEqual({});
   });
 
   it('returns empty object for empty categories array', () => {
-    expect(buildLabelMap([], 'amenity')).toEqual({});
+    expect(buildLabelMap([], 'amenity', mockT)).toEqual({});
   });
 });
 

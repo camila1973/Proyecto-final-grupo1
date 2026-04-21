@@ -133,8 +133,8 @@ describe('PropertyDetailPage', () => {
     renderPage();
     expect(await screen.findByText('Hotel Test')).toBeInTheDocument();
     expect(screen.getByText('Chapinero, Bogotá, CO')).toBeInTheDocument();
-    expect(screen.getByText('WiFi')).toBeInTheDocument();
-    expect(screen.getByText('Piscina')).toBeInTheDocument();
+    expect(screen.getByText(es.taxonomies.amenities.wifi)).toBeInTheDocument();
+    expect(screen.getByText(es.taxonomies.amenities.pool)).toBeInTheDocument();
   });
 
   it('renders the About section title and description', async () => {
@@ -176,7 +176,7 @@ describe('PropertyDetailPage', () => {
   it('renders room card with book button', async () => {
     mockFetch();
     renderPage();
-    expect(await screen.findByText(es.property_detail.book_now)).toBeInTheDocument();
+    expect((await screen.findAllByText(es.property_detail.book_now)).length).toBeGreaterThan(0);
   });
 
   it('renders room type label', async () => {

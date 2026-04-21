@@ -58,6 +58,7 @@ services:
       PAYMENT_SERVICE_URL: http://payment-service:3005
       NOTIFICATION_SERVICE_URL: http://notification-service:3006
       PARTNERS_SERVICE_URL: http://partners-service:3007
+      CORS_ORIGIN: http://localhost:4200,http://localhost:8081
     depends_on:
       - auth-service
       - search-service
@@ -105,6 +106,8 @@ services:
   # ─── Shared infrastructure (Redis + RabbitMQ) ────────────────────────────────
   redis:
     image: redis:7-alpine
+    ports:
+      - "6379:6379"
     volumes:
       - redis_data:/data
     networks:

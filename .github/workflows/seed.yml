@@ -77,6 +77,7 @@ jobs:
         run: |
           BASE="postgres://travelhub:${{ steps.stack.outputs.db_pass }}@localhost:5432"
 
+          DATABASE_URL="${BASE}/auth"                pnpm exec nx run auth-service:migrate
           DATABASE_URL="${BASE}/search"              pnpm exec nx run search-service:migrate
           DATABASE_URL="${BASE}/inventory"           pnpm exec nx run inventory-service:migrate
           DATABASE_URL="${BASE}/booking"             pnpm exec nx run booking-service:migrate
@@ -87,6 +88,7 @@ jobs:
         run: |
           BASE="postgres://travelhub:${{ steps.stack.outputs.db_pass }}@localhost:5432"
 
+          DATABASE_URL="${BASE}/auth"                pnpm exec nx run auth-service:seed
           DATABASE_URL="${BASE}/search"              pnpm exec nx run search-service:seed
           DATABASE_URL="${BASE}/inventory"           pnpm exec nx run inventory-service:seed
           DATABASE_URL="${BASE}/booking"             pnpm exec nx run booking-service:seed

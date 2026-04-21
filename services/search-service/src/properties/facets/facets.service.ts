@@ -93,6 +93,7 @@ export class FacetsService {
   applyFilters(
     rooms: CandidateRoom[],
     filters: Partial<FilterSet>,
+    nights = 0,
   ): CandidateRoom[] {
     return rooms.filter((room) => {
       if (
@@ -119,17 +120,28 @@ export class FacetsService {
       if (filters.stars?.length && !filters.stars.includes(room.stars)) {
         return false;
       }
-      const price =
-        room.avail_price_usd != null
-          ? parseFloat(room.avail_price_usd)
-          : parseFloat(room.base_price_usd);
-      if (filters.priceMin != null && price < filters.priceMin) return false;
-      if (filters.priceMax != null && price > filters.priceMax) return false;
+      const { estimatedTotalUsd } = this.computePricing(room, nights);
+      if (filters.priceMin != null && estimatedTotalUsd < filters.priceMin)
+        return false;
+      if (filters.priceMax != null && estimatedTotalUsd > filters.priceMax)
+        return false;
       return true;
     });
   }
 
   computeFacets(candidates: CandidateRoom[], dto: SearchPropertiesDto): Facets {
+    const nights =
+      dto.checkIn && dto.checkOut
+        ? Math.max(
+            0,
+            Math.round(
+              (new Date(dto.checkOut).getTime() -
+                new Date(dto.checkIn).getTime()) /
+                (1000 * 60 * 60 * 24),
+            ),
+          )
+        : 0;
+
     const base: FilterSet = {
       roomType: dto.roomType,
       bedType: dto.bedType,
@@ -148,23 +160,30 @@ export class FacetsService {
 
     return {
       roomTypes: this.countByField(
-        this.applyFilters(candidates, without("roomType")),
+        this.applyFilters(candidates, without("roomType"), nights),
         "room_type",
       ),
       bedTypes: this.countByField(
-        this.applyFilters(candidates, without("bedType")),
+        this.applyFilters(candidates, without("bedType"), nights),
         "bed_type",
       ),
       viewTypes: this.countByField(
-        this.applyFilters(candidates, without("viewType")),
+        this.applyFilters(candidates, without("viewType"), nights),
         "view_type",
       ),
       amenities: this.countByAmenity(
-        this.applyFilters(candidates, without("amenities")),
+        this.applyFilters(candidates, without("amenities"), nights),
       ),
-      stars: this.countByStars(this.applyFilters(candidates, without("stars"))),
+      stars: this.countByStars(
+        this.applyFilters(candidates, without("stars"), nights),
+      ),
       priceRange: this.computePriceRange(
-        this.applyFilters(candidates, without("priceMin")),
+        this.applyFilters(
+          candidates,
+          { ...without("priceMin"), priceMax: undefined },
+          nights,
+        ),
+        nights,
       ),
     };
   }
@@ -374,23 +393,19 @@ export class FacetsService {
       .sort((a, b) => b.id - a.id);
   }
 
-  private computePriceRange(rooms: CandidateRoom[]): {
-    min: number;
-    max: number;
-    currency: string;
-  } {
+  private computePriceRange(
+    rooms: CandidateRoom[],
+    nights = 0,
+  ): { min: number; max: number; currency: string } {
     if (rooms.length === 0) {
       return { min: 0, max: 0, currency: "USD" };
     }
     let min = Infinity;
     let max = -Infinity;
     for (const room of rooms) {
-      const price =
-        room.avail_price_usd != null
-          ? parseFloat(room.avail_price_usd)
-          : parseFloat(room.base_price_usd);
-      if (price < min) min = price;
-      if (price > max) max = price;
+      const { estimatedTotalUsd } = this.computePricing(room, nights);
+      if (estimatedTotalUsd < min) min = estimatedTotalUsd;
+      if (estimatedTotalUsd > max) max = estimatedTotalUsd;
     }
     return { min, max, currency: "USD" };
   }

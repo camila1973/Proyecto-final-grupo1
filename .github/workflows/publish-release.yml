@@ -1,0 +1,483 @@
+name: Publish Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g. v1.0.0)'
+        required: true
+        type: string
+      build_strategy:
+        description: 'Build strategy'
+        required: true
+        type: choice
+        default: eas-cloud
+        options:
+          - eas-cloud
+          - github-actions
+          - self-hosted
+
+concurrency:
+  group: publish-release
+  cancel-in-progress: false
+
+permissions:
+  contents: write  # needed to create tags and releases
+
+env:
+  NX_DAEMON: 'false'
+  NX_TUI: 'false'
+  HUSKY: '0'
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
+jobs:
+  # ── 1. Validate input & run tests ─────────────────────────────────────────────
+  validate:
+    name: Validate & test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate version format
+        run: |
+          if ! echo "${{ github.event.inputs.version }}" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::Version must follow semver format: v1.2.3"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - uses: ./.github/actions/setup
+
+      - name: Run mobile tests
+        run: pnpm exec nx test mobile --passWithNoTests --outputStyle=static
+
+  # ── 2. Tag the commit ─────────────────────────────────────────────────────────
+  tag:
+    name: Tag commit
+    needs: validate
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.tag.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Create and push tag
+        id: tag
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          TAG="${{ github.event.inputs.version }}"
+          SHA=$(git rev-parse HEAD)
+
+          git tag -a "$TAG" "$SHA" -m "Release $TAG"
+          git push origin "$TAG"
+
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "Tagged $SHA as $TAG"
+
+  # ── 3a. Build — EAS Cloud ─────────────────────────────────────────────────────
+  build-eas-cloud:
+    name: Build / EAS Cloud
+    needs: tag
+    if: ${{ github.event.inputs.build_strategy == 'eas-cloud' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.tag.outputs.sha }}
+
+      - uses: ./.github/actions/setup
+
+      - name: Set app version in app.json
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          SEMVER="${VERSION#v}"
+          node -e "
+            const fs = require('fs');
+            const cfg = JSON.parse(fs.readFileSync('mobile/app.json', 'utf8'));
+            cfg.expo.version = '$SEMVER';
+            cfg.expo.android = cfg.expo.android ?? {};
+            cfg.expo.android.versionCode = parseInt('$SEMVER'.replace(/\./g, ''));
+            fs.writeFileSync('mobile/app.json', JSON.stringify(cfg, null, 2));
+          "
+
+      - name: Setup Expo + EAS CLI
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Build with EAS (Android + iOS)
+        working-directory: mobile
+        run: |
+          eas build \
+            --platform all \
+            --profile preview \
+            --non-interactive \
+            --json \
+            --wait \
+            > eas-output.json
+
+      - name: Download artifacts from EAS
+        run: |
+          mkdir -p artifacts
+
+          ANDROID_URL=$(jq -r '.[] | select(.platform == "ANDROID") | .artifacts.buildUrl' mobile/eas-output.json)
+          IOS_URL=$(jq -r '.[] | select(.platform == "IOS") | .artifacts.buildUrl' mobile/eas-output.json)
+
+          [ -n "$ANDROID_URL" ] && curl -fsSL -o "artifacts/travelhub-${{ github.event.inputs.version }}.apk" "$ANDROID_URL"
+          [ -n "$IOS_URL" ]     && curl -fsSL -o "artifacts/travelhub-${{ github.event.inputs.version }}-ios-simulator.tar.gz" "$IOS_URL"
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: travelhub-builds
+          path: artifacts/
+          if-no-files-found: error
+
+  # ── 3b. Build — GitHub Actions (Android) ──────────────────────────────────────
+  build-gh-android:
+    name: Build / GitHub Actions / Android
+    needs: tag
+    if: ${{ github.event.inputs.build_strategy == 'github-actions' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.tag.outputs.sha }}
+
+      - uses: ./.github/actions/setup
+
+      - name: Set app version in app.json
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          SEMVER="${VERSION#v}"
+          node -e "
+            const fs = require('fs');
+            const cfg = JSON.parse(fs.readFileSync('mobile/app.json', 'utf8'));
+            cfg.expo.version = '$SEMVER';
+            cfg.expo.android = cfg.expo.android ?? {};
+            cfg.expo.android.versionCode = parseInt('$SEMVER'.replace(/\./g, ''));
+            fs.writeFileSync('mobile/app.json', JSON.stringify(cfg, null, 2));
+          "
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Expo + EAS CLI
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Build Android (local)
+        working-directory: mobile
+        env:
+          ANDROID_HOME: /usr/local/lib/android/sdk
+        run: |
+          mkdir -p ../artifacts
+          eas build \
+            --platform android \
+            --profile preview \
+            --non-interactive \
+            --local \
+            --output "../artifacts/travelhub-${{ github.event.inputs.version }}.apk"
+
+      - name: Upload Android artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: travelhub-builds-android
+          path: "artifacts/travelhub-${{ github.event.inputs.version }}.apk"
+
+          if-no-files-found: error
+
+  # ── 3c. Build — GitHub Actions (iOS) ──────────────────────────────────────────
+  build-gh-ios:
+    name: Build / GitHub Actions / iOS
+    needs: tag
+    if: ${{ github.event.inputs.build_strategy == 'github-actions' }}
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.tag.outputs.sha }}
+
+      - uses: ./.github/actions/setup
+
+      - name: Set app version in app.json
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          SEMVER="${VERSION#v}"
+          node -e "
+            const fs = require('fs');
+            const cfg = JSON.parse(fs.readFileSync('mobile/app.json', 'utf8'));
+            cfg.expo.version = '$SEMVER';
+            cfg.expo.android = cfg.expo.android ?? {};
+            cfg.expo.android.versionCode = parseInt('$SEMVER'.replace(/\./g, ''));
+            fs.writeFileSync('mobile/app.json', JSON.stringify(cfg, null, 2));
+          "
+
+      - name: Setup Expo + EAS CLI
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Build iOS (local)
+        working-directory: mobile
+        run: |
+          mkdir -p ../artifacts
+          eas build \
+            --platform ios \
+            --profile preview \
+            --non-interactive \
+            --local \
+            --output "../artifacts/travelhub-${{ github.event.inputs.version }}-ios-simulator.tar.gz"
+
+      - name: Upload iOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: travelhub-builds-ios
+          path: "artifacts/travelhub-${{ github.event.inputs.version }}-ios-simulator.tar.gz"
+
+          if-no-files-found: error
+
+  # ── 3d. Build — Self-hosted (Android + iOS) ───────────────────────────────────
+  build-self-hosted:
+    name: Build / Self-hosted / Android + iOS
+    needs: tag
+    if: ${{ github.event.inputs.build_strategy == 'self-hosted' }}
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.tag.outputs.sha }}
+
+      - uses: ./.github/actions/setup
+
+      - name: Set app version in app.json
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          SEMVER="${VERSION#v}"
+          node -e "
+            const fs = require('fs');
+            const cfg = JSON.parse(fs.readFileSync('mobile/app.json', 'utf8'));
+            cfg.expo.version = '$SEMVER';
+            cfg.expo.android = cfg.expo.android ?? {};
+            cfg.expo.android.versionCode = parseInt('$SEMVER'.replace(/\./g, ''));
+            fs.writeFileSync('mobile/app.json', JSON.stringify(cfg, null, 2));
+          "
+
+      - name: Setup Expo + EAS CLI
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Build Android + iOS (local)
+        working-directory: mobile
+        run: |
+          mkdir -p ../artifacts
+          eas build \
+            --platform android \
+            --profile preview \
+            --non-interactive \
+            --local \
+            --output "../artifacts/travelhub-${{ github.event.inputs.version }}.apk"
+          eas build \
+            --platform ios \
+            --profile preview \
+            --non-interactive \
+            --local \
+            --output "../artifacts/travelhub-${{ github.event.inputs.version }}-ios-simulator.tar.gz"
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: travelhub-builds
+          path: artifacts/
+
+          if-no-files-found: error
+
+  # ── 4. Collect artifacts (fan-in) ─────────────────────────────────────────────
+  collect:
+    name: Collect artifacts
+    needs: [tag, build-eas-cloud, build-gh-android, build-gh-ios, build-self-hosted]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check at least one build succeeded
+        run: |
+          EAS="${{ needs.build-eas-cloud.result }}"
+          GH_A="${{ needs.build-gh-android.result }}"
+          GH_I="${{ needs.build-gh-ios.result }}"
+          SH="${{ needs.build-self-hosted.result }}"
+          if [[ "$EAS" != "success" && "$GH_A" != "success" && "$GH_I" != "success" && "$SH" != "success" ]]; then
+            echo "::error::No build job succeeded. Cannot create release."
+            exit 1
+          fi
+
+      - name: Download EAS Cloud artifacts
+        if: ${{ needs.build-eas-cloud.result == 'success' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: travelhub-builds
+          path: artifacts/
+
+      - name: Download GitHub Actions artifacts
+        if: ${{ needs.build-gh-android.result == 'success' || needs.build-gh-ios.result == 'success' }}
+        uses: actions/download-artifact@v4
+        with:
+          pattern: travelhub-builds-*
+          path: artifacts/
+          merge-multiple: true
+
+      - name: Download self-hosted artifacts
+        if: ${{ needs.build-self-hosted.result == 'success' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: travelhub-builds
+          path: artifacts/
+
+      - name: Upload unified artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: travelhub-release-builds
+          path: artifacts/
+
+          if-no-files-found: error
+
+  # ── 5. Create GitHub Release ──────────────────────────────────────────────────
+  release:
+    name: Create release
+    needs: [tag, collect]
+    if: needs.collect.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.tag.outputs.sha }}
+          fetch-depth: 0
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: travelhub-release-builds
+          path: artifacts/
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          TAG="${{ github.event.inputs.version }}"
+          PREVIOUS_TAG=$(git tag --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sed -n '2p')
+
+          if [ -n "$PREVIOUS_TAG" ]; then
+            COMMITS=$(git log "$PREVIOUS_TAG"..HEAD --pretty=format:"- %s (%h)" -- mobile/ services/ 2>/dev/null || echo "")
+          else
+            COMMITS=$(git log --pretty=format:"- %s (%h)" --max-count=20 -- mobile/ services/ 2>/dev/null || echo "")
+          fi
+
+          {
+            echo "body<<EOF"
+            echo "## TravelHub $TAG"
+            echo ""
+            echo "### Changes"
+            if [ -n "$COMMITS" ]; then
+              echo "$COMMITS"
+            else
+              echo "- Initial release"
+            fi
+            echo ""
+            echo "### Web"
+            echo "Accede al frontend de producción en: https://storage.googleapis.com/travelhub-frontend-travelhub-cbayona-prod/index.html"
+            echo ""
+            echo "### Instalación en emuladores"
+            echo ""
+            echo "#### Android APK"
+            echo ""
+            echo "1. **Instala Android Studio** — incluye el emulador de Android y \`adb\`"
+            echo "2. **Crea un dispositivo virtual** — Android Studio → Device Manager → Create Device → selecciona un perfil de teléfono → elige una imagen del sistema (API 33+ recomendada) → Finish"
+            echo "3. **Inicia el emulador** — haz clic en el botón de play en Device Manager, o:"
+            echo "\`\`\`"
+            echo "emulator -avd <nombre_de_tu_avd>"
+            echo "\`\`\`"
+            echo "4. **Verifica que adb detecta el dispositivo**"
+            echo "\`\`\`"
+            echo "adb devices"
+            echo "\`\`\`"
+            echo "5. **Desinstala la versión anterior** (solo si estás actualizando)"
+            echo "\`\`\`"
+            echo "adb uninstall com.travelhub.mobile"
+            echo "\`\`\`"
+            echo "6. **Instala el APK**"
+            echo "\`\`\`"
+            echo "adb install travelhub-$TAG.apk"
+            echo "\`\`\`"
+            echo ""
+            echo "#### iOS Simulator"
+            echo ""
+            echo "1. **Instala Xcode** — desde la Mac App Store (solo macOS)"
+            echo "2. **Instala las herramientas de línea de comandos de Xcode**"
+            echo "\`\`\`"
+            echo "xcode-select --install"
+            echo "\`\`\`"
+            echo "3. **Instala un runtime de simulador** — Xcode → Settings → Platforms → agrega iOS 17 o 18"
+            echo "4. **Inicia un simulador**"
+            echo "\`\`\`"
+            echo "xcrun simctl boot \"iPhone 16\""
+            echo "open -a Simulator"
+            echo "\`\`\`"
+            echo "5. **Verifica que el simulador está corriendo**"
+            echo "\`\`\`"
+            echo "xcrun simctl list devices | grep Booted"
+            echo "\`\`\`"
+            echo "6. **Extrae el archivo tar.gz**"
+            echo "\`\`\`"
+            echo "tar -xzf travelhub-$TAG-ios-simulator.tar.gz"
+            echo "\`\`\`"
+            echo "7. **Instala la app**"
+            echo "\`\`\`"
+            echo "xcrun simctl install booted mobile.app"
+            echo "\`\`\`"
+            echo "8. **Lanza la app**"
+            echo "\`\`\`"
+            echo "xcrun simctl launch booted com.travelhub.mobile"
+            echo "\`\`\`"
+            echo ""
+            echo "### Solución de problemas"
+            echo ""
+            echo "**Android: error de firma incompatible**"
+            echo "Si \`adb install\` falla con \`INSTALL_FAILED_UPDATE_INCOMPATIBLE\`, hay una versión anterior firmada con una clave diferente. Desinstálala primero:"
+            echo "\`\`\`"
+            echo "adb uninstall com.travelhub.mobile"
+            echo "adb install travelhub-$TAG.apk"
+            echo "\`\`\`"
+            echo ""
+            echo "**iOS Simulator: la app no abre**"
+            echo "Asegúrate de que el simulador esté iniciado antes de instalar:"
+            echo "\`\`\`"
+            echo "xcrun simctl boot \"iPhone 16\""
+            echo "open -a Simulator"
+            echo "\`\`\`"
+            echo "Luego vuelve a ejecutar los comandos de instalación y lanzamiento."
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.version }}
+          name: TravelHub ${{ github.event.inputs.version }}
+          body: ${{ steps.changelog.outputs.body }}
+          files: artifacts/*
+          draft: false
+          prerelease: ${{ contains(github.event.inputs.version, '-') }}

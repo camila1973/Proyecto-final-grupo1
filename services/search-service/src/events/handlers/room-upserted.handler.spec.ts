@@ -200,4 +200,234 @@ describe("RoomUpsertedHandler", () => {
       "Mexico City",
     );
   });
+
+  it("defaults lat and lon to 0 when null", async () => {
+    await handler.handle(makePayload({ lat: null, lon: null }));
+    expect(repo.upsertRoom).toHaveBeenCalledWith(
+      expect.objectContaining({ lat: 0, lon: 0 }),
+    );
+  });
+
+  it("defaults stars to 0 when null", async () => {
+    await handler.handle(makePayload({ stars: null }));
+    expect(repo.upsertRoom).toHaveBeenCalledWith(
+      expect.objectContaining({ stars: 0 }),
+    );
+  });
+
+  it("city-specific tax rule overrides country-level rule with same name", async () => {
+    bookingClient.getTaxRules.mockResolvedValue([
+      {
+        id: "t1",
+        country: "Mexico",
+        city: null,
+        tax_name: "IVA",
+        tax_type: "PERCENTAGE",
+        rate: "16",
+        flat_amount: null,
+        currency: "USD",
+        is_active: true,
+      },
+      {
+        id: "t2",
+        country: "Mexico",
+        city: "cancún",
+        tax_name: "IVA",
+        tax_type: "PERCENTAGE",
+        rate: "14",
+        flat_amount: null,
+        currency: "USD",
+        is_active: true,
+      },
+    ]);
+
+    await handler.handle(makePayload({ city: "Cancún" }));
+
+    // City-specific rule wins → 14%, not 16%
+    expect(repo.upsertRoom).toHaveBeenCalledWith(
+      expect.objectContaining({ tax_rate_pct: 14 }),
+    );
+  });
+
+  it("excludes city-specific rules whose city does not match the payload city", async () => {
+    bookingClient.getTaxRules.mockResolvedValue([
+      {
+        id: "t1",
+        country: "Mexico",
+        city: null,
+        tax_name: "IVA",
+        tax_type: "PERCENTAGE",
+        rate: "16",
+        flat_amount: null,
+        currency: "USD",
+        is_active: true,
+      },
+      {
+        id: "t2",
+        country: "Mexico",
+        city: "guadalajara",
+        tax_name: "LOCAL",
+        tax_type: "PERCENTAGE",
+        rate: "3",
+        flat_amount: null,
+        currency: "USD",
+        is_active: true,
+      },
+    ]);
+
+    // Payload city is Cancún — guadalajara rule should be excluded
+    await handler.handle(makePayload({ city: "Cancún" }));
+
+    expect(repo.upsertRoom).toHaveBeenCalledWith(
+      expect.objectContaining({ tax_rate_pct: 16 }),
+    );
+  });
+
+  it("excludes inactive tax rules", async () => {
+    bookingClient.getTaxRules.mockResolvedValue([
+      {
+        id: "t1",
+        country: "Mexico",
+        city: null,
+        tax_name: "IVA",
+        tax_type: "PERCENTAGE",
+        rate: "16",
+        flat_amount: null,
+        currency: "USD",
+        is_active: false,
+      },
+    ]);
+
+    await handler.handle(makePayload());
+
+    expect(repo.upsertRoom).toHaveBeenCalledWith(
+      expect.objectContaining({ tax_rate_pct: 0 }),
+    );
+  });
+
+  it("excludes non-PERCENTAGE tax rules from rate calculation", async () => {
+    bookingClient.getTaxRules.mockResolvedValue([
+      {
+        id: "t1",
+        country: "Mexico",
+        city: null,
+        tax_name: "FLAT_TAX",
+        tax_type: "FLAT",
+        rate: null,
+        flat_amount: "10",
+        currency: "USD",
+        is_active: true,
+      },
+    ]);
+
+    await handler.handle(makePayload());
+
+    expect(repo.upsertRoom).toHaveBeenCalledWith(
+      expect.objectContaining({ tax_rate_pct: 0 }),
+    );
+  });
+
+  it("treats null rate as 0 in PERCENTAGE tax rules", async () => {
+    bookingClient.getTaxRules.mockResolvedValue([
+      {
+        id: "t1",
+        country: "Mexico",
+        city: null,
+        tax_name: "IVA",
+        tax_type: "PERCENTAGE",
+        rate: null,
+        flat_amount: null,
+        currency: "USD",
+        is_active: true,
+      },
+    ]);
+
+    await handler.handle(makePayload());
+
+    expect(repo.upsertRoom).toHaveBeenCalledWith(
+      expect.objectContaining({ tax_rate_pct: 0 }),
+    );
+  });
+
+  it("treats null flat_amount as 0 in partner fees", async () => {
+    bookingClient.getPartnerFees.mockResolvedValue([
+      {
+        id: "f1",
+        partner_id: "p1",
+        fee_name: "Resort Fee",
+        fee_type: "FLAT_PER_NIGHT",
+        rate: null,
+        flat_amount: null,
+        currency: "USD",
+        is_active: true,
+      },
+      {
+        id: "f2",
+        partner_id: "p1",
+        fee_name: "Cleaning Fee",
+        fee_type: "FLAT_PER_STAY",
+        rate: null,
+        flat_amount: null,
+        currency: "USD",
+        is_active: true,
+      },
+    ]);
+
+    await handler.handle(makePayload());
+
+    expect(repo.upsertRoom).toHaveBeenCalledWith(
+      expect.objectContaining({
+        flat_fee_per_night_usd: 0,
+        flat_fee_per_stay_usd: 0,
+      }),
+    );
+  });
+
+  it("excludes inactive partner fees", async () => {
+    bookingClient.getPartnerFees.mockResolvedValue([
+      {
+        id: "f1",
+        partner_id: "p1",
+        fee_name: "Resort Fee",
+        fee_type: "FLAT_PER_NIGHT",
+        rate: null,
+        flat_amount: "30",
+        currency: "USD",
+        is_active: false,
+      },
+    ]);
+
+    await handler.handle(makePayload());
+
+    expect(repo.upsertRoom).toHaveBeenCalledWith(
+      expect.objectContaining({
+        flat_fee_per_night_usd: 0,
+        flat_fee_per_stay_usd: 0,
+      }),
+    );
+  });
+
+  it("excludes partner fees with non-flat fee types", async () => {
+    bookingClient.getPartnerFees.mockResolvedValue([
+      {
+        id: "f1",
+        partner_id: "p1",
+        fee_name: "Commission",
+        fee_type: "PERCENTAGE",
+        rate: "5",
+        flat_amount: null,
+        currency: "USD",
+        is_active: true,
+      },
+    ]);
+
+    await handler.handle(makePayload());
+
+    expect(repo.upsertRoom).toHaveBeenCalledWith(
+      expect.objectContaining({
+        flat_fee_per_night_usd: 0,
+        flat_fee_per_stay_usd: 0,
+      }),
+    );
+  });
 });

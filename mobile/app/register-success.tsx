@@ -1,5 +1,6 @@
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
+import { AppCard } from '@/components/ui/app-card';
 
 const BRAND = '#2d3a8c';
 
@@ -8,7 +9,7 @@ export default function RegisterSuccessScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.card}>
+      <AppCard style={styles.card}>
         <View style={styles.iconCircle}>
           <Text style={styles.checkmark}>✓</Text>
         </View>
@@ -23,7 +24,7 @@ export default function RegisterSuccessScreen() {
         >
           <Text style={styles.buttonText}>Explorar destinos</Text>
         </TouchableOpacity>
-      </View>
+      </AppCard>
     </View>
   );
 }
@@ -37,18 +38,7 @@ const styles = StyleSheet.create({
     padding: 24,
     paddingTop: Platform.OS === 'ios' ? 60 : 40,
   },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 36,
-    alignItems: 'center',
-    width: '100%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
-  },
+  card: { padding: 36, alignItems: 'center', width: '100%' },
   iconCircle: {
     width: 72,
     height: 72,

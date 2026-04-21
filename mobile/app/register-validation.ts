@@ -33,11 +33,17 @@ export function validateEmail(email: string): string | undefined {
   return undefined;
 }
 
+
 export function validateRegisterFields(fields: RegisterFields): RegisterErrors {
   const errors: RegisterErrors = {};
 
-  if (!fields.firstName.trim()) errors.firstName = 'El nombre es requerido';
-  if (!fields.lastName.trim()) errors.lastName = 'El apellido es requerido';
+  if (!fields.firstName.trim()) {
+    errors.firstName = 'El nombre es requerido';
+  }
+
+  if (!fields.lastName.trim()) {
+    errors.lastName = 'El apellido es requerido';
+  }
 
   const emailError = validateEmail(fields.email);
   if (emailError) errors.email = emailError;

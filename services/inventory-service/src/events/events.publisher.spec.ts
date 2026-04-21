@@ -52,6 +52,79 @@ describe("EventsPublisher", () => {
     });
   });
 
+  describe("pubsub broker path", () => {
+    beforeEach(() => {
+      process.env["MESSAGE_BROKER_TYPE"] = "pubsub";
+    });
+
+    afterEach(() => {
+      delete process.env["MESSAGE_BROKER_TYPE"];
+    });
+
+    it("onModuleInit initializes pubsub (warns on failure if SDK unavailable)", async () => {
+      const publisher = makePublisher();
+      await expect(publisher.onModuleInit()).resolves.not.toThrow();
+    });
+
+    it("publish dispatches to publishViaPubSub when brokerType is pubsub", () => {
+      const publisher = makePublisher();
+      (publisher as any).brokerType = "pubsub";
+      const spy = jest
+        .spyOn(publisher as any, "publishViaPubSub")
+        .mockResolvedValue(undefined);
+      publisher.publish("inventory.room.upserted", { roomId: "r1" });
+      expect(spy).toHaveBeenCalledWith("inventory.room.upserted", {
+        roomId: "r1",
+      });
+    });
+
+    it("publishViaPubSub returns early when pubSubClient is null", async () => {
+      const publisher = makePublisher();
+      // pubSubClient is null by default
+      await expect(
+        (publisher as any).publishViaPubSub("test.key", {}),
+      ).resolves.not.toThrow();
+    });
+
+    it("publishViaPubSub publishes to the correct topic (dots → hyphens)", async () => {
+      const publisher = makePublisher();
+      const publishMessage = jest.fn().mockResolvedValue("msg-id");
+      const topic = jest.fn().mockReturnValue({ publishMessage });
+      (publisher as any).pubSubClient = { topic };
+
+      await (publisher as any).publishViaPubSub("inventory.room.upserted", {
+        id: 1,
+      });
+
+      expect(topic).toHaveBeenCalledWith("inventory-room-upserted");
+      expect(publishMessage).toHaveBeenCalledWith({
+        data: expect.any(Buffer),
+      });
+    });
+
+    it("publishViaPubSub logs error and does not throw when publish fails", async () => {
+      const publisher = makePublisher();
+      const topic = jest.fn().mockReturnValue({
+        publishMessage: jest
+          .fn()
+          .mockRejectedValue(new Error("pubsub failure")),
+      });
+      (publisher as any).pubSubClient = { topic };
+
+      await expect(
+        (publisher as any).publishViaPubSub("test.key", {}),
+      ).resolves.not.toThrow();
+    });
+
+    it("onModuleDestroy closes pubSubClient when set", async () => {
+      const publisher = makePublisher();
+      const close = jest.fn().mockResolvedValue(undefined);
+      (publisher as any).pubSubClient = { close };
+      await publisher.onModuleDestroy();
+      expect(close).toHaveBeenCalled();
+    });
+  });
+
   describe("onModuleDestroy", () => {
     it("does nothing when connection and channel are null", async () => {
       const publisher = makePublisher();
