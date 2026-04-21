@@ -89,6 +89,8 @@ describe("PropertiesRepository", () => {
         rating: 4.0,
         review_count: 10,
         thumbnail_url: "",
+        image_urls: [],
+        description: {},
         is_active: true,
       });
 
@@ -122,6 +124,8 @@ describe("PropertiesRepository", () => {
           rating: 3.5,
           review_count: 5,
           thumbnail_url: "",
+          image_urls: [],
+          description: {},
           is_active: true,
         }),
       ).resolves.not.toThrow();

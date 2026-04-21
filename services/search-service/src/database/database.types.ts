@@ -43,8 +43,22 @@ export type RoomSearchIndexTable = {
   rating: Generated<string>;
   review_count: Generated<number>;
   thumbnail_url: Generated<string>;
+  image_urls: Generated<string[]>;
+  description: Generated<Record<string, string>>;
   is_active: Generated<boolean>;
   last_synced_at: Generated<string>;
+};
+
+export type PropertyReviewsTable = {
+  id: Generated<string>;
+  property_id: string;
+  reviewer_name: string;
+  reviewer_country: string | null;
+  rating: number;
+  language: Generated<string>;
+  title: string | null;
+  comment: string;
+  created_at: Generated<string>;
 };
 
 export type RoomPricePeriodsTable = {
@@ -60,4 +74,5 @@ export type SearchDatabase = {
   taxonomy_values: TaxonomyValueTable;
   room_search_index: RoomSearchIndexTable;
   room_price_periods: RoomPricePeriodsTable;
+  property_reviews: PropertyReviewsTable;
 };

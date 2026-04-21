@@ -669,6 +669,449 @@ async function seed() {
 
   await db.insertInto("room_price_periods").values(pricePeriods).execute();
 
+  // ── property media + descriptions ────────────────────────────────────────
+  // CloudFront-style host to simulate the production media pipeline. Images
+  // are served async by the frontend carousel so the HTML shell is not
+  // blocked by large payloads.
+  const CDN = "https://media.travelhub.example/cdn-cgi/images";
+  const img = (key: string) => `${CDN}/q-85,w-1600/properties/${key}.jpg`;
+
+  type PropertyMedia = {
+    id: string;
+    images: string[];
+    description: Record<string, string>;
+  };
+
+  const propertyMedia: PropertyMedia[] = [
+    {
+      id: PROP_CANCUN_1,
+      images: [
+        img("gran-caribe-1"),
+        img("gran-caribe-2"),
+        img("gran-caribe-3"),
+        img("gran-caribe-4"),
+        img("gran-caribe-5"),
+      ],
+      description: {
+        es: "Gran Caribe Resort & Spa se encuentra frente a las turquesas playas de la Zona Hotelera de Cancún, a pocos pasos del mar Caribe. Ofrece cinco restaurantes, spa de servicio completo, tres piscinas y habitaciones con vista al océano.",
+        en: "Gran Caribe Resort & Spa sits directly on the turquoise beaches of Cancún's Hotel Zone, steps from the Caribbean Sea. It offers five restaurants, a full-service spa, three pools and rooms with ocean views.",
+        pt: "O Gran Caribe Resort & Spa fica em frente às praias turquesa da Zona Hoteleira de Cancún, a poucos passos do Mar do Caribe. Oferece cinco restaurantes, spa completo, três piscinas e quartos com vista para o oceano.",
+        fr: "Le Gran Caribe Resort & Spa se trouve directement sur les plages turquoise de la Zone Hôtelière de Cancún, à quelques pas de la mer des Caraïbes. Il propose cinq restaurants, un spa complet, trois piscines et des chambres avec vue sur l'océan.",
+        it: "Il Gran Caribe Resort & Spa si trova direttamente sulle spiagge turchesi della Zona Alberghiera di Cancún, a pochi passi dal Mar dei Caraibi. Offre cinque ristoranti, una spa completa, tre piscine e camere vista oceano.",
+        de: "Das Gran Caribe Resort & Spa liegt direkt an den türkisfarbenen Stränden der Hotelzone von Cancún, wenige Schritte vom Karibischen Meer entfernt. Es bietet fünf Restaurants, ein Full-Service-Spa, drei Pools und Zimmer mit Meerblick.",
+      },
+    },
+    {
+      id: PROP_CANCUN_2,
+      images: [
+        img("playa-azul-1"),
+        img("playa-azul-2"),
+        img("playa-azul-3"),
+        img("playa-azul-4"),
+      ],
+      description: {
+        es: "Playa Azul Hotel está muy bien situado en Zona Hotelera, Cancún, a 3,4 km del centro comercial La Isla y a 7 km del Centro Internacional de Negocios y Exposiciones. Sus huéspedes disfrutan de piscina al aire libre y desayuno buffet.",
+        en: "Playa Azul Hotel is very well located in Cancún's Hotel Zone, 3.4 km from La Isla mall and 7 km from the International Business & Exhibition Center. Guests enjoy an outdoor pool and a buffet breakfast.",
+        pt: "O Playa Azul Hotel está muito bem localizado na Zona Hoteleira de Cancún, a 3,4 km do shopping La Isla e a 7 km do Centro Internacional de Negócios e Exposições. Os hóspedes desfrutam de piscina ao ar livre e café da manhã buffet.",
+        fr: "Le Playa Azul Hotel est très bien situé dans la Zone Hôtelière de Cancún, à 3,4 km du centre commercial La Isla et à 7 km du Centre International des Affaires et Expositions. Les clients profitent d'une piscine extérieure et d'un petit-déjeuner buffet.",
+        it: "Il Playa Azul Hotel è molto ben posizionato nella Zona Alberghiera di Cancún, a 3,4 km dal centro commerciale La Isla e a 7 km dal Centro Internazionale Affari ed Esposizioni. Gli ospiti possono godere di una piscina all'aperto e di una colazione a buffet.",
+        de: "Das Playa Azul Hotel liegt sehr gut in der Hotelzone von Cancún, 3,4 km vom Einkaufszentrum La Isla und 7 km vom Internationalen Geschäfts- und Ausstellungszentrum entfernt. Gäste genießen einen Außenpool und ein Frühstücksbuffet.",
+      },
+    },
+    {
+      id: PROP_CANCUN_3,
+      images: [img("hostal-sol-1"), img("hostal-sol-2"), img("hostal-sol-3")],
+      description: {
+        es: "Hostal Sol Cancún ofrece alojamiento económico en el downtown de Cancún, ideal para mochileros y viajeros de presupuesto. Cuenta con WiFi gratuito, aire acondicionado y estacionamiento privado.",
+        en: "Hostal Sol Cancún offers budget-friendly lodging in downtown Cancún, ideal for backpackers and budget travelers. It features free WiFi, air conditioning and private parking.",
+        pt: "O Hostal Sol Cancún oferece hospedagem econômica no centro de Cancún, ideal para mochileiros e viajantes com orçamento reduzido. Possui WiFi gratuito, ar-condicionado e estacionamento privativo.",
+        fr: "Hostal Sol Cancún propose un hébergement économique dans le centre-ville de Cancún, idéal pour les routards et les voyageurs à petit budget. Il propose le WiFi gratuit, la climatisation et un parking privé.",
+        it: "Hostal Sol Cancún offre alloggi economici nel centro di Cancún, ideali per backpacker e viaggiatori con budget ridotto. Dispone di WiFi gratuito, aria condizionata e parcheggio privato.",
+        de: "Hostal Sol Cancún bietet eine günstige Unterkunft im Zentrum von Cancún, ideal für Rucksacktouristen und Sparfüchse. Es verfügt über kostenloses WLAN, Klimaanlage und privaten Parkplatz.",
+      },
+    },
+    {
+      id: PROP_CDMX_1,
+      images: [
+        img("historico-1"),
+        img("historico-2"),
+        img("historico-3"),
+        img("historico-4"),
+        img("historico-5"),
+      ],
+      description: {
+        es: "Hotel Histórico Centro ocupa un edificio colonial del siglo XVIII en el corazón del Centro Histórico de la Ciudad de México, a pocos pasos del Zócalo y el Palacio de Bellas Artes. Ofrece spa, gimnasio y restaurante gourmet.",
+        en: "Hotel Histórico Centro occupies an 18th-century colonial building in the heart of Mexico City's Historic Center, steps from the Zócalo and the Palacio de Bellas Artes. It offers a spa, gym and gourmet restaurant.",
+        pt: "O Hotel Histórico Centro ocupa um edifício colonial do século XVIII no coração do Centro Histórico da Cidade do México, a poucos passos do Zócalo e do Palácio de Belas Artes. Oferece spa, academia e restaurante gourmet.",
+        fr: "L'Hotel Histórico Centro occupe un bâtiment colonial du XVIIIe siècle au cœur du Centre Historique de Mexico, à quelques pas du Zócalo et du Palacio de Bellas Artes. Il propose un spa, une salle de sport et un restaurant gastronomique.",
+        it: "L'Hotel Histórico Centro occupa un edificio coloniale del XVIII secolo nel cuore del Centro Storico di Città del Messico, a pochi passi dallo Zócalo e dal Palacio de Bellas Artes. Offre spa, palestra e ristorante gourmet.",
+        de: "Das Hotel Histórico Centro befindet sich in einem kolonialen Gebäude aus dem 18. Jahrhundert im Herzen des historischen Zentrums von Mexiko-Stadt, nur wenige Schritte vom Zócalo und dem Palacio de Bellas Artes entfernt. Es bietet Spa, Fitnessstudio und Gourmet-Restaurant.",
+      },
+    },
+    {
+      id: PROP_CDMX_2,
+      images: [img("condesa-1"), img("condesa-2"), img("condesa-3")],
+      description: {
+        es: "Condesa Inn es un hotel boutique en el barrio bohemio de la Condesa, rodeado de cafés, galerías y parques. Admite mascotas y sirve desayuno continental incluido.",
+        en: "Condesa Inn is a boutique hotel in the bohemian Condesa neighborhood, surrounded by cafés, galleries and parks. It is pet-friendly and serves a complimentary continental breakfast.",
+        pt: "O Condesa Inn é um hotel boutique no boêmio bairro da Condesa, cercado por cafés, galerias e parques. Aceita animais de estimação e serve café da manhã continental incluso.",
+        fr: "Condesa Inn est un hôtel-boutique dans le quartier bohème de Condesa, entouré de cafés, galeries et parcs. Il accepte les animaux de compagnie et sert un petit-déjeuner continental offert.",
+        it: "Il Condesa Inn è un boutique hotel nel quartiere bohémien della Condesa, circondato da caffè, gallerie e parchi. Accetta animali domestici e serve una colazione continentale inclusa.",
+        de: "Das Condesa Inn ist ein Boutique-Hotel im bohèmehaften Viertel Condesa, umgeben von Cafés, Galerien und Parks. Haustiere sind erlaubt, und ein kontinentales Frühstück ist inklusive.",
+      },
+    },
+  ];
+
+  console.log("Enriching properties with images + descriptions...");
+  for (const m of propertyMedia) {
+    await db
+      .updateTable("room_search_index")
+      .set({
+        image_urls: m.images,
+        description: m.description,
+      })
+      .where("property_id", "=", m.id)
+      .execute();
+  }
+
+  // ── property_reviews ──────────────────────────────────────────────────────
+  console.log("Seeding property_reviews...");
+  await sql`TRUNCATE property_reviews RESTART IDENTITY`.execute(db);
+
+  const daysAgo = (n: number) => {
+    const d = new Date();
+    d.setDate(d.getDate() - n);
+    return d.toISOString();
+  };
+
+  const reviews = [
+    // Gran Caribe Resort & Spa — 8 reviews
+    {
+      p: PROP_CANCUN_1,
+      n: "María G.",
+      c: "MX",
+      r: 5,
+      l: "es",
+      t: "Experiencia inolvidable",
+      cm: "El servicio fue impecable y la vista al mar desde la habitación es espectacular. Volveremos el próximo año.",
+      age: 3,
+    },
+    {
+      p: PROP_CANCUN_1,
+      n: "John D.",
+      c: "US",
+      r: 5,
+      l: "en",
+      t: "Outstanding resort",
+      cm: "From check-in to check-out, every detail was taken care of. The beach access is unbeatable.",
+      age: 10,
+    },
+    {
+      p: PROP_CANCUN_1,
+      n: "Luiza P.",
+      c: "BR",
+      r: 4,
+      l: "pt",
+      t: "Muito bom",
+      cm: "Quartos amplos e comida de excelente qualidade. O spa é um ponto alto. Só achei o WiFi um pouco lento.",
+      age: 18,
+    },
+    {
+      p: PROP_CANCUN_1,
+      n: "Camille L.",
+      c: "FR",
+      r: 5,
+      l: "fr",
+      t: "Séjour magique",
+      cm: "La vue sur la mer est à couper le souffle. Le personnel parle plusieurs langues et a été très attentionné.",
+      age: 25,
+    },
+    {
+      p: PROP_CANCUN_1,
+      n: "Andrea R.",
+      c: "CO",
+      r: 4,
+      l: "es",
+      t: "Muy recomendado",
+      cm: "Un lugar increíble para familias. Las piscinas están perfectamente mantenidas.",
+      age: 40,
+    },
+    {
+      p: PROP_CANCUN_1,
+      n: "Marco S.",
+      c: "IT",
+      r: 5,
+      l: "it",
+      t: "Paradiso",
+      cm: "Servizio di altissimo livello e colazione eccellente. Lo consiglio vivamente.",
+      age: 55,
+    },
+    {
+      p: PROP_CANCUN_1,
+      n: "Hans M.",
+      c: "DE",
+      r: 4,
+      l: "de",
+      t: "Sehr schön",
+      cm: "Tolle Anlage direkt am Strand. Nur das Mittagessen am Pool war etwas teuer.",
+      age: 70,
+    },
+    {
+      p: PROP_CANCUN_1,
+      n: "Sofía V.",
+      c: "MX",
+      r: 5,
+      l: "es",
+      t: "Perfecto para luna de miel",
+      cm: "Detalles románticos, atención personalizada y una suite divina. 10/10.",
+      age: 90,
+    },
+
+    // Playa Azul Hotel — 6 reviews
+    {
+      p: PROP_CANCUN_2,
+      n: "Carlos H.",
+      c: "ES",
+      r: 4,
+      l: "es",
+      t: "Buena relación calidad-precio",
+      cm: "La ubicación es excelente y las habitaciones muy limpias. El desayuno es amplio.",
+      age: 5,
+    },
+    {
+      p: PROP_CANCUN_2,
+      n: "Rachel K.",
+      c: "US",
+      r: 4,
+      l: "en",
+      t: "Great stay",
+      cm: "Friendly staff, good location. Pool area could be larger but overall a solid choice.",
+      age: 14,
+    },
+    {
+      p: PROP_CANCUN_2,
+      n: "Paulo C.",
+      c: "BR",
+      r: 5,
+      l: "pt",
+      t: "Ótimo hotel",
+      cm: "Adorei a estrutura e o atendimento foi maravilhoso. Voltarei com certeza.",
+      age: 22,
+    },
+    {
+      p: PROP_CANCUN_2,
+      n: "Ana M.",
+      c: "CO",
+      r: 4,
+      l: "es",
+      t: "Cumple con lo esperado",
+      cm: "Habitaciones cómodas y cercanas a la playa. Buen desayuno buffet.",
+      age: 33,
+    },
+    {
+      p: PROP_CANCUN_2,
+      n: "Sophie B.",
+      c: "FR",
+      r: 3,
+      l: "fr",
+      t: "Correct sans plus",
+      cm: "L'emplacement est très bon mais l'équipement commence à dater.",
+      age: 48,
+    },
+    {
+      p: PROP_CANCUN_2,
+      n: "Giulia F.",
+      c: "IT",
+      r: 4,
+      l: "it",
+      t: "Buon rapporto qualità-prezzo",
+      cm: "Posizione eccellente e personale disponibile. Consigliato per famiglie.",
+      age: 60,
+    },
+
+    // Hostal Sol Cancún — 4 reviews
+    {
+      p: PROP_CANCUN_3,
+      n: "Diego L.",
+      c: "AR",
+      r: 4,
+      l: "es",
+      t: "Muy bueno por el precio",
+      cm: "Limpio, cómodo y central. Ideal si no piensas pasar mucho tiempo en el hotel.",
+      age: 7,
+    },
+    {
+      p: PROP_CANCUN_3,
+      n: "Emma S.",
+      c: "UK",
+      r: 3,
+      l: "en",
+      t: "Basic but okay",
+      cm: "Not fancy but clean and great location for exploring downtown.",
+      age: 20,
+    },
+    {
+      p: PROP_CANCUN_3,
+      n: "Bianca T.",
+      c: "BR",
+      r: 4,
+      l: "pt",
+      t: "Boa localização",
+      cm: "Simples, mas atende bem as necessidades. A equipe é muito atenciosa.",
+      age: 30,
+    },
+    {
+      p: PROP_CANCUN_3,
+      n: "Lucas P.",
+      c: "MX",
+      r: 4,
+      l: "es",
+      t: "Recomendable para mochileros",
+      cm: "Buena opción de bajo costo en el centro. Personal servicial.",
+      age: 50,
+    },
+
+    // Hotel Histórico Centro — 7 reviews
+    {
+      p: PROP_CDMX_1,
+      n: "Isabella R.",
+      c: "MX",
+      r: 5,
+      l: "es",
+      t: "Lugar histórico increíble",
+      cm: "La arquitectura del edificio es impresionante. Ubicación inmejorable para recorrer el Centro Histórico.",
+      age: 2,
+    },
+    {
+      p: PROP_CDMX_1,
+      n: "Tom W.",
+      c: "US",
+      r: 5,
+      l: "en",
+      t: "Stunning colonial hotel",
+      cm: "Stepping inside feels like going back in time. Excellent restaurant.",
+      age: 12,
+    },
+    {
+      p: PROP_CDMX_1,
+      n: "Hélène D.",
+      c: "FR",
+      r: 4,
+      l: "fr",
+      t: "Charme authentique",
+      cm: "Bel édifice colonial, chambres spacieuses. Un peu de bruit le soir.",
+      age: 19,
+    },
+    {
+      p: PROP_CDMX_1,
+      n: "Roberta S.",
+      c: "BR",
+      r: 5,
+      l: "pt",
+      t: "Hotel incrível",
+      cm: "A localização no Centro Histórico é perfeita. Funcionários muito atenciosos.",
+      age: 28,
+    },
+    {
+      p: PROP_CDMX_1,
+      n: "Francesco B.",
+      c: "IT",
+      r: 5,
+      l: "it",
+      t: "Meraviglioso",
+      cm: "Un edificio storico stupendo e un servizio impeccabile.",
+      age: 42,
+    },
+    {
+      p: PROP_CDMX_1,
+      n: "Liam O.",
+      c: "UK",
+      r: 4,
+      l: "en",
+      t: "Lovely character",
+      cm: "Great architecture and good food. Would stay again.",
+      age: 60,
+    },
+    {
+      p: PROP_CDMX_1,
+      n: "Ingrid F.",
+      c: "DE",
+      r: 4,
+      l: "de",
+      t: "Historisches Juwel",
+      cm: "Schönes altes Gebäude mit viel Charakter. Zentral gelegen.",
+      age: 80,
+    },
+
+    // Condesa Inn — 5 reviews
+    {
+      p: PROP_CDMX_2,
+      n: "Julián M.",
+      c: "MX",
+      r: 5,
+      l: "es",
+      t: "Barrio encantador",
+      cm: "La Condesa es ideal para caminar y el hotel tiene un ambiente muy acogedor.",
+      age: 4,
+    },
+    {
+      p: PROP_CDMX_2,
+      n: "Sarah P.",
+      c: "US",
+      r: 4,
+      l: "en",
+      t: "Cute boutique",
+      cm: "Pet-friendly and the breakfast is solid. Beautiful neighborhood.",
+      age: 15,
+    },
+    {
+      p: PROP_CDMX_2,
+      n: "Carla B.",
+      c: "BR",
+      r: 4,
+      l: "pt",
+      t: "Muito bom",
+      cm: "Hotel aconchegante e localização fantástica em um bairro charmoso.",
+      age: 27,
+    },
+    {
+      p: PROP_CDMX_2,
+      n: "Léa M.",
+      c: "FR",
+      r: 5,
+      l: "fr",
+      t: "Coup de cœur",
+      cm: "Un petit hôtel adorable dans un quartier plein de charme.",
+      age: 45,
+    },
+    {
+      p: PROP_CDMX_2,
+      n: "Jens H.",
+      c: "DE",
+      r: 4,
+      l: "de",
+      t: "Charmant",
+      cm: "Gemütliches Boutique-Hotel in einer tollen Nachbarschaft.",
+      age: 75,
+    },
+  ];
+
+  await db
+    .insertInto("property_reviews")
+    .values(
+      reviews.map((r) => ({
+        property_id: r.p,
+        reviewer_name: r.n,
+        reviewer_country: r.c,
+        rating: r.r,
+        language: r.l,
+        title: r.t,
+        comment: r.cm,
+        created_at: daysAgo(r.age),
+      })),
+    )
+    .execute();
+
   console.log("✓ Seed complete.");
   await db.destroy();
 }

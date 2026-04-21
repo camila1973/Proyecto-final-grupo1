@@ -10,6 +10,8 @@ import dayjs, { type Dayjs } from 'dayjs';
 import Button from '@mui/material/Button';
 import BookmarkIcon from '@mui/icons-material/Bookmark';
 import AddIcon from '@mui/icons-material/Add';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import SyncIcon from '@mui/icons-material/Sync';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import Chip from '@mui/material/Chip';
 import Typography from '@mui/material/Typography';
@@ -17,6 +19,8 @@ import Box from '@mui/material/Box';
 import TextField from '@mui/material/TextField';
 import HorizontalCard from '../components/HorizontalCard';
 import SearchBarForm from '../components/SearchBarForm';
+import PropertyImageCarousel from '../components/PropertyImageCarousel';
+import PropertyReviewsSection from '../components/PropertyReviewsSection';
 
 interface SearchRoom {
   roomId: string;
@@ -41,6 +45,9 @@ interface PropertyInfo {
   rating: number;
   reviewCount: number;
   thumbnailUrl: string;
+  imageUrls?: string[];
+  description?: string;
+  descriptionByLang?: Record<string, string>;
   amenities: string[];
 }
 
@@ -54,11 +61,13 @@ async function fetchPropertyRooms(
   checkIn?: string,
   checkOut?: string,
   guests?: number,
+  lang?: string,
 ): Promise<PropertyRoomsResponse> {
   const params = new URLSearchParams();
   if (checkIn) params.set('checkIn', checkIn);
   if (checkOut) params.set('checkOut', checkOut);
   if (guests) params.set('guests', String(guests));
+  if (lang) params.set('lang', lang);
   const qs = params.toString();
   const res = await fetch(
     `${API_BASE}/api/search/properties/${propertyId}/rooms${qs ? `?${qs}` : ''}`,
@@ -67,22 +76,25 @@ async function fetchPropertyRooms(
   return res.json() as Promise<PropertyRoomsResponse>;
 }
 
+const DESCRIPTION_PREVIEW_CHARS = 260;
+
 export default function PropertyDetailPage() {
-  const { t } = useTranslation();
-  const { currency } = useLocale();
+  const { t, i18n } = useTranslation();
+  const { currency, language } = useLocale();
   const { propertyId } = useParams({ from: '/properties/$propertyId' });
   const { checkIn: qCheckIn, checkOut: qCheckOut, guests: qGuests } = useSearch({ from: '/properties/$propertyId' });
   const [checkIn, setCheckIn] = useState<Dayjs | null>(qCheckIn ? dayjs(qCheckIn) : dayjs());
   const [checkOut, setCheckOut] = useState<Dayjs | null>(qCheckOut ? dayjs(qCheckOut) : dayjs().add(8, 'day'));
   const [guests, setGuests] = useState<number>(qGuests > 0 ? qGuests : 1);
+  const [descExpanded, setDescExpanded] = useState(false);
 
   const fromDate = checkIn?.format('YYYY-MM-DD');
   const toDate = checkOut?.format('YYYY-MM-DD');
   const nights = checkOut && checkIn ? Math.max(1, checkOut.diff(checkIn, 'day')) : 1;
 
-  const { data, isPending, isError } = useQuery<PropertyRoomsResponse>({
-    queryKey: ['property-rooms', propertyId, fromDate, toDate, guests],
-    queryFn: () => fetchPropertyRooms(propertyId, fromDate, toDate, guests),
+  const { data, isPending, isError, isFetching } = useQuery<PropertyRoomsResponse>({
+    queryKey: ['property-rooms', propertyId, fromDate, toDate, guests, language],
+    queryFn: () => fetchPropertyRooms(propertyId, fromDate, toDate, guests, language),
   });
 
   if (isPending) {
@@ -103,6 +115,27 @@ export default function PropertyDetailPage() {
 
   const { property, rooms } = data;
   const address = formatAddress(property.neighborhood, property.city, property.countryCode);
+
+  // Prefer server-localized description; fall back to the language map sent
+  // alongside it, otherwise to the legacy template-based copy.
+  const description =
+    property.description && property.description.length > 0
+      ? property.description
+      : (property.descriptionByLang?.[i18n.language] ??
+          property.descriptionByLang?.['es'] ??
+          t('property_detail.about_description', { name: property.name, address }));
+
+  const needsTruncate = description.length > DESCRIPTION_PREVIEW_CHARS;
+  const descriptionPreview = needsTruncate && !descExpanded
+    ? description.slice(0, DESCRIPTION_PREVIEW_CHARS).trimEnd() + '…'
+    : description;
+
+  const carouselImages =
+    property.imageUrls && property.imageUrls.length > 0
+      ? property.imageUrls
+      : property.thumbnailUrl
+        ? [property.thumbnailUrl]
+        : [];
 
   return (
     <>
@@ -135,11 +168,9 @@ export default function PropertyDetailPage() {
           {t('property_detail.back')}
         </Button>
 
-        {/* Image gallery */}
-        <div className="grid grid-cols-3 gap-2 rounded-2xl overflow-hidden mb-12 h-64">
-          {[0, 1, 2].map((i) => (
-            <img key={i} src={property.thumbnailUrl} alt={property.name} className="w-full h-full object-cover" />
-          ))}
+        {/* Image carousel — async loaded from CDN */}
+        <div className="mb-12">
+          <PropertyImageCarousel images={carouselImages} alt={property.name} />
         </div>
 
         {/* Property header */}
@@ -147,6 +178,21 @@ export default function PropertyDetailPage() {
           <div>
             <h1 className="text-2xl font-bold text-gray-900 uppercase mb-1">{property.name}</h1>
             <p className="text-gray-500 text-sm">{address}</p>
+            {/* Silent availability indicator — rechecks against the PMS gateway
+                whenever the user changes dates or guests. */}
+            <div className="mt-2 inline-flex items-center gap-1 text-xs text-gray-500">
+              {isFetching ? (
+                <>
+                  <SyncIcon fontSize="inherit" className="animate-spin" />
+                  <span>{t('property_detail.availability')}</span>
+                </>
+              ) : (
+                <>
+                  <CheckCircleIcon fontSize="inherit" sx={{ color: '#16a34a' }} />
+                  <span>{t('property_detail.available')}</span>
+                </>
+              )}
+            </div>
           </div>
           <Button
             variant="contained"
@@ -162,7 +208,16 @@ export default function PropertyDetailPage() {
         <section className="mb-12">
           <h2 className="text-base font-bold text-gray-900 mb-2">{t('property_detail.about')}</h2>
           <p className="text-gray-600 text-sm leading-relaxed">
-            {t('property_detail.about_description', { name: property.name, address })}
+            {descriptionPreview}{' '}
+            {needsTruncate && (
+              <button
+                type="button"
+                onClick={() => setDescExpanded((v) => !v)}
+                className="text-blue-600 font-semibold hover:underline"
+              >
+                {descExpanded ? t('property_detail.read_less') : t('property_detail.read_more')}
+              </button>
+            )}
           </p>
         </section>
 
@@ -260,74 +315,85 @@ export default function PropertyDetailPage() {
                 </p>
               </div>
 
-              {rooms.map((room) => {
-                const pricePerNight = room.priceUsd ?? room.basePriceUsd;
-                const roomLabel = t(`taxonomies.room_type.${room.roomType}`, { defaultValue: room.roomType });
-                const bedLabel = t(`taxonomies.bed_type.${room.bedType}`, { defaultValue: room.bedType });
+              {rooms.length === 0 ? (
+                <p className="text-sm italic text-gray-500">{t('property_detail.no_rooms')}</p>
+              ) : (
+                rooms.map((room) => {
+                  const pricePerNight = room.priceUsd ?? room.basePriceUsd;
+                  const roomLabel = t(`taxonomies.room_type.${room.roomType}`, { defaultValue: room.roomType });
+                  const bedLabel = t(`taxonomies.bed_type.${room.bedType}`, { defaultValue: room.bedType });
+                  const heroImg = carouselImages[0] ?? property.thumbnailUrl;
 
-                return (
-                  <HorizontalCard
-                    key={room.roomId}
-                    imageUrl={property.thumbnailUrl}
-                    imageAlt={roomLabel}
-                    bgcolor="grey.50"
-                    sx={{ mb: 2 }}
-                    middleContent={
-                      <>
-                        <Box>
-                          <Typography
-                            variant="subtitle1"
-                            fontWeight={600}
-                            textTransform="uppercase"
-                            noWrap
-                            color="text.primary"
-                          >
-                            {roomLabel}
-                          </Typography>
-                          <Box component="ul" sx={{ m: 0, pl: 2.5, display: 'flex', flexDirection: 'column', gap: 0.5, listStyleType: 'disc' }}>
-                            <Typography component="li" variant="caption" color="text.secondary">
-                              {t('property_detail.capacity_for', { count: room.capacity })}
+                  return (
+                    <HorizontalCard
+                      key={room.roomId}
+                      imageUrl={heroImg}
+                      imageAlt={roomLabel}
+                      bgcolor="grey.50"
+                      sx={{ mb: 2 }}
+                      middleContent={
+                        <>
+                          <Box>
+                            <Typography
+                              variant="subtitle1"
+                              fontWeight={600}
+                              textTransform="uppercase"
+                              noWrap
+                              color="text.primary"
+                            >
+                              {roomLabel}
                             </Typography>
-                            <Typography component="li" variant="caption" color="text.secondary">
-                              {t('property_detail.has_bed', { bed: bedLabel })}
+                            <Box component="ul" sx={{ m: 0, pl: 2.5, display: 'flex', flexDirection: 'column', gap: 0.5, listStyleType: 'disc' }}>
+                              <Typography component="li" variant="caption" color="text.secondary">
+                                {t('property_detail.capacity_for', { count: room.capacity })}
+                              </Typography>
+                              <Typography component="li" variant="caption" color="text.secondary">
+                                {t('property_detail.has_bed', { bed: bedLabel })}
+                              </Typography>
+                            </Box>
+                          </Box>
+                          <Typography variant="body2" fontWeight={700}>
+                            {formatPrice(pricePerNight, currency)}{' '}
+                            <Typography component="span" variant="body2" color="text.secondary" fontWeight={400}>
+                              {t('property_detail.per_night')}
+                            </Typography>
+                          </Typography>
+                        </>
+                      }
+                      rightPanel={
+                        <>
+                          <Box textAlign="right">
+                            <Typography variant="h6" fontWeight={700} lineHeight={1.2} color="text.primary">
+                              {formatPrice(room.estimatedTotalUsd, currency)}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary" display="block">
+                              {t('property_detail.nights_incl_taxes', { count: nights })}
                             </Typography>
                           </Box>
-                        </Box>
-                        <Typography variant="body2" fontWeight={700}>
-                          {formatPrice(pricePerNight, currency)}{' '}
-                          <Typography component="span" variant="body2" color="text.secondary" fontWeight={400}>
-                            {t('property_detail.per_night')}
-                          </Typography>
-                        </Typography>
-                      </>
-                    }
-                    rightPanel={
-                      <>
-                        <Box textAlign="right">
-                          <Typography variant="h6" fontWeight={700} lineHeight={1.2} color="text.primary">
-                            {formatPrice(room.estimatedTotalUsd, currency)}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary" display="block">
-                            {t('property_detail.nights_incl_taxes', { count: nights })}
-                          </Typography>
-                        </Box>
-                        <Button
-                          variant="contained"
-                          color="warning"
-                          startIcon={<BookmarkIcon fontSize="small" />}
-                          sx={{ textTransform: 'none', fontWeight: 600, whiteSpace: 'nowrap', borderRadius: 1 }}
-                        >
-                          {t('property_detail.book_now')}
-                        </Button>
-                      </>
-                    }
-                  />
-                );
-              })}
-
+                          <Button
+                            variant="contained"
+                            color="warning"
+                            startIcon={<BookmarkIcon fontSize="small" />}
+                            sx={{ textTransform: 'none', fontWeight: 600, whiteSpace: 'nowrap', borderRadius: 1 }}
+                          >
+                            {t('property_detail.book_now')}
+                          </Button>
+                        </>
+                      }
+                    />
+                  );
+                })
+              )}
             </div>
           </div>
         </section>
+
+        {/* Reviews */}
+        <PropertyReviewsSection
+          propertyId={propertyId}
+          fallbackAverage={property.rating}
+          fallbackCount={property.reviewCount}
+        />
       </main>
     </>
   );

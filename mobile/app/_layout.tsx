@@ -41,6 +41,10 @@ export default function RootLayout() {
           <Stack.Screen name="search-results" options={{ headerShown: false }} />
           <Stack.Screen name="notifications" options={{ headerShown: false }} />
           <Stack.Screen name="settings" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="property/[id]"
+            options={{ title: 'Detalles del hospedaje', headerBackTitle: 'Atrás' }}
+          />
         </Stack>
         <StatusBar style="auto" />
       </ThemeProvider>
