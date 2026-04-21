@@ -425,6 +425,8 @@ describe("FacetsService", () => {
         rating,
         reviewCount: 10,
         thumbnailUrl: "",
+        imageUrls: [],
+        description: {},
         amenities: [],
       },
     });
