@@ -3,7 +3,7 @@ import {
   FareCalculatorService,
   FareBreakdown,
 } from "../fare/fare-calculator.service.js";
-import { RoomLocationCacheRepository } from "../room-location-cache/room-location-cache.repository.js";
+import { RoomLocationCacheService } from "../room-location-cache/room-location-cache.service.js";
 import { ReservationsRepository } from "./reservations.repository.js";
 import { EventsPublisher } from "../events/events.publisher.js";
 import {
@@ -16,7 +16,7 @@ export class ReservationsService {
   constructor(
     private readonly fareCalculator: FareCalculatorService,
     private readonly reservationsRepo: ReservationsRepository,
-    private readonly roomLocationCache: RoomLocationCacheRepository,
+    private readonly roomLocationCache: RoomLocationCacheService,
     private readonly publisher: EventsPublisher,
   ) {}
 

@@ -62,14 +62,6 @@ export interface PriceValidationCacheTable {
   synced_at: Generated<Date>;
 }
 
-export interface RoomLocationCacheTable {
-  room_id: string;
-  property_id: string;
-  country: string;
-  city: string;
-  synced_at: Generated<Date>;
-}
-
 export interface ReservationsTable {
   id: Generated<string>;
   property_id: string;
@@ -100,7 +92,6 @@ export interface Database {
   tax_rules: TaxRulesTable;
   partner_fees: PartnerFeesTable;
   price_validation_cache: PriceValidationCacheTable;
-  room_location_cache: RoomLocationCacheTable;
   reservations: ReservationsTable;
 }
 

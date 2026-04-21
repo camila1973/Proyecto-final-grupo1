@@ -6,6 +6,7 @@ import { PropertiesRepository } from "../properties/properties.repository";
 import { EventsPublisher } from "../events/events.publisher";
 import { RoomSnapshot } from "../events/events.types";
 import { RoomRow } from "../database/database.types";
+import type { PublicProperty } from "../properties/properties.types";
 
 @Injectable()
 export class RoomsService {
@@ -21,7 +22,7 @@ export class RoomsService {
     partnerId: string,
     dto: CreateRoomDto,
   ): Promise<PublicRoom> {
-    await this.propertiesService.findOne(propertyId);
+    const property = await this.propertiesService.findOne(propertyId);
     const room = await this.repo.create({
       property_id: propertyId,
       room_type: dto.roomType,
@@ -32,20 +33,20 @@ export class RoomsService {
       base_price_usd: String(dto.basePriceUsd),
     });
     await this.publishRoomUpdated(room);
-    return this.toPublic(room);
+    return this.toPublic(room, property);
   }
 
   async findByProperty(propertyId: string): Promise<PublicRoom[]> {
-    await this.propertiesService.findOne(propertyId);
+    const property = await this.propertiesService.findOne(propertyId);
     const rows = await this.repo.findByProperty(propertyId);
-    return rows.map((r) => this.toPublic(r));
+    return rows.map((r) => this.toPublic(r, property));
   }
 
   async findOne(id: string): Promise<PublicRoom> {
     const room = await this.repo.findById(id);
     if (!room) throw new NotFoundException(`Room ${id} not found`);
-    await this.propertiesService.findOne(room.property_id);
-    return this.toPublic(room);
+    const property = await this.propertiesService.findOne(room.property_id);
+    return this.toPublic(room, property);
   }
 
   async findOneRaw(id: string): Promise<RoomRow | undefined> {
@@ -70,7 +71,8 @@ export class RoomsService {
     });
     if (!updated) throw new NotFoundException(`Room ${id} not found`);
     await this.publishRoomUpdated(updated);
-    return this.toPublic(updated);
+    const property = await this.propertiesService.findOne(updated.property_id);
+    return this.toPublic(updated, property);
   }
 
   async remove(id: string): Promise<void> {
@@ -117,7 +119,7 @@ export class RoomsService {
     });
   }
 
-  private toPublic(row: RoomRow): PublicRoom {
+  private toPublic(row: RoomRow, property: PublicProperty): PublicRoom {
     return {
       id: row.id,
       propertyId: row.property_id,
@@ -128,6 +130,8 @@ export class RoomsService {
       totalRooms: row.total_rooms,
       basePriceUsd: row.base_price_usd,
       status: row.status,
+      country: property.countryCode,
+      city: property.city,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };

@@ -51,9 +51,12 @@ function makeService(
   } as unknown as RoomsRepository;
 
   const propertiesService = {
-    findOne: jest
-      .fn()
-      .mockResolvedValue({ id: "prop-1", partnerId: "partner-1" }),
+    findOne: jest.fn().mockResolvedValue({
+      id: "prop-1",
+      partnerId: "partner-1",
+      countryCode: "MX",
+      city: "Cancún",
+    }),
     findByProperty: jest.fn().mockResolvedValue([{ id: "prop-1" }]),
     ...overrides.propertiesService,
   } as unknown as PropertiesService;

@@ -248,11 +248,17 @@ services:
       DATABASE_URL: postgres://postgres:postgres@booking-db:5432/travelhub?sslmode=disable
       MESSAGE_BROKER_URL: amqp://guest:guest@rabbitmq:5672
       MESSAGE_BROKER_TYPE: rabbitmq
+      REDIS_URL: redis://redis:6379
+      INVENTORY_SERVICE_URL: http://inventory-service:3003
     depends_on:
       booking-db:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+      inventory-service:
+        condition: service_started
 
   # ─── Payment Service ──────────────────────────────────────────────────────────
   payment-db:

@@ -13,8 +13,16 @@ import { parse } from "csv-parse";
 import { KYSELY } from "../database/database.provider";
 import { Database } from "../database/database.types";
 
-const PROPERTY_COLUMNS = ["externalId", "name", "type", "city", "countryCode"];
-const ROOM_COLUMNS = [
+const PROPERTY_REQUIRED_COLUMNS = [
+  "externalId",
+  "name",
+  "type",
+  "city",
+  "countryCode",
+];
+// Optional: stars, neighborhood, lat, lon, thumbnailUrl, amenities
+
+const ROOM_REQUIRED_COLUMNS = [
   "externalId",
   "externalPropertyId",
   "roomType",
@@ -22,6 +30,7 @@ const ROOM_COLUMNS = [
   "totalRooms",
   "basePriceUsd",
 ];
+// Optional: bedType, viewType
 const MAX_ROWS = 10_000;
 
 @Injectable()
@@ -51,7 +60,7 @@ export class CsvImportService {
 
     // 2. Validate headers
     const expectedColumns =
-      type === "properties" ? PROPERTY_COLUMNS : ROOM_COLUMNS;
+      type === "properties" ? PROPERTY_REQUIRED_COLUMNS : ROOM_REQUIRED_COLUMNS;
     const headers = await this.readHeaders(file.path);
     const missing = expectedColumns.filter((c) => !headers.includes(c));
     if (missing.length > 0) {

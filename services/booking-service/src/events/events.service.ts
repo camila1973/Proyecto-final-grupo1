@@ -5,7 +5,7 @@ import {
   OnModuleInit,
 } from "@nestjs/common";
 import * as amqp from "amqplib";
-import { RoomLocationCacheRepository } from "../room-location-cache/room-location-cache.repository.js";
+import { RoomLocationCacheService } from "../room-location-cache/room-location-cache.service.js";
 import { PriceValidationCacheRepository } from "../price-validation-cache/price-validation-cache.repository.js";
 import { PartnerFeesRepository } from "../partner-fees/partner-fees.repository.js";
 
@@ -31,7 +31,7 @@ export class EventsService implements OnModuleInit, OnModuleDestroy {
 
   constructor(
     private readonly priceCache: PriceValidationCacheRepository,
-    private readonly roomLocationCache: RoomLocationCacheRepository,
+    private readonly roomLocationCache: RoomLocationCacheService,
     private readonly partnerFees: PartnerFeesRepository,
   ) {}
 

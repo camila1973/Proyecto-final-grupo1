@@ -1,8 +1,11 @@
 import { Module } from "@nestjs/common";
-import { RoomLocationCacheRepository } from "./room-location-cache.repository.js";
+import { HttpModule } from "@nestjs/axios";
+import { RoomLocationCacheService } from "./room-location-cache.service.js";
+import { InventoryClient } from "./inventory.client.js";
 
 @Module({
-  providers: [RoomLocationCacheRepository],
-  exports: [RoomLocationCacheRepository],
+  imports: [HttpModule],
+  providers: [RoomLocationCacheService, InventoryClient],
+  exports: [RoomLocationCacheService],
 })
 export class RoomLocationCacheModule {}
