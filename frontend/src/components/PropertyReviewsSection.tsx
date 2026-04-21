@@ -31,8 +31,14 @@ const PAGE_SIZE = 5;
 async function fetchReviews(
   propertyId: string,
   page: number,
+  lang?: string,
 ): Promise<ReviewsResponse> {
-  const url = `${API_BASE}/api/search/properties/${propertyId}/reviews?page=${page}&limit=${PAGE_SIZE}`;
+  const params = new URLSearchParams({
+    page: String(page),
+    limit: String(PAGE_SIZE),
+  });
+  if (lang) params.set('lang', lang);
+  const url = `${API_BASE}/api/search/properties/${propertyId}/reviews?${params.toString()}`;
   const res = await fetch(url);
   if (!res.ok) {
     throw new Error(`Failed to fetch reviews for property ${propertyId}`);
@@ -80,6 +86,7 @@ export default function PropertyReviewsSection({
   fallbackCount,
 }: Props) {
   const { t, i18n } = useTranslation();
+  const lang = i18n.language?.slice(0, 2);
   const {
     data,
     fetchNextPage,
@@ -88,9 +95,9 @@ export default function PropertyReviewsSection({
     isPending,
     isError,
   } = useInfiniteQuery({
-    queryKey: ['property-reviews', propertyId],
+    queryKey: ['property-reviews', propertyId, lang],
     queryFn: ({ pageParam = 1 }) =>
-      fetchReviews(propertyId, pageParam as number),
+      fetchReviews(propertyId, pageParam as number, lang),
     getNextPageParam: (last) =>
       last.meta.page < last.meta.totalPages ? last.meta.page + 1 : undefined,
     initialPageParam: 1,

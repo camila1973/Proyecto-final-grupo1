@@ -68,6 +68,13 @@
     "unavailable": "Unavailable",
     "loading": "Loading property details...",
     "error": "Could not load property details.",
+    "carousel": {
+      "no_images": "No images available",
+      "previous": "Previous image",
+      "next": "Next image",
+      "selector": "Image selector",
+      "go_to": "Go to image {{index}}"
+    },
     "about_description": "{{name}} is located in {{address}}. It offers first-class facilities and exceptional service.",
     "rooms_count_one": "{{count}} room",
     "rooms_count_other": "{{count}} rooms",

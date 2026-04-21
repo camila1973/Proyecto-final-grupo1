@@ -30,10 +30,13 @@ export async function up(db: Kysely<any>): Promise<void> {
     )
   `.execute(db);
 
-  // Paginated-by-newest queries for a single property
+  // Paginated-by-newest queries for a single property, with an optional
+  // language filter. Composite order lets Postgres use the index when
+  // language is present and still serve the language-less query path via
+  // a partial scan on (property_id, …).
   await sql`
-    CREATE INDEX IF NOT EXISTS idx_property_reviews_property_created
-    ON property_reviews (property_id, created_at DESC)
+    CREATE INDEX IF NOT EXISTS idx_property_reviews_property_language_created
+    ON property_reviews (property_id, language, created_at DESC)
   `.execute(db);
 }
 

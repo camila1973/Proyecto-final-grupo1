@@ -1,13 +1,16 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import PropertyImageCarousel from './PropertyImageCarousel';
+import { setupTestI18n } from '../i18n/test-utils';
+
+setupTestI18n('es');
 
 describe('PropertyImageCarousel', () => {
   it('renders a single image with no navigation controls when only one source', () => {
     render(
       <PropertyImageCarousel images={['https://cdn.example/a.jpg']} alt="Hotel A" />,
     );
-    expect(screen.queryByLabelText('Previous image')).not.toBeInTheDocument();
-    expect(screen.queryByLabelText('Next image')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Imagen anterior')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Imagen siguiente')).not.toBeInTheDocument();
   });
 
   it('renders navigation controls and indicators when multiple images', () => {
@@ -17,10 +20,10 @@ describe('PropertyImageCarousel', () => {
         alt="Hotel A"
       />,
     );
-    expect(screen.getByLabelText('Previous image')).toBeInTheDocument();
-    expect(screen.getByLabelText('Next image')).toBeInTheDocument();
-    expect(screen.getByLabelText('Go to image 1')).toBeInTheDocument();
-    expect(screen.getByLabelText('Go to image 2')).toBeInTheDocument();
+    expect(screen.getByLabelText('Imagen anterior')).toBeInTheDocument();
+    expect(screen.getByLabelText('Imagen siguiente')).toBeInTheDocument();
+    expect(screen.getByLabelText('Ir a la imagen 1')).toBeInTheDocument();
+    expect(screen.getByLabelText('Ir a la imagen 2')).toBeInTheDocument();
   });
 
   it('advances the active slide when Next is clicked', () => {
@@ -30,9 +33,9 @@ describe('PropertyImageCarousel', () => {
         alt="Hotel A"
       />,
     );
-    const next = screen.getByLabelText('Next image');
+    const next = screen.getByLabelText('Imagen siguiente');
     fireEvent.click(next);
-    expect(screen.getByLabelText('Go to image 2')).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByLabelText('Ir a la imagen 2')).toHaveAttribute('aria-selected', 'true');
   });
 
   it('wraps from last to first image', () => {
@@ -42,10 +45,10 @@ describe('PropertyImageCarousel', () => {
         alt="Hotel A"
       />,
     );
-    const next = screen.getByLabelText('Next image');
+    const next = screen.getByLabelText('Imagen siguiente');
     fireEvent.click(next); // 1 → 2
     fireEvent.click(next); // 2 → 1 (wrap)
-    expect(screen.getByLabelText('Go to image 1')).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByLabelText('Ir a la imagen 1')).toHaveAttribute('aria-selected', 'true');
   });
 
   it('uses lazy loading for non-adjacent slides', () => {

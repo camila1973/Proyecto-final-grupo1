@@ -70,7 +70,7 @@ export class PropertiesRepository {
         ${r.rating},
         ${r.review_count},
         ${r.thumbnail_url},
-        ${sql.raw(`ARRAY[${r.image_urls.map((u) => `'${u.replace(/'/g, "''")}'`).join(",")}]`)}::text[],
+        ${r.image_urls}::text[],
         ${JSON.stringify(r.description ?? {})}::jsonb,
         ${r.is_active},
         NOW()

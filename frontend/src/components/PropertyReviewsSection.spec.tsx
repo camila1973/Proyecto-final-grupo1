@@ -124,4 +124,17 @@ describe('PropertyReviewsSection', () => {
       await screen.findByText(es.property_detail.reviews_error),
     ).toBeInTheDocument();
   });
+
+  it('sends the current language as the lang query parameter', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(makeResponse(1, 3)),
+    });
+    renderWithClient();
+    await waitFor(() => {
+      expect(screen.getByText('Reviewer 1-0')).toBeInTheDocument();
+    });
+    const urls = (global.fetch as jest.Mock).mock.calls.map((c) => c[0] as string);
+    expect(urls[0]).toContain('lang=es');
+  });
 });

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import IconButton from '@mui/material/IconButton';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
@@ -17,6 +18,7 @@ interface Props {
  * render within 800ms p95). Only adjacent thumbnails are eagerly loaded.
  */
 export default function PropertyImageCarousel({ images, fallbackImage, alt }: Props) {
+  const { t } = useTranslation();
   const resolved = useMemo(() => {
     if (images.length > 0) return images;
     if (fallbackImage) return [fallbackImage];
@@ -54,7 +56,7 @@ export default function PropertyImageCarousel({ images, fallbackImage, alt }: Pr
   if (resolved.length === 0) {
     return (
       <div className="w-full h-64 bg-gray-100 rounded-2xl flex items-center justify-center text-gray-400 text-sm">
-        Sin imágenes disponibles
+        {t('property_detail.carousel.no_images')}
       </div>
     );
   }
@@ -110,7 +112,7 @@ export default function PropertyImageCarousel({ images, fallbackImage, alt }: Pr
       {resolved.length > 1 && (
         <>
           <IconButton
-            aria-label="Previous image"
+            aria-label={t('property_detail.carousel.previous')}
             size="small"
             onClick={prev}
             sx={{
@@ -126,7 +128,7 @@ export default function PropertyImageCarousel({ images, fallbackImage, alt }: Pr
             <ChevronLeftIcon fontSize="small" />
           </IconButton>
           <IconButton
-            aria-label="Next image"
+            aria-label={t('property_detail.carousel.next')}
             size="small"
             onClick={next}
             sx={{
@@ -144,7 +146,7 @@ export default function PropertyImageCarousel({ images, fallbackImage, alt }: Pr
           <div
             className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-30"
             role="tablist"
-            aria-label="Image selector"
+            aria-label={t('property_detail.carousel.selector')}
           >
             {resolved.map((_, i) => (
               <button
@@ -152,7 +154,7 @@ export default function PropertyImageCarousel({ images, fallbackImage, alt }: Pr
                 type="button"
                 role="tab"
                 aria-selected={i === index}
-                aria-label={`Go to image ${i + 1}`}
+                aria-label={t('property_detail.carousel.go_to', { index: i + 1 })}
                 onClick={() => goTo(i)}
                 className={
                   'w-2 h-2 rounded-full transition-all ' +

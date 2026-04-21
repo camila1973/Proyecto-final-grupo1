@@ -68,6 +68,13 @@
     "unavailable": "No disponible",
     "loading": "Cargando detalles de la propiedad...",
     "error": "No se pudieron cargar los detalles de la propiedad.",
+    "carousel": {
+      "no_images": "Sin imágenes disponibles",
+      "previous": "Imagen anterior",
+      "next": "Imagen siguiente",
+      "selector": "Selector de imagen",
+      "go_to": "Ir a la imagen {{index}}"
+    },
     "about_description": "{{name}} está ubicado en {{address}}. Ofrece instalaciones de primera clase y un servicio excepcional para garantizar la comodidad de sus huéspedes durante toda su estadía.",
     "rooms_count_one": "{{count}} habitación",
     "rooms_count_other": "{{count}} habitaciones",
