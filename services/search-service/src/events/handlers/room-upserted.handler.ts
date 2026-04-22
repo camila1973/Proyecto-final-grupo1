@@ -27,6 +27,8 @@ export interface RoomUpsertedPayload {
   rating: number;
   reviewCount: number;
   thumbnailUrl: string;
+  imageUrls?: string[];
+  description?: Record<string, string>;
   isActive: boolean;
 }
 
@@ -112,6 +114,8 @@ export class RoomUpsertedHandler {
       rating: payload.rating,
       review_count: payload.reviewCount,
       thumbnail_url: payload.thumbnailUrl,
+      image_urls: payload.imageUrls ?? [],
+      description: payload.description ?? {},
       is_active: payload.isActive,
     };
     await this.repo.upsertRoom(record);

@@ -15,6 +15,8 @@ export interface CandidateRoom {
   rating: string;
   review_count: number;
   thumbnail_url: string;
+  image_urls: string[];
+  description: Record<string, string>;
   amenities: string[];
   room_type: string;
   bed_type: string;
@@ -50,6 +52,8 @@ export interface RoomSearchResult {
     rating: number;
     reviewCount: number;
     thumbnailUrl: string;
+    imageUrls: string[];
+    description: Record<string, string>;
     amenities: string[];
   };
 }
@@ -227,6 +231,8 @@ export class FacetsService {
           rating: parseFloat(best.rating),
           reviewCount: best.review_count,
           thumbnailUrl: best.thumbnail_url,
+          imageUrls: best.image_urls ?? [],
+          description: best.description ?? {},
           amenities: [...new Set(propertyRooms.flatMap((r) => r.amenities))],
         },
       });
@@ -264,6 +270,8 @@ export class FacetsService {
         rating: parseFloat(first.rating),
         reviewCount: first.review_count,
         thumbnailUrl: first.thumbnail_url,
+        imageUrls: first.image_urls ?? [],
+        description: first.description ?? {},
         amenities: propertyAmenities,
       },
     }));

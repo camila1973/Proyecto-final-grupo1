@@ -7,7 +7,10 @@ describe("PropertiesController", () => {
   let service: jest.Mocked<
     Pick<
       PropertiesService,
-      "searchProperties" | "getCitySuggestions" | "getPropertyRooms"
+      | "searchProperties"
+      | "getCitySuggestions"
+      | "getPropertyRooms"
+      | "getPropertyReviews"
     >
   >;
 
@@ -18,6 +21,9 @@ describe("PropertiesController", () => {
       getPropertyRooms: jest
         .fn()
         .mockResolvedValue({ property: null, rooms: [] }),
+      getPropertyReviews: jest
+        .fn()
+        .mockResolvedValue({ meta: { total: 0 }, reviews: [] }),
     };
     controller = new PropertiesController(
       service as unknown as PropertiesService,
@@ -280,7 +286,16 @@ describe("PropertiesController", () => {
         checkIn: "2026-04-01",
         checkOut: "2026-04-05",
         guests: 2,
+        language: undefined,
       });
+    });
+
+    it("forwards the lang query parameter as language", async () => {
+      await controller.getPropertyRooms("p1", { lang: "en" });
+      expect(service.getPropertyRooms).toHaveBeenCalledWith(
+        "p1",
+        expect.objectContaining({ language: "en" }),
+      );
     });
 
     it("returns the service response", async () => {
@@ -299,6 +314,7 @@ describe("PropertiesController", () => {
         checkIn: undefined,
         checkOut: undefined,
         guests: undefined,
+        language: undefined,
       });
     });
 
@@ -333,6 +349,46 @@ describe("PropertiesController", () => {
       expect(() =>
         controller.getPropertyRooms("p1", { guests: "abc" }),
       ).toThrow(BadRequestException);
+    });
+  });
+
+  describe("GET properties/:propertyId/reviews", () => {
+    it("delegates to service with default page=1 pageSize=5", () => {
+      controller.getPropertyReviews("p1", {});
+      expect(service.getPropertyReviews).toHaveBeenCalledWith("p1", {
+        page: 1,
+        pageSize: 5,
+        language: undefined,
+      });
+    });
+
+    it("parses page, limit, lang from query string", () => {
+      controller.getPropertyReviews("p1", {
+        page: "2",
+        limit: "10",
+        lang: "es",
+      });
+      expect(service.getPropertyReviews).toHaveBeenCalledWith("p1", {
+        page: 2,
+        pageSize: 10,
+        language: "es",
+      });
+    });
+
+    it("clamps limit to a max of 50", () => {
+      controller.getPropertyReviews("p1", { limit: "500" });
+      expect(service.getPropertyReviews).toHaveBeenCalledWith(
+        "p1",
+        expect.objectContaining({ pageSize: 50 }),
+      );
+    });
+
+    it("clamps page to minimum of 1", () => {
+      controller.getPropertyReviews("p1", { page: "-2" });
+      expect(service.getPropertyReviews).toHaveBeenCalledWith(
+        "p1",
+        expect.objectContaining({ page: 1 }),
+      );
     });
   });
 });
