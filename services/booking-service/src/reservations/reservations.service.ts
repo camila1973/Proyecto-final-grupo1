@@ -3,7 +3,7 @@ import {
   FareCalculatorService,
   FareBreakdown,
 } from "../fare/fare-calculator.service.js";
-import { RoomLocationCacheService } from "../room-location-cache/room-location-cache.service.js";
+import { InventoryClient } from "../clients/inventory.client.js";
 import { ReservationsRepository } from "./reservations.repository.js";
 import { EventsPublisher } from "../events/events.publisher.js";
 import {
@@ -16,12 +16,12 @@ export class ReservationsService {
   constructor(
     private readonly fareCalculator: FareCalculatorService,
     private readonly reservationsRepo: ReservationsRepository,
-    private readonly roomLocationCache: RoomLocationCacheService,
+    private readonly inventoryClient: InventoryClient,
     private readonly publisher: EventsPublisher,
   ) {}
 
   async preview(dto: PreviewReservationDto): Promise<FareBreakdown> {
-    const location = await this.roomLocationCache.findByRoomId(dto.roomId);
+    const location = await this.inventoryClient.getRoomLocation(dto.roomId);
     return this.fareCalculator.calculate({
       propertyId: dto.propertyId,
       roomId: dto.roomId,
@@ -33,7 +33,7 @@ export class ReservationsService {
   }
 
   async create(dto: CreateReservationDto) {
-    const location = await this.roomLocationCache.findByRoomId(dto.roomId);
+    const location = await this.inventoryClient.getRoomLocation(dto.roomId);
 
     const fareBreakdown = await this.fareCalculator.calculate({
       propertyId: dto.propertyId,

@@ -1,11 +1,7 @@
-import {
-  Injectable,
-  NotFoundException,
-  InternalServerErrorException,
-} from "@nestjs/common";
+import { Injectable, InternalServerErrorException } from "@nestjs/common";
 import { TaxRulesRepository } from "../tax-rules/tax-rules.repository.js";
 import { PartnerFeesRepository } from "../partner-fees/partner-fees.repository.js";
-import { PriceValidationCacheRepository } from "../price-validation-cache/price-validation-cache.repository.js";
+import { InventoryClient } from "../clients/inventory.client.js";
 
 export interface FareInput {
   propertyId: string;
@@ -14,7 +10,6 @@ export interface FareInput {
   checkIn: Date;
   checkOut: Date;
   propertyLocation: { country: string; city: string };
-  // Note: roomRateUsdPerNight is NOT an input — resolved internally from price_validation_cache
 }
 
 export interface TaxLineItem {
@@ -48,7 +43,7 @@ const CALCULATION_TIMEOUT_MS = 500;
 @Injectable()
 export class FareCalculatorService {
   constructor(
-    private readonly priceCache: PriceValidationCacheRepository,
+    private readonly inventoryRatesClient: InventoryClient,
     private readonly taxRulesRepo: TaxRulesRepository,
     private readonly partnerFeesRepo: PartnerFeesRepository,
   ) {}
@@ -71,24 +66,14 @@ export class FareCalculatorService {
 
   private async doCalculate(input: FareInput): Promise<FareBreakdown> {
     const nights = this.calculateNights(input.checkIn, input.checkOut);
-    const checkInStr = input.checkIn.toISOString().slice(0, 10);
-    const checkOutStr = input.checkOut.toISOString().slice(0, 10);
 
-    // Step 2: Resolve room rate — FAIL FAST if not found
-    const priceRow = await this.priceCache.findCoveringStay(
+    // Resolve room rate live from inventory-service
+    const roomRateUsd = await this.inventoryRatesClient.getRateForStay(
+      input.propertyId,
       input.roomId,
       input.checkIn,
       input.checkOut,
     );
-
-    if (!priceRow) {
-      throw new NotFoundException(
-        `No cached price found for room ${input.roomId} covering ${checkInStr} to ${checkOutStr}. ` +
-          `Ensure inventory.price.updated events have been received.`,
-      );
-    }
-
-    const roomRateUsd = parseFloat(priceRow.price_usd);
     const subtotalUsd = round2(roomRateUsd * nights);
 
     // Step 4: Apply taxes — FAIL FAST on error

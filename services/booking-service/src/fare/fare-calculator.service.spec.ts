@@ -6,8 +6,13 @@ import { FareCalculatorService, FareInput } from "./fare-calculator.service.js";
 
 // ─── Mock helpers ──────────────────────────────────────────────────────────────
 
-function makePriceCache(priceRow: { price_usd: string } | undefined) {
-  return { findCoveringStay: () => Promise.resolve(priceRow) } as any;
+function makeInventoryClient(ratePerNight: number | null) {
+  return {
+    getRateForStay: () =>
+      ratePerNight === null
+        ? Promise.reject(new NotFoundException("No rates found"))
+        : Promise.resolve(ratePerNight),
+  } as any;
 }
 
 function makeTaxRepo(rules: any[] = []) {
@@ -36,7 +41,7 @@ describe("FareCalculatorService", () => {
   describe("percentage tax", () => {
     it("applies IVA at 16% to subtotal", async () => {
       const svc = new FareCalculatorService(
-        makePriceCache({ price_usd: "150.00" }),
+        makeInventoryClient(150),
         makeTaxRepo([
           {
             tax_name: "IVA",
@@ -69,7 +74,7 @@ describe("FareCalculatorService", () => {
 
     it("applies multiple percentage taxes cumulatively", async () => {
       const svc = new FareCalculatorService(
-        makePriceCache({ price_usd: "100.00" }),
+        makeInventoryClient(100),
         makeTaxRepo([
           {
             tax_name: "IVA",
@@ -100,7 +105,7 @@ describe("FareCalculatorService", () => {
   describe("flat-per-night fee", () => {
     it("multiplies flat amount by nights", async () => {
       const svc = new FareCalculatorService(
-        makePriceCache({ price_usd: "200.00" }),
+        makeInventoryClient(200),
         makeTaxRepo(),
         makeFeeRepo([
           {
@@ -129,7 +134,7 @@ describe("FareCalculatorService", () => {
   describe("flat-per-stay fee", () => {
     it("applies flat amount once regardless of nights", async () => {
       const svc = new FareCalculatorService(
-        makePriceCache({ price_usd: "200.00" }),
+        makeInventoryClient(200),
         makeTaxRepo(),
         makeFeeRepo([
           {
@@ -157,7 +162,7 @@ describe("FareCalculatorService", () => {
   describe("FX conversion path", () => {
     it("throws when currency is not USD", async () => {
       const svc = new FareCalculatorService(
-        makePriceCache({ price_usd: "100.00" }),
+        makeInventoryClient(100),
         makeTaxRepo([
           {
             tax_name: "Local Tax",
@@ -177,9 +182,9 @@ describe("FareCalculatorService", () => {
   });
 
   describe("fail-fast on missing price", () => {
-    it("throws NotFoundException when no cache entry covers the stay", async () => {
+    it("throws NotFoundException when inventory-service has no rates for the stay", async () => {
       const svc = new FareCalculatorService(
-        makePriceCache(undefined),
+        makeInventoryClient(null),
         makeTaxRepo(),
         makeFeeRepo(),
       );
@@ -191,7 +196,7 @@ describe("FareCalculatorService", () => {
 
     it("rejects within 500ms", async () => {
       const svc = new FareCalculatorService(
-        makePriceCache(undefined),
+        makeInventoryClient(null),
         makeTaxRepo(),
         makeFeeRepo(),
       );
@@ -202,22 +207,22 @@ describe("FareCalculatorService", () => {
     });
   });
 
-  describe("fail-fast on DB error", () => {
-    it("propagates DB errors immediately", async () => {
-      const failingPriceCache = {
-        findCoveringStay: async () => {
-          throw new Error("DB connection lost");
+  describe("fail-fast on HTTP error", () => {
+    it("propagates inventory-service errors immediately", async () => {
+      const failingClient = {
+        getRateForStay: async () => {
+          throw new Error("inventory-service unreachable");
         },
       } as any;
 
       const svc = new FareCalculatorService(
-        failingPriceCache,
+        failingClient,
         makeTaxRepo(),
         makeFeeRepo(),
       );
 
       await expect(svc.calculate(makeInput())).rejects.toThrow(
-        "DB connection lost",
+        "inventory-service unreachable",
       );
     });
 
@@ -229,7 +234,7 @@ describe("FareCalculatorService", () => {
       } as any;
 
       const svc = new FareCalculatorService(
-        makePriceCache({ price_usd: "100.00" }),
+        makeInventoryClient(100),
         failingTaxRepo,
         makeFeeRepo(),
       );
@@ -243,7 +248,7 @@ describe("FareCalculatorService", () => {
   describe("full breakdown", () => {
     it("calculates MX property with IVA + ISH + resort fee", async () => {
       const svc = new FareCalculatorService(
-        makePriceCache({ price_usd: "150.00" }),
+        makeInventoryClient(150),
         makeTaxRepo([
           {
             tax_name: "IVA",

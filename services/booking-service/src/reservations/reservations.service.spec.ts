@@ -63,15 +63,15 @@ describe("ReservationsService", () => {
     toResponse: jest.Mock;
     confirm: jest.Mock;
   };
-  let roomLocationCache: { findByRoomId: jest.Mock };
+  let inventoryClient: { getRoomLocation: jest.Mock };
 
   const fareBreakdown = makeFareBreakdown();
   const row = makeRow();
 
   beforeEach(() => {
     fareCalculator = { calculate: jest.fn().mockResolvedValue(fareBreakdown) };
-    roomLocationCache = {
-      findByRoomId: jest.fn().mockResolvedValue(LOCATION),
+    inventoryClient = {
+      getRoomLocation: jest.fn().mockResolvedValue(LOCATION),
     };
     reservationsRepo = {
       insert: jest.fn().mockResolvedValue(row),
@@ -84,7 +84,7 @@ describe("ReservationsService", () => {
     service = new ReservationsService(
       fareCalculator as any,
       reservationsRepo as any,
-      roomLocationCache as any,
+      inventoryClient as any,
       { publish: jest.fn() } as any,
     );
   });
@@ -95,7 +95,7 @@ describe("ReservationsService", () => {
     it("resolves location and returns fare breakdown", async () => {
       const result = await service.preview(PREVIEW_DTO);
 
-      expect(roomLocationCache.findByRoomId).toHaveBeenCalledWith("room-uuid");
+      expect(inventoryClient.getRoomLocation).toHaveBeenCalledWith("room-uuid");
       expect(fareCalculator.calculate).toHaveBeenCalledWith(
         expect.objectContaining({
           propertyId: "prop-uuid",
@@ -116,7 +116,7 @@ describe("ReservationsService", () => {
     });
 
     it("propagates NotFoundException when location is not cached", async () => {
-      roomLocationCache.findByRoomId.mockRejectedValue(
+      inventoryClient.getRoomLocation.mockRejectedValue(
         new NotFoundException("No location"),
       );
 
@@ -269,7 +269,7 @@ describe("ReservationsService", () => {
       ).ReservationsService(
         fareCalculator as any,
         reservationsRepo as any,
-        roomLocationCache as any,
+        inventoryClient as any,
         publisher as any,
       );
 

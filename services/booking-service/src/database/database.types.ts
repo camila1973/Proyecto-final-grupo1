@@ -54,14 +54,6 @@ export interface PartnerFeesTable {
   updated_at: Generated<Date>;
 }
 
-export interface PriceValidationCacheTable {
-  room_id: string;
-  from_date: DateColumn;
-  to_date: DateColumn;
-  price_usd: string; // NUMERIC returned as string by pg
-  synced_at: Generated<Date>;
-}
-
 export interface ReservationsTable {
   id: Generated<string>;
   property_id: string;
@@ -91,7 +83,6 @@ export interface ReservationsTable {
 export interface Database {
   tax_rules: TaxRulesTable;
   partner_fees: PartnerFeesTable;
-  price_validation_cache: PriceValidationCacheTable;
   reservations: ReservationsTable;
 }
 

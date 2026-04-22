@@ -1,4 +1,4 @@
-import { Kysely, PostgresDialect, sql } from "kysely";
+import { Kysely, PostgresDialect } from "kysely";
 import { Pool } from "pg";
 import type { Database } from "../src/database/database.types.js";
 
@@ -20,16 +20,20 @@ const PARTNER_1 = "a1000000-0000-0000-0000-000000000001";
 const PARTNER_2 = "a1000000-0000-0000-0000-000000000002";
 
 const PROP_CANCUN_1 = "b1000000-0000-0000-0000-000000000001";
-const PROP_CANCUN_2 = "b1000000-0000-0000-0000-000000000002";
 const PROP_CANCUN_3 = "b1000000-0000-0000-0000-000000000003";
 const PROP_CDMX_1 = "b1000000-0000-0000-0000-000000000004";
-const PROP_CDMX_2 = "b1000000-0000-0000-0000-000000000005";
 
 const ROOM = (n: number) =>
   `c1000000-0000-0000-0000-${String(n).padStart(12, "0")}`;
 
 const FEE = (n: number) =>
   `d1000000-0000-0000-0000-${String(n).padStart(12, "0")}`;
+
+const GUEST = (n: number) =>
+  `e1000000-0000-0000-0000-${String(n).padStart(12, "0")}`;
+
+const RES = (n: number) =>
+  `f1000000-0000-0000-0000-${String(n).padStart(12, "0")}`;
 
 // ─── Tax rules ────────────────────────────────────────────────────────────────
 // city values are stored lowercase-normalised to match TaxRulesRepository.findApplicable
@@ -135,93 +139,6 @@ const TAX_RULES = [
   },
 ];
 
-// ─── Room location cache ──────────────────────────────────────────────────────
-// Mirrors inventory-service property city/country_code values, lowercased.
-// In production this is populated by inventory.room.upserted events.
-
-const ROOM_LOCATIONS = [
-  {
-    room_id: ROOM(1),
-    property_id: PROP_CANCUN_1,
-    country: "MX",
-    city: "cancún",
-  },
-  {
-    room_id: ROOM(2),
-    property_id: PROP_CANCUN_1,
-    country: "MX",
-    city: "cancún",
-  },
-  {
-    room_id: ROOM(3),
-    property_id: PROP_CANCUN_2,
-    country: "MX",
-    city: "cancún",
-  },
-  {
-    room_id: ROOM(4),
-    property_id: PROP_CANCUN_2,
-    country: "MX",
-    city: "cancún",
-  },
-  {
-    room_id: ROOM(5),
-    property_id: PROP_CANCUN_2,
-    country: "MX",
-    city: "cancún",
-  },
-  {
-    room_id: ROOM(6),
-    property_id: PROP_CANCUN_3,
-    country: "MX",
-    city: "cancún",
-  },
-  {
-    room_id: ROOM(7),
-    property_id: PROP_CANCUN_3,
-    country: "MX",
-    city: "cancún",
-  },
-  {
-    room_id: ROOM(8),
-    property_id: PROP_CDMX_1,
-    country: "MX",
-    city: "ciudad de méxico",
-  },
-  {
-    room_id: ROOM(9),
-    property_id: PROP_CDMX_1,
-    country: "MX",
-    city: "ciudad de méxico",
-  },
-  {
-    room_id: ROOM(10),
-    property_id: PROP_CDMX_2,
-    country: "MX",
-    city: "ciudad de méxico",
-  },
-];
-
-// ─── Price validation cache ───────────────────────────────────────────────────
-// Base prices mirror inventory-service room base_price_usd values.
-// In production this is populated by inventory.price.updated events.
-
-const PRICE_PERIODS = [
-  { room_id: ROOM(1), price_usd: "320.00" },
-  { room_id: ROOM(2), price_usd: "580.00" },
-  { room_id: ROOM(3), price_usd: "145.00" },
-  { room_id: ROOM(4), price_usd: "195.00" },
-  { room_id: ROOM(5), price_usd: "265.00" },
-  { room_id: ROOM(6), price_usd: "65.00" },
-  { room_id: ROOM(7), price_usd: "55.00" },
-  { room_id: ROOM(8), price_usd: "280.00" },
-  { room_id: ROOM(9), price_usd: "650.00" },
-  { room_id: ROOM(10), price_usd: "110.00" },
-];
-
-const PRICE_PERIOD_FROM = "2026-01-01";
-const PRICE_PERIOD_TO = "2027-12-31";
-
 // ─── Partner fees ─────────────────────────────────────────────────────────────
 // Sample fees for the two seeded partners.
 // IDs are stable (d1000000-...) so search-service seed can reference them.
@@ -255,13 +172,136 @@ const PARTNER_FEES = [
   },
 ];
 
+// ─── Reservations ─────────────────────────────────────────────────────────────
+// Pre-computed fare breakdowns aligned with inventory-service rates and
+// the tax/fee rules seeded above.
+//
+// MX taxes: IVA 16% + ISH 3% (Cancún and Ciudad de México)
+// Partner 1 fee: Resort Fee $25/night (FLAT_PER_NIGHT)
+// Partner 2 fee: Cleaning Fee $15/stay (FLAT_PER_STAY)
+
+const RESERVATIONS = [
+  // ── confirmed — Gran Caribe, Deluxe King (room 1), 3 nights @ $310 ─────────
+  {
+    id: RES(1),
+    property_id: PROP_CANCUN_1,
+    room_id: ROOM(1),
+    partner_id: PARTNER_1,
+    guest_id: GUEST(1),
+    check_in: "2027-03-01",
+    check_out: "2027-03-04",
+    status: "confirmed",
+    fare_breakdown: {
+      nights: 3,
+      roomRateUsd: 310,
+      subtotalUsd: 930,
+      taxes: [
+        { name: "IVA", type: "PERCENTAGE", rate: 16, amountUsd: 148.8 },
+        { name: "ISH", type: "PERCENTAGE", rate: 3, amountUsd: 27.9 },
+      ],
+      fees: [{ name: "Resort Fee", type: "FLAT_PER_NIGHT", amountUsd: 75 }],
+      taxTotalUsd: 176.7,
+      feeTotalUsd: 75,
+      totalUsd: 1181.7,
+    },
+    tax_total_usd: 176.7,
+    fee_total_usd: 75,
+    grand_total_usd: 1181.7,
+    hold_expires_at: null as Date | null,
+  },
+  // ── confirmed — Gran Caribe, Ocean Suite (room 2), 4 nights @ $370 ─────────
+  {
+    id: RES(2),
+    property_id: PROP_CANCUN_1,
+    room_id: ROOM(2),
+    partner_id: PARTNER_1,
+    guest_id: GUEST(1),
+    check_in: "2027-07-05",
+    check_out: "2027-07-09",
+    status: "confirmed",
+    fare_breakdown: {
+      nights: 4,
+      roomRateUsd: 370,
+      subtotalUsd: 1480,
+      taxes: [
+        { name: "IVA", type: "PERCENTAGE", rate: 16, amountUsd: 236.8 },
+        { name: "ISH", type: "PERCENTAGE", rate: 3, amountUsd: 44.4 },
+      ],
+      fees: [{ name: "Resort Fee", type: "FLAT_PER_NIGHT", amountUsd: 100 }],
+      taxTotalUsd: 281.2,
+      feeTotalUsd: 100,
+      totalUsd: 1861.2,
+    },
+    tax_total_usd: 281.2,
+    fee_total_usd: 100,
+    grand_total_usd: 1861.2,
+    hold_expires_at: null as Date | null,
+  },
+  // ── confirmed — Hotel Histórico CDMX, Deluxe King (room 8), 3 nights @ $270 ─
+  {
+    id: RES(3),
+    property_id: PROP_CDMX_1,
+    room_id: ROOM(8),
+    partner_id: PARTNER_2,
+    guest_id: GUEST(2),
+    check_in: "2027-02-10",
+    check_out: "2027-02-13",
+    status: "confirmed",
+    fare_breakdown: {
+      nights: 3,
+      roomRateUsd: 270,
+      subtotalUsd: 810,
+      taxes: [
+        { name: "IVA", type: "PERCENTAGE", rate: 16, amountUsd: 129.6 },
+        { name: "ISH", type: "PERCENTAGE", rate: 3, amountUsd: 24.3 },
+      ],
+      fees: [{ name: "Cleaning Fee", type: "FLAT_PER_STAY", amountUsd: 15 }],
+      taxTotalUsd: 153.9,
+      feeTotalUsd: 15,
+      totalUsd: 978.9,
+    },
+    tax_total_usd: 153.9,
+    fee_total_usd: 15,
+    grand_total_usd: 978.9,
+    hold_expires_at: null as Date | null,
+  },
+  // ── pending — Hostal Sol Cancún, Standard Double (room 6), 3 nights @ $60 ──
+  {
+    id: RES(4),
+    property_id: PROP_CANCUN_3,
+    room_id: ROOM(6),
+    partner_id: PARTNER_2,
+    guest_id: GUEST(3),
+    check_in: "2027-05-10",
+    check_out: "2027-05-13",
+    status: "pending",
+    fare_breakdown: {
+      nights: 3,
+      roomRateUsd: 60,
+      subtotalUsd: 180,
+      taxes: [
+        { name: "IVA", type: "PERCENTAGE", rate: 16, amountUsd: 28.8 },
+        { name: "ISH", type: "PERCENTAGE", rate: 3, amountUsd: 5.4 },
+      ],
+      fees: [{ name: "Cleaning Fee", type: "FLAT_PER_STAY", amountUsd: 15 }],
+      taxTotalUsd: 34.2,
+      feeTotalUsd: 15,
+      totalUsd: 229.2,
+    },
+    tax_total_usd: 34.2,
+    fee_total_usd: 15,
+    grand_total_usd: 229.2,
+    hold_expires_at: new Date(Date.now() + 15 * 60 * 1000),
+  },
+];
+
 // ─── Seed ─────────────────────────────────────────────────────────────────────
 
 async function seed() {
   console.log("Clearing tables...");
-  await sql`TRUNCATE partner_fees, tax_rules, price_validation_cache, room_location_cache RESTART IDENTITY CASCADE`.execute(
-    db,
-  );
+  await db.deleteFrom("reservations").execute();
+  await db.deleteFrom("partner_fees").execute();
+  await db.deleteFrom("tax_rules").execute();
 
   // Tax rules
   console.log(`Seeding ${TAX_RULES.length} tax rules...`);
@@ -283,45 +323,6 @@ async function seed() {
       .execute();
     const location = rule.city ? `${rule.country}/${rule.city}` : rule.country;
     console.log(`  ✓ ${rule.tax_name} @ ${rule.rate}% (${location})`);
-  }
-
-  // Room location cache
-  console.log(`Seeding ${ROOM_LOCATIONS.length} room location entries...`);
-  await db
-    .insertInto("room_location_cache")
-    .values(ROOM_LOCATIONS)
-    .onConflict((oc) =>
-      oc.column("room_id").doUpdateSet((eb) => ({
-        property_id: eb.ref("excluded.property_id"),
-        country: eb.ref("excluded.country"),
-        city: eb.ref("excluded.city"),
-      })),
-    )
-    .execute();
-  for (const loc of ROOM_LOCATIONS) {
-    console.log(`  ✓ ${loc.room_id.slice(-4)} → ${loc.country}/${loc.city}`);
-  }
-
-  // Price validation cache
-  console.log(`Seeding ${PRICE_PERIODS.length} price cache entries...`);
-  await db
-    .insertInto("price_validation_cache")
-    .values(
-      PRICE_PERIODS.map((p) => ({
-        room_id: p.room_id,
-        from_date: PRICE_PERIOD_FROM,
-        to_date: PRICE_PERIOD_TO,
-        price_usd: p.price_usd,
-      })),
-    )
-    .onConflict((oc) =>
-      oc.columns(["room_id", "from_date", "to_date"]).doUpdateSet((eb) => ({
-        price_usd: eb.ref("excluded.price_usd"),
-      })),
-    )
-    .execute();
-  for (const p of PRICE_PERIODS) {
-    console.log(`  ✓ ${p.room_id.slice(-4)} → $${p.price_usd}/night`);
   }
 
   // Partner fees
@@ -356,6 +357,39 @@ async function seed() {
   for (const f of PARTNER_FEES) {
     console.log(
       `  ✓ ${f.fee_name} (${f.fee_type}) → partner ${f.partner_id.slice(-4)}`,
+    );
+  }
+
+  // Reservations
+  console.log(`Seeding ${RESERVATIONS.length} reservations...`);
+  for (const r of RESERVATIONS) {
+    await db
+      .insertInto("reservations")
+      .values({
+        id: r.id,
+        property_id: r.property_id,
+        room_id: r.room_id,
+        partner_id: r.partner_id,
+        guest_id: r.guest_id,
+        check_in: r.check_in,
+        check_out: r.check_out,
+        status: r.status,
+        fare_breakdown: r.fare_breakdown,
+        tax_total_usd: r.tax_total_usd,
+        fee_total_usd: r.fee_total_usd,
+        grand_total_usd: r.grand_total_usd,
+        hold_expires_at: r.hold_expires_at ?? undefined,
+      })
+      .onConflict((oc) =>
+        oc.column("id").doUpdateSet((eb) => ({
+          status: eb.ref("excluded.status"),
+          fare_breakdown: eb.ref("excluded.fare_breakdown"),
+          grand_total_usd: eb.ref("excluded.grand_total_usd"),
+        })),
+      )
+      .execute();
+    console.log(
+      `  ✓ ${r.status.padEnd(9)} ${r.check_in} → ${r.check_out}  guest …${r.guest_id.slice(-4)}  total $${r.grand_total_usd}`,
     );
   }
 

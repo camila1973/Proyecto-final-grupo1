@@ -5,8 +5,7 @@ import {
   OnModuleInit,
 } from "@nestjs/common";
 import * as amqp from "amqplib";
-import { RoomLocationCacheService } from "../room-location-cache/room-location-cache.service.js";
-import { PriceValidationCacheRepository } from "../price-validation-cache/price-validation-cache.repository.js";
+import { InventoryClient } from "../clients/inventory.client.js";
 import { PartnerFeesRepository } from "../partner-fees/partner-fees.repository.js";
 
 // Lazily imported when MESSAGE_BROKER_TYPE=pubsub
@@ -30,8 +29,7 @@ export class EventsService implements OnModuleInit, OnModuleDestroy {
   private pubSubSubscriptions: PubSubSubscription[] = [];
 
   constructor(
-    private readonly priceCache: PriceValidationCacheRepository,
-    private readonly roomLocationCache: RoomLocationCacheService,
+    private readonly inventoryClient: InventoryClient,
     private readonly partnerFees: PartnerFeesRepository,
   ) {}
 
@@ -39,12 +37,6 @@ export class EventsService implements OnModuleInit, OnModuleDestroy {
     const brokerType = process.env.MESSAGE_BROKER_TYPE ?? "rabbitmq";
 
     const subscriptions: Subscription[] = [
-      {
-        queue: "booking.inventory.price.updated",
-        routingKey: "inventory.price.updated",
-        handler: (p) =>
-          this.handlePriceUpdated(p as InventoryPriceUpdatedPayload),
-      },
       {
         queue: "booking.inventory.room.upserted",
         routingKey: "inventory.room.upserted",
@@ -91,17 +83,8 @@ export class EventsService implements OnModuleInit, OnModuleDestroy {
 
   // ─── Handlers ───────────────────────────────────────────────────────────────
 
-  async handlePriceUpdated(
-    payload: InventoryPriceUpdatedPayload,
-  ): Promise<void> {
-    await this.priceCache.replaceForRoom(payload.roomId, payload.pricePeriods);
-    this.logger.debug(
-      `Updated price cache for room ${payload.roomId} (${payload.pricePeriods.length} periods)`,
-    );
-  }
-
   async handleRoomUpserted(snapshot: RoomUpsertedPayload): Promise<void> {
-    await this.roomLocationCache.upsert(snapshot.roomId, snapshot.propertyId, {
+    await this.inventoryClient.cacheRoomLocation(snapshot.roomId, {
       country: snapshot.country,
       city: snapshot.city,
     });
@@ -230,11 +213,6 @@ export class EventsService implements OnModuleInit, OnModuleDestroy {
 }
 
 // ─── Payload types ────────────────────────────────────────────────────────────
-
-interface InventoryPriceUpdatedPayload {
-  roomId: string;
-  pricePeriods: Array<{ fromDate: string; toDate: string; priceUsd: number }>;
-}
 
 interface RoomUpsertedPayload {
   roomId: string;

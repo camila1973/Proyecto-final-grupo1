@@ -1,4 +1,5 @@
 import type { Kysely } from "kysely";
+import { sql } from "kysely";
 
 export async function up(db: Kysely<any>): Promise<void> {
   await db.schema.dropTable("room_location_cache").ifExists().execute();
@@ -13,7 +14,7 @@ export async function down(db: Kysely<any>): Promise<void> {
     .addColumn("country", "text", (col) => col.notNull())
     .addColumn("city", "text", (col) => col.notNull())
     .addColumn("synced_at", "timestamptz", (col) =>
-      col.notNull().defaultTo(db.fn.now()),
+      col.notNull().defaultTo(sql`now()`),
     )
     .execute();
 }

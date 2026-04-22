@@ -51,18 +51,6 @@ export async function up(db: Kysely<any>): Promise<void> {
     CREATE INDEX IF NOT EXISTS partner_fees_partner_idx ON partner_fees (partner_id, property_id)
   `.execute(db);
 
-  // ── price_validation_cache ────────────────────────────────────────────────
-  await sql`
-    CREATE TABLE IF NOT EXISTS price_validation_cache (
-      room_id    UUID NOT NULL,
-      from_date  DATE NOT NULL,
-      to_date    DATE NOT NULL,
-      price_usd  NUMERIC(12,2) NOT NULL,
-      synced_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      PRIMARY KEY (room_id, from_date, to_date)
-    )
-  `.execute(db);
-
   // ── room_location_cache ───────────────────────────────────────────────────
   await sql`
     CREATE TABLE IF NOT EXISTS room_location_cache (
@@ -99,7 +87,6 @@ export async function up(db: Kysely<any>): Promise<void> {
 export async function down(db: Kysely<any>): Promise<void> {
   await sql`DROP TABLE IF EXISTS reservations`.execute(db);
   await sql`DROP TABLE IF EXISTS room_location_cache`.execute(db);
-  await sql`DROP TABLE IF EXISTS price_validation_cache`.execute(db);
   await sql`DROP TABLE IF EXISTS partner_fees`.execute(db);
   await sql`DROP TABLE IF EXISTS tax_rules`.execute(db);
 }
