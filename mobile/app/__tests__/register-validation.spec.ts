@@ -3,7 +3,7 @@ import {
   validateEmail,
   validateRegisterFields,
   hasErrors,
-} from '../register-validation';
+} from '@/utils/register-validation';
 
 describe('validatePassword', () => {
   it('returns error when password is empty', () => {

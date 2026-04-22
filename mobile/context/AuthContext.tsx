@@ -6,6 +6,8 @@ import type { AuthUser } from './auth-context';
 const TOKEN_KEY = '@auth_token';
 const USER_KEY = '@auth_user';
 
+export { TOKEN_KEY, USER_KEY };
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -30,26 +32,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })();
   }, []);
 
-  const login = async (newToken: string, newUser: AuthUser) => {
-    await Promise.all([
-      AsyncStorage.setItem(TOKEN_KEY, newToken),
-      AsyncStorage.setItem(USER_KEY, JSON.stringify(newUser)),
-    ]);
-    setToken(newToken);
-    setUser(newUser);
-  };
-
-  const logout = async () => {
-    await Promise.all([
-      AsyncStorage.removeItem(TOKEN_KEY),
-      AsyncStorage.removeItem(USER_KEY),
-    ]);
-    setToken(null);
-    setUser(null);
-  };
-
   return (
-    <AuthContext.Provider value={{ token, user, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ token, user, isLoading, setToken, setUser }}>
       {children}
     </AuthContext.Provider>
   );

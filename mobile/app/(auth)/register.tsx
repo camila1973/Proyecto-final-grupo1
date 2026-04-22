@@ -5,8 +5,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { AppCard } from '@/components/ui/app-card';
-import { validateRegisterFields, hasErrors } from './register-validation';
-import type { RegisterFields, RegisterErrors } from './register-validation';
+import { validateRegisterFields, hasErrors } from '@/utils/register-validation';
+import type { RegisterFields, RegisterErrors } from '@/utils/register-validation';
 
 const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
 
@@ -92,88 +92,98 @@ export default function RegisterScreen() {
             <HelperText type="error" visible style={styles.apiError}>{apiError}</HelperText>
           ) : null}
 
-          <TextInput
-            label={t('register.firstName')}
-            value={fields.firstName}
-            onChangeText={update('firstName')}
-            mode="outlined"
-            autoCapitalize="words"
-            left={<TextInput.Icon icon="account-outline" />}
-            style={styles.input}
-            error={!!errors.firstName}
-            testID="input-firstName"
-          />
-          {errors.firstName ? <HelperText type="error" visible>{errors.firstName}</HelperText> : null}
+          <View style={styles.field}>
+            <TextInput
+              label={t('register.firstName')}
+              value={fields.firstName}
+              onChangeText={update('firstName')}
+              mode="outlined"
+              autoCapitalize="words"
+              left={<TextInput.Icon icon="account-outline" />}
+              style={styles.input}
+              error={!!errors.firstName}
+              testID="input-firstName"
+            />
+            {errors.firstName ? <HelperText type="error" visible>{errors.firstName}</HelperText> : null}
+          </View>
 
-          <TextInput
-            label={t('register.lastName')}
-            value={fields.lastName}
-            onChangeText={update('lastName')}
-            mode="outlined"
-            autoCapitalize="words"
-            left={<TextInput.Icon icon="account-outline" />}
-            style={styles.input}
-            error={!!errors.lastName}
-            testID="input-lastName"
-          />
-          {errors.lastName ? <HelperText type="error" visible>{errors.lastName}</HelperText> : null}
+          <View style={styles.field}>
+            <TextInput
+              label={t('register.lastName')}
+              value={fields.lastName}
+              onChangeText={update('lastName')}
+              mode="outlined"
+              autoCapitalize="words"
+              left={<TextInput.Icon icon="account-outline" />}
+              style={styles.input}
+              error={!!errors.lastName}
+              testID="input-lastName"
+            />
+            {errors.lastName ? <HelperText type="error" visible>{errors.lastName}</HelperText> : null}
+          </View>
 
-          <TextInput
-            label={t('register.email')}
-            value={fields.email}
-            onChangeText={update('email')}
-            mode="outlined"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
-            left={<TextInput.Icon icon="email-outline" />}
-            style={styles.input}
-            error={!!errors.email}
-            testID="input-email"
-          />
-          {errors.email ? <HelperText type="error" visible>{errors.email}</HelperText> : null}
+          <View style={styles.field}>
+            <TextInput
+              label={t('register.email')}
+              value={fields.email}
+              onChangeText={update('email')}
+              mode="outlined"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              left={<TextInput.Icon icon="email-outline" />}
+              style={styles.input}
+              error={!!errors.email}
+              testID="input-email"
+            />
+            {errors.email ? <HelperText type="error" visible>{errors.email}</HelperText> : null}
+          </View>
 
-          <TextInput
-            label={t('register.password')}
-            value={fields.password}
-            onChangeText={update('password')}
-            mode="outlined"
-            secureTextEntry={!showPassword}
-            autoCapitalize="none"
-            autoCorrect={false}
-            left={<TextInput.Icon icon="lock-outline" />}
-            right={
-              <TextInput.Icon
-                icon={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                onPress={() => setShowPassword(v => !v)}
-              />
-            }
-            style={styles.input}
-            error={!!errors.password}
-            testID="input-password"
-          />
-          {errors.password ? <HelperText type="error" visible>{errors.password}</HelperText> : null}
+          <View style={styles.field}>
+            <TextInput
+              label={t('register.password')}
+              value={fields.password}
+              onChangeText={update('password')}
+              mode="outlined"
+              secureTextEntry={!showPassword}
+              autoCapitalize="none"
+              autoCorrect={false}
+              left={<TextInput.Icon icon="lock-outline" />}
+              right={
+                <TextInput.Icon
+                  icon={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                  onPress={() => setShowPassword(v => !v)}
+                />
+              }
+              style={styles.input}
+              error={!!errors.password}
+              testID="input-password"
+            />
+            {errors.password ? <HelperText type="error" visible>{errors.password}</HelperText> : null}
+          </View>
 
-          <TextInput
-            label={t('register.confirmPassword')}
-            value={fields.confirmPassword}
-            onChangeText={update('confirmPassword')}
-            mode="outlined"
-            secureTextEntry={!showConfirm}
-            autoCapitalize="none"
-            autoCorrect={false}
-            left={<TextInput.Icon icon="lock-check-outline" />}
-            right={
-              <TextInput.Icon
-                icon={showConfirm ? 'eye-off-outline' : 'eye-outline'}
-                onPress={() => setShowConfirm(v => !v)}
-              />
-            }
-            style={styles.input}
-            error={!!errors.confirmPassword}
-            testID="input-confirmPassword"
-          />
-          {errors.confirmPassword ? <HelperText type="error" visible>{errors.confirmPassword}</HelperText> : null}
+          <View style={styles.field}>
+            <TextInput
+              label={t('register.confirmPassword')}
+              value={fields.confirmPassword}
+              onChangeText={update('confirmPassword')}
+              mode="outlined"
+              secureTextEntry={!showConfirm}
+              autoCapitalize="none"
+              autoCorrect={false}
+              left={<TextInput.Icon icon="lock-check-outline" />}
+              right={
+                <TextInput.Icon
+                  icon={showConfirm ? 'eye-off-outline' : 'eye-outline'}
+                  onPress={() => setShowConfirm(v => !v)}
+                />
+              }
+              style={styles.input}
+              error={!!errors.confirmPassword}
+              testID="input-confirmPassword"
+            />
+            {errors.confirmPassword ? <HelperText type="error" visible>{errors.confirmPassword}</HelperText> : null}
+          </View>
 
           <View style={styles.checkboxRow}>
             <Checkbox.Android
@@ -221,7 +231,8 @@ const styles = StyleSheet.create({
   card: { padding: 24 },
   heading: { fontWeight: '700', marginBottom: 20 },
   apiError: { marginBottom: 8, fontSize: 14 },
-  input: { backgroundColor: '#fff', marginBottom: 24 },
+  field: { marginBottom: 20 },
+  input: { backgroundColor: '#fff' },
   btnContent: { paddingVertical: 6 },
   btn: { borderRadius: 10, marginBottom: 12 },
   checkboxRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 24 },
