@@ -54,6 +54,8 @@ export default {
   account: {
     title: 'My Account',
     heading: 'Sign in',
+    greeting: 'Hi, {{name}}',
+    signout: 'Sign out',
     email: 'Email address',
     password: 'Password',
     signin: 'Sign in',
@@ -61,6 +63,19 @@ export default {
     settings: 'Settings',
     privacy: 'Privacy',
     terms: 'Terms and conditions',
+    errorEmailRequired: 'Email is required',
+    errorPasswordRequired: 'Password is required',
+    errorInvalidCredentials: 'Invalid email or password',
+    errorGeneric: 'Something went wrong. Please try again.',
+  },
+  loginMfa: {
+    title: 'My Account',
+    heading: 'Verify your identity',
+    subheading: 'We sent a 6-digit code to {{email}}',
+    code: 'Verification code',
+    submit: 'Verify',
+    errorInvalidCode: 'Invalid or expired code',
+    errorGeneric: 'Something went wrong. Please try again.',
   },
   register: {
     title: 'My Account',

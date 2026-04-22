@@ -54,6 +54,8 @@ export default {
   account: {
     title: 'Mi Cuenta',
     heading: 'Inicia sesión',
+    greeting: 'Hola, {{name}}',
+    signout: 'Cerrar sesión',
     email: 'Correo electrónico',
     password: 'Contraseña',
     signin: 'Iniciar sesión',
@@ -61,6 +63,19 @@ export default {
     settings: 'Configuración',
     privacy: 'Privacidad',
     terms: 'Términos y condiciones',
+    errorEmailRequired: 'El correo es obligatorio',
+    errorPasswordRequired: 'La contraseña es obligatoria',
+    errorInvalidCredentials: 'Correo o contraseña incorrectos',
+    errorGeneric: 'Ocurrió un error. Intenta de nuevo.',
+  },
+  loginMfa: {
+    title: 'Mi Cuenta',
+    heading: 'Verifica tu identidad',
+    subheading: 'Enviamos un código de 6 dígitos a {{email}}',
+    code: 'Código de verificación',
+    submit: 'Verificar',
+    errorInvalidCode: 'Código inválido o expirado',
+    errorGeneric: 'Ocurrió un error. Intenta de nuevo.',
   },
   register: {
     title: 'Mi Cuenta',

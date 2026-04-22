@@ -3,6 +3,22 @@ import { useAuth } from './useAuth';
 import { AuthContext } from '@/context/auth-context';
 import type { AuthContextValue } from '@/context/auth-context';
 
+jest.mock('@react-native-async-storage/async-storage', () => ({
+  setItem: jest.fn(),
+  getItem: jest.fn(),
+  removeItem: jest.fn(),
+}));
+
+jest.mock('@/services/auth-api', () => ({
+  initiateLogin: jest.fn(),
+  verifyMfaCode: jest.fn(),
+}));
+
+jest.mock('@/context/AuthContext', () => ({
+  TOKEN_KEY: '@auth_token',
+  USER_KEY: '@auth_user',
+}));
+
 /* Mock react so we can control useContext */
 const originalUseContext = React.useContext;
 
@@ -16,8 +32,8 @@ describe('useAuth', () => {
       token: 'tok',
       user: { id: '1', email: 'a@b.com', role: 'guest' },
       isLoading: false,
-      login: jest.fn(),
-      logout: jest.fn(),
+      setToken: jest.fn(),
+      setUser: jest.fn(),
     };
 
     jest.spyOn(React, 'useContext').mockReturnValue(value);
