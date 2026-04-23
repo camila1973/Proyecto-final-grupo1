@@ -105,6 +105,24 @@ docker compose up -d            # recreate containers (DBs will be empty)
 # then run migrate + seed for each service above
 ```
 
+### Docker — rebuilding images
+
+Service images are built on top of `travelhub-base` (`docker/Dockerfile.base`), which runs `pnpm install` from the root `package.json` + `pnpm-lock.yaml`. **Whenever a new root dependency is added** (e.g. `@nestjs/schedule`), the base image must be rebuilt first or `docker compose build` will fail with `Cannot find module`:
+
+```bash
+# 1. Rebuild base image (picks up new root dependencies)
+docker build --no-cache -t travelhub-base -f docker/Dockerfile.base .
+
+# 2. Rebuild all service images
+docker compose build --parallel
+
+# 3. Start
+docker compose up -d
+```
+
+If only application code changed (no new dependencies), skip step 1 — `docker compose build --parallel` is enough.
+
+
 ### Integration Service — Webhook Testing
 
 The integration-service ships a helper script to generate HMAC-SHA256 signatures for manual webhook testing. Run it from the service directory or via `pnpm`:
@@ -212,6 +230,57 @@ Prettier settings: single quotes, trailing commas.
 ## CI
 
 `.github/workflows/ci.yml` runs on push to `main` and on pull requests. It uses `nx affected` for lint/build/test so only changed projects run in CI. Node is provided via `.nvmrc` (Node 24). `NX_DAEMON=false` and `NX_TUI=false` are set for CI stability. Uses `pnpm install --frozen-lockfile` for clean installs.
+
+## Load Testing
+
+k6 scenarios are organized under `performance-tests/scenarios/smoke/` and `performance-tests/scenarios/load/`. Each scenario reads `GATEWAY_URL` from the environment and can run locally or via GitHub Actions.
+
+### Scenario layout
+
+```
+performance-tests/scenarios/
+├── smoke/
+│   ├── search.js    # 3 VUs × 2 min — quick sanity check after deploy
+│   └── booking.js   # 1 VU × 5 iterations — provisional cart functional coverage
+└── load/
+    └── search.js    # ramp 0→30 VUs, 4 min hold, ramp down — SLA gate (p95 ≤ 800ms)
+```
+
+### Running locally
+
+```bash
+cd performance-tests
+
+# Smoke tests
+GATEWAY_URL=http://localhost:3000 k6 run scenarios/smoke/search.js
+GATEWAY_URL=http://localhost:3000 k6 run scenarios/smoke/booking.js
+
+# Load tests
+GATEWAY_URL=http://localhost:3000 k6 run scenarios/load/search.js
+
+# npm shortcuts (source .env for GATEWAY_URL automatically)
+npm run test:smoke:search    # search smoke
+npm run test:smoke:booking   # booking smoke
+npm run test:load:search     # search load
+```
+
+HTML report is written to `performance-tests/results/summary*.html` after each run. JSON raw output goes to `performance-tests/results/results*.json`.
+
+### Running via GitHub Actions
+
+`.github/workflows/performance-testing.yml` — manually triggered (Actions → Performance Testing → Run workflow).
+
+**Inputs:**
+
+| Input | Default | Description |
+|---|---|---|
+| `profile` | `smoke` | `smoke` or `load` — selects which search scenario to run |
+| `gateway_url` | _(blank)_ | API Gateway URL; falls back to the `GATEWAY_URL` repository variable if blank |
+
+**Notes:**
+- Runs `scenarios/<profile>/search.js`. To add the booking scenario, duplicate the "Run k6" step with `scenarios/smoke/booking.js`.
+- Results are uploaded as a GitHub Actions artifact (`k6-results-<profile>-<run_id>`, retained 7 days) even when thresholds fail.
+- `concurrency.group: load-testing` ensures only one load test runs at a time; a new dispatch cancels any in-flight run.
 
 ## Deployment (Pulumi)
 
