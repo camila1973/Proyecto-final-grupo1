@@ -383,6 +383,11 @@ for (const svc of MICROSERVICES) {
     secretEnvVars["SMTP_PASS"] = { secretId: smtpPassSecret!.secretId };
   }
 
+  if (svc.name === "booking-service") {
+    plainEnv["REDIS_URL"]             = pulumi.interpolate`redis://${redisInstance.host}:6379`;
+    plainEnv["INVENTORY_SERVICE_URL"] = pulumi.interpolate`${runners["inventory-service"]!.uri}`;
+  }
+
   if (svc.name === "integration-service") {
     plainEnv["REDIS_HOST"]            = redisInstance.host;
     plainEnv["REDIS_PORT"]            = "6379";
