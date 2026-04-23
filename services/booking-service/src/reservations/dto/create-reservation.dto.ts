@@ -6,6 +6,7 @@ export class GuestInfoDto {
 }
 
 export class CreateReservationDto {
+  holdId: string; // UUID returned by POST /holds
   propertyId: string;
   roomId: string;
   partnerId: string;

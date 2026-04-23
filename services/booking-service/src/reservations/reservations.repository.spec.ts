@@ -228,11 +228,65 @@ describe("ReservationsRepository", () => {
       expect(result).toEqual(confirmed);
     });
 
+    it("guards against confirming non-pending rows via status filter", async () => {
+      const db = makeDb({ single: undefined });
+      const repo = new ReservationsRepository(db);
+
+      // A confirmed or expired row returns undefined from the guarded UPDATE,
+      // which should throw NotFoundException
+      await expect(repo.confirm("already-confirmed")).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
     it("throws NotFoundException when reservation not found", async () => {
       const db = makeDb({ single: null });
       const repo = new ReservationsRepository(db);
 
       await expect(repo.confirm("missing")).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe("findExpiredHolds", () => {
+    it("returns pending rows with hold_expires_at in the past", async () => {
+      const rows = [makeRow({ status: "pending" })];
+      const db = makeDb({ many: rows });
+      const repo = new ReservationsRepository(db);
+
+      const result = await repo.findExpiredHolds();
+
+      expect(db.selectFrom).toHaveBeenCalledWith("reservations");
+      expect(db.where).toHaveBeenCalledWith("status", "=", "pending");
+      expect(db.where).toHaveBeenCalledWith(
+        "hold_expires_at",
+        "<",
+        expect.any(Date),
+      );
+      expect(result).toBe(rows);
+    });
+  });
+
+  describe("expire", () => {
+    it("transitions status to expired and returns the row", async () => {
+      const expired = makeRow({ status: "expired" });
+      const db = makeDb({ single: expired });
+      const repo = new ReservationsRepository(db);
+
+      const result = await repo.expire("res-uuid");
+
+      expect(db.updateTable).toHaveBeenCalledWith("reservations");
+      expect(db.where).toHaveBeenCalledWith("id", "=", "res-uuid");
+      expect(db.where).toHaveBeenCalledWith("status", "=", "pending");
+      expect(result).toBe(expired);
+    });
+
+    it("returns undefined when row is not pending (idempotency guard)", async () => {
+      const db = makeDb({ single: undefined });
+      const repo = new ReservationsRepository(db);
+
+      const result = await repo.expire("already-confirmed");
+
+      expect(result).toBeUndefined();
     });
   });
 });

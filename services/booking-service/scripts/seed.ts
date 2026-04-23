@@ -199,9 +199,20 @@ const PARTNER_FEES = [
 // MX taxes: IVA 16% + ISH 3% (Cancún and Ciudad de México)
 // Partner 1 fee: Resort Fee $25/night (FLAT_PER_NIGHT)
 // Partner 2 fee: Cleaning Fee $15/stay (FLAT_PER_STAY)
+//
+// hold_expires_at lifecycle:
+//   • Set when the reservation is created (POST /reservations) — taken from the
+//     Redis hold payload (expiresAt = time-of-hold + 900 s), never now+15min.
+//   • Confirmed rows retain the original value (sweeper ignores status ≠ 'pending').
+//   • Pending rows: sweeper expires them once hold_expires_at < now().
+//   • The seed provides plausible past values for confirmed rows and a live
+//     15-minute window for the pending row.
+
+const HOLD_TTL_MS = 900_000; // 900 s — matches holds.service.ts HOLD_TTL_SECONDS
 
 const RESERVATIONS = [
   // ── confirmed — Gran Caribe, Deluxe King (room 1), 3 nights @ $310 ─────────
+  // Hold placed ~2026-04-01, reservation confirmed same day.
   {
     id: RES(1),
     property_id: PROP_CANCUN_1,
@@ -228,9 +239,10 @@ const RESERVATIONS = [
     tax_total_usd: 176.7,
     fee_total_usd: 75,
     grand_total_usd: 1181.7,
-    hold_expires_at: null as Date | null,
+    hold_expires_at: new Date("2026-04-01T10:15:00.000Z"),
   },
   // ── confirmed — Gran Caribe, Ocean Suite (room 2), 4 nights @ $370 ─────────
+  // Hold placed ~2026-04-05, reservation confirmed same day.
   {
     id: RES(2),
     property_id: PROP_CANCUN_1,
@@ -257,9 +269,10 @@ const RESERVATIONS = [
     tax_total_usd: 281.2,
     fee_total_usd: 100,
     grand_total_usd: 1861.2,
-    hold_expires_at: null as Date | null,
+    hold_expires_at: new Date("2026-04-05T14:30:00.000Z"),
   },
   // ── confirmed — Hotel Histórico CDMX, Deluxe King (room 8), 3 nights @ $270 ─
+  // Hold placed ~2026-04-10, reservation confirmed same day.
   {
     id: RES(3),
     property_id: PROP_CDMX_1,
@@ -286,9 +299,11 @@ const RESERVATIONS = [
     tax_total_usd: 153.9,
     fee_total_usd: 15,
     grand_total_usd: 978.9,
-    hold_expires_at: null as Date | null,
+    hold_expires_at: new Date("2026-04-10T09:00:00.000Z"),
   },
   // ── pending — Hostal Sol Cancún, Standard Double (room 6), 3 nights @ $60 ──
+  // Hold placed just now via POST /holds; reservation submitted immediately after.
+  // hold_expires_at mirrors the Redis TTL so the sweeper fires at the right moment.
   {
     id: RES(4),
     property_id: PROP_CANCUN_3,
@@ -315,7 +330,7 @@ const RESERVATIONS = [
     tax_total_usd: 34.2,
     fee_total_usd: 15,
     grand_total_usd: 229.2,
-    hold_expires_at: new Date(Date.now() + 15 * 60 * 1000),
+    hold_expires_at: new Date(Date.now() + HOLD_TTL_MS),
   },
 ];
 

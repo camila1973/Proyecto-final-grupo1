@@ -1,4 +1,9 @@
-import { NotFoundException } from "@nestjs/common";
+import {
+  HttpException,
+  HttpStatus,
+  NotFoundException,
+  UnauthorizedException,
+} from "@nestjs/common";
 import { ReservationsService } from "./reservations.service.js";
 import { FareBreakdown } from "../fare/fare-calculator.service.js";
 
@@ -58,8 +63,20 @@ const GUEST_INFO = {
   lastName: "García",
   email: "ana@example.com",
 };
+const HOLD_ID = "hold-uuid";
+const HOLD_EXPIRES_AT = new Date(Date.now() + 900_000).toISOString();
+const HOLD_PAYLOAD = JSON.stringify({
+  holdId: HOLD_ID,
+  bookerId: "booker-uuid",
+  roomId: "room-uuid",
+  checkIn: "2026-05-01",
+  checkOut: "2026-05-04",
+  expiresAt: HOLD_EXPIRES_AT,
+});
+
 const CREATE_DTO = {
   ...PREVIEW_DTO,
+  holdId: HOLD_ID,
   bookerId: "booker-uuid",
   guestInfo: GUEST_INFO,
 };
@@ -77,7 +94,11 @@ describe("ReservationsService", () => {
     toResponse: jest.Mock;
     confirm: jest.Mock;
   };
-  let inventoryClient: { getRoomLocation: jest.Mock };
+  let inventoryClient: {
+    getRoomLocation: jest.Mock;
+    confirmHold: jest.Mock;
+  };
+  let cache: { getAndDelete: jest.Mock };
 
   const fareBreakdown = makeFareBreakdown();
   const row = makeRow();
@@ -86,6 +107,10 @@ describe("ReservationsService", () => {
     fareCalculator = { calculate: jest.fn().mockResolvedValue(fareBreakdown) };
     inventoryClient = {
       getRoomLocation: jest.fn().mockResolvedValue(LOCATION),
+      confirmHold: jest.fn().mockResolvedValue(undefined),
+    };
+    cache = {
+      getAndDelete: jest.fn().mockResolvedValue(HOLD_PAYLOAD),
     };
     reservationsRepo = {
       insert: jest.fn().mockResolvedValue(row),
@@ -99,6 +124,7 @@ describe("ReservationsService", () => {
       fareCalculator as any,
       reservationsRepo as any,
       inventoryClient as any,
+      cache as any,
       { publish: jest.fn() } as any,
     );
   });
@@ -143,9 +169,12 @@ describe("ReservationsService", () => {
   // ─── create ─────────────────────────────────────────────────────────────────
 
   describe("create", () => {
-    it("inserts a reservation with correct fields", async () => {
+    it("consumes the hold via GETDEL and inserts a reservation", async () => {
       await service.create(CREATE_DTO);
 
+      expect(cache.getAndDelete).toHaveBeenCalledWith(
+        `booking:hold:idempotency:booker-uuid:room-uuid:2026-05-01:2026-05-04`,
+      );
       expect(reservationsRepo.insert).toHaveBeenCalledWith(
         expect.objectContaining({
           property_id: "prop-uuid",
@@ -163,17 +192,11 @@ describe("ReservationsService", () => {
       );
     });
 
-    it("sets holdExpiresAt approximately 15 minutes from now", async () => {
-      const before = Date.now();
+    it("sets hold_expires_at from the Redis payload, not now+15min", async () => {
       await service.create(CREATE_DTO);
-      const after = Date.now();
 
       const inserted = reservationsRepo.insert.mock.calls[0][0];
-      const holdMs = inserted.hold_expires_at.getTime();
-      const expected = 15 * 60 * 1000;
-
-      expect(holdMs).toBeGreaterThanOrEqual(before + expected - 50);
-      expect(holdMs).toBeLessThanOrEqual(after + expected + 50);
+      expect(inserted.hold_expires_at).toEqual(new Date(HOLD_EXPIRES_AT));
     });
 
     it("returns fareBreakdown and holdExpiresAt in the response", async () => {
@@ -190,6 +213,29 @@ describe("ReservationsService", () => {
       expect(inserted.fare_breakdown).toMatchObject({
         totalUsd: fareBreakdown.totalUsd,
       });
+    });
+
+    it("throws 410 Gone when hold is not found or expired", async () => {
+      cache.getAndDelete.mockResolvedValue(null);
+
+      await expect(service.create(CREATE_DTO)).rejects.toThrow(
+        new HttpException("Hold not found or expired", HttpStatus.GONE),
+      );
+      expect(reservationsRepo.insert).not.toHaveBeenCalled();
+    });
+
+    it("throws 401 when holdId in DTO does not match Redis payload", async () => {
+      await expect(
+        service.create({ ...CREATE_DTO, holdId: "wrong-hold-id" }),
+      ).rejects.toThrow(UnauthorizedException);
+      expect(reservationsRepo.insert).not.toHaveBeenCalled();
+    });
+
+    it("does not call inventoryClient.hold or unhold", async () => {
+      await service.create(CREATE_DTO);
+
+      expect((inventoryClient as any).hold).toBeUndefined();
+      expect((inventoryClient as any).unhold).toBeUndefined();
     });
 
     it("propagates fare calculation errors", async () => {
@@ -272,6 +318,29 @@ describe("ReservationsService", () => {
       expect(result).toEqual({ id: confirmedRow.id });
     });
 
+    it("converts the inventory hold to a reservation after confirming in DB", async () => {
+      const confirmedRow = makeRow({ status: "confirmed" });
+      reservationsRepo.confirm = jest.fn().mockResolvedValue(confirmedRow);
+
+      await service.confirm("res-uuid");
+
+      expect(inventoryClient.confirmHold).toHaveBeenCalledWith(
+        confirmedRow.room_id,
+        confirmedRow.check_in,
+        confirmedRow.check_out,
+      );
+    });
+
+    it("does not rethrow when inventory confirmHold fails", async () => {
+      const confirmedRow = makeRow({ status: "confirmed" });
+      reservationsRepo.confirm = jest.fn().mockResolvedValue(confirmedRow);
+      inventoryClient.confirmHold.mockRejectedValue(
+        new Error("inventory down"),
+      );
+
+      await expect(service.confirm("res-uuid")).resolves.not.toThrow();
+    });
+
     it("defaults financial totals to 0 when row values are null", async () => {
       const nullFinancialsRow = makeRow({
         status: "confirmed",
@@ -287,6 +356,7 @@ describe("ReservationsService", () => {
         fareCalculator as any,
         reservationsRepo as any,
         inventoryClient as any,
+        cache as any,
         publisher as any,
       );
 
@@ -317,6 +387,7 @@ describe("ReservationsService", () => {
         fareCalculator as any,
         reservationsRepo as any,
         inventoryClient as any,
+        cache as any,
         publisher as any,
       );
 

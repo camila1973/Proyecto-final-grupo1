@@ -1,4 +1,9 @@
-import { Injectable, Logger, NotFoundException } from "@nestjs/common";
+import {
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from "@nestjs/common";
 import { HttpService } from "@nestjs/axios";
 import { firstValueFrom } from "rxjs";
 import { CacheService } from "../cache/cache.service.js";
@@ -120,6 +125,34 @@ export class InventoryClient {
     return Math.round((subtotalUsd / nights) * 100) / 100;
   }
 
+  async hold(roomId: string, fromDate: string, toDate: string): Promise<void> {
+    await this.post("/availability/hold", { roomId, fromDate, toDate });
+  }
+
+  async unhold(
+    roomId: string,
+    fromDate: string,
+    toDate: string,
+  ): Promise<void> {
+    await this.post("/availability/unhold", { roomId, fromDate, toDate });
+  }
+
+  async confirmHold(
+    roomId: string,
+    fromDate: string,
+    toDate: string,
+  ): Promise<void> {
+    await this.post("/availability/confirm", { roomId, fromDate, toDate });
+  }
+
+  async release(
+    roomId: string,
+    fromDate: string,
+    toDate: string,
+  ): Promise<void> {
+    await this.post("/availability/release", { roomId, fromDate, toDate });
+  }
+
   private async get<T>(
     path: string,
     params?: Record<string, string>,
@@ -138,6 +171,33 @@ export class InventoryClient {
       }
       this.logger.error(
         `GET ${path} failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      throw new UpstreamServiceError("inventory-service", err);
+    }
+  }
+
+  private async post(
+    path: string,
+    body: Record<string, string>,
+  ): Promise<void> {
+    try {
+      await firstValueFrom(
+        this.httpService.post(`${this.baseUrl}${path}`, body),
+      );
+    } catch (err: any) {
+      const status = err?.response?.status as number | undefined;
+      if (status === 409) {
+        throw new ConflictException(
+          err?.response?.data?.message ?? "No availability",
+        );
+      }
+      if (status === 404) {
+        throw new NotFoundException(
+          `Resource not found at inventory-service: ${path}`,
+        );
+      }
+      this.logger.error(
+        `POST ${path} failed: ${err instanceof Error ? err.message : String(err)}`,
       );
       throw new UpstreamServiceError("inventory-service", err);
     }

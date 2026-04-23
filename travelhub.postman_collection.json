@@ -59,6 +59,12 @@
       "enabled": true
     },
     {
+      "key": "hold_id",
+      "value": "",
+      "type": "string",
+      "enabled": true
+    },
+    {
       "key": "booker_id",
       "value": "e1000000-0000-0000-0000-000000000001",
       "type": "string",
@@ -1307,6 +1313,7 @@
         },
         {
           "name": "Create Reservation",
+          "description": "Consumes the hold created by 'Place Hold'. Run 'Place Hold' first so {{hold_id}} is populated.",
           "event": [
             {
               "listen": "test",
@@ -1340,7 +1347,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"propertyId\": \"{{property_id}}\",\n  \"roomId\": \"{{room_id}}\",\n  \"partnerId\": \"{{partner_id}}\",\n  \"bookerId\": \"{{booker_id}}\",\n  \"guestInfo\": {\n    \"firstName\": \"Carlos\",\n    \"lastName\": \"García\",\n    \"email\": \"carlos.garcia@example.com\",\n    \"phone\": \"+52 55 1234 5678\"\n  },\n  \"checkIn\": \"2026-06-01\",\n  \"checkOut\": \"2026-06-04\"\n}"
+              "raw": "{\n  \"holdId\": \"{{hold_id}}\",\n  \"propertyId\": \"{{property_id}}\",\n  \"roomId\": \"{{room_id}}\",\n  \"partnerId\": \"{{partner_id}}\",\n  \"bookerId\": \"{{booker_id}}\",\n  \"guestInfo\": {\n    \"firstName\": \"Carlos\",\n    \"lastName\": \"García\",\n    \"email\": \"carlos.garcia@example.com\",\n    \"phone\": \"+52 55 1234 5678\"\n  },\n  \"checkIn\": \"2026-06-01\",\n  \"checkOut\": \"2026-06-04\"\n}"
             }
           }
         },
@@ -1385,6 +1392,74 @@
               ]
             }
           }
+        },
+        {
+          "name": "Holds",
+          "description": "Provisional cart — a hold is placed at room-selection time (before the booking form). POST /holds increments inventory held_rooms atomically and returns a 15-minute holdId. POST /reservations then consumes the hold via Redis GETDEL.",
+          "item": [
+            {
+              "name": "Place Hold",
+              "description": "Step 1 — user selects a room. Increments inventory held_rooms. Returns holdId + expiresAt (15 min). Saves hold_id for use in 'Create Reservation'.",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const res = pm.response.json();",
+                      "if (res.holdId) pm.collectionVariables.set('hold_id', res.holdId);"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{base_url}}/api/booking/holds",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "booking", "holds"]
+                },
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"bookerId\": \"{{booker_id}}\",\n  \"roomId\": \"{{room_id}}\",\n  \"checkIn\": \"2026-06-01\",\n  \"checkOut\": \"2026-06-04\"\n}"
+                }
+              }
+            },
+            {
+              "name": "Place Hold (duplicate — idempotent)",
+              "description": "Send the same request again. Returns 200 with the same holdId — inventory is NOT double-held.",
+              "request": {
+                "method": "POST",
+                "url": {
+                  "raw": "{{base_url}}/api/booking/holds",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "booking", "holds"]
+                },
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"bookerId\": \"{{booker_id}}\",\n  \"roomId\": \"{{room_id}}\",\n  \"checkIn\": \"2026-06-01\",\n  \"checkOut\": \"2026-06-04\"\n}"
+                }
+              }
+            },
+            {
+              "name": "Release Hold",
+              "description": "User navigates away — explicitly releases the hold. Decrements inventory held_rooms. Returns 204. If the hold was already consumed by 'Create Reservation' (Redis key gone), returns 404.",
+              "request": {
+                "method": "DELETE",
+                "url": {
+                  "raw": "{{base_url}}/api/booking/holds/{{hold_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "booking", "holds", "{{hold_id}}"]
+                }
+              }
+            }
+          ]
         },
         {
           "name": "Tax Rules",

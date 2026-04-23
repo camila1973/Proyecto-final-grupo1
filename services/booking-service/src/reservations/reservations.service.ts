@@ -1,10 +1,17 @@
-import { Injectable } from "@nestjs/common";
+import {
+  HttpException,
+  HttpStatus,
+  Injectable,
+  Logger,
+  UnauthorizedException,
+} from "@nestjs/common";
 import {
   FareCalculatorService,
   FareBreakdown,
 } from "../fare/fare-calculator.service.js";
 import { InventoryClient } from "../clients/inventory.client.js";
 import { ReservationsRepository } from "./reservations.repository.js";
+import { CacheService } from "../cache/cache.service.js";
 import { EventsPublisher } from "../events/events.publisher.js";
 import {
   CreateReservationDto,
@@ -13,10 +20,13 @@ import {
 
 @Injectable()
 export class ReservationsService {
+  private readonly logger = new Logger(ReservationsService.name);
+
   constructor(
     private readonly fareCalculator: FareCalculatorService,
     private readonly reservationsRepo: ReservationsRepository,
     private readonly inventoryClient: InventoryClient,
+    private readonly cache: CacheService,
     private readonly publisher: EventsPublisher,
   ) {}
 
@@ -33,6 +43,25 @@ export class ReservationsService {
   }
 
   async create(dto: CreateReservationDto) {
+    // Atomically consume the hold — GETDEL ensures exactly one reservation per hold
+    const idempKey = `booking:hold:idempotency:${dto.bookerId}:${dto.roomId}:${dto.checkIn}:${dto.checkOut}`;
+    const holdRaw = await this.cache.getAndDelete(idempKey);
+
+    if (!holdRaw) {
+      throw new HttpException("Hold not found or expired", HttpStatus.GONE);
+    }
+
+    const holdData = JSON.parse(holdRaw) as {
+      holdId: string;
+      expiresAt: string;
+    };
+
+    if (holdData.holdId !== dto.holdId) {
+      throw new UnauthorizedException("holdId mismatch");
+    }
+
+    const holdExpiresAt = new Date(holdData.expiresAt);
+
     const location = await this.inventoryClient.getRoomLocation(dto.roomId);
 
     const fareBreakdown = await this.fareCalculator.calculate({
@@ -43,8 +72,6 @@ export class ReservationsService {
       checkOut: new Date(dto.checkOut),
       propertyLocation: location,
     });
-
-    const holdExpiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
     const row = await this.reservationsRepo.insert({
       property_id: dto.propertyId,
@@ -86,6 +113,19 @@ export class ReservationsService {
 
   async confirm(id: string) {
     const row = await this.reservationsRepo.confirm(id);
+
+    try {
+      await this.inventoryClient.confirmHold(
+        row.room_id,
+        row.check_in,
+        row.check_out,
+      );
+    } catch (err) {
+      this.logger.warn(
+        `Failed to confirm hold in inventory for reservation ${id}: ${err}`,
+      );
+    }
+
     this.publisher.publish("booking.confirmed", {
       routingKey: "booking.confirmed",
       reservationId: row.id,
