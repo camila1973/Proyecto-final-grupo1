@@ -272,6 +272,36 @@ describe("ReservationsService", () => {
       expect(result).toEqual({ id: confirmedRow.id });
     });
 
+    it("defaults financial totals to 0 when row values are null", async () => {
+      const nullFinancialsRow = makeRow({
+        status: "confirmed",
+        grand_total_usd: null,
+        tax_total_usd: null,
+        fee_total_usd: null,
+      });
+      reservationsRepo.confirm = jest.fn().mockResolvedValue(nullFinancialsRow);
+      const publisher = { publish: jest.fn() };
+      service = new (
+        await import("./reservations.service.js")
+      ).ReservationsService(
+        fareCalculator as any,
+        reservationsRepo as any,
+        inventoryClient as any,
+        publisher as any,
+      );
+
+      await service.confirm("res-uuid");
+
+      expect(publisher.publish).toHaveBeenCalledWith(
+        "booking.confirmed",
+        expect.objectContaining({
+          grandTotalUsd: 0,
+          taxTotalUsd: 0,
+          feeTotalUsd: 0,
+        }),
+      );
+    });
+
     it("publishes booking.confirmed event with financial totals", async () => {
       const confirmedRow = makeRow({
         status: "confirmed",

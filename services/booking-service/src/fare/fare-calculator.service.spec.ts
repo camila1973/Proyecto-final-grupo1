@@ -131,6 +131,35 @@ describe("FareCalculatorService", () => {
     });
   });
 
+  describe("percentage fee", () => {
+    it("applies percentage fee to subtotal and exposes rate on the line item", async () => {
+      const svc = new FareCalculatorService(
+        makeInventoryClient(200),
+        makeTaxRepo(),
+        makeFeeRepo([
+          {
+            fee_name: "Booking Fee",
+            fee_type: "PERCENTAGE",
+            rate: "5.00",
+            flat_amount: null,
+            currency: "USD",
+          },
+        ]),
+      );
+
+      const result = await svc.calculate(makeInput());
+
+      // 3 nights × $200 = $600 subtotal; 5% of $600 = $30
+      expect(result.fees[0]).toMatchObject({
+        name: "Booking Fee",
+        type: "PERCENTAGE",
+        rate: 5,
+        amountUsd: 30,
+      });
+      expect(result.feeTotalUsd).toBe(30);
+    });
+  });
+
   describe("flat-per-stay fee", () => {
     it("applies flat amount once regardless of nights", async () => {
       const svc = new FareCalculatorService(

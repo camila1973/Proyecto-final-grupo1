@@ -85,4 +85,129 @@ describe("InventoryClient", () => {
       );
     });
   });
+
+  describe("getRateForStay", () => {
+    it("returns the per-night rate for a single period covering the full stay", async () => {
+      const { client } = makeClient({
+        httpGet: jest.fn().mockReturnValue(
+          of({
+            data: [
+              { fromDate: "2026-05-01", toDate: "2026-05-04", priceUsd: "150" },
+            ],
+          }),
+        ),
+      });
+
+      const result = await client.getRateForStay(
+        "prop-1",
+        "room-1",
+        new Date("2026-05-01"),
+        new Date("2026-05-04"),
+      );
+
+      expect(result).toBe(150);
+    });
+
+    it("returns the weighted average rate across multiple periods", async () => {
+      const { client } = makeClient({
+        httpGet: jest.fn().mockReturnValue(
+          of({
+            data: [
+              { fromDate: "2026-05-01", toDate: "2026-05-03", priceUsd: "100" },
+              { fromDate: "2026-05-03", toDate: "2026-05-05", priceUsd: "200" },
+            ],
+          }),
+        ),
+      });
+
+      // 2 nights × $100 + 2 nights × $200 = $600 / 4 nights = $150/night
+      const result = await client.getRateForStay(
+        "prop-1",
+        "room-1",
+        new Date("2026-05-01"),
+        new Date("2026-05-05"),
+      );
+
+      expect(result).toBe(150);
+    });
+
+    it("throws NotFoundException when no rate periods are returned", async () => {
+      const { client } = makeClient({
+        httpGet: jest.fn().mockReturnValue(of({ data: [] })),
+      });
+
+      await expect(
+        client.getRateForStay(
+          "prop-1",
+          "room-1",
+          new Date("2026-05-01"),
+          new Date("2026-05-04"),
+        ),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it("throws NotFoundException when periods leave a gap in the middle", async () => {
+      const { client } = makeClient({
+        httpGet: jest.fn().mockReturnValue(
+          of({
+            data: [
+              { fromDate: "2026-05-01", toDate: "2026-05-02", priceUsd: "100" },
+              // gap: 2026-05-02 to 2026-05-03 not covered
+              { fromDate: "2026-05-03", toDate: "2026-05-04", priceUsd: "200" },
+            ],
+          }),
+        ),
+      });
+
+      await expect(
+        client.getRateForStay(
+          "prop-1",
+          "room-1",
+          new Date("2026-05-01"),
+          new Date("2026-05-04"),
+        ),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it("throws NotFoundException when periods do not reach the checkout date", async () => {
+      const { client } = makeClient({
+        httpGet: jest.fn().mockReturnValue(
+          of({
+            data: [
+              { fromDate: "2026-05-01", toDate: "2026-05-03", priceUsd: "150" },
+            ],
+          }),
+        ),
+      });
+
+      await expect(
+        client.getRateForStay(
+          "prop-1",
+          "room-1",
+          new Date("2026-05-01"),
+          new Date("2026-05-04"),
+        ),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it("throws UpstreamServiceError on non-404 HTTP errors", async () => {
+      const { client } = makeClient({
+        httpGet: jest.fn().mockReturnValue(
+          throwError(() => ({
+            response: { status: 500 },
+            message: "Internal Server Error",
+          })),
+        ),
+      });
+
+      await expect(
+        client.getRateForStay(
+          "prop-1",
+          "room-1",
+          new Date("2026-05-01"),
+          new Date("2026-05-04"),
+        ),
+      ).rejects.toThrow("Upstream service error: inventory-service");
+    });
+  });
 });

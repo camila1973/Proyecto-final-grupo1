@@ -113,6 +113,40 @@ describe("PropertyHandler", () => {
     });
   });
 
+  describe("amenities transform", () => {
+    it("splits a pipe-separated amenities string into an array", async () => {
+      mockExternalIdService.resolve.mockResolvedValue("internal-prop-1");
+      mockInventoryClient.updateProperty.mockResolvedValue(undefined);
+
+      await handler.handle(
+        "partner-1",
+        "property.updated",
+        makeValidPropertyData({ amenities: "WiFi | Pool | Gym" }),
+      );
+
+      expect(mockInventoryClient.updateProperty).toHaveBeenCalledWith(
+        "internal-prop-1",
+        expect.objectContaining({ amenities: ["WiFi", "Pool", "Gym"] }),
+      );
+    });
+
+    it("passes an amenities array through unchanged", async () => {
+      mockExternalIdService.resolve.mockResolvedValue("internal-prop-1");
+      mockInventoryClient.updateProperty.mockResolvedValue(undefined);
+
+      await handler.handle(
+        "partner-1",
+        "property.updated",
+        makeValidPropertyData({ amenities: ["WiFi", "Pool"] }),
+      );
+
+      expect(mockInventoryClient.updateProperty).toHaveBeenCalledWith(
+        "internal-prop-1",
+        expect.objectContaining({ amenities: ["WiFi", "Pool"] }),
+      );
+    });
+  });
+
   it("throws validation error when required field is missing", async () => {
     const invalidData = { externalId: "ext-prop-1" }; // missing name, type, city, countryCode
 

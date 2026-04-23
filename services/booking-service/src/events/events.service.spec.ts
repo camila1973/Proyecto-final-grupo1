@@ -77,6 +77,40 @@ describe("EventsService", () => {
     });
   });
 
+  // ─── handleFeeUpserted ───────────────────────────────────────────────────
+
+  describe("handleFeeUpserted", () => {
+    it("delegates to partnerFees.upsertFromEvent", async () => {
+      const { service, partnerFees } = makeService();
+      const event = {
+        feeId: "fee-1",
+        partnerId: "partner-1",
+        feeName: "Resort Fee",
+        feeType: "FLAT_PER_NIGHT",
+        flatAmount: 25,
+        currency: "USD",
+        effectiveFrom: "2026-01-01",
+      };
+
+      await service.handleFeeUpserted(event);
+
+      expect(partnerFees.upsertFromEvent).toHaveBeenCalledWith(event);
+    });
+  });
+
+  // ─── handleFeeDeleted ────────────────────────────────────────────────────
+
+  describe("handleFeeDeleted", () => {
+    it("delegates to partnerFees.softDelete with feeId", async () => {
+      const { service, partnerFees } = makeService();
+      const event = { feeId: "fee-1", partnerId: "partner-1" };
+
+      await service.handleFeeDeleted(event);
+
+      expect(partnerFees.softDelete).toHaveBeenCalledWith("fee-1");
+    });
+  });
+
   // ─── onModuleInit ─────────────────────────────────────────────────────────
 
   describe("onModuleInit", () => {
