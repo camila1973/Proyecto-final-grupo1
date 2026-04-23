@@ -59,8 +59,8 @@
       "enabled": true
     },
     {
-      "key": "guest_id",
-      "value": "d1000000-0000-0000-0000-000000000001",
+      "key": "booker_id",
+      "value": "e1000000-0000-0000-0000-000000000001",
       "type": "string",
       "enabled": true
     },
@@ -1340,7 +1340,49 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"propertyId\": \"{{property_id}}\",\n  \"roomId\": \"{{room_id}}\",\n  \"partnerId\": \"{{partner_id}}\",\n  \"guestId\": \"{{guest_id}}\",\n  \"checkIn\": \"2026-06-01\",\n  \"checkOut\": \"2026-06-04\"\n}"
+              "raw": "{\n  \"propertyId\": \"{{property_id}}\",\n  \"roomId\": \"{{room_id}}\",\n  \"partnerId\": \"{{partner_id}}\",\n  \"bookerId\": \"{{booker_id}}\",\n  \"guestInfo\": {\n    \"firstName\": \"Carlos\",\n    \"lastName\": \"García\",\n    \"email\": \"carlos.garcia@example.com\",\n    \"phone\": \"+52 55 1234 5678\"\n  },\n  \"checkIn\": \"2026-06-01\",\n  \"checkOut\": \"2026-06-04\"\n}"
+            }
+          }
+        },
+        {
+          "name": "List Reservations by Booker",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/booking/reservations?bookerId={{booker_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "booking",
+                "reservations"
+              ],
+              "query": [
+                {
+                  "key": "bookerId",
+                  "value": "{{booker_id}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Confirm Reservation",
+          "request": {
+            "method": "PATCH",
+            "url": {
+              "raw": "{{base_url}}/api/booking/reservations/{{reservation_id}}/confirm",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "booking",
+                "reservations",
+                "{{reservation_id}}",
+                "confirm"
+              ]
             }
           }
         },
