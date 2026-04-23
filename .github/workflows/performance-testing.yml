@@ -1,4 +1,4 @@
-name: Load Testing
+name: Performance Testing
 
 on:
   workflow_dispatch:
@@ -11,6 +11,7 @@ on:
         options:
           - smoke
           - load
+          - all
       gateway_url:
         description: 'API Gateway URL (leave blank to use the GATEWAY_URL repository variable)'
         required: false
@@ -38,11 +39,25 @@ jobs:
       - name: Install k6
         uses: grafana/setup-k6-action@v1
 
-      - name: Run k6 (${{ github.event.inputs.profile }})
-        working-directory: load-tests
-        run: k6 run --out json=results/results.json scenarios/search.js
+      - name: Run smoke/search
+        if: ${{ github.event.inputs.profile == 'smoke' || github.event.inputs.profile == 'all' }}
+        working-directory: performance-tests
+        run: k6 run --out json=results/results-search-smoke.json scenarios/smoke/search.js
         env:
-          TEST_PROFILE: ${{ github.event.inputs.profile }}
+          GATEWAY_URL: ${{ github.event.inputs.gateway_url || env.GATEWAY_URL }}
+
+      - name: Run smoke/booking
+        if: ${{ github.event.inputs.profile == 'smoke' || github.event.inputs.profile == 'all' }}
+        working-directory: performance-tests
+        run: k6 run --out json=results/results-booking.json scenarios/smoke/booking.js
+        env:
+          GATEWAY_URL: ${{ github.event.inputs.gateway_url || env.GATEWAY_URL }}
+
+      - name: Run load/search
+        if: ${{ github.event.inputs.profile == 'load' || github.event.inputs.profile == 'all' }}
+        working-directory: performance-tests
+        run: k6 run --out json=results/results-search-load.json scenarios/load/search.js
+        env:
           GATEWAY_URL: ${{ github.event.inputs.gateway_url || env.GATEWAY_URL }}
 
       - name: Upload results
@@ -50,6 +65,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: k6-results-${{ github.event.inputs.profile }}-${{ github.run_id }}
-          path: load-tests/results/
+          path: performance-tests/results/
           retention-days: 7
           if-no-files-found: warn

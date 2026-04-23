@@ -1,0 +1,11 @@
+{
+  "name": "load-tests",
+  "private": true,
+  "scripts": {
+    "test:smoke:search":  "set -a && . ./.env && set +a && k6 run --out json=results/results-search-smoke.json  scenarios/smoke/search.js",
+    "test:smoke:booking": "set -a && . ./.env && set +a && k6 run --out json=results/results-booking.json        scenarios/smoke/booking.js",
+    "test:load:search":   "set -a && . ./.env && set +a && k6 run --out json=results/results-search-load.json   scenarios/load/search.js",
+    "test:load:search:json": "set -a && . ./.env && set +a && k6 run --out json=results/results-search-load-$(date +%Y%m%d-%H%M).json scenarios/load/search.js",
+    "test:all":              "npm run test:smoke:search && npm run test:smoke:booking && npm run test:load:search"
+  }
+}

@@ -1,80 +1,53 @@
 /**
- * TravelHub — Search SLA Validation
+ * TravelHub — Search Smoke Test
  *
- * Validates the p95 ≤ 800ms requirement for the search-service via the API Gateway.
+ * Quick sanity check after deploy: 3 VUs for 2 minutes.
+ * Validates HTTP correctness and that results are non-empty.
  * All endpoints are public (no auth required).
  *
  * Usage:
- *   TEST_PROFILE=smoke GATEWAY_URL=https://... k6 run scenarios/search.js
- *   TEST_PROFILE=load  GATEWAY_URL=https://... k6 run scenarios/search.js
- *
- * Profiles:
- *   smoke — 3 VUs for 2 min. Quick sanity check after deploy.
- *   load  — ramp to 30 VUs over 2 min, hold 4 min, ramp down 2 min.
+ *   GATEWAY_URL=http://localhost:3000 k6 run scenarios/smoke/search.js
+ *   npm run test:smoke:search
  */
 
 import { check } from "k6";
 import { textSummary } from "https://jslib.k6.io/k6-summary/0.0.2/index.js";
 import { htmlReport } from "https://raw.githubusercontent.com/benc-uk/k6-reporter/main/dist/bundle.js";
 import { Trend } from "k6/metrics";
-import { searchThresholds } from "../lib/thresholds.js";
-import { get } from "../lib/http.js";
-import { randomItem, randomDatePair, jitter } from "../lib/utils.js";
-import { CITIES, CITY_PREFIXES, PROPERTY_IDS } from "../fixtures/seed-data.js";
+import { searchThresholds } from "../../lib/thresholds.js";
+import { get } from "../../lib/http.js";
+import { randomItem, randomDatePair, jitter } from "../../lib/utils.js";
+import { CITIES, CITY_PREFIXES, PROPERTY_IDS } from "../../fixtures/seed-data.js";
 
 // ─── Custom metrics ───────────────────────────────────────────────────────────
 
-// Tracks the `total` count returned by property searches.
-// A sustained 0 indicates a silent DB or availability issue even when HTTP 200.
 const searchResultCount = new Trend("search_result_count", true);
 
-// ─── Options ─────────────────────────────────────────────────────────────────
-
-const PROFILES = {
-  smoke: {
-    scenarios: {
-      search: {
-        executor: "constant-vus",
-        vus: 3,
-        duration: "2m",
-      },
-    },
-  },
-  load: {
-    scenarios: {
-      search: {
-        executor: "ramping-vus",
-        startVUs: 0,
-        stages: [
-          { duration: "2m", target: 30 },
-          { duration: "4m", target: 30 },
-          { duration: "2m", target: 0  },
-        ],
-        gracefulRampDown: "30s",
-      },
-    },
-  },
-};
-
-const profile = __ENV.TEST_PROFILE || "smoke";
-if (!PROFILES[profile]) {
-  throw new Error(`Unknown TEST_PROFILE "${profile}". Valid values: smoke, load`);
-}
+// ─── Config ───────────────────────────────────────────────────────────────────
 
 const GATEWAY_URL = __ENV.GATEWAY_URL;
 if (!GATEWAY_URL) {
-  throw new Error("GATEWAY_URL env var is required. Get it with: pulumi stack output gatewayUrl --stack prod --cwd pulumi");
+  throw new Error(
+    "GATEWAY_URL env var is required. Example: GATEWAY_URL=http://localhost:3000 k6 run scenarios/smoke/search.js"
+  );
 }
 
+// ─── Options ─────────────────────────────────────────────────────────────────
+
 export const options = {
-  ...PROFILES[profile],
+  scenarios: {
+    search: {
+      executor: "constant-vus",
+      vus: 3,
+      duration: "2m",
+    },
+  },
   thresholds: searchThresholds,
   tags: {
     environment: "production",
     project: "travelhub",
-    profile,
+    profile: "smoke",
   },
-  // Reuse connections — Cloud Run supports HTTP/1.1 keep-alive
   batchPerHost: 6,
 };
 
@@ -82,7 +55,7 @@ export const options = {
 
 export function handleSummary(data) {
   return {
-    "results/summary.html": htmlReport(data),
+    "results/summary-search-smoke.html": htmlReport(data),
     stdout: textSummary(data, { indent: " ", enableColors: true }),
   };
 }
@@ -159,6 +132,5 @@ export default function () {
     });
   }
 
-  // Think time: 0.5s–2s between iterations
   jitter(500, 1500);
 }

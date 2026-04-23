@@ -3,6 +3,7 @@ const mockRedis = {
   get: jest.fn(),
   set: jest.fn().mockResolvedValue("OK"),
   del: jest.fn().mockResolvedValue(1),
+  getdel: jest.fn(),
   disconnect: jest.fn(),
 };
 
@@ -69,6 +70,50 @@ describe("CacheService", () => {
       await service.del("my-key");
 
       expect(mockRedis.del).toHaveBeenCalledWith("my-key");
+    });
+  });
+
+  describe("setIfAbsent", () => {
+    it("returns true and writes value when key does not exist", async () => {
+      mockRedis.set.mockResolvedValue("OK");
+
+      const result = await service.setIfAbsent("my-key", "my-value", 300);
+
+      expect(result).toBe(true);
+      expect(mockRedis.set).toHaveBeenCalledWith(
+        "my-key",
+        "my-value",
+        "EX",
+        300,
+        "NX",
+      );
+    });
+
+    it("returns false when key already exists", async () => {
+      mockRedis.set.mockResolvedValue(null);
+
+      const result = await service.setIfAbsent("my-key", "my-value", 300);
+
+      expect(result).toBe(false);
+    });
+  });
+
+  describe("getAndDelete", () => {
+    it("returns the value and deletes the key atomically", async () => {
+      mockRedis.getdel.mockResolvedValue("stored-value");
+
+      const result = await service.getAndDelete("my-key");
+
+      expect(mockRedis.getdel).toHaveBeenCalledWith("my-key");
+      expect(result).toBe("stored-value");
+    });
+
+    it("returns null when key does not exist", async () => {
+      mockRedis.getdel.mockResolvedValue(null);
+
+      const result = await service.getAndDelete("missing-key");
+
+      expect(result).toBeNull();
     });
   });
 });

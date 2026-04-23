@@ -1,4 +1,4 @@
-import { NotFoundException } from "@nestjs/common";
+import { ConflictException, NotFoundException } from "@nestjs/common";
 import { InventoryClient } from "./inventory.client.js";
 import type { CacheService } from "../cache/cache.service.js";
 import type { HttpService } from "@nestjs/axios";
@@ -10,18 +10,24 @@ function makeClient({
   httpGet = jest
     .fn()
     .mockReturnValue(of({ data: { country: "MX", city: "cancún" } })),
+  httpPost = jest.fn().mockReturnValue(of({ data: undefined, status: 204 })),
 }: {
   cacheGet?: jest.Mock;
   cacheSet?: jest.Mock;
   httpGet?: jest.Mock;
+  httpPost?: jest.Mock;
 } = {}) {
   const cache = { get: cacheGet, set: cacheSet } as unknown as CacheService;
-  const httpService = { get: httpGet } as unknown as HttpService;
+  const httpService = {
+    get: httpGet,
+    post: httpPost,
+  } as unknown as HttpService;
   return {
     client: new InventoryClient(httpService, cache),
     cacheGet,
     cacheSet,
     httpGet,
+    httpPost,
   };
 }
 
@@ -208,6 +214,85 @@ describe("InventoryClient", () => {
           new Date("2026-05-04"),
         ),
       ).rejects.toThrow("Upstream service error: inventory-service");
+    });
+  });
+
+  describe("hold / unhold / confirmHold / release", () => {
+    const ROOM = "room-1";
+    const FROM = "2026-05-01";
+    const TO = "2026-05-04";
+
+    it("hold POSTs to /availability/hold with correct body", async () => {
+      const { client, httpPost } = makeClient();
+
+      await client.hold(ROOM, FROM, TO);
+
+      expect(httpPost).toHaveBeenCalledWith(
+        expect.stringContaining("/availability/hold"),
+        { roomId: ROOM, fromDate: FROM, toDate: TO },
+      );
+    });
+
+    it("hold throws ConflictException when inventory returns 409", async () => {
+      const { client } = makeClient({
+        httpPost: jest
+          .fn()
+          .mockReturnValue(
+            throwError(() => ({ response: { status: 409, data: {} } })),
+          ),
+      });
+
+      await expect(client.hold(ROOM, FROM, TO)).rejects.toThrow(
+        ConflictException,
+      );
+    });
+
+    it("unhold POSTs to /availability/unhold", async () => {
+      const { client, httpPost } = makeClient();
+
+      await client.unhold(ROOM, FROM, TO);
+
+      expect(httpPost).toHaveBeenCalledWith(
+        expect.stringContaining("/availability/unhold"),
+        { roomId: ROOM, fromDate: FROM, toDate: TO },
+      );
+    });
+
+    it("confirmHold POSTs to /availability/confirm", async () => {
+      const { client, httpPost } = makeClient();
+
+      await client.confirmHold(ROOM, FROM, TO);
+
+      expect(httpPost).toHaveBeenCalledWith(
+        expect.stringContaining("/availability/confirm"),
+        { roomId: ROOM, fromDate: FROM, toDate: TO },
+      );
+    });
+
+    it("release POSTs to /availability/release", async () => {
+      const { client, httpPost } = makeClient();
+
+      await client.release(ROOM, FROM, TO);
+
+      expect(httpPost).toHaveBeenCalledWith(
+        expect.stringContaining("/availability/release"),
+        { roomId: ROOM, fromDate: FROM, toDate: TO },
+      );
+    });
+
+    it("throws UpstreamServiceError on 500 from any availability mutation", async () => {
+      const { client } = makeClient({
+        httpPost: jest.fn().mockReturnValue(
+          throwError(() => ({
+            response: { status: 500 },
+            message: "Internal Server Error",
+          })),
+        ),
+      });
+
+      await expect(client.hold(ROOM, FROM, TO)).rejects.toThrow(
+        "Upstream service error: inventory-service",
+      );
     });
   });
 });

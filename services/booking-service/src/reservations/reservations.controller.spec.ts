@@ -30,6 +30,7 @@ describe("ReservationsController", () => {
 
   const CREATE_DTO = {
     ...PREVIEW_DTO,
+    holdId: "hold-uuid",
     bookerId: "booker-1",
     guestInfo: {
       firstName: "Ana",
