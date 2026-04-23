@@ -29,8 +29,28 @@ const ROOM = (n: number) =>
 const FEE = (n: number) =>
   `d1000000-0000-0000-0000-${String(n).padStart(12, "0")}`;
 
-const GUEST = (n: number) =>
+const BOOKER = (n: number) =>
   `e1000000-0000-0000-0000-${String(n).padStart(12, "0")}`;
+
+const GUEST_INFO = [
+  {
+    firstName: "Carlos",
+    lastName: "García",
+    email: "carlos.garcia@example.com",
+    phone: "+52 55 1234 5678",
+  },
+  {
+    firstName: "María",
+    lastName: "López",
+    email: "maria.lopez@example.com",
+    phone: "+52 55 9876 5432",
+  },
+  {
+    firstName: "Andrés",
+    lastName: "Martínez",
+    email: "andres.martinez@example.com",
+  },
+];
 
 const RES = (n: number) =>
   `f1000000-0000-0000-0000-${String(n).padStart(12, "0")}`;
@@ -187,7 +207,8 @@ const RESERVATIONS = [
     property_id: PROP_CANCUN_1,
     room_id: ROOM(1),
     partner_id: PARTNER_1,
-    guest_id: GUEST(1),
+    booker_id: BOOKER(1),
+    guest_info: GUEST_INFO[0],
     check_in: "2027-03-01",
     check_out: "2027-03-04",
     status: "confirmed",
@@ -215,7 +236,8 @@ const RESERVATIONS = [
     property_id: PROP_CANCUN_1,
     room_id: ROOM(2),
     partner_id: PARTNER_1,
-    guest_id: GUEST(1),
+    booker_id: BOOKER(1),
+    guest_info: GUEST_INFO[0],
     check_in: "2027-07-05",
     check_out: "2027-07-09",
     status: "confirmed",
@@ -243,7 +265,8 @@ const RESERVATIONS = [
     property_id: PROP_CDMX_1,
     room_id: ROOM(8),
     partner_id: PARTNER_2,
-    guest_id: GUEST(2),
+    booker_id: BOOKER(2),
+    guest_info: GUEST_INFO[1],
     check_in: "2027-02-10",
     check_out: "2027-02-13",
     status: "confirmed",
@@ -271,7 +294,8 @@ const RESERVATIONS = [
     property_id: PROP_CANCUN_3,
     room_id: ROOM(6),
     partner_id: PARTNER_2,
-    guest_id: GUEST(3),
+    booker_id: BOOKER(3),
+    guest_info: GUEST_INFO[2],
     check_in: "2027-05-10",
     check_out: "2027-05-13",
     status: "pending",
@@ -370,7 +394,8 @@ async function seed() {
         property_id: r.property_id,
         room_id: r.room_id,
         partner_id: r.partner_id,
-        guest_id: r.guest_id,
+        booker_id: r.booker_id,
+        guest_info: r.guest_info,
         check_in: r.check_in,
         check_out: r.check_out,
         status: r.status,
@@ -389,7 +414,7 @@ async function seed() {
       )
       .execute();
     console.log(
-      `  ✓ ${r.status.padEnd(9)} ${r.check_in} → ${r.check_out}  guest …${r.guest_id.slice(-4)}  total $${r.grand_total_usd}`,
+      `  ✓ ${r.status.padEnd(9)} ${r.check_in} → ${r.check_out}  booker …${r.booker_id.slice(-4)}  guest ${r.guest_info.firstName} ${r.guest_info.lastName}  total $${r.grand_total_usd}`,
     );
   }
 
