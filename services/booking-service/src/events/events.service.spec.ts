@@ -29,12 +29,8 @@ import { EventsService } from "./events.service.js";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function makePriceCache() {
-  return { replaceForRoom: jest.fn().mockResolvedValue(undefined) };
-}
-
-function makeRoomLocationCache() {
-  return { upsert: jest.fn().mockResolvedValue(undefined) };
+function makeInventoryClient() {
+  return { cacheRoomLocation: jest.fn().mockResolvedValue(undefined) };
 }
 
 function makePartnerFees() {
@@ -45,15 +41,10 @@ function makePartnerFees() {
 }
 
 function makeService() {
-  const priceCache = makePriceCache();
-  const roomLocationCache = makeRoomLocationCache();
+  const inventoryClient = makeInventoryClient();
   const partnerFees = makePartnerFees();
-  const service = new EventsService(
-    priceCache as any,
-    roomLocationCache as any,
-    partnerFees as any,
-  );
-  return { service, priceCache, roomLocationCache, partnerFees };
+  const service = new EventsService(inventoryClient as any, partnerFees as any);
+  return { service, inventoryClient, partnerFees };
 }
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
@@ -65,32 +56,11 @@ describe("EventsService", () => {
     delete process.env.MESSAGE_BROKER_URL;
   });
 
-  // ─── handlePriceUpdated ───────────────────────────────────────────────────
-
-  describe("handlePriceUpdated", () => {
-    it("delegates to priceCache.replaceForRoom", async () => {
-      const { service, priceCache } = makeService();
-      const payload = {
-        roomId: "room-1",
-        pricePeriods: [
-          { fromDate: "2026-01-01", toDate: "2026-12-31", priceUsd: 150 },
-        ],
-      };
-
-      await service.handlePriceUpdated(payload);
-
-      expect(priceCache.replaceForRoom).toHaveBeenCalledWith(
-        "room-1",
-        payload.pricePeriods,
-      );
-    });
-  });
-
   // ─── handleRoomUpserted ───────────────────────────────────────────────────
 
   describe("handleRoomUpserted", () => {
-    it("delegates to roomLocationCache.upsert with country/city", async () => {
-      const { service, roomLocationCache } = makeService();
+    it("delegates to inventoryClient.cacheRoomLocation with country/city", async () => {
+      const { service, inventoryClient } = makeService();
       const snapshot = {
         roomId: "room-1",
         propertyId: "prop-1",
@@ -100,14 +70,44 @@ describe("EventsService", () => {
 
       await service.handleRoomUpserted(snapshot);
 
-      expect(roomLocationCache.upsert).toHaveBeenCalledWith(
-        "room-1",
-        "prop-1",
-        {
-          country: "MX",
-          city: "Cancún",
-        },
-      );
+      expect(inventoryClient.cacheRoomLocation).toHaveBeenCalledWith("room-1", {
+        country: "MX",
+        city: "Cancún",
+      });
+    });
+  });
+
+  // ─── handleFeeUpserted ───────────────────────────────────────────────────
+
+  describe("handleFeeUpserted", () => {
+    it("delegates to partnerFees.upsertFromEvent", async () => {
+      const { service, partnerFees } = makeService();
+      const event = {
+        feeId: "fee-1",
+        partnerId: "partner-1",
+        feeName: "Resort Fee",
+        feeType: "FLAT_PER_NIGHT",
+        flatAmount: 25,
+        currency: "USD",
+        effectiveFrom: "2026-01-01",
+      };
+
+      await service.handleFeeUpserted(event);
+
+      expect(partnerFees.upsertFromEvent).toHaveBeenCalledWith(event);
+    });
+  });
+
+  // ─── handleFeeDeleted ────────────────────────────────────────────────────
+
+  describe("handleFeeDeleted", () => {
+    it("delegates to partnerFees.softDelete with feeId", async () => {
+      const { service, partnerFees } = makeService();
+      const event = { feeId: "fee-1", partnerId: "partner-1" };
+
+      await service.handleFeeDeleted(event);
+
+      expect(partnerFees.softDelete).toHaveBeenCalledWith("fee-1");
     });
   });
 
@@ -158,12 +158,8 @@ describe("EventsService", () => {
 
       await service.onModuleInit();
 
-      // assertQueue should be called once per subscription (4 total)
-      expect(mockChannel.assertQueue).toHaveBeenCalledTimes(4);
-      expect(mockChannel.assertQueue).toHaveBeenCalledWith(
-        "booking.inventory.price.updated",
-        { durable: true },
-      );
+      // assertQueue should be called once per subscription (3 total)
+      expect(mockChannel.assertQueue).toHaveBeenCalledTimes(3);
       expect(mockChannel.assertQueue).toHaveBeenCalledWith(
         "booking.inventory.room.upserted",
         { durable: true },

@@ -3,6 +3,7 @@ import { Kysely } from "kysely";
 import { KYSELY } from "../database/database.provider.js";
 import {
   Database,
+  GuestInfo,
   NewReservation,
   ReservationRow,
 } from "../database/database.types.js";
@@ -11,7 +12,8 @@ export interface ReservationResponse {
   id: string;
   propertyId: string;
   roomId: string;
-  guestId: string;
+  bookerId: string;
+  guestInfo: GuestInfo;
   checkIn: string;
   checkOut: string;
   status: string;
@@ -39,10 +41,10 @@ export class ReservationsRepository {
     return this.db.selectFrom("reservations").selectAll().execute();
   }
 
-  async findByGuestId(guestId: string): Promise<ReservationRow[]> {
+  async findByBookerId(bookerId: string): Promise<ReservationRow[]> {
     return this.db
       .selectFrom("reservations")
-      .where("guest_id", "=", guestId)
+      .where("booker_id", "=", bookerId)
       .selectAll()
       .execute();
   }
@@ -81,7 +83,8 @@ export class ReservationsRepository {
       id: row.id,
       propertyId: row.property_id,
       roomId: row.room_id,
-      guestId: row.guest_id,
+      bookerId: row.booker_id,
+      guestInfo: row.guest_info,
       checkIn: row.check_in,
       checkOut: row.check_out,
       status: row.status,

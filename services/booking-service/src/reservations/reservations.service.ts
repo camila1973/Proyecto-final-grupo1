@@ -3,7 +3,7 @@ import {
   FareCalculatorService,
   FareBreakdown,
 } from "../fare/fare-calculator.service.js";
-import { RoomLocationCacheRepository } from "../room-location-cache/room-location-cache.repository.js";
+import { InventoryClient } from "../clients/inventory.client.js";
 import { ReservationsRepository } from "./reservations.repository.js";
 import { EventsPublisher } from "../events/events.publisher.js";
 import {
@@ -16,12 +16,12 @@ export class ReservationsService {
   constructor(
     private readonly fareCalculator: FareCalculatorService,
     private readonly reservationsRepo: ReservationsRepository,
-    private readonly roomLocationCache: RoomLocationCacheRepository,
+    private readonly inventoryClient: InventoryClient,
     private readonly publisher: EventsPublisher,
   ) {}
 
   async preview(dto: PreviewReservationDto): Promise<FareBreakdown> {
-    const location = await this.roomLocationCache.findByRoomId(dto.roomId);
+    const location = await this.inventoryClient.getRoomLocation(dto.roomId);
     return this.fareCalculator.calculate({
       propertyId: dto.propertyId,
       roomId: dto.roomId,
@@ -33,7 +33,7 @@ export class ReservationsService {
   }
 
   async create(dto: CreateReservationDto) {
-    const location = await this.roomLocationCache.findByRoomId(dto.roomId);
+    const location = await this.inventoryClient.getRoomLocation(dto.roomId);
 
     const fareBreakdown = await this.fareCalculator.calculate({
       propertyId: dto.propertyId,
@@ -50,7 +50,8 @@ export class ReservationsService {
       property_id: dto.propertyId,
       room_id: dto.roomId,
       partner_id: dto.partnerId,
-      guest_id: dto.guestId,
+      booker_id: dto.bookerId,
+      guest_info: dto.guestInfo,
       check_in: dto.checkIn,
       check_out: dto.checkOut,
       status: "pending",
@@ -68,9 +69,9 @@ export class ReservationsService {
     };
   }
 
-  async findAll(guestId?: string) {
-    const rows = guestId
-      ? await this.reservationsRepo.findByGuestId(guestId)
+  async findAll(bookerId?: string) {
+    const rows = bookerId
+      ? await this.reservationsRepo.findByBookerId(bookerId)
       : await this.reservationsRepo.findAll();
     return {
       total: rows.length,
@@ -91,7 +92,8 @@ export class ReservationsService {
       partnerId: row.partner_id,
       propertyId: row.property_id,
       roomId: row.room_id,
-      guestId: row.guest_id,
+      bookerId: row.booker_id,
+      guestInfo: row.guest_info,
       checkIn: row.check_in,
       checkOut: row.check_out,
       fareBreakdown: row.fare_breakdown,

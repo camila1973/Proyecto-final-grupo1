@@ -1,4 +1,4 @@
-externalId,name,type,city,countryCode
-fiesta-americana-gdl,Fiesta Americana Guadalajara,hotel,Guadalajara,MX
-el-tapatío-resort,El Tapatío Resort & Spa,resort,Guadalajara,MX
-posada-santa-fe,Posada Santa Fe,hostel,Guadalajara,MX
+externalId,name,type,city,countryCode,stars,neighborhood,lat,lon,thumbnailUrl,amenities
+fiesta-americana-gdl,Fiesta Americana Guadalajara,hotel,Guadalajara,MX,4,Minerva,20.6736,-103.3681,https://example.com/fiesta-americana.jpg,pool|wifi|parking
+el-tapatío-resort,El Tapatío Resort & Spa,resort,Guadalajara,MX,5,Zapopan,20.7391,-103.4154,https://example.com/el-tapatio.jpg,pool|spa|wifi|gym|restaurant
+posada-santa-fe,Posada Santa Fe,hostel,Guadalajara,MX,,,,,https://example.com/posada-santa-fe.jpg,wifi

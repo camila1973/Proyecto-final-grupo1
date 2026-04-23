@@ -12,25 +12,25 @@ import { UnknownEntityError } from "../unknown-entity.error";
 
 class RoomEventData {
   @IsString()
-  externalId: string;
+  externalId!: string;
 
   @IsString()
-  externalPropertyId: string;
+  externalPropertyId!: string;
 
   @IsString()
-  roomType: string;
+  roomType!: string;
 
   @Type(() => Number)
   @IsNumber()
-  capacity: number;
+  capacity!: number;
 
   @Type(() => Number)
   @IsNumber()
-  totalRooms: number;
+  totalRooms!: number;
 
   @Type(() => Number)
   @IsNumber()
-  basePriceUsd: number;
+  basePriceUsd!: number;
 
   @IsOptional()
   @IsString()

@@ -34,8 +34,8 @@ export class ReservationsController {
   }
 
   @Get()
-  findAll(@Query("guestId") guestId?: string) {
-    return this.reservationsService.findAll(guestId);
+  findAll(@Query("bookerId") bookerId?: string) {
+    return this.reservationsService.findAll(bookerId);
   }
 
   @Get(":id")

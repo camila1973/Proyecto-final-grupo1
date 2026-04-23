@@ -1,8 +1,16 @@
+export class GuestInfoDto {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+}
+
 export class CreateReservationDto {
   propertyId: string;
   roomId: string;
   partnerId: string;
-  guestId: string;
+  bookerId: string;
+  guestInfo: GuestInfoDto;
   checkIn: string; // YYYY-MM-DD
   checkOut: string; // YYYY-MM-DD
 }

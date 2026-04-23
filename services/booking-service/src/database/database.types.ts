@@ -1,5 +1,12 @@
 import { ColumnType, Generated, Insertable, Selectable } from "kysely";
 
+export interface GuestInfo {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+}
+
 // DATE columns: pg returns 'YYYY-MM-DD' strings; accept Date or string on insert/update
 type DateColumn = ColumnType<string, Date | string, Date | string>;
 type NullableDateColumn = ColumnType<
@@ -54,28 +61,13 @@ export interface PartnerFeesTable {
   updated_at: Generated<Date>;
 }
 
-export interface PriceValidationCacheTable {
-  room_id: string;
-  from_date: DateColumn;
-  to_date: DateColumn;
-  price_usd: string; // NUMERIC returned as string by pg
-  synced_at: Generated<Date>;
-}
-
-export interface RoomLocationCacheTable {
-  room_id: string;
-  property_id: string;
-  country: string;
-  city: string;
-  synced_at: Generated<Date>;
-}
-
 export interface ReservationsTable {
   id: Generated<string>;
   property_id: string;
   room_id: string;
   partner_id: string;
-  guest_id: string;
+  booker_id: string;
+  guest_info: ColumnType<GuestInfo, GuestInfo, GuestInfo>;
   check_in: DateColumn;
   check_out: DateColumn;
   status: Generated<string>; // DEFAULT 'pending'
@@ -99,8 +91,6 @@ export interface ReservationsTable {
 export interface Database {
   tax_rules: TaxRulesTable;
   partner_fees: PartnerFeesTable;
-  price_validation_cache: PriceValidationCacheTable;
-  room_location_cache: RoomLocationCacheTable;
   reservations: ReservationsTable;
 }
 
