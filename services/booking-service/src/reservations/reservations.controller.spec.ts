@@ -28,7 +28,15 @@ describe("ReservationsController", () => {
     checkOut: "2026-05-04",
   };
 
-  const CREATE_DTO = { ...PREVIEW_DTO, guestId: "guest-1" };
+  const CREATE_DTO = {
+    ...PREVIEW_DTO,
+    bookerId: "booker-1",
+    guestInfo: {
+      firstName: "Ana",
+      lastName: "García",
+      email: "ana@example.com",
+    },
+  };
 
   beforeEach(async () => {
     const module = await Test.createTestingModule({

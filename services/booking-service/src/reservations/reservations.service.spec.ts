@@ -72,7 +72,7 @@ describe("ReservationsService", () => {
   let reservationsRepo: {
     insert: jest.Mock;
     findAll: jest.Mock;
-    findByGuestId: jest.Mock;
+    findByBookerId: jest.Mock;
     findById: jest.Mock;
     toResponse: jest.Mock;
     confirm: jest.Mock;
