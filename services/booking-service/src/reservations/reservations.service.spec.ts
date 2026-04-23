@@ -23,7 +23,12 @@ function makeRow(overrides: Record<string, unknown> = {}) {
     property_id: "prop-uuid",
     room_id: "room-uuid",
     partner_id: "partner-uuid",
-    guest_id: "guest-uuid",
+    booker_id: "booker-uuid",
+    guest_info: {
+      firstName: "Ana",
+      lastName: "García",
+      email: "ana@example.com",
+    },
     check_in: "2026-05-01",
     check_out: "2026-05-04",
     status: "pending",
@@ -48,7 +53,16 @@ const PREVIEW_DTO = {
   checkOut: "2026-05-04",
 };
 
-const CREATE_DTO = { ...PREVIEW_DTO, guestId: "guest-uuid" };
+const GUEST_INFO = {
+  firstName: "Ana",
+  lastName: "García",
+  email: "ana@example.com",
+};
+const CREATE_DTO = {
+  ...PREVIEW_DTO,
+  bookerId: "booker-uuid",
+  guestInfo: GUEST_INFO,
+};
 
 // ─── Tests ─────────────────────────────────────────────────────────────────────
 
@@ -76,7 +90,7 @@ describe("ReservationsService", () => {
     reservationsRepo = {
       insert: jest.fn().mockResolvedValue(row),
       findAll: jest.fn().mockResolvedValue([row, row]),
-      findByGuestId: jest.fn().mockResolvedValue([row]),
+      findByBookerId: jest.fn().mockResolvedValue([row]),
       findById: jest.fn().mockResolvedValue(row),
       toResponse: jest.fn().mockImplementation((r) => ({ id: r.id })),
       confirm: jest.fn(),
@@ -137,7 +151,8 @@ describe("ReservationsService", () => {
           property_id: "prop-uuid",
           room_id: "room-uuid",
           partner_id: "partner-uuid",
-          guest_id: "guest-uuid",
+          booker_id: "booker-uuid",
+          guest_info: GUEST_INFO,
           check_in: "2026-05-01",
           check_out: "2026-05-04",
           status: "pending",
@@ -205,15 +220,17 @@ describe("ReservationsService", () => {
       expect(reservationsRepo.toResponse).toHaveBeenCalledTimes(2);
     });
 
-    it("filters by guestId when provided", async () => {
-      const result = await service.findAll("guest-uuid");
+    it("filters by bookerId when provided", async () => {
+      const result = await service.findAll("booker-uuid");
 
-      expect(reservationsRepo.findByGuestId).toHaveBeenCalledWith("guest-uuid");
+      expect(reservationsRepo.findByBookerId).toHaveBeenCalledWith(
+        "booker-uuid",
+      );
       expect(reservationsRepo.findAll).not.toHaveBeenCalled();
       expect(result.total).toBe(1);
     });
 
-    it("returns all when guestId is not provided", async () => {
+    it("returns all when bookerId is not provided", async () => {
       await service.findAll();
 
       expect(reservationsRepo.findAll).toHaveBeenCalled();

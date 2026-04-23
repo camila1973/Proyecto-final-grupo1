@@ -38,7 +38,12 @@ function makeRow(overrides: Record<string, unknown> = {}) {
     property_id: "prop-uuid",
     room_id: "room-uuid",
     partner_id: "partner-uuid",
-    guest_id: "guest-uuid",
+    booker_id: "booker-uuid",
+    guest_info: {
+      firstName: "Ana",
+      lastName: "García",
+      email: "ana@example.com",
+    },
     check_in: "2026-05-01",
     check_out: "2026-05-04",
     status: "pending",
@@ -82,16 +87,16 @@ describe("ReservationsRepository", () => {
     });
   });
 
-  describe("findByGuestId", () => {
-    it("filters reservations by guest_id", async () => {
+  describe("findByBookerId", () => {
+    it("filters reservations by booker_id", async () => {
       const rows = [makeRow()];
       const db = makeDb({ many: rows });
       const repo = new ReservationsRepository(db);
 
-      const result = await repo.findByGuestId("guest-uuid");
+      const result = await repo.findByBookerId("booker-uuid");
 
       expect(db.selectFrom).toHaveBeenCalledWith("reservations");
-      expect(db.where).toHaveBeenCalledWith("guest_id", "=", "guest-uuid");
+      expect(db.where).toHaveBeenCalledWith("booker_id", "=", "booker-uuid");
       expect(result).toBe(rows);
     });
   });
@@ -134,7 +139,12 @@ describe("ReservationsRepository", () => {
       expect(result.id).toBe("res-uuid");
       expect(result.propertyId).toBe("prop-uuid");
       expect(result.roomId).toBe("room-uuid");
-      expect(result.guestId).toBe("guest-uuid");
+      expect(result.bookerId).toBe("booker-uuid");
+      expect(result.guestInfo).toEqual({
+        firstName: "Ana",
+        lastName: "García",
+        email: "ana@example.com",
+      });
       expect(result.checkIn).toBe("2026-05-01");
       expect(result.checkOut).toBe("2026-05-04");
       expect(result.status).toBe("pending");

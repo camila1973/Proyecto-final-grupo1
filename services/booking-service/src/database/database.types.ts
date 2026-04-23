@@ -1,5 +1,12 @@
 import { ColumnType, Generated, Insertable, Selectable } from "kysely";
 
+export interface GuestInfo {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+}
+
 // DATE columns: pg returns 'YYYY-MM-DD' strings; accept Date or string on insert/update
 type DateColumn = ColumnType<string, Date | string, Date | string>;
 type NullableDateColumn = ColumnType<
@@ -59,7 +66,8 @@ export interface ReservationsTable {
   property_id: string;
   room_id: string;
   partner_id: string;
-  guest_id: string;
+  booker_id: string;
+  guest_info: ColumnType<GuestInfo, GuestInfo, GuestInfo>;
   check_in: DateColumn;
   check_out: DateColumn;
   status: Generated<string>; // DEFAULT 'pending'
