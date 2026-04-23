@@ -231,7 +231,7 @@ Prettier settings: single quotes, trailing commas.
 
 `.github/workflows/ci.yml` runs on push to `main` and on pull requests. It uses `nx affected` for lint/build/test so only changed projects run in CI. Node is provided via `.nvmrc` (Node 24). `NX_DAEMON=false` and `NX_TUI=false` are set for CI stability. Uses `pnpm install --frozen-lockfile` for clean installs.
 
-## Load Testing
+## Performance Testing
 
 k6 scenarios are organized under `performance-tests/scenarios/smoke/` and `performance-tests/scenarios/load/`. Each scenario reads `GATEWAY_URL` from the environment and can run locally or via GitHub Actions.
 
