@@ -76,6 +76,7 @@ describe("ReservationsService", () => {
     updateGuestInfo: jest.Mock;
     toResponse: jest.Mock;
     confirm: jest.Mock;
+    submitPayment: jest.Mock;
   };
   let inventoryClient: {
     getRoomLocation: jest.Mock;
@@ -110,6 +111,7 @@ describe("ReservationsService", () => {
       updateGuestInfo: jest.fn().mockResolvedValue(row),
       toResponse: jest.fn().mockImplementation((r) => ({ id: r.id })),
       confirm: jest.fn(),
+      submitPayment: jest.fn().mockResolvedValue(row),
     };
     service = new ReservationsService(
       fareCalculator as any,
