@@ -429,6 +429,9 @@ describe("AuthService", () => {
           role: "guest",
           password_hash: "h",
           created_at: "2024-01-01",
+          first_name: null,
+          last_name: null,
+          phone: null,
         },
         {
           id: "usr_2",
@@ -436,6 +439,9 @@ describe("AuthService", () => {
           role: "admin",
           password_hash: "h2",
           created_at: "2024-02-01",
+          first_name: null,
+          last_name: null,
+          phone: null,
         },
       ]);
 
