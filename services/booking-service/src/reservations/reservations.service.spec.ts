@@ -1,4 +1,9 @@
-import { NotFoundException } from "@nestjs/common";
+import {
+  HttpException,
+  HttpStatus,
+  NotFoundException,
+  UnauthorizedException,
+} from "@nestjs/common";
 import { ReservationsService } from "./reservations.service.js";
 import { FareBreakdown } from "../fare/fare-calculator.service.js";
 
@@ -23,7 +28,12 @@ function makeRow(overrides: Record<string, unknown> = {}) {
     property_id: "prop-uuid",
     room_id: "room-uuid",
     partner_id: "partner-uuid",
-    guest_id: "guest-uuid",
+    booker_id: "booker-uuid",
+    guest_info: {
+      firstName: "Ana",
+      lastName: "García",
+      email: "ana@example.com",
+    },
     check_in: "2026-05-01",
     check_out: "2026-05-04",
     status: "pending",
@@ -48,7 +58,28 @@ const PREVIEW_DTO = {
   checkOut: "2026-05-04",
 };
 
-const CREATE_DTO = { ...PREVIEW_DTO, guestId: "guest-uuid" };
+const GUEST_INFO = {
+  firstName: "Ana",
+  lastName: "García",
+  email: "ana@example.com",
+};
+const HOLD_ID = "hold-uuid";
+const HOLD_EXPIRES_AT = new Date(Date.now() + 900_000).toISOString();
+const HOLD_PAYLOAD = JSON.stringify({
+  holdId: HOLD_ID,
+  bookerId: "booker-uuid",
+  roomId: "room-uuid",
+  checkIn: "2026-05-01",
+  checkOut: "2026-05-04",
+  expiresAt: HOLD_EXPIRES_AT,
+});
+
+const CREATE_DTO = {
+  ...PREVIEW_DTO,
+  holdId: HOLD_ID,
+  bookerId: "booker-uuid",
+  guestInfo: GUEST_INFO,
+};
 
 // ─── Tests ─────────────────────────────────────────────────────────────────────
 
@@ -58,23 +89,33 @@ describe("ReservationsService", () => {
   let reservationsRepo: {
     insert: jest.Mock;
     findAll: jest.Mock;
+    findByBookerId: jest.Mock;
     findById: jest.Mock;
     toResponse: jest.Mock;
     confirm: jest.Mock;
   };
-  let roomLocationCache: { findByRoomId: jest.Mock };
+  let inventoryClient: {
+    getRoomLocation: jest.Mock;
+    confirmHold: jest.Mock;
+  };
+  let cache: { getAndDelete: jest.Mock };
 
   const fareBreakdown = makeFareBreakdown();
   const row = makeRow();
 
   beforeEach(() => {
     fareCalculator = { calculate: jest.fn().mockResolvedValue(fareBreakdown) };
-    roomLocationCache = {
-      findByRoomId: jest.fn().mockResolvedValue(LOCATION),
+    inventoryClient = {
+      getRoomLocation: jest.fn().mockResolvedValue(LOCATION),
+      confirmHold: jest.fn().mockResolvedValue(undefined),
+    };
+    cache = {
+      getAndDelete: jest.fn().mockResolvedValue(HOLD_PAYLOAD),
     };
     reservationsRepo = {
       insert: jest.fn().mockResolvedValue(row),
       findAll: jest.fn().mockResolvedValue([row, row]),
+      findByBookerId: jest.fn().mockResolvedValue([row]),
       findById: jest.fn().mockResolvedValue(row),
       toResponse: jest.fn().mockImplementation((r) => ({ id: r.id })),
       confirm: jest.fn(),
@@ -82,7 +123,8 @@ describe("ReservationsService", () => {
     service = new ReservationsService(
       fareCalculator as any,
       reservationsRepo as any,
-      roomLocationCache as any,
+      inventoryClient as any,
+      cache as any,
       { publish: jest.fn() } as any,
     );
   });
@@ -93,7 +135,7 @@ describe("ReservationsService", () => {
     it("resolves location and returns fare breakdown", async () => {
       const result = await service.preview(PREVIEW_DTO);
 
-      expect(roomLocationCache.findByRoomId).toHaveBeenCalledWith("room-uuid");
+      expect(inventoryClient.getRoomLocation).toHaveBeenCalledWith("room-uuid");
       expect(fareCalculator.calculate).toHaveBeenCalledWith(
         expect.objectContaining({
           propertyId: "prop-uuid",
@@ -114,7 +156,7 @@ describe("ReservationsService", () => {
     });
 
     it("propagates NotFoundException when location is not cached", async () => {
-      roomLocationCache.findByRoomId.mockRejectedValue(
+      inventoryClient.getRoomLocation.mockRejectedValue(
         new NotFoundException("No location"),
       );
 
@@ -127,15 +169,19 @@ describe("ReservationsService", () => {
   // ─── create ─────────────────────────────────────────────────────────────────
 
   describe("create", () => {
-    it("inserts a reservation with correct fields", async () => {
+    it("consumes the hold via GETDEL and inserts a reservation", async () => {
       await service.create(CREATE_DTO);
 
+      expect(cache.getAndDelete).toHaveBeenCalledWith(
+        `booking:hold:idempotency:booker-uuid:room-uuid:2026-05-01:2026-05-04`,
+      );
       expect(reservationsRepo.insert).toHaveBeenCalledWith(
         expect.objectContaining({
           property_id: "prop-uuid",
           room_id: "room-uuid",
           partner_id: "partner-uuid",
-          guest_id: "guest-uuid",
+          booker_id: "booker-uuid",
+          guest_info: GUEST_INFO,
           check_in: "2026-05-01",
           check_out: "2026-05-04",
           status: "pending",
@@ -146,17 +192,11 @@ describe("ReservationsService", () => {
       );
     });
 
-    it("sets holdExpiresAt approximately 15 minutes from now", async () => {
-      const before = Date.now();
+    it("sets hold_expires_at from the Redis payload, not now+15min", async () => {
       await service.create(CREATE_DTO);
-      const after = Date.now();
 
       const inserted = reservationsRepo.insert.mock.calls[0][0];
-      const holdMs = inserted.hold_expires_at.getTime();
-      const expected = 15 * 60 * 1000;
-
-      expect(holdMs).toBeGreaterThanOrEqual(before + expected - 50);
-      expect(holdMs).toBeLessThanOrEqual(after + expected + 50);
+      expect(inserted.hold_expires_at).toEqual(new Date(HOLD_EXPIRES_AT));
     });
 
     it("returns fareBreakdown and holdExpiresAt in the response", async () => {
@@ -173,6 +213,29 @@ describe("ReservationsService", () => {
       expect(inserted.fare_breakdown).toMatchObject({
         totalUsd: fareBreakdown.totalUsd,
       });
+    });
+
+    it("throws 410 Gone when hold is not found or expired", async () => {
+      cache.getAndDelete.mockResolvedValue(null);
+
+      await expect(service.create(CREATE_DTO)).rejects.toThrow(
+        new HttpException("Hold not found or expired", HttpStatus.GONE),
+      );
+      expect(reservationsRepo.insert).not.toHaveBeenCalled();
+    });
+
+    it("throws 401 when holdId in DTO does not match Redis payload", async () => {
+      await expect(
+        service.create({ ...CREATE_DTO, holdId: "wrong-hold-id" }),
+      ).rejects.toThrow(UnauthorizedException);
+      expect(reservationsRepo.insert).not.toHaveBeenCalled();
+    });
+
+    it("does not call inventoryClient.hold or unhold", async () => {
+      await service.create(CREATE_DTO);
+
+      expect((inventoryClient as any).hold).toBeUndefined();
+      expect((inventoryClient as any).unhold).toBeUndefined();
     });
 
     it("propagates fare calculation errors", async () => {
@@ -201,6 +264,22 @@ describe("ReservationsService", () => {
       await service.findAll();
 
       expect(reservationsRepo.toResponse).toHaveBeenCalledTimes(2);
+    });
+
+    it("filters by bookerId when provided", async () => {
+      const result = await service.findAll("booker-uuid");
+
+      expect(reservationsRepo.findByBookerId).toHaveBeenCalledWith(
+        "booker-uuid",
+      );
+      expect(reservationsRepo.findAll).not.toHaveBeenCalled();
+      expect(result.total).toBe(1);
+    });
+
+    it("returns all when bookerId is not provided", async () => {
+      await service.findAll();
+
+      expect(reservationsRepo.findAll).toHaveBeenCalled();
     });
   });
 
@@ -239,6 +318,60 @@ describe("ReservationsService", () => {
       expect(result).toEqual({ id: confirmedRow.id });
     });
 
+    it("converts the inventory hold to a reservation after confirming in DB", async () => {
+      const confirmedRow = makeRow({ status: "confirmed" });
+      reservationsRepo.confirm = jest.fn().mockResolvedValue(confirmedRow);
+
+      await service.confirm("res-uuid");
+
+      expect(inventoryClient.confirmHold).toHaveBeenCalledWith(
+        confirmedRow.room_id,
+        confirmedRow.check_in,
+        confirmedRow.check_out,
+      );
+    });
+
+    it("does not rethrow when inventory confirmHold fails", async () => {
+      const confirmedRow = makeRow({ status: "confirmed" });
+      reservationsRepo.confirm = jest.fn().mockResolvedValue(confirmedRow);
+      inventoryClient.confirmHold.mockRejectedValue(
+        new Error("inventory down"),
+      );
+
+      await expect(service.confirm("res-uuid")).resolves.not.toThrow();
+    });
+
+    it("defaults financial totals to 0 when row values are null", async () => {
+      const nullFinancialsRow = makeRow({
+        status: "confirmed",
+        grand_total_usd: null,
+        tax_total_usd: null,
+        fee_total_usd: null,
+      });
+      reservationsRepo.confirm = jest.fn().mockResolvedValue(nullFinancialsRow);
+      const publisher = { publish: jest.fn() };
+      service = new (
+        await import("./reservations.service.js")
+      ).ReservationsService(
+        fareCalculator as any,
+        reservationsRepo as any,
+        inventoryClient as any,
+        cache as any,
+        publisher as any,
+      );
+
+      await service.confirm("res-uuid");
+
+      expect(publisher.publish).toHaveBeenCalledWith(
+        "booking.confirmed",
+        expect.objectContaining({
+          grandTotalUsd: 0,
+          taxTotalUsd: 0,
+          feeTotalUsd: 0,
+        }),
+      );
+    });
+
     it("publishes booking.confirmed event with financial totals", async () => {
       const confirmedRow = makeRow({
         status: "confirmed",
@@ -253,7 +386,8 @@ describe("ReservationsService", () => {
       ).ReservationsService(
         fareCalculator as any,
         reservationsRepo as any,
-        roomLocationCache as any,
+        inventoryClient as any,
+        cache as any,
         publisher as any,
       );
 

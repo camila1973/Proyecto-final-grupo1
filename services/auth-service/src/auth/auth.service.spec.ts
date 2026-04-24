@@ -1,3 +1,4 @@
+import { createHash, randomBytes, scryptSync } from "crypto";
 import {
   BadRequestException,
   ConflictException,
@@ -7,285 +8,428 @@ import { AuthService } from "./auth.service";
 import type { AuthRepository } from "./auth.repository";
 import type { DbChallenge, DbUser } from "./auth.types";
 
-type AuthServicePrivate = {
-  hashPassword(password: string): string;
-  hashOtp(otp: string): string;
-};
+// ─── helpers ─────────────────────────────────────────────────────────────────
 
-type RepoMock = jest.Mocked<
+function makePasswordHash(password: string): string {
+  const salt = randomBytes(16).toString("hex");
+  const hash = scryptSync(password, salt, 64).toString("hex");
+  return `${salt}:${hash}`;
+}
+
+function makeOtpHash(otp: string): string {
+  return createHash("sha256").update(otp).digest("hex");
+}
+
+function makeRepo(): jest.Mocked<
   Pick<
     AuthRepository,
     | "findUserByEmail"
+    | "findUserById"
     | "createUser"
-    | "purgeExpiredChallenges"
+    | "listUsers"
     | "createChallenge"
     | "findChallengeById"
-    | "findUserById"
     | "deleteChallengeById"
     | "incrementChallengeAttempts"
-    | "listUsers"
+    | "purgeExpiredChallenges"
   >
->;
-
-function makeRepo(): RepoMock {
+> {
   return {
     findUserByEmail: jest.fn(),
+    findUserById: jest.fn(),
     createUser: jest.fn(),
-    purgeExpiredChallenges: jest.fn(),
+    listUsers: jest.fn(),
     createChallenge: jest.fn(),
     findChallengeById: jest.fn(),
-    findUserById: jest.fn(),
     deleteChallengeById: jest.fn(),
     incrementChallengeAttempts: jest.fn(),
-    listUsers: jest.fn(),
-  } as RepoMock;
-}
-
-function makeDbUser(overrides: Partial<DbUser> = {}): DbUser {
-  return {
-    id: "usr_1",
-    email: "user@example.com",
-    role: "guest",
-    password_hash: "",
-    created_at: "2026-01-01T00:00:00.000Z",
-    ...overrides,
+    purgeExpiredChallenges: jest.fn(),
   };
 }
 
-function makeChallenge(overrides: Partial<DbChallenge> = {}): DbChallenge {
-  return {
-    id: "mfa_1",
-    user_id: "usr_1",
-    otp_code_hash: "",
-    attempts: 0,
-    expires_at: new Date(Date.now() + 60_000).toISOString(),
-    ...overrides,
-  };
-}
+const DB_USER = (overrides: Partial<DbUser> = {}): DbUser => ({
+  id: "usr_abc123",
+  email: "user@example.com",
+  role: "guest",
+  password_hash: makePasswordHash("password123"),
+  created_at: "2024-01-01T00:00:00.000Z",
+  ...overrides,
+});
+
+const DB_CHALLENGE = (overrides: Partial<DbChallenge> = {}): DbChallenge => ({
+  id: "mfa_challenge1",
+  user_id: "usr_abc123",
+  otp_code_hash: makeOtpHash("123456"),
+  attempts: 0,
+  expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+  ...overrides,
+});
+
+// ─── tests ────────────────────────────────────────────────────────────────────
 
 describe("AuthService", () => {
-  let repo: RepoMock;
   let service: AuthService;
+  let repo: ReturnType<typeof makeRepo>;
 
   beforeEach(() => {
     repo = makeRepo();
+    repo.createUser.mockResolvedValue(undefined);
+    repo.findUserByEmail.mockResolvedValue(null);
+    repo.purgeExpiredChallenges.mockResolvedValue(undefined);
+    repo.createChallenge.mockResolvedValue(undefined);
+    repo.deleteChallengeById.mockResolvedValue(undefined);
+    repo.incrementChallengeAttempts.mockResolvedValue(undefined);
+    repo.listUsers.mockResolvedValue([]);
     service = new AuthService(repo as unknown as AuthRepository);
-    global.fetch = jest
-      .fn()
-      .mockResolvedValue({ ok: true }) as unknown as typeof fetch;
+    jest.spyOn(global, "fetch").mockResolvedValue({ ok: true } as Response);
   });
 
   afterEach(() => {
-    jest.resetAllMocks();
+    jest.restoreAllMocks();
   });
 
+  // ─── register ───────────────────────────────────────────────────────────────
+
   describe("register", () => {
-    it("throws for invalid email", async () => {
-      await expect(
-        service.register({ email: "bad-email", password: "Password@1" }),
-      ).rejects.toBeInstanceOf(BadRequestException);
-    });
-
-    it("throws when email already exists", async () => {
-      repo.findUserByEmail.mockResolvedValue(makeDbUser());
-
-      await expect(
-        service.register({ email: "user@example.com", password: "Password@1" }),
-      ).rejects.toBeInstanceOf(ConflictException);
-    });
-
-    it("creates user with normalized email and default role", async () => {
-      repo.findUserByEmail.mockResolvedValue(null);
-      repo.createUser.mockResolvedValue(undefined);
-
+    it("returns user info on success", async () => {
       const result = await service.register({
-        email: " USER@EXAMPLE.COM ",
-        password: "Password@1",
+        email: "test@example.com",
+        password: "password123",
+      });
+
+      expect(result.email).toBe("test@example.com");
+      expect(result.role).toBe("guest");
+      expect(result.id).toMatch(/^usr_/);
+      expect(result.createdAt).toBeTruthy();
+    });
+
+    it("uses the provided role", async () => {
+      const result = await service.register({
+        email: "admin@example.com",
+        password: "password123",
+        role: "admin",
+      });
+
+      expect(result.role).toBe("admin");
+    });
+
+    it("normalizes email to lower-case and trims whitespace", async () => {
+      const result = await service.register({
+        email: "  TEST@EXAMPLE.COM  ",
+        password: "password123",
+      });
+
+      expect(result.email).toBe("test@example.com");
+      expect(repo.findUserByEmail).toHaveBeenCalledWith("test@example.com");
+    });
+
+    it("calls createUser with hashed password", async () => {
+      await service.register({
+        email: "test@example.com",
+        password: "password123",
       });
 
       expect(repo.createUser).toHaveBeenCalledWith(
         expect.objectContaining({
-          email: "user@example.com",
+          email: "test@example.com",
           role: "guest",
+          passwordHash: expect.stringContaining(":"),
         }),
       );
-      expect(result.email).toBe("user@example.com");
-      expect(result.role).toBe("guest");
-      expect(result.id).toMatch(/^usr_/);
+    });
+
+    it("throws ConflictException when email already registered", async () => {
+      repo.findUserByEmail.mockResolvedValue(DB_USER());
+
+      await expect(
+        service.register({
+          email: "user@example.com",
+          password: "password123",
+        }),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it("throws BadRequestException for invalid email format", async () => {
+      await expect(
+        service.register({ email: "not-an-email", password: "password123" }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it("throws BadRequestException when email is empty", async () => {
+      await expect(
+        service.register({ email: "", password: "password123" }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it("throws BadRequestException for password shorter than 8 chars", async () => {
+      await expect(
+        service.register({ email: "test@example.com", password: "short" }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it("throws BadRequestException when password is empty", async () => {
+      await expect(
+        service.register({ email: "test@example.com", password: "" }),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 
+  // ─── login ───────────────────────────────────────────────────────────────────
+
   describe("login", () => {
-    it("throws for invalid credentials", async () => {
-      repo.findUserByEmail.mockResolvedValue(null);
-
-      await expect(
-        service.login({ email: "user@example.com", password: "Password@1" }),
-      ).rejects.toBeInstanceOf(UnauthorizedException);
-    });
-
-    it("creates MFA challenge and returns response", async () => {
-      const passwordHash = (
-        service as unknown as AuthServicePrivate
-      ).hashPassword("Password@1");
+    it("returns MFA challenge on valid credentials", async () => {
+      const password = "password123";
       repo.findUserByEmail.mockResolvedValue(
-        makeDbUser({ password_hash: passwordHash }),
+        DB_USER({ password_hash: makePasswordHash(password) }),
       );
-      repo.purgeExpiredChallenges.mockResolvedValue(undefined);
-      repo.createChallenge.mockResolvedValue(undefined);
-
-      const result = await service.login({
-        email: "USER@example.com",
-        password: "Password@1",
-      });
-
-      expect(repo.purgeExpiredChallenges).toHaveBeenCalled();
-      expect(repo.createChallenge).toHaveBeenCalledWith(
-        expect.objectContaining({
-          id: expect.stringMatching(/^mfa_/) as string,
-          userId: "usr_1",
-          otpCodeHash: expect.any(String) as string,
-        }),
-      );
-      expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining("/notifications/send"),
-        expect.objectContaining({ method: "POST" }),
-      );
-      expect(result).toEqual(
-        expect.objectContaining({
-          mfaRequired: true,
-          challengeType: "email_otp",
-          expiresIn: 300,
-          user: { id: "usr_1", email: "user@example.com", role: "guest" },
-        }),
-      );
-    });
-
-    it("continues login even if OTP email sending fails", async () => {
-      const passwordHash = (
-        service as unknown as AuthServicePrivate
-      ).hashPassword("Password@1");
-      repo.findUserByEmail.mockResolvedValue(
-        makeDbUser({ password_hash: passwordHash }),
-      );
-      repo.purgeExpiredChallenges.mockResolvedValue(undefined);
-      repo.createChallenge.mockResolvedValue(undefined);
-      global.fetch = jest
-        .fn()
-        .mockRejectedValue(new Error("network")) as unknown as typeof fetch;
 
       const result = await service.login({
         email: "user@example.com",
-        password: "Password@1",
+        password,
       });
 
       expect(result.mfaRequired).toBe(true);
+      expect(result.challengeId).toMatch(/^mfa_/);
+      expect(result.challengeType).toBe("email_otp");
+      expect(result.expiresIn).toBe(300);
+      expect(result.user.email).toBe("user@example.com");
+    });
+
+    it("normalizes email before lookup", async () => {
+      const password = "password123";
+      repo.findUserByEmail.mockResolvedValue(
+        DB_USER({ password_hash: makePasswordHash(password) }),
+      );
+
+      await service.login({ email: "  USER@EXAMPLE.COM  ", password });
+
+      expect(repo.findUserByEmail).toHaveBeenCalledWith("user@example.com");
+    });
+
+    it("throws UnauthorizedException when user not found", async () => {
+      repo.findUserByEmail.mockResolvedValue(null);
+
+      await expect(
+        service.login({
+          email: "missing@example.com",
+          password: "password123",
+        }),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it("throws UnauthorizedException when password is wrong", async () => {
+      repo.findUserByEmail.mockResolvedValue(
+        DB_USER({ password_hash: makePasswordHash("correct_password") }),
+      );
+
+      await expect(
+        service.login({
+          email: "user@example.com",
+          password: "wrong_password",
+        }),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it("throws UnauthorizedException when stored hash has no salt (invalid format)", async () => {
+      repo.findUserByEmail.mockResolvedValue(
+        DB_USER({ password_hash: "nocoloninthishash" }),
+      );
+
+      await expect(
+        service.login({ email: "user@example.com", password: "password123" }),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it("throws BadRequestException for invalid email", async () => {
+      await expect(
+        service.login({ email: "not-email", password: "password123" }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it("throws BadRequestException for short password", async () => {
+      await expect(
+        service.login({ email: "user@example.com", password: "short" }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it("creates a challenge and stores it", async () => {
+      const password = "password123";
+      repo.findUserByEmail.mockResolvedValue(
+        DB_USER({ password_hash: makePasswordHash(password) }),
+      );
+
+      await service.login({ email: "user@example.com", password });
+
+      expect(repo.createChallenge).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: "usr_abc123",
+          otpCodeHash: expect.stringMatching(/^[a-f0-9]{64}$/),
+        }),
+      );
+    });
+
+    it("does not throw when sendOtpEmail (fetch) fails", async () => {
+      const password = "password123";
+      repo.findUserByEmail.mockResolvedValue(
+        DB_USER({ password_hash: makePasswordHash(password) }),
+      );
+      jest.spyOn(global, "fetch").mockRejectedValue(new Error("network error"));
+
+      await expect(
+        service.login({ email: "user@example.com", password }),
+      ).resolves.not.toThrow();
+    });
+
+    it("purges expired challenges before creating a new one", async () => {
+      const password = "password123";
+      repo.findUserByEmail.mockResolvedValue(
+        DB_USER({ password_hash: makePasswordHash(password) }),
+      );
+
+      await service.login({ email: "user@example.com", password });
+
+      expect(repo.purgeExpiredChallenges).toHaveBeenCalled();
     });
   });
 
+  // ─── verifyMfaLogin ──────────────────────────────────────────────────────────
+
   describe("verifyMfaLogin", () => {
-    it("throws when challengeId or code is missing", async () => {
-      await expect(
-        service.verifyMfaLogin({ challengeId: "", code: "" }),
-      ).rejects.toBeInstanceOf(BadRequestException);
+    const OTP = "123456";
+    const validChallenge = DB_CHALLENGE({ otp_code_hash: makeOtpHash(OTP) });
+    const validUser = DB_USER();
+
+    beforeEach(() => {
+      repo.findChallengeById.mockResolvedValue(validChallenge);
+      repo.findUserById.mockResolvedValue(validUser);
     });
 
-    it("throws when challenge is missing", async () => {
+    it("throws BadRequestException when challengeId is empty", async () => {
+      await expect(
+        service.verifyMfaLogin({ challengeId: "", code: OTP }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it("throws BadRequestException when code is empty", async () => {
+      await expect(
+        service.verifyMfaLogin({ challengeId: "mfa_challenge1", code: "" }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it("throws UnauthorizedException when challenge not found", async () => {
       repo.findChallengeById.mockResolvedValue(null);
 
       await expect(
-        service.verifyMfaLogin({ challengeId: "mfa_x", code: "123456" }),
-      ).rejects.toBeInstanceOf(UnauthorizedException);
+        service.verifyMfaLogin({ challengeId: "mfa_none", code: OTP }),
+      ).rejects.toThrow(UnauthorizedException);
     });
 
-    it("throws and deletes challenge when expired", async () => {
+    it("throws UnauthorizedException and deletes challenge when expired", async () => {
       repo.findChallengeById.mockResolvedValue(
-        makeChallenge({
-          expires_at: new Date(Date.now() - 1_000).toISOString(),
-        }),
+        DB_CHALLENGE({ expires_at: new Date(Date.now() - 1000).toISOString() }),
       );
-      repo.deleteChallengeById.mockResolvedValue(undefined);
 
       await expect(
-        service.verifyMfaLogin({ challengeId: "mfa_1", code: "123456" }),
-      ).rejects.toBeInstanceOf(UnauthorizedException);
-      expect(repo.deleteChallengeById).toHaveBeenCalledWith("mfa_1");
+        service.verifyMfaLogin({ challengeId: "mfa_challenge1", code: OTP }),
+      ).rejects.toThrow(UnauthorizedException);
+      expect(repo.deleteChallengeById).toHaveBeenCalledWith("mfa_challenge1");
     });
 
-    it("throws and deletes challenge when attempts are exhausted", async () => {
-      repo.findChallengeById.mockResolvedValue(makeChallenge({ attempts: 3 }));
-      repo.deleteChallengeById.mockResolvedValue(undefined);
+    it("throws UnauthorizedException and deletes challenge when attempts >= 3", async () => {
+      repo.findChallengeById.mockResolvedValue(DB_CHALLENGE({ attempts: 3 }));
 
       await expect(
-        service.verifyMfaLogin({ challengeId: "mfa_1", code: "123456" }),
-      ).rejects.toBeInstanceOf(UnauthorizedException);
-      expect(repo.deleteChallengeById).toHaveBeenCalledWith("mfa_1");
+        service.verifyMfaLogin({ challengeId: "mfa_challenge1", code: OTP }),
+      ).rejects.toThrow(UnauthorizedException);
+      expect(repo.deleteChallengeById).toHaveBeenCalledWith("mfa_challenge1");
     });
 
-    it("throws and increments attempts on invalid code", async () => {
-      const challenge = makeChallenge({
-        otp_code_hash: (service as unknown as AuthServicePrivate).hashOtp(
-          "654321",
-        ),
-        attempts: 1,
-      });
-      repo.findChallengeById.mockResolvedValue(challenge);
-      repo.findUserById.mockResolvedValue(makeDbUser());
-      repo.incrementChallengeAttempts.mockResolvedValue(undefined);
+    it("throws UnauthorizedException and deletes challenge when user not found", async () => {
+      repo.findUserById.mockResolvedValue(null);
 
       await expect(
-        service.verifyMfaLogin({ challengeId: "mfa_1", code: "123456" }),
-      ).rejects.toBeInstanceOf(UnauthorizedException);
-      expect(repo.incrementChallengeAttempts).toHaveBeenCalledWith("mfa_1");
+        service.verifyMfaLogin({ challengeId: "mfa_challenge1", code: OTP }),
+      ).rejects.toThrow(UnauthorizedException);
+      expect(repo.deleteChallengeById).toHaveBeenCalledWith("mfa_challenge1");
     });
 
-    it("throws and deletes challenge when invalid code reaches max attempts", async () => {
-      const challenge = makeChallenge({
-        otp_code_hash: (service as unknown as AuthServicePrivate).hashOtp(
-          "654321",
-        ),
-        attempts: 2,
-      });
-      repo.findChallengeById.mockResolvedValue(challenge);
-      repo.findUserById.mockResolvedValue(makeDbUser());
-      repo.deleteChallengeById.mockResolvedValue(undefined);
-
-      await expect(
-        service.verifyMfaLogin({ challengeId: "mfa_1", code: "123456" }),
-      ).rejects.toBeInstanceOf(UnauthorizedException);
-      expect(repo.deleteChallengeById).toHaveBeenCalledWith("mfa_1");
-    });
-
-    it("returns access token and user when code is valid", async () => {
-      const challenge = makeChallenge({
-        otp_code_hash: (service as unknown as AuthServicePrivate).hashOtp(
-          "123456",
-        ),
-      });
-      repo.findChallengeById.mockResolvedValue(challenge);
-      repo.findUserById.mockResolvedValue(makeDbUser());
-      repo.deleteChallengeById.mockResolvedValue(undefined);
-
+    it("returns access token on valid OTP", async () => {
       const result = await service.verifyMfaLogin({
-        challengeId: "mfa_1",
-        code: "123456",
+        challengeId: "mfa_challenge1",
+        code: OTP,
       });
 
-      expect(repo.deleteChallengeById).toHaveBeenCalledWith("mfa_1");
-      expect(result.tokenType).toBe("Bearer");
+      expect(result.accessToken).toBeTruthy();
       expect(result.accessToken.split(".")).toHaveLength(3);
-      expect(result.user).toEqual({
-        id: "usr_1",
-        email: "user@example.com",
-        role: "guest",
+      expect(result.tokenType).toBe("Bearer");
+      expect(result.expiresIn).toBe(3600);
+      expect(result.user.id).toBe("usr_abc123");
+    });
+
+    it("trims whitespace from code before verifying", async () => {
+      const result = await service.verifyMfaLogin({
+        challengeId: "mfa_challenge1",
+        code: `  ${OTP}  `,
       });
+
+      expect(result.accessToken).toBeTruthy();
+    });
+
+    it("deletes challenge after successful verification", async () => {
+      await service.verifyMfaLogin({
+        challengeId: "mfa_challenge1",
+        code: OTP,
+      });
+
+      expect(repo.deleteChallengeById).toHaveBeenCalledWith("mfa_challenge1");
+    });
+
+    it("increments attempts and throws on wrong code", async () => {
+      await expect(
+        service.verifyMfaLogin({
+          challengeId: "mfa_challenge1",
+          code: "000000",
+        }),
+      ).rejects.toThrow(UnauthorizedException);
+      expect(repo.incrementChallengeAttempts).toHaveBeenCalledWith(
+        "mfa_challenge1",
+      );
+    });
+
+    it("deletes challenge and throws when wrong code reaches 3 attempts", async () => {
+      repo.findChallengeById.mockResolvedValue(
+        DB_CHALLENGE({ attempts: 2, otp_code_hash: makeOtpHash(OTP) }),
+      );
+
+      await expect(
+        service.verifyMfaLogin({
+          challengeId: "mfa_challenge1",
+          code: "000000",
+        }),
+      ).rejects.toThrow(UnauthorizedException);
+      expect(repo.deleteChallengeById).toHaveBeenCalledWith("mfa_challenge1");
     });
   });
 
+  // ─── getUsers ────────────────────────────────────────────────────────────────
+
   describe("getUsers", () => {
-    it("maps DB rows to public DTO", async () => {
+    it("returns mapped user list with camelCase createdAt", async () => {
       repo.listUsers.mockResolvedValue([
-        makeDbUser({ created_at: "2026-01-02T00:00:00.000Z" }),
+        {
+          id: "usr_1",
+          email: "a@b.com",
+          role: "guest",
+          password_hash: "h",
+          created_at: "2024-01-01",
+        },
+        {
+          id: "usr_2",
+          email: "c@d.com",
+          role: "admin",
+          password_hash: "h2",
+          created_at: "2024-02-01",
+        },
       ]);
 
       const result = await service.getUsers();
@@ -293,11 +437,25 @@ describe("AuthService", () => {
       expect(result).toEqual([
         {
           id: "usr_1",
-          email: "user@example.com",
+          email: "a@b.com",
           role: "guest",
-          createdAt: "2026-01-02T00:00:00.000Z",
+          createdAt: "2024-01-01",
+        },
+        {
+          id: "usr_2",
+          email: "c@d.com",
+          role: "admin",
+          createdAt: "2024-02-01",
         },
       ]);
+    });
+
+    it("returns empty array when no users exist", async () => {
+      repo.listUsers.mockResolvedValue([]);
+
+      const result = await service.getUsers();
+
+      expect(result).toEqual([]);
     });
   });
 });

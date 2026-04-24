@@ -351,7 +351,7 @@ function makeCloudRun(
         connector: vpcConnector.id,
         egress: "PRIVATE_RANGES_ONLY",
       },
-      scaling: { minInstanceCount: 0, maxInstanceCount: 1 },
+      scaling: { minInstanceCount: 1, maxInstanceCount: 1 },
       containers: [{
         image: img.imageName,
         ports: [{ containerPort: 8080 }],
@@ -418,6 +418,11 @@ for (const svc of MICROSERVICES) {
     plainEnv["SMTP_USER"] = smtpUser;
     plainEnv["SMTP_FROM"] = smtpFrom ?? smtpUser;
     secretEnvVars["SMTP_PASS"] = { secretId: smtpPassSecret!.secretId };
+  }
+
+  if (svc.name === "booking-service") {
+    plainEnv["REDIS_URL"]             = pulumi.interpolate`redis://${redisInstance.host}:6379`;
+    plainEnv["INVENTORY_SERVICE_URL"] = pulumi.interpolate`${runners["inventory-service"]!.uri}`;
   }
 
   if (svc.name === "payment-service") {

@@ -27,23 +27,64 @@
   "property_detail": {
     "back": "Back to results",
     "per_night": "per night",
-    "book_now": "Book now",
+    "book_now": "Book",
+    "select_room": "Select room",
+    "about": "About the hotel",
+    "read_more": "Read more",
+    "read_less": "Read less",
+    "no_description": "Description not yet available.",
     "amenities": "Amenities",
     "rooms": "Available rooms",
-    "reviews": "Reviews",
+    "rooms_found_one": "{{count}} room available",
+    "rooms_found_other": "{{count}} rooms available",
+    "no_rooms": "There are no rooms available for these dates.",
+    "check_in": "Check-in",
+    "check_out": "Check-out",
+    "guests": "Guests",
+    "room_capacity_one": "Capacity for {{count}} guest",
+    "room_capacity_other": "Capacity for {{count}} guests",
+    "room_bed": "Has {{bed}}",
+    "total_for_nights_one": "for {{count}} night",
+    "total_for_nights_other": "for {{count}} nights",
+    "taxes_included": "taxes incl.",
+    "fees_included": "fees included",
+    "reviews": "Guest reviews",
+    "reviews_count_one": "{{count}} review",
+    "reviews_count_other": "{{count}} reviews",
+    "reviews_empty": "No reviews yet for this property.",
+    "reviews_loading": "Loading reviews...",
+    "reviews_loading_more": "Loading more...",
+    "reviews_load_more": "Load more reviews",
+    "reviews_error": "Could not load reviews.",
     "rating_label": "Rating",
     "stars_label": "stars",
     "location": "Location",
     "capacity": "Capacity",
-    "guests": "guests",
     "room_type": "Room type",
     "bed_type": "Bed type",
     "view_type": "View",
-    "availability": "Checking availability...",
-    "available": "Available",
+    "availability": "Checking live availability…",
+    "available": "Live availability verified",
     "unavailable": "Unavailable",
     "loading": "Loading property details...",
-    "error": "Could not load property details."
+    "error": "Could not load property details.",
+    "carousel": {
+      "no_images": "No images available",
+      "previous": "Previous image",
+      "next": "Next image",
+      "selector": "Image selector",
+      "go_to": "Go to image {{index}}"
+    },
+    "about_description": "{{name}} is located in {{address}}. It offers first-class facilities and exceptional service.",
+    "rooms_count_one": "{{count}} room",
+    "rooms_count_other": "{{count}} rooms",
+    "rooms_available": "available",
+    "guests_label": "Guests",
+    "capacity_for_one": "Capacity for {{count}} guest",
+    "capacity_for_other": "Capacity for {{count}} guests",
+    "has_bed": "Has {{bed}} size bed",
+    "nights_incl_taxes_one": "for {{count}} night · taxes incl.",
+    "nights_incl_taxes_other": "for {{count}} nights · taxes incl."
   },
   "search": {
     "error_city_required": "Please enter a destination.",
@@ -56,9 +97,10 @@
     "filters": {
       "title": "Filters",
       "clear": "Clear filters",
-      "price_label": "PRICE PER NIGHT ({{currency}})",
+      "price_label": "TOTAL PRICE ({{currency}})",
       "price_from": "FROM",
-      "price_to": "TO"
+      "price_to": "TO",
+      "stars_label": "STARS"
     },
     "card": {
       "nights_one": "per night",
@@ -138,6 +180,47 @@
       "expired": "The code has expired.",
       "too_many_attempts": "Too many failed attempts.",
       "generic": "Something went wrong. Please try again."
+    }
+  },
+  "taxonomies": {
+    "categories": {
+      "amenities": "Amenities",
+      "room_type": "Room Type",
+      "bed_type": "Bed Type",
+      "view_type": "View"
+    },
+    "amenities": {
+      "pool": "Pool",
+      "wifi": "Free WiFi",
+      "parking": "Parking",
+      "gym": "Gym",
+      "spa": "Spa",
+      "restaurant": "Restaurant",
+      "breakfast": "Breakfast",
+      "ac": "Air Conditioning",
+      "pet_friendly": "Pet Friendly",
+      "beach_access": "Beach Access"
+    },
+    "room_type": {
+      "standard": "Standard",
+      "deluxe": "Deluxe",
+      "suite": "Suite",
+      "junior_suite": "Junior Suite",
+      "penthouse": "Penthouse"
+    },
+    "bed_type": {
+      "single": "Single",
+      "twin": "Twin",
+      "double": "Double",
+      "queen": "Queen",
+      "king": "King"
+    },
+    "view_type": {
+      "garden": "Garden View",
+      "city": "City View",
+      "ocean": "Ocean View",
+      "mountain": "Mountain View",
+      "pool": "Pool View"
     }
   },
   "footer": {

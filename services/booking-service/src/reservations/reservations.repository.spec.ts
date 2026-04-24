@@ -38,7 +38,12 @@ function makeRow(overrides: Record<string, unknown> = {}) {
     property_id: "prop-uuid",
     room_id: "room-uuid",
     partner_id: "partner-uuid",
-    guest_id: "guest-uuid",
+    booker_id: "booker-uuid",
+    guest_info: {
+      firstName: "Ana",
+      lastName: "García",
+      email: "ana@example.com",
+    },
     check_in: "2026-05-01",
     check_out: "2026-05-04",
     status: "pending",
@@ -82,6 +87,20 @@ describe("ReservationsRepository", () => {
     });
   });
 
+  describe("findByBookerId", () => {
+    it("filters reservations by booker_id", async () => {
+      const rows = [makeRow()];
+      const db = makeDb({ many: rows });
+      const repo = new ReservationsRepository(db);
+
+      const result = await repo.findByBookerId("booker-uuid");
+
+      expect(db.selectFrom).toHaveBeenCalledWith("reservations");
+      expect(db.where).toHaveBeenCalledWith("booker_id", "=", "booker-uuid");
+      expect(result).toBe(rows);
+    });
+  });
+
   describe("findById", () => {
     it("returns the row when found", async () => {
       const row = makeRow();
@@ -120,7 +139,12 @@ describe("ReservationsRepository", () => {
       expect(result.id).toBe("res-uuid");
       expect(result.propertyId).toBe("prop-uuid");
       expect(result.roomId).toBe("room-uuid");
-      expect(result.guestId).toBe("guest-uuid");
+      expect(result.bookerId).toBe("booker-uuid");
+      expect(result.guestInfo).toEqual({
+        firstName: "Ana",
+        lastName: "García",
+        email: "ana@example.com",
+      });
       expect(result.checkIn).toBe("2026-05-01");
       expect(result.checkOut).toBe("2026-05-04");
       expect(result.status).toBe("pending");
@@ -204,11 +228,65 @@ describe("ReservationsRepository", () => {
       expect(result).toEqual(confirmed);
     });
 
+    it("guards against confirming non-pending rows via status filter", async () => {
+      const db = makeDb({ single: undefined });
+      const repo = new ReservationsRepository(db);
+
+      // A confirmed or expired row returns undefined from the guarded UPDATE,
+      // which should throw NotFoundException
+      await expect(repo.confirm("already-confirmed")).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
     it("throws NotFoundException when reservation not found", async () => {
       const db = makeDb({ single: null });
       const repo = new ReservationsRepository(db);
 
       await expect(repo.confirm("missing")).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe("findExpiredHolds", () => {
+    it("returns pending rows with hold_expires_at in the past", async () => {
+      const rows = [makeRow({ status: "pending" })];
+      const db = makeDb({ many: rows });
+      const repo = new ReservationsRepository(db);
+
+      const result = await repo.findExpiredHolds();
+
+      expect(db.selectFrom).toHaveBeenCalledWith("reservations");
+      expect(db.where).toHaveBeenCalledWith("status", "=", "pending");
+      expect(db.where).toHaveBeenCalledWith(
+        "hold_expires_at",
+        "<",
+        expect.any(Date),
+      );
+      expect(result).toBe(rows);
+    });
+  });
+
+  describe("expire", () => {
+    it("transitions status to expired and returns the row", async () => {
+      const expired = makeRow({ status: "expired" });
+      const db = makeDb({ single: expired });
+      const repo = new ReservationsRepository(db);
+
+      const result = await repo.expire("res-uuid");
+
+      expect(db.updateTable).toHaveBeenCalledWith("reservations");
+      expect(db.where).toHaveBeenCalledWith("id", "=", "res-uuid");
+      expect(db.where).toHaveBeenCalledWith("status", "=", "pending");
+      expect(result).toBe(expired);
+    });
+
+    it("returns undefined when row is not pending (idempotency guard)", async () => {
+      const db = makeDb({ single: undefined });
+      const repo = new ReservationsRepository(db);
+
+      const result = await repo.expire("already-confirmed");
+
+      expect(result).toBeUndefined();
     });
   });
 });

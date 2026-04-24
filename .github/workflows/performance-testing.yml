@@ -1,0 +1,70 @@
+name: Performance Testing
+
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: 'Test profile'
+        required: true
+        default: smoke
+        type: choice
+        options:
+          - smoke
+          - load
+          - all
+      gateway_url:
+        description: 'API Gateway URL (leave blank to use the GATEWAY_URL repository variable)'
+        required: false
+        type: string
+
+concurrency:
+  group: load-testing
+  cancel-in-progress: true  # a new run supersedes any in-flight test
+
+permissions:
+  contents: read
+
+env:
+  HUSKY: '0'
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
+jobs:
+  k6:
+    name: k6 / ${{ github.event.inputs.profile }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install k6
+        uses: grafana/setup-k6-action@v1
+
+      - name: Run smoke/search
+        if: ${{ github.event.inputs.profile == 'smoke' || github.event.inputs.profile == 'all' }}
+        working-directory: performance-tests
+        run: k6 run --out json=results/results-search-smoke.json scenarios/smoke/search.js
+        env:
+          GATEWAY_URL: ${{ github.event.inputs.gateway_url || env.GATEWAY_URL }}
+
+      - name: Run smoke/booking
+        if: ${{ github.event.inputs.profile == 'smoke' || github.event.inputs.profile == 'all' }}
+        working-directory: performance-tests
+        run: k6 run --out json=results/results-booking.json scenarios/smoke/booking.js
+        env:
+          GATEWAY_URL: ${{ github.event.inputs.gateway_url || env.GATEWAY_URL }}
+
+      - name: Run load/search
+        if: ${{ github.event.inputs.profile == 'load' || github.event.inputs.profile == 'all' }}
+        working-directory: performance-tests
+        run: k6 run --out json=results/results-search-load.json scenarios/load/search.js
+        env:
+          GATEWAY_URL: ${{ github.event.inputs.gateway_url || env.GATEWAY_URL }}
+
+      - name: Upload results
+        if: always()  # upload even when thresholds fail so the report is available
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6-results-${{ github.event.inputs.profile }}-${{ github.run_id }}
+          path: performance-tests/results/
+          retention-days: 7
+          if-no-files-found: warn

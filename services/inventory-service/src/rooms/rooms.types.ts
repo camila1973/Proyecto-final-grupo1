@@ -28,6 +28,8 @@ export interface PublicRoom {
   totalRooms: number;
   basePriceUsd: string;
   status: string;
+  country: string;
+  city: string;
   createdAt: Date;
   updatedAt: Date;
 }

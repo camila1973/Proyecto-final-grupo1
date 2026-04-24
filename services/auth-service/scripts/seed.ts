@@ -1,0 +1,82 @@
+import { Kysely, PostgresDialect, sql } from "kysely";
+import { Pool } from "pg";
+import { randomBytes, scryptSync } from "crypto";
+import type { AuthDatabase } from "../src/database/database.types.js";
+
+const db = new Kysely<AuthDatabase>({
+  dialect: new PostgresDialect({
+    pool: new Pool({
+      connectionString:
+        process.env.DATABASE_URL ??
+        "postgres://postgres:postgres@localhost:5432/travelhub",
+    }),
+  }),
+});
+
+// ─── helpers ─────────────────────────────────────────────────────────────────
+
+function hashPassword(password: string): string {
+  const salt = randomBytes(16).toString("hex");
+  const hash = scryptSync(password, salt, 64).toString("hex");
+  return `${salt}:${hash}`;
+}
+
+// ─── seed data ────────────────────────────────────────────────────────────────
+
+const USERS = [
+  {
+    id: "usr_0000000000000001",
+    email: "admin@travelhub.com",
+    role: "admin" as const,
+    password: "Admin1234!",
+  },
+  {
+    id: "usr_0000000000000002",
+    email: "partner@travelhub.com",
+    role: "partner" as const,
+    password: "Partner1234!",
+  },
+  {
+    id: "usr_0000000000000003",
+    email: "guest@travelhub.com",
+    role: "guest" as const,
+    password: "Guest1234!",
+  },
+];
+
+// ─── seed ─────────────────────────────────────────────────────────────────────
+
+async function seed() {
+  console.log("Truncating tables...");
+  await sql`TRUNCATE auth_login_challenges, auth_users RESTART IDENTITY CASCADE`.execute(
+    db,
+  );
+
+  console.log("Seeding auth_users...");
+  await db
+    .insertInto("auth_users")
+    .values(
+      USERS.map((u) => ({
+        id: u.id,
+        email: u.email,
+        role: u.role,
+        password_hash: hashPassword(u.password),
+        created_at: new Date().toISOString(),
+      })),
+    )
+    .execute();
+
+  for (const u of USERS) {
+    console.log(
+      `  ✓ ${u.role.padEnd(7)} ${u.email}  (password: ${u.password})`,
+    );
+  }
+
+  console.log("✓ Seed complete.");
+  await db.destroy();
+}
+
+seed().catch((err) => {
+  console.error("Seed failed:", err);
+  process.exit(1);
+});

@@ -1,5 +1,6 @@
 import { PropertiesService } from "./properties.service.js";
 import type { PropertiesRepository } from "./properties.repository.js";
+import type { ReviewsRepository } from "./reviews.repository.js";
 import type { CacheService } from "../cache/cache.service.js";
 import type { FacetsService } from "./facets/facets.service.js";
 import type { InventoryClientService } from "../inventory/inventory-client.service.js";
@@ -10,6 +11,7 @@ import type { SearchPropertiesDto } from "./dto/search-properties.dto.js";
 const mockRoom = {
   room_id: "r1",
   property_id: "p1",
+  partner_id: "pa1",
   property_name: "Hotel A",
   city: "Lisbon",
   country: "Portugal",
@@ -17,6 +19,8 @@ const mockRoom = {
   rating: "4.0",
   review_count: 10,
   thumbnail_url: "",
+  image_urls: [] as string[],
+  description: {} as Record<string, string>,
   amenities: ["wifi"],
   neighborhood: null,
   room_type: "suite",
@@ -51,6 +55,8 @@ const mockRoomResult = {
     rating: 4.0,
     reviewCount: 10,
     thumbnailUrl: "",
+    imageUrls: [] as string[],
+    description: {} as Record<string, string>,
     amenities: ["wifi"],
   },
 };
@@ -104,8 +110,18 @@ function makeServices(candidateRows = [mockRoom]) {
       .mockResolvedValue(candidateRows.map((r) => ({ roomId: r.room_id }))),
   };
 
+  const reviewsRepo: jest.Mocked<
+    Pick<ReviewsRepository, "findByPropertyId" | "aggregate">
+  > = {
+    findByPropertyId: jest.fn().mockResolvedValue([]),
+    aggregate: jest
+      .fn()
+      .mockResolvedValue({ averageRating: 0, totalReviews: 0 }),
+  };
+
   const service = new PropertiesService(
     repo as unknown as PropertiesRepository,
+    reviewsRepo as unknown as ReviewsRepository,
     cache as unknown as CacheService,
     mockFacets,
     inventoryClient as unknown as InventoryClientService,
@@ -116,6 +132,7 @@ function makeServices(candidateRows = [mockRoom]) {
     cache,
     mockFacets,
     inventoryClient,
+    reviewsRepo,
   };
 }
 
@@ -175,10 +192,11 @@ describe("PropertiesService", () => {
       expect(mockFacets.applyFilters).toHaveBeenCalledWith(
         expect.anything(),
         expect.objectContaining({ stars: [4, 5], priceMax: 400 }),
+        4,
       );
     });
 
-    it("passes only price filters to applyFilters when exact=false", async () => {
+    it("does not pass category filters to applyFilters when exact=false", async () => {
       const { service, mockFacets } = makeServices();
       await service.searchProperties({
         ...baseDto,
@@ -188,16 +206,22 @@ describe("PropertiesService", () => {
       });
       expect(mockFacets.applyFilters).toHaveBeenCalledWith(
         expect.anything(),
-        expect.objectContaining({ roomType: undefined, stars: undefined }),
+        expect.objectContaining({ roomType: undefined, stars: [5] }),
+        4,
       );
     });
 
-    it("passes only price filters to applyFilters when exact is undefined", async () => {
+    it("does not pass category filters to applyFilters when exact is undefined", async () => {
       const { service, mockFacets } = makeServices();
-      await service.searchProperties({ ...baseDto, roomType: ["suite"] });
+      await service.searchProperties({
+        ...baseDto,
+        roomType: ["suite"],
+        stars: [4],
+      });
       expect(mockFacets.applyFilters).toHaveBeenCalledWith(
         expect.anything(),
-        expect.objectContaining({ roomType: undefined }),
+        expect.objectContaining({ roomType: undefined, stars: [4] }),
+        4,
       );
     });
 
@@ -289,6 +313,7 @@ describe("PropertiesService", () => {
       expect(mockFacets.applyFilters).toHaveBeenCalledWith(
         [roomA],
         expect.anything(),
+        4,
       );
     });
   });
@@ -425,10 +450,16 @@ describe("PropertiesService", () => {
       });
     });
 
-    it("hoists shared property info to top level", async () => {
+    it("hoists shared property info to top level (with localized description)", async () => {
       const { service } = makeServices();
       const result = (await service.getPropertyRooms("p1", {})) as any;
-      expect(result.property).toEqual(mockRoomResult.property);
+      // description is now flattened to the requested language, with the
+      // full language map preserved on descriptionByLang
+      expect(result.property).toEqual({
+        ...mockRoomResult.property,
+        description: "",
+        descriptionByLang: {},
+      });
     });
 
     it("strips property and _partnerId from each room entry", async () => {
@@ -449,11 +480,20 @@ describe("PropertiesService", () => {
       expect(room.estimatedTotalUsd).toBeDefined();
     });
 
-    it("returns { property: null, rooms: [] } when no rooms found", async () => {
-      const { service, mockFacets } = makeServices();
+    it("returns { property: null, rooms: [] } when property has no candidates", async () => {
+      const { service, mockFacets } = makeServices([]);
       mockFacets.mapAllRooms.mockReturnValue([]);
       const result = (await service.getPropertyRooms("p1", {})) as any;
       expect(result.property).toBeNull();
+      expect(result.rooms).toEqual([]);
+    });
+
+    it("returns a property shell with empty rooms when all rooms are unavailable", async () => {
+      const { service, mockFacets } = makeServices();
+      mockFacets.mapAllRooms.mockReturnValue([]);
+      const result = (await service.getPropertyRooms("p1", {})) as any;
+      expect(result.property).not.toBeNull();
+      expect(result.property.id).toBe("p1");
       expect(result.rooms).toEqual([]);
     });
 
@@ -484,6 +524,145 @@ describe("PropertiesService", () => {
       });
       // 4 nights
       expect(mockFacets.mapAllRooms).toHaveBeenCalledWith(expect.anything(), 4);
+    });
+
+    it("returns cached response on cache hit without hitting the DB", async () => {
+      const { service, cache, repo } = makeServices();
+      const cached = { property: { id: "p1", name: "cached" }, rooms: [] };
+      (cache.get as jest.Mock).mockResolvedValue(JSON.stringify(cached));
+      const result = await service.getPropertyRooms("p1", {});
+      expect(result).toEqual(cached);
+      expect(repo.findByPropertyId).not.toHaveBeenCalled();
+    });
+
+    it("localizes description using the requested language", async () => {
+      const { service, mockFacets } = makeServices();
+      mockFacets.mapAllRooms.mockReturnValue([
+        {
+          ...mockRoomResult,
+          property: {
+            ...mockRoomResult.property,
+            description: {
+              es: "Hola",
+              en: "Hello",
+            } as Record<string, string>,
+          },
+        } as any,
+      ]);
+      const result = (await service.getPropertyRooms("p1", {
+        language: "en",
+      })) as any;
+      expect(result.property.description).toBe("Hello");
+      expect(result.property.descriptionByLang).toEqual({
+        es: "Hola",
+        en: "Hello",
+      });
+    });
+
+    it("falls back to default language when requested language is missing", async () => {
+      const { service, mockFacets } = makeServices();
+      mockFacets.mapAllRooms.mockReturnValue([
+        {
+          ...mockRoomResult,
+          property: {
+            ...mockRoomResult.property,
+            description: { es: "Hola" } as Record<string, string>,
+          },
+        } as any,
+      ]);
+      const result = (await service.getPropertyRooms("p1", {
+        language: "fr",
+      })) as any;
+      expect(result.property.description).toBe("Hola");
+    });
+  });
+
+  describe("getPropertyReviews", () => {
+    it("returns aggregated average rating and paginated reviews", async () => {
+      const { service, reviewsRepo } = makeServices();
+      reviewsRepo.aggregate.mockResolvedValue({
+        averageRating: 4.56,
+        totalReviews: 12,
+      });
+      reviewsRepo.findByPropertyId.mockResolvedValue([
+        {
+          id: "rv-1",
+          property_id: "p1",
+          reviewer_name: "Jane",
+          reviewer_country: "US",
+          rating: 5,
+          language: "en",
+          title: "Awesome",
+          comment: "Great stay!",
+          created_at: "2026-04-01T10:00:00.000Z",
+        },
+      ]);
+
+      const result = (await service.getPropertyReviews("p1", {
+        page: 1,
+        pageSize: 5,
+      })) as any;
+
+      expect(result.meta).toEqual({
+        page: 1,
+        pageSize: 5,
+        total: 12,
+        totalPages: 3,
+        averageRating: 4.6,
+      });
+      expect(result.reviews).toHaveLength(1);
+      expect(result.reviews[0]).toEqual({
+        id: "rv-1",
+        reviewerName: "Jane",
+        reviewerCountry: "US",
+        rating: 5,
+        language: "en",
+        title: "Awesome",
+        comment: "Great stay!",
+        createdAt: "2026-04-01T10:00:00.000Z",
+      });
+    });
+
+    it("returns cached response on cache hit", async () => {
+      const { service, cache, reviewsRepo } = makeServices();
+      (cache.get as jest.Mock).mockResolvedValue(
+        JSON.stringify({ meta: { total: 0 }, reviews: [] }),
+      );
+      const result = (await service.getPropertyReviews("p1", {
+        page: 1,
+        pageSize: 5,
+      })) as any;
+      expect(result.meta.total).toBe(0);
+      expect(reviewsRepo.findByPropertyId).not.toHaveBeenCalled();
+    });
+
+    it("passes language filter to repository when provided", async () => {
+      const { service, reviewsRepo } = makeServices();
+      await service.getPropertyReviews("p1", {
+        page: 1,
+        pageSize: 5,
+        language: "en",
+      });
+      expect(reviewsRepo.findByPropertyId).toHaveBeenCalledWith("p1", {
+        page: 1,
+        pageSize: 5,
+        language: "en",
+      });
+    });
+
+    it("returns zero totalPages when no reviews exist", async () => {
+      const { service, reviewsRepo } = makeServices();
+      reviewsRepo.aggregate.mockResolvedValue({
+        averageRating: 0,
+        totalReviews: 0,
+      });
+      reviewsRepo.findByPropertyId.mockResolvedValue([]);
+      const result = (await service.getPropertyReviews("p1", {
+        page: 1,
+        pageSize: 5,
+      })) as any;
+      expect(result.meta.total).toBe(0);
+      expect(result.meta.totalPages).toBe(0);
     });
   });
 });

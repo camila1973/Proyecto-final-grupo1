@@ -13,6 +13,8 @@ export interface CreatePropertyDto {
   neighborhood?: string;
   lat?: number;
   lon?: number;
+  thumbnailUrl?: string;
+  amenities?: string[];
 }
 
 export interface UpdatePropertyDto {
@@ -21,6 +23,11 @@ export interface UpdatePropertyDto {
   city?: string;
   stars?: number;
   status?: string;
+  neighborhood?: string;
+  lat?: number;
+  lon?: number;
+  thumbnailUrl?: string;
+  amenities?: string[];
 }
 
 export interface CreateRoomDto {

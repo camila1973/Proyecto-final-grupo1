@@ -53,6 +53,12 @@ describe("CsvImportService", () => {
     service = module.get<CsvImportService>(CsvImportService);
   });
 
+  it("throws BadRequestException when no file is provided", async () => {
+    await expect(
+      service.enqueue("partner-1", "properties", null as any),
+    ).rejects.toThrow(BadRequestException);
+  });
+
   it("throws NotFoundException for unknown partner", async () => {
     const dbNoPartner = buildDb(null);
     const module = await Test.createTestingModule({
@@ -105,6 +111,34 @@ describe("CsvImportService", () => {
       service.enqueue("partner-1", "properties", file),
     ).rejects.toThrow(BadRequestException);
     fs.unlinkSync(tmpPath);
+  });
+
+  describe("getJob", () => {
+    it("returns the job row for the given jobId", async () => {
+      const jobRow = { id: "job-1", status: "queued", rowCount: 2 };
+      const jobDb = {
+        selectFrom: jest.fn().mockReturnValue({
+          select: jest.fn().mockReturnThis(),
+          selectAll: jest.fn().mockReturnThis(),
+          where: jest.fn().mockReturnThis(),
+          executeTakeFirst: jest.fn().mockResolvedValue(jobRow),
+        }),
+        insertInto: jest.fn(),
+      };
+      const module = await Test.createTestingModule({
+        providers: [
+          CsvImportService,
+          { provide: KYSELY, useValue: jobDb },
+          { provide: getQueueToken("csv-import"), useValue: mockQueue },
+        ],
+      }).compile();
+      const svc = module.get<CsvImportService>(CsvImportService);
+
+      const result = await svc.getJob("job-1");
+
+      expect(jobDb.selectFrom).toHaveBeenCalledWith("importJobs");
+      expect(result).toEqual(jobRow);
+    });
   });
 
   it("creates job and enqueues for valid CSV", async () => {

@@ -10,6 +10,8 @@ const PUBLIC_ROOM = {
   totalRooms: 5,
   basePriceUsd: "150.00",
   status: "active",
+  country: "MX",
+  city: "Cancún",
   createdAt: new Date(),
   updatedAt: new Date(),
 };

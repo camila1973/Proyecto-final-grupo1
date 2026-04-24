@@ -3,6 +3,7 @@ import { Kysely } from "kysely";
 import { KYSELY } from "../database/database.provider.js";
 import {
   Database,
+  GuestInfo,
   NewReservation,
   ReservationRow,
 } from "../database/database.types.js";
@@ -11,7 +12,8 @@ export interface ReservationResponse {
   id: string;
   propertyId: string;
   roomId: string;
-  guestId: string;
+  bookerId: string;
+  guestInfo: GuestInfo;
   checkIn: string;
   checkOut: string;
   status: string;
@@ -39,6 +41,14 @@ export class ReservationsRepository {
     return this.db.selectFrom("reservations").selectAll().execute();
   }
 
+  async findByBookerId(bookerId: string): Promise<ReservationRow[]> {
+    return this.db
+      .selectFrom("reservations")
+      .where("booker_id", "=", bookerId)
+      .selectAll()
+      .execute();
+  }
+
   async findById(id: string): Promise<ReservationRow> {
     const row = await this.db
       .selectFrom("reservations")
@@ -58,6 +68,7 @@ export class ReservationsRepository {
       .updateTable("reservations")
       .set({ status: "confirmed", updated_at: new Date() })
       .where("id", "=", id)
+      .where("status", "=", "pending")
       .returningAll()
       .executeTakeFirst();
 
@@ -68,12 +79,32 @@ export class ReservationsRepository {
     return row;
   }
 
+  async findExpiredHolds(): Promise<ReservationRow[]> {
+    return this.db
+      .selectFrom("reservations")
+      .where("status", "=", "pending")
+      .where("hold_expires_at", "<", new Date())
+      .selectAll()
+      .execute();
+  }
+
+  async expire(id: string): Promise<ReservationRow | undefined> {
+    return this.db
+      .updateTable("reservations")
+      .set({ status: "expired", updated_at: new Date() })
+      .where("id", "=", id)
+      .where("status", "=", "pending")
+      .returningAll()
+      .executeTakeFirst();
+  }
+
   toResponse(row: ReservationRow): ReservationResponse {
     return {
       id: row.id,
       propertyId: row.property_id,
       roomId: row.room_id,
-      guestId: row.guest_id,
+      bookerId: row.booker_id,
+      guestInfo: row.guest_info,
       checkIn: row.check_in,
       checkOut: row.check_out,
       status: row.status,

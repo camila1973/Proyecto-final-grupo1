@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Release Burndown</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600&display=swap');
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0d1117;
+    color: #e6edf3;
+    font-family: 'IBM Plex Sans', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+  }
+  .card {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    padding: 2rem 2.5rem;
+    width: 100%;
+    max-width: 860px;
+  }
+  header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .title-block h1 {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 1.1rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .title-block p {
+    font-size: 0.78rem;
+    color: #8b949e;
+    margin-top: 0.25rem;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .stats { display: flex; gap: 1.5rem; flex-wrap: wrap; }
+  .stat { text-align: right; }
+  .stat-value {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 1.5rem;
+    font-weight: 600;
+    line-height: 1;
+  }
+  .stat-label {
+    font-size: 0.68rem;
+    color: #8b949e;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-top: 0.2rem;
+  }
+  .chart-wrap { position: relative; height: 380px; }
+  .legend {
+    display: flex;
+    gap: 1.5rem;
+    margin-top: 1.25rem;
+    justify-content: center;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.75rem;
+    color: #8b949e;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  footer {
+    margin-top: 1.25rem;
+    font-size: 0.68rem;
+    color: #484f58;
+    font-family: 'IBM Plex Mono', monospace;
+    text-align: center;
+  }
+
+  .issues-section {
+    width: 100%;
+    max-width: 860px;
+    margin-top: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .iteration-group {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .iteration-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1.25rem;
+    background: #1c2128;
+    border-bottom: 1px solid #30363d;
+  }
+
+  .iteration-name {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #e6edf3;
+  }
+
+  .iteration-meta {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    color: #8b949e;
+  }
+
+  .issues-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+  }
+
+  .issues-table thead tr {
+    border-bottom: 1px solid #30363d;
+  }
+
+  .issues-table th {
+    padding: 0.5rem 1.25rem;
+    text-align: left;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #8b949e;
+  }
+
+  .issues-table td {
+    padding: 0.6rem 1.25rem;
+    border-bottom: 1px solid #21262d;
+    color: #e6edf3;
+    vertical-align: middle;
+  }
+
+  .issues-table tr:last-child td { border-bottom: none; }
+
+  .issues-table tr.done td { opacity: 0.45; }
+
+  .issue-num {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    color: #8b949e;
+    white-space: nowrap;
+    width: 3rem;
+  }
+
+  .issue-title a {
+    color: #58a6ff;
+    text-decoration: none;
+  }
+  .issue-title a:hover { text-decoration: underline; }
+
+  .issue-pts {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.78rem;
+    color: #8b949e;
+    text-align: right;
+    white-space: nowrap;
+    width: 4rem;
+  }
+
+  .status-badge {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 20px;
+    font-size: 0.68rem;
+    font-family: 'IBM Plex Mono', monospace;
+    background: #21262d;
+    color: #8b949e;
+    border: 1px solid #30363d;
+    white-space: nowrap;
+  }
+</style>
+</head>
+<body>
+<div class="card">
+  <header>
+    <div class="title-block">
+      <h1>Release Burndown</h1>
+      <p>Proyecto final 1 &mdash; 3 iterations</p>
+    </div>
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-value">117.0</div>
+        <div class="stat-label">Total pts</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value">89.0</div>
+        <div class="stat-label">Remaining</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value">24%</div>
+        <div class="stat-label">Complete</div>
+      </div>
+    </div>
+  </header>
+  <div class="chart-wrap">
+    <canvas id="burndown"></canvas>
+  </div>
+  <div class="legend">
+    <div class="legend-item"><span class="dot" style="background:#3fb950"></span> Remaining points</div>
+  </div>
+</div>
+<footer>Generated with gh cli &bull; GitHub Projects v2</footer>
+
+<div class="issues-section">
+  <div class="iteration-group">
+    <div class="iteration-header">
+      <span class="iteration-name">Iteration 1</span>
+      <span class="iteration-meta">8 issues &bull; 28.0 pts</span>
+    </div>
+    <table class="issues-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Title</th>
+          <th>Status</th>
+          <th>Points</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class=" done">
+          <td class="issue-num">#5</td>
+          <td class="issue-title"><a href="https://github.com/camila1973/Proyecto-final-grupo1/issues/5" target="_blank">Búsqueda de hospedaje</a></td>
+          <td class="issue-status"><span class="status-badge">Done</span></td>
+          <td class="issue-pts">5.0</td>
+        </tr>
+        <tr class=" done">
+          <td class="issue-num">#12</td>
+          <td class="issue-title"><a href="https://github.com/camila1973/Proyecto-final-grupo1/issues/12" target="_blank">Detalle de propiedad</a></td>
+          <td class="issue-status"><span class="status-badge">Done</span></td>
+          <td class="issue-pts">3.0</td>
+        </tr>
+        <tr class=" done">
+          <td class="issue-num">#14</td>
+          <td class="issue-title"><a href="https://github.com/camila1973/Proyecto-final-grupo1/issues/14" target="_blank">Acceso con Autenticación Multifactor (MFA)</a></td>
+          <td class="issue-status"><span class="status-badge">Done</span></td>
+          <td class="issue-pts">5.0</td>
+        </tr>
+        <tr class=" done">
+          <td class="issue-num">#20</td>
+          <td class="issue-title"><a href="https://github.com/camila1973/Proyecto-final-grupo1/issues/20" target="_blank">Cálculo automático de tarifas e impuestos</a></td>
+          <td class="issue-status"><span class="status-badge">Done</span></td>
+          <td class="issue-pts">3.0</td>
+        </tr>
+        <tr class=" done">
+          <td class="issue-num">#23</td>
+          <td class="issue-title"><a href="https://github.com/camila1973/Proyecto-final-grupo1/issues/23" target="_blank">Registro de cuenta nueva</a></td>
+          <td class="issue-status"><span class="status-badge">Done</span></td>
+          <td class="issue-pts">3.0</td>
+        </tr>
+        <tr class=" done">
+          <td class="issue-num">#38</td>
+          <td class="issue-title"><a href="https://github.com/camila1973/Proyecto-final-grupo1/issues/38" target="_blank">Sincronización de inventario mediante Webhooks</a></td>
+          <td class="issue-status"><span class="status-badge">Done</span></td>
+          <td class="issue-pts">5.0</td>
+        </tr>
+        <tr class=" done">
+          <td class="issue-num">#95</td>
+          <td class="issue-title"><a href="https://github.com/camila1973/Proyecto-final-grupo1/issues/95" target="_blank">Búsqueda de hospedaje Movil</a></td>
+          <td class="issue-status"><span class="status-badge">Done</span></td>
+          <td class="issue-pts">3.0</td>
+        </tr>
+        <tr class=" done">
+          <td class="issue-num">#96</td>
+          <td class="issue-title"><a href="https://github.com/camila1973/Proyecto-final-grupo1/issues/96" target="_blank">Detalle de propiedad Movil</a></td>
+          <td class="issue-status"><span class="status-badge">Done</span></td>
+          <td class="issue-pts">1.0</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="iteration-group">
+    <div class="iteration-header">
+      <span class="iteration-name">Iteration 2</span>
+      <span class="iteration-meta">6 issues &bull; 40.0 pts</span>
+    </div>
+    <table class="issues-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Title</th>
+          <th>Status</th>
+          <th>Points</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="">
+          <td class="issue-num">#19</td>
+          <td class="issue-title"><a href="https://github.com/camila1973/Proyecto-final-grupo1/issues/19" target="_blank">Creación de reserva con bloqueo temporal (Hold)</a></td>
+          <td class="issue-status"><span class="status-badge">Todo</span></td>
+          <td class="issue-pts">5.0</td>
+        </tr>
+        <tr class="">
+          <td class="issue-num">#29</td>
+          <td class="issue-title"><a href="https://github.com/camila1973/Proyecto-final-grupo1/issues/29" target="_blank">Tokenización de Tarjetas</a></td>
+          <td class="issue-status"><span class="status-badge">Todo</span></td>
+          <td class="issue-pts">3.0</td>
+        </tr>
+        <tr class="">
+          <td class="issue-num">#30</td>
+          <td class="issue-title"><a href="https://github.com/camila1973/Proyecto-final-grupo1/issues/30" target="_blank">Consulta de Reservas y Búsqueda Offline</a></td>
+          <td class="issue-status"><span class="status-badge">Todo</span></td>
+          <td class="issue-pts">8.0</td>
+        </tr>
+        <tr class="">
+          <td class="issue-num">#32</td>
+          <td class="issue-title"><a href="https://github.com/camila1973/Proyecto-final-grupo1/issues/32" target="_blank">Procesamiento asincrono de pagos</a></td>
+          <td class="issue-status"><span class="status-badge">Todo</span></td>
+          <td class="issue-pts">8.0</td>
+        </tr>
+        <tr class="">
+          <td class="issue-num">#34</td>
+          <td class="issue-title"><a href="https://github.com/camila1973/Proyecto-final-grupo1/issues/34" target="_blank">Gestión Intuitiva de Reservas Móviles</a></td>
+          <td class="issue-status"><span class="status-badge">Todo</span></td>
+          <td class="issue-pts">3.0</td>
+        </tr>
+        <tr class="">
+          <td class="issue-num">#44</td>
+          <td class="issue-title"><a href="https://github.com/camila1973/Proyecto-final-grupo1/issues/44" target="_blank">Dashboard de métricas y ocupación</a></td>
+          <td class="issue-status"><span class="status-badge">Todo</span></td>
+          <td class="issue-pts">13.0</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="iteration-group">
+    <div class="iteration-header">
+      <span class="iteration-name">Iteration 3</span>
+      <span class="iteration-meta">7 issues &bull; 49.0 pts</span>
+    </div>
+    <table class="issues-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Title</th>
+          <th>Status</th>
+          <th>Points</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="">
+          <td class="issue-num">#21</td>
+          <td class="issue-title"><a href="https://github.com/camila1973/Proyecto-final-grupo1/issues/21" target="_blank">Gestión de modificaciones y cancelaciones</a></td>
+          <td class="issue-status"><span class="status-badge">Todo</span></td>
+          <td class="issue-pts">8.0</td>
+        </tr>
+        <tr class="">
+          <td class="issue-num">#27</td>
+          <td class="issue-title"><a href="https://github.com/camila1973/Proyecto-final-grupo1/issues/27" target="_blank">Reembolsos Automatizados</a></td>
+          <td class="issue-status"><span class="status-badge">Todo</span></td>
+          <td class="issue-pts">5.0</td>
+        </tr>
+        <tr class="">
+          <td class="issue-num">#31</td>
+          <td class="issue-title"><a href="https://github.com/camila1973/Proyecto-final-grupo1/issues/31" target="_blank">Check-in Digital mediante Código QR</a></td>
+          <td class="issue-status"><span class="status-badge">Todo</span></td>
+          <td class="issue-pts">13.0</td>
+        </tr>
+        <tr class="">
+          <td class="issue-num">#33</td>
+          <td class="issue-title"><a href="https://github.com/camila1973/Proyecto-final-grupo1/issues/33" target="_blank">Notificaciones Push de Estado y Geo-localización</a></td>
+          <td class="issue-status"><span class="status-badge">Todo</span></td>
+          <td class="issue-pts">5.0</td>
+        </tr>
+        <tr class="">
+          <td class="issue-num">#45</td>
+          <td class="issue-title"><a href="https://github.com/camila1973/Proyecto-final-grupo1/issues/45" target="_blank">Gestión manual de tarifas y disponibilidad</a></td>
+          <td class="issue-status"><span class="status-badge">Todo</span></td>
+          <td class="issue-pts">8.0</td>
+        </tr>
+        <tr class="">
+          <td class="issue-num">#46</td>
+          <td class="issue-title"><a href="https://github.com/camila1973/Proyecto-final-grupo1/issues/46" target="_blank">Generación de reportes financieros</a></td>
+          <td class="issue-status"><span class="status-badge">Todo</span></td>
+          <td class="issue-pts">5.0</td>
+        </tr>
+        <tr class="">
+          <td class="issue-num">#47</td>
+          <td class="issue-title"><a href="https://github.com/camila1973/Proyecto-final-grupo1/issues/47" target="_blank">Gestión de reservas (Confirmar/Rechazar)</a></td>
+          <td class="issue-status"><span class="status-badge">Todo</span></td>
+          <td class="issue-pts">5.0</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+const labels = ["Start", "Iteration 1", "Iteration 2", "Iteration 3"];
+const actual = [117.0, 89.0, 89.0, 89.0];
+new Chart(document.getElementById('burndown').getContext('2d'), {
+  type: 'line',
+  data: {
+    labels,
+    datasets: [
+      {
+        label: 'Actual',
+        data: actual,
+        borderWidth: 2.5,
+        pointBorderColor: '#0d1117',
+        pointBorderWidth: 2,
+        pointRadius: 6,
+        tension: 0.1,
+        fill: { target: 'origin', above: 'rgba(63,185,80,0.06)' },
+        pointBackgroundColor: actual.map(() => '#3fb950'),
+        order: 1,
+      },
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#161b22',
+        borderColor: '#30363d',
+        borderWidth: 1,
+        titleColor: '#e6edf3',
+        bodyColor: '#8b949e',
+        titleFont: { family: "'IBM Plex Mono', monospace", size: 12 },
+        bodyFont: { family: "'IBM Plex Mono', monospace", size: 11 },
+        padding: 12,
+        callbacks: { label: ctx => " " + ctx.dataset.label + ": " + ctx.parsed.y + " pts" }
+      },
+    },
+    scales: {
+      x: {
+        grid: { color: 'rgba(48,54,61,0.5)' },
+        ticks: { color: '#8b949e', font: { family: "'IBM Plex Mono', monospace", size: 11 } },
+        border: { color: '#30363d' },
+      },
+      y: {
+        beginAtZero: true,
+        grid: { color: 'rgba(48,54,61,0.5)' },
+        ticks: {
+          color: '#8b949e',
+          font: { family: "'IBM Plex Mono', monospace", size: 11 },
+          callback: v => v + ' pts',
+        },
+        border: { color: '#30363d' },
+      }
+    }
+  }
+});
+</script>
+</body>
+</html>

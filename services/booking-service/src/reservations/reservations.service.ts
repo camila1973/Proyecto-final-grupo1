@@ -1,10 +1,17 @@
-import { Injectable } from "@nestjs/common";
+import {
+  HttpException,
+  HttpStatus,
+  Injectable,
+  Logger,
+  UnauthorizedException,
+} from "@nestjs/common";
 import {
   FareCalculatorService,
   FareBreakdown,
 } from "../fare/fare-calculator.service.js";
-import { RoomLocationCacheRepository } from "../room-location-cache/room-location-cache.repository.js";
+import { InventoryClient } from "../clients/inventory.client.js";
 import { ReservationsRepository } from "./reservations.repository.js";
+import { CacheService } from "../cache/cache.service.js";
 import { EventsPublisher } from "../events/events.publisher.js";
 import {
   CreateReservationDto,
@@ -13,15 +20,18 @@ import {
 
 @Injectable()
 export class ReservationsService {
+  private readonly logger = new Logger(ReservationsService.name);
+
   constructor(
     private readonly fareCalculator: FareCalculatorService,
     private readonly reservationsRepo: ReservationsRepository,
-    private readonly roomLocationCache: RoomLocationCacheRepository,
+    private readonly inventoryClient: InventoryClient,
+    private readonly cache: CacheService,
     private readonly publisher: EventsPublisher,
   ) {}
 
   async preview(dto: PreviewReservationDto): Promise<FareBreakdown> {
-    const location = await this.roomLocationCache.findByRoomId(dto.roomId);
+    const location = await this.inventoryClient.getRoomLocation(dto.roomId);
     return this.fareCalculator.calculate({
       propertyId: dto.propertyId,
       roomId: dto.roomId,
@@ -33,7 +43,26 @@ export class ReservationsService {
   }
 
   async create(dto: CreateReservationDto) {
-    const location = await this.roomLocationCache.findByRoomId(dto.roomId);
+    // Atomically consume the hold — GETDEL ensures exactly one reservation per hold
+    const idempKey = `booking:hold:idempotency:${dto.bookerId}:${dto.roomId}:${dto.checkIn}:${dto.checkOut}`;
+    const holdRaw = await this.cache.getAndDelete(idempKey);
+
+    if (!holdRaw) {
+      throw new HttpException("Hold not found or expired", HttpStatus.GONE);
+    }
+
+    const holdData = JSON.parse(holdRaw) as {
+      holdId: string;
+      expiresAt: string;
+    };
+
+    if (holdData.holdId !== dto.holdId) {
+      throw new UnauthorizedException("holdId mismatch");
+    }
+
+    const holdExpiresAt = new Date(holdData.expiresAt);
+
+    const location = await this.inventoryClient.getRoomLocation(dto.roomId);
 
     const fareBreakdown = await this.fareCalculator.calculate({
       propertyId: dto.propertyId,
@@ -44,13 +73,12 @@ export class ReservationsService {
       propertyLocation: location,
     });
 
-    const holdExpiresAt = new Date(Date.now() + 15 * 60 * 1000);
-
     const row = await this.reservationsRepo.insert({
       property_id: dto.propertyId,
       room_id: dto.roomId,
       partner_id: dto.partnerId,
-      guest_id: dto.guestId,
+      booker_id: dto.bookerId,
+      guest_info: dto.guestInfo,
       check_in: dto.checkIn,
       check_out: dto.checkOut,
       status: "pending",
@@ -68,8 +96,10 @@ export class ReservationsService {
     };
   }
 
-  async findAll() {
-    const rows = await this.reservationsRepo.findAll();
+  async findAll(bookerId?: string) {
+    const rows = bookerId
+      ? await this.reservationsRepo.findByBookerId(bookerId)
+      : await this.reservationsRepo.findAll();
     return {
       total: rows.length,
       reservations: rows.map((r) => this.reservationsRepo.toResponse(r)),
@@ -83,13 +113,27 @@ export class ReservationsService {
 
   async confirm(id: string) {
     const row = await this.reservationsRepo.confirm(id);
+
+    try {
+      await this.inventoryClient.confirmHold(
+        row.room_id,
+        row.check_in,
+        row.check_out,
+      );
+    } catch (err) {
+      this.logger.warn(
+        `Failed to confirm hold in inventory for reservation ${id}: ${err}`,
+      );
+    }
+
     this.publisher.publish("booking.confirmed", {
       routingKey: "booking.confirmed",
       reservationId: row.id,
       partnerId: row.partner_id,
       propertyId: row.property_id,
       roomId: row.room_id,
-      guestId: row.guest_id,
+      bookerId: row.booker_id,
+      guestInfo: row.guest_info,
       checkIn: row.check_in,
       checkOut: row.check_out,
       fareBreakdown: row.fare_breakdown,

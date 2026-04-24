@@ -51,9 +51,12 @@ function makeService(
   } as unknown as RoomsRepository;
 
   const propertiesService = {
-    findOne: jest
-      .fn()
-      .mockResolvedValue({ id: "prop-1", partnerId: "partner-1" }),
+    findOne: jest.fn().mockResolvedValue({
+      id: "prop-1",
+      partnerId: "partner-1",
+      countryCode: "MX",
+      city: "Cancún",
+    }),
     findByProperty: jest.fn().mockResolvedValue([{ id: "prop-1" }]),
     ...overrides.propertiesService,
   } as unknown as PropertiesService;
@@ -169,6 +172,18 @@ describe("RoomsService", () => {
       expect(publish).toHaveBeenCalledWith(
         "inventory.room.upserted",
         expect.anything(),
+      );
+    });
+  });
+
+  describe("update - basePriceUsd branch", () => {
+    it("passes undefined for base_price_usd when basePriceUsd is not provided", async () => {
+      const repoUpdate = jest.fn().mockResolvedValue(ROOM_ROW);
+      const service = makeService({ repo: { update: repoUpdate } });
+      await service.update("room-1", "partner-1", {}); // no basePriceUsd
+      expect(repoUpdate).toHaveBeenCalledWith(
+        "room-1",
+        expect.objectContaining({ base_price_usd: undefined }),
       );
     });
   });

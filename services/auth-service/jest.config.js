@@ -7,8 +7,12 @@ module.exports = {
   coverageDirectory: '../../coverage/auth-service',
   coverageReporters: ['lcov', 'text-summary'],
   collectCoverageFrom: [
-    'src/**/*.(t|j)s',
-    '!src/main.ts',
-    '!src/**/*.module.ts',
+    '**/*.(t|j)s',
+    '!**/migrations/**',
+    '!scripts/**',
+    '!**/main.ts',
+    '!**/migrate.ts',
+    '!**/*.module.ts',
+    '!**/*.config.{ts,js}',
   ],
 };

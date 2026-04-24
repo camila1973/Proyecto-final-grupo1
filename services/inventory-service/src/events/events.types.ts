@@ -19,6 +19,12 @@ export interface RoomSnapshot {
   rating: number;
   reviewCount: number;
   thumbnailUrl: string;
+  /** CloudFront/S3 URLs for the image carousel — may be empty while an
+   *  inventory property has not yet been synced with media metadata. */
+  imageUrls?: string[];
+  /** i18n-keyed description map (ISO-639-1 → text). Optional for the same
+   *  reason as imageUrls. */
+  description?: Record<string, string>;
   isActive: boolean;
 }
 

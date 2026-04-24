@@ -14,6 +14,8 @@ function makeRoom(overrides: Partial<CandidateRoom> = {}): CandidateRoom {
     rating: "4.2",
     review_count: 100,
     thumbnail_url: "https://example.com/img.jpg",
+    image_urls: [],
+    description: {},
     amenities: ["wifi", "pool"],
     neighborhood: null,
     room_type: "suite",
@@ -109,24 +111,28 @@ describe("FacetsService", () => {
       expect(result).toHaveLength(2);
     });
 
-    it("filters by priceMin using avail_price_usd when present", () => {
+    it("filters by priceMin using estimatedTotalUsd (nights=0: price * taxRate)", () => {
       const rooms = [
         makeRoom({ avail_price_usd: "80.00", base_price_usd: "200.00" }),
+        // estimatedTotal(0) = 80 * 1.16 = 92.80 → excluded by priceMin 100
         makeRoom({ room_id: "r2", avail_price_usd: "120.00" }),
+        // estimatedTotal(0) = 120 * 1.16 = 139.20 → included
       ];
       const result = service.applyFilters(rooms, { priceMin: 100 });
       expect(result).toHaveLength(1);
       expect(result[0].avail_price_usd).toBe("120.00");
     });
 
-    it("falls back to base_price_usd when avail_price_usd is null", () => {
+    it("filters by priceMax using estimatedTotalUsd (falls back to base_price_usd)", () => {
       const rooms = [
         makeRoom({ avail_price_usd: null, base_price_usd: "50.00" }),
+        // estimatedTotal(0) = 50 * 1.16 = 58 → included by priceMax 100
         makeRoom({
           room_id: "r2",
           avail_price_usd: null,
           base_price_usd: "200.00",
         }),
+        // estimatedTotal(0) = 200 * 1.16 = 232 → excluded
       ];
       const result = service.applyFilters(rooms, { priceMax: 100 });
       expect(result).toHaveLength(1);
@@ -419,6 +425,8 @@ describe("FacetsService", () => {
         rating,
         reviewCount: 10,
         thumbnailUrl: "",
+        imageUrls: [],
+        description: {},
         amenities: [],
       },
     });
@@ -562,7 +570,7 @@ describe("FacetsService", () => {
   // ─── priceRange facet ─────────────────────────────────────────────────────
 
   describe("priceRange in computeFacets", () => {
-    it("returns min/max from avail_price_usd when available", () => {
+    it("returns min/max estimated total using nights from dto dates", () => {
       const candidates: CandidateRoom[] = [
         makeRoom({
           room_id: "r1",
@@ -577,9 +585,11 @@ describe("FacetsService", () => {
           base_price_usd: "50.00",
         }),
       ];
+      // makeDto() has checkIn 2026-04-01, checkOut 2026-04-05 → 4 nights, tax_rate_pct=16%
+      // r1: 100 * 4 * 1.16 = 464, r2: 300 * 4 * 1.16 = 1392
       const facets = service.computeFacets(candidates, makeDto());
-      expect(facets.priceRange.min).toBe(100);
-      expect(facets.priceRange.max).toBe(300);
+      expect(facets.priceRange.min).toBeCloseTo(464, 1);
+      expect(facets.priceRange.max).toBeCloseTo(1392, 1);
     });
 
     it("returns 0/0 when no candidates", () => {

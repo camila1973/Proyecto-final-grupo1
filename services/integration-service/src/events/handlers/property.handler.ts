@@ -3,9 +3,10 @@ import {
   IsString,
   IsOptional,
   IsNumber,
+  IsArray,
   validateOrReject,
 } from "class-validator";
-import { plainToInstance, Type } from "class-transformer";
+import { plainToInstance, Type, Transform } from "class-transformer";
 import { ExternalIdService } from "../../external-id/external-id.service";
 import { InventoryClient } from "../../clients/inventory.client";
 import { UnknownEntityError } from "../unknown-entity.error";
@@ -30,6 +31,37 @@ class PropertyEventData {
   @Type(() => Number)
   @IsNumber()
   stars?: number;
+
+  @IsOptional()
+  @IsString()
+  neighborhood?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  lat?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  lon?: number;
+
+  @IsOptional()
+  @IsString()
+  thumbnailUrl?: string;
+
+  @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === "string"
+      ? value
+          .split("|")
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : value,
+  )
+  @IsArray()
+  @IsString({ each: true })
+  amenities?: string[];
 }
 
 @Injectable()
@@ -62,6 +94,11 @@ export class PropertyHandler {
         countryCode: dto.countryCode,
         partnerId,
         stars: dto.stars,
+        neighborhood: dto.neighborhood,
+        lat: dto.lat,
+        lon: dto.lon,
+        thumbnailUrl: dto.thumbnailUrl,
+        amenities: dto.amenities,
       });
       await this.externalIdService.register(
         partnerId,
@@ -76,6 +113,11 @@ export class PropertyHandler {
         type: dto.type,
         city: dto.city,
         stars: dto.stars,
+        neighborhood: dto.neighborhood,
+        lat: dto.lat,
+        lon: dto.lon,
+        thumbnailUrl: dto.thumbnailUrl,
+        amenities: dto.amenities,
       });
     }
   }

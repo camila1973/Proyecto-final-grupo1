@@ -5,6 +5,7 @@ import {
   Patch,
   Body,
   Param,
+  Query,
   HttpCode,
   HttpStatus,
 } from "@nestjs/common";
@@ -33,8 +34,8 @@ export class ReservationsController {
   }
 
   @Get()
-  findAll() {
-    return this.reservationsService.findAll();
+  findAll(@Query("bookerId") bookerId?: string) {
+    return this.reservationsService.findAll(bookerId);
   }
 
   @Get(":id")
