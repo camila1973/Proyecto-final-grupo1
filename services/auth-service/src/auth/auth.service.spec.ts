@@ -53,6 +53,9 @@ const DB_USER = (overrides: Partial<DbUser> = {}): DbUser => ({
   role: "guest",
   password_hash: makePasswordHash("password123"),
   created_at: "2024-01-01T00:00:00.000Z",
+  first_name: null,
+  last_name: null,
+  phone: null,
   ...overrides,
 });
 
