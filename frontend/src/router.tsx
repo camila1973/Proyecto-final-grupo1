@@ -1,4 +1,4 @@
-import { createRouter, createRoute, createRootRoute, Outlet, createHashHistory } from '@tanstack/react-router';
+import { createRouter, createRoute, createRootRoute, Outlet, createBrowserHistory } from '@tanstack/react-router';
 import { LocaleProvider } from './context/LocaleContext';
 import { AuthProvider } from './context/AuthContext';
 import Navbar from './components/Navbar';
@@ -126,7 +126,7 @@ const routeTree = rootRoute.addChildren([
 export function createAppRouter() {
   return createRouter({
     routeTree,
-    history: createHashHistory(),
+    history: createBrowserHistory(),
   });
 }
 
