@@ -81,6 +81,10 @@ describe('CheckoutPage', () => {
     (global.fetch as jest.Mock)
       .mockResolvedValueOnce({
         ok: true,
+        json: () => Promise.resolve({ holdId: 'hold_123' }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
         json: () =>
           Promise.resolve({
             id: 'res_123',
