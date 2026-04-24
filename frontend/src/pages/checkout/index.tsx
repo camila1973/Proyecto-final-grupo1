@@ -258,21 +258,50 @@ export default function CheckoutPage() {
       return;
     }
 
-    // Create reservation with 15-min hold
-    fetch(`${API_BASE}/api/booking/reservations`, {
+    const { token, user } = auth;
+    const authHeaders: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+
+    // Step 1: create a 15-min hold to lock the room
+    fetch(`${API_BASE}/api/booking/holds`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders,
       body: JSON.stringify({
-        propertyId: search.propertyId,
+        bookerId: user.id,
         roomId: search.roomId,
-        partnerId: search.partnerId,
-        guestId: auth.user.id,
         checkIn: search.checkIn,
         checkOut: search.checkOut,
       }),
     })
       .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        if (!r.ok) throw new Error(`Hold failed: HTTP ${r.status}`);
+        return r.json() as Promise<{ holdId: string }>;
+      })
+      // Step 2: create the reservation using the holdId
+      .then(({ holdId }) =>
+        fetch(`${API_BASE}/api/booking/reservations`, {
+          method: 'POST',
+          headers: authHeaders,
+          body: JSON.stringify({
+            holdId,
+            propertyId: search.propertyId,
+            roomId: search.roomId,
+            partnerId: search.partnerId,
+            bookerId: user.id,
+            guestInfo: {
+              firstName: user.email,
+              lastName: '',
+              email: user.email,
+            },
+            checkIn: search.checkIn,
+            checkOut: search.checkOut,
+          }),
+        }),
+      )
+      .then((r) => {
+        if (!r.ok) throw new Error(`Reservation failed: HTTP ${r.status}`);
         return r.json() as Promise<ReservationResponse>;
       })
       .then(setReservation)

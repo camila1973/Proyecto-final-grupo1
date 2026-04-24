@@ -9,16 +9,40 @@ import type { PartnerFeeDeletedHandler } from "./handlers/partner-fee-deleted.ha
 
 // ─── @google-cloud/pubsub mock ────────────────────────────────────────────────
 jest.mock("@google-cloud/pubsub", () => {
+  const __subs = new Map<string, any>();
+
   const mockSub = {
     on: jest.fn(),
     removeAllListeners: jest.fn(),
     close: jest.fn().mockResolvedValue({}),
   };
+
   const mockClient = {
-    subscription: jest.fn().mockReturnValue(mockSub),
+    subscription: jest.fn((name: string) => {
+      if (!__subs.has(name)) {
+        const localListeners: Record<string, Array<(msg: any) => void>> = {};
+        const sub = {
+          on: (event: string, cb: (msg: any) => void) => {
+            if (!localListeners[event]) localListeners[event] = [];
+            localListeners[event].push(cb);
+            return mockSub.on(event, cb);
+          },
+          removeAllListeners: (...args: any[]) =>
+            mockSub.removeAllListeners(...args),
+          close: (...args: any[]) => mockSub.close(...args),
+          __emitMessage: (msg: any) => {
+            (localListeners["message"] ?? []).forEach((cb) => cb(msg));
+          },
+        };
+        __subs.set(name, sub);
+      }
+      return __subs.get(name);
+    }),
   };
+
   return {
     PubSub: jest.fn().mockReturnValue(mockClient),
+    __subs,
     __mockSub: mockSub,
     __mockClient: mockClient,
   };
