@@ -53,6 +53,9 @@ const DB_USER = (overrides: Partial<DbUser> = {}): DbUser => ({
   role: "guest",
   password_hash: makePasswordHash("password123"),
   created_at: "2024-01-01T00:00:00.000Z",
+  first_name: null,
+  last_name: null,
+  phone: null,
   ...overrides,
 });
 
@@ -426,6 +429,9 @@ describe("AuthService", () => {
           role: "guest",
           password_hash: "h",
           created_at: "2024-01-01",
+          first_name: null,
+          last_name: null,
+          phone: null,
         },
         {
           id: "usr_2",
@@ -433,6 +439,9 @@ describe("AuthService", () => {
           role: "admin",
           password_hash: "h2",
           created_at: "2024-02-01",
+          first_name: null,
+          last_name: null,
+          phone: null,
         },
       ]);
 

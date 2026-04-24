@@ -23,22 +23,28 @@ type PaymentMethod = 'credit_card' | 'google_pay' | 'paypal';
 
 export function CheckoutForm({
   reservation,
-  guestEmail,
   intent,
+  email: initialEmail,
+  firstName: initialFirstName,
+  lastName: initialLastName,
+  phone: initialPhone,
 }: {
   reservation: ReservationResponse;
-  guestEmail: string;
   intent: CheckoutIntent;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
 }) {
   const stripe = useStripe();
   const elements = useElements();
   const navigate = useNavigate();
   const { currency } = useLocale();
 
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [country, setCountry] = useState('');
+  const [email, setEmail] = useState(initialEmail);
+  const [firstName, setFirstName] = useState(initialFirstName ?? '');
+  const [lastName, setLastName] = useState(initialLastName ?? '');
+  const [phone, setPhone] = useState(initialPhone ?? '');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('credit_card');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,7 +68,7 @@ export function CheckoutForm({
         {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ firstName, lastName, email: guestEmail, phone }),
+          body: JSON.stringify({ firstName, lastName, email: email, phone }),
         },
       );
       if (!patchRes.ok) throw new Error('guest_info_failed');
@@ -81,7 +87,7 @@ export function CheckoutForm({
           reservationId: reservation.id,
           amountUsd: reservation.grandTotalUsd,
           currency: 'usd',
-          guestEmail,
+          email,
         }),
       });
       if (!res.ok) throw new Error('Failed to initiate payment');
@@ -97,8 +103,8 @@ export function CheckoutForm({
       payment_method: {
         card,
         billing_details: {
-          name: `${firstName} ${lastName}`.trim() || guestEmail,
-          email: guestEmail,
+          name: `${firstName} ${lastName}`.trim() || email,
+          email: email,
           phone,
         },
       },
@@ -130,7 +136,7 @@ export function CheckoutForm({
         {/* ── Detalles de la orden ── */}
         <Box>
           <Typography variant="h6" fontWeight={700} mb={2}>
-            Detalles de la orden
+            Detalles del huésped
           </Typography>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
@@ -152,7 +158,7 @@ export function CheckoutForm({
               <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: 1, display: 'block', mb: 0.5 }}>
                 Correo electrónico
               </Typography>
-              <TextField size="small" fullWidth value={guestEmail} slotProps={{ input: { readOnly: true } }} sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1.5, bgcolor: 'grey.50' } }} />
+              <TextField size="small" fullWidth type="email" value={email} onChange={(e) => setEmail(e.target.value)} sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1.5 } }} />
             </Box>
 
             <Box>
@@ -162,12 +168,6 @@ export function CheckoutForm({
               <TextField size="small" fullWidth type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1.5 } }} />
             </Box>
 
-            <Box>
-              <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: 1, display: 'block', mb: 0.5 }}>
-                País
-              </Typography>
-              <TextField size="small" fullWidth value={country} onChange={(e) => setCountry(e.target.value)} sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1.5 } }} />
-            </Box>
           </Box>
         </Box>
 
@@ -198,14 +198,14 @@ export function CheckoutForm({
             </Box>
 
             {/* Google Pay */}
-            <Box sx={{ border: '1px solid', borderColor: paymentMethod === 'google_pay' ? 'primary.main' : 'divider', borderRadius: 2, px: 2, py: 1, mb: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <FormControlLabel value="google_pay" control={<Radio size="small" />} label="Google Pay" sx={{ m: 0 }} />
+            <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, px: 2, py: 1, mb: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', opacity: 0.5 }}>
+              <FormControlLabel value="google_pay" control={<Radio size="small" disabled />} label="Google Pay" sx={{ m: 0 }} disabled />
               <Chip label="Próximamente" size="small" sx={{ fontSize: '0.65rem', height: 20 }} />
             </Box>
 
             {/* PayPal */}
-            <Box sx={{ border: '1px solid', borderColor: paymentMethod === 'paypal' ? 'primary.main' : 'divider', borderRadius: 2, px: 2, py: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <FormControlLabel value="paypal" control={<Radio size="small" />} label="Paypal" sx={{ m: 0 }} />
+            <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, px: 2, py: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', opacity: 0.5 }}>
+              <FormControlLabel value="paypal" control={<Radio size="small" disabled />} label="Paypal" sx={{ m: 0 }} disabled />
               <Chip label="Próximamente" size="small" sx={{ fontSize: '0.65rem', height: 20 }} />
             </Box>
           </RadioGroup>

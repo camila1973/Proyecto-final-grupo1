@@ -108,6 +108,8 @@ export default function RegisterPage() {
         body: JSON.stringify({
           email: fields.email.trim().toLowerCase(),
           password: fields.password,
+          firstName: fields.firstName.trim() || undefined,
+          lastName: fields.lastName.trim() || undefined,
         }),
       });
 

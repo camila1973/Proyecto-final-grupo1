@@ -1,6 +1,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { setupTestI18n } from '../i18n/test-utils';
+import { LocaleProvider } from '../context/LocaleContext';
 import HomePage from './HomePage';
 import es from '../i18n/locales/es.json';
 
@@ -14,11 +15,11 @@ jest.mock('@tanstack/react-router', () => ({
 
 jest.mock('../components/SearchBarForm', () => () => <div>search-bar-form</div>);
 
-jest.mock('../components/HotelCard', () => ({
+jest.mock('../components/VerticalCard', () => ({
   __esModule: true,
-  default: ({ name, onClick }: { name: string; onClick?: () => void }) => (
+  default: ({ imageAlt, onClick }: { imageAlt?: string; onClick?: () => void }) => (
     <button type="button" onClick={onClick}>
-      open-{name}
+      open-{imageAlt}
     </button>
   ),
 }));
@@ -27,7 +28,9 @@ function renderPage() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={queryClient}>
-      <HomePage />
+      <LocaleProvider>
+        <HomePage />
+      </LocaleProvider>
     </QueryClientProvider>,
   );
 }

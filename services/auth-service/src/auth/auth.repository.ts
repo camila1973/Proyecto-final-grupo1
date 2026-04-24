@@ -14,6 +14,9 @@ export class AuthRepository {
     role: UserRole;
     passwordHash: string;
     createdAt: string;
+    firstName?: string;
+    lastName?: string;
+    phone?: string;
   }): Promise<void> {
     await this.db
       .insertInto("auth_users")
@@ -23,6 +26,9 @@ export class AuthRepository {
         role: params.role,
         password_hash: params.passwordHash,
         created_at: params.createdAt,
+        first_name: params.firstName ?? null,
+        last_name: params.lastName ?? null,
+        phone: params.phone ?? null,
       })
       .executeTakeFirstOrThrow();
   }

@@ -61,7 +61,14 @@ function CheckoutPage() {
           </Box>
         ) : reservation ? (
           <>
-            <CheckoutForm reservation={reservation} guestEmail={auth.user.email} intent={intent} />
+            <CheckoutForm
+              reservation={reservation}
+              email={auth.user.email}
+              intent={intent}
+              firstName={auth.user.firstName}
+              lastName={auth.user.lastName}
+              phone={auth.user.phone}
+            />
             <SummaryPanel intent={intent} reservation={reservation} currency={currency} />
           </>
         ) : null}
