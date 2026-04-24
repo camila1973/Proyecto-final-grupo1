@@ -213,7 +213,6 @@ describe("EventsService", () => {
       const pubSub = require("@google-cloud/pubsub") as {
         __subs: Map<string, unknown>;
       };
-      expect(pubSub.__subs.has("booking-inventory-price-updated")).toBe(true);
       expect(pubSub.__subs.has("booking-inventory-room-upserted")).toBe(true);
       expect(pubSub.__subs.has("booking-partner-fee-upserted")).toBe(true);
       expect(pubSub.__subs.has("booking-partner-fee-deleted")).toBe(true);
@@ -222,7 +221,7 @@ describe("EventsService", () => {
 
   describe("Pub/Sub message dispatch", () => {
     it("acks Pub/Sub message when handler succeeds", async () => {
-      const { service, priceCache } = makeService();
+      const { service, inventoryClient } = makeService();
       process.env.MESSAGE_BROKER_TYPE = "pubsub";
 
       await service.onModuleInit();
@@ -231,11 +230,18 @@ describe("EventsService", () => {
       const pubSub = require("@google-cloud/pubsub") as {
         __subs: Map<string, any>;
       };
-      const sub = pubSub.__subs.get("booking-inventory-price-updated");
+      const sub = pubSub.__subs.get("booking-inventory-room-upserted");
 
       const message = {
         data: Buffer.from(
-          JSON.stringify({ roomId: "room-1", pricePeriods: [] }),
+          JSON.stringify({
+            snapshot: {
+              roomId: "room-1",
+              propertyId: "prop-1",
+              country: "MX",
+              city: "Cancún",
+            },
+          }),
         ),
         ack: jest.fn(),
         nack: jest.fn(),
@@ -244,7 +250,10 @@ describe("EventsService", () => {
       sub.__emitMessage(message);
       await new Promise((r) => setTimeout(r, 10));
 
-      expect(priceCache.replaceForRoom).toHaveBeenCalledWith("room-1", []);
+      expect(inventoryClient.cacheRoomLocation).toHaveBeenCalledWith("room-1", {
+        country: "MX",
+        city: "Cancún",
+      });
       expect(message.ack).toHaveBeenCalled();
       expect(message.nack).not.toHaveBeenCalled();
     });
@@ -259,7 +268,7 @@ describe("EventsService", () => {
       const pubSub = require("@google-cloud/pubsub") as {
         __subs: Map<string, any>;
       };
-      const sub = pubSub.__subs.get("booking-inventory-price-updated");
+      const sub = pubSub.__subs.get("booking-inventory-room-upserted");
 
       const message = {
         data: Buffer.from("not-json"),
