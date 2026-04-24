@@ -99,7 +99,9 @@ describe("AuthService", () => {
 
       expect(result.email).toBe("test@example.com");
       expect(result.role).toBe("guest");
-      expect(result.id).toMatch(/^usr_/);
+      expect(result.id).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+      );
       expect(result.createdAt).toBeTruthy();
     });
 
@@ -189,7 +191,9 @@ describe("AuthService", () => {
       });
 
       expect(result.mfaRequired).toBe(true);
-      expect(result.challengeId).toMatch(/^mfa_/);
+      expect(result.challengeId).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+      );
       expect(result.challengeType).toBe("email_otp");
       expect(result.expiresIn).toBe(300);
       expect(result.user.email).toBe("user@example.com");

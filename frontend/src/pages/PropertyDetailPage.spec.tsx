@@ -10,6 +10,18 @@ import es from '../i18n/locales/es.json';
 
 setupTestI18n('es');
 
+jest.mock('../hooks/useBookingFlow', () => ({
+  useBookingFlow: () => ({
+    auth: null,
+    book: jest.fn(),
+    createReservation: jest.fn(),
+  }),
+  saveCheckoutIntent: jest.fn(),
+  consumeCheckoutIntent: jest.fn(() => null),
+  consumeReservationPromise: jest.fn(() => null),
+  startCheckoutAfterLogin: jest.fn(() => false),
+}));
+
 const mockProperty = {
   id: 'prop_001',
   name: 'Hotel Test',

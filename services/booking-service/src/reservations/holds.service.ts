@@ -2,7 +2,13 @@ import { Injectable, NotFoundException } from "@nestjs/common";
 import { randomUUID } from "crypto";
 import { CacheService } from "../cache/cache.service.js";
 import { InventoryClient } from "../clients/inventory.client.js";
-import { CreateHoldDto } from "./dto/create-hold.dto.js";
+
+export interface CreateHoldDto {
+  bookerId: string;
+  roomId: string;
+  checkIn: string; // YYYY-MM-DD
+  checkOut: string; // YYYY-MM-DD
+}
 
 const HOLD_TTL_SECONDS = 900; // 15 minutes
 

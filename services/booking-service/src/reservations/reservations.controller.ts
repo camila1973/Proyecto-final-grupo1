@@ -8,10 +8,13 @@ import {
   Query,
   HttpCode,
   HttpStatus,
+  Res,
 } from "@nestjs/common";
+import type { Response } from "express";
 import { ReservationsService } from "./reservations.service.js";
 import {
   CreateReservationDto,
+  GuestInfoDto,
   PreviewReservationDto,
 } from "./dto/create-reservation.dto.js";
 
@@ -26,11 +29,16 @@ export class ReservationsController {
     return this.reservationsService.preview(dto);
   }
 
-  // POST /reservations — create reservation with real fare (201)
+  // POST /reservations — 201 when created, 200 when returning an existing hold
   @Post()
-  @HttpCode(HttpStatus.CREATED)
-  create(@Body() dto: CreateReservationDto) {
-    return this.reservationsService.create(dto);
+  async create(
+    @Body() dto: CreateReservationDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.reservationsService.create(dto);
+    const { created, ...data } = result;
+    res.status(created ? HttpStatus.CREATED : HttpStatus.OK);
+    return data;
   }
 
   @Get()
@@ -47,5 +55,11 @@ export class ReservationsController {
   @HttpCode(HttpStatus.OK)
   confirm(@Param("id") id: string) {
     return this.reservationsService.confirm(id);
+  }
+
+  @Patch(":id/guest-info")
+  @HttpCode(HttpStatus.OK)
+  updateGuestInfo(@Param("id") id: string, @Body() dto: GuestInfoDto) {
+    return this.reservationsService.updateGuestInfo(id, dto);
   }
 }

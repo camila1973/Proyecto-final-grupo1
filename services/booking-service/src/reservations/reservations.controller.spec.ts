@@ -72,18 +72,47 @@ describe("ReservationsController", () => {
   });
 
   describe("create", () => {
-    it("delegates to service and returns the new reservation", async () => {
+    const mockRes = () => ({ status: jest.fn() }) as any;
+
+    it("returns 201 and the reservation data when newly created", async () => {
       const reservation = {
+        created: true,
         id: "res-1",
         fareBreakdown: makeFareBreakdown(),
         holdExpiresAt: "2026-05-01T12:15:00Z",
       } as any;
       service.create.mockResolvedValue(reservation);
+      const res = mockRes();
 
-      const result = await controller.create(CREATE_DTO);
+      const result = await controller.create(CREATE_DTO, res);
 
       expect(service.create).toHaveBeenCalledWith(CREATE_DTO);
-      expect(result).toBe(reservation);
+      expect(res.status).toHaveBeenCalledWith(201);
+      expect(result).toEqual({
+        id: reservation.id,
+        fareBreakdown: reservation.fareBreakdown,
+        holdExpiresAt: reservation.holdExpiresAt,
+      });
+    });
+
+    it("returns 200 when returning an existing hold", async () => {
+      const reservation = {
+        created: false,
+        id: "res-1",
+        fareBreakdown: makeFareBreakdown(),
+        holdExpiresAt: "2026-05-01T12:15:00Z",
+      } as any;
+      service.create.mockResolvedValue(reservation);
+      const res = mockRes();
+
+      const result = await controller.create(CREATE_DTO, res);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(result).toEqual({
+        id: reservation.id,
+        fareBreakdown: reservation.fareBreakdown,
+        holdExpiresAt: reservation.holdExpiresAt,
+      });
     });
   });
 

@@ -94,17 +94,6 @@ const mfaRoute = createRoute({
 const checkoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/checkout',
-  validateSearch: (search: Record<string, unknown>) => ({
-    roomId: (search.roomId as string) ?? '',
-    propertyId: (search.propertyId as string) ?? '',
-    partnerId: (search.partnerId as string) ?? '',
-    checkIn: (search.checkIn as string) ?? '',
-    checkOut: (search.checkOut as string) ?? '',
-    guests: (search.guests as string) ?? '1',
-    propertyName: (search.propertyName as string) ?? '',
-    roomType: (search.roomType as string) ?? '',
-    totalUsd: (search.totalUsd as string) ?? '0',
-  }),
   component: CheckoutPage,
 });
 

@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useParams, useSearch, useNavigate } from '@tanstack/react-router';
+import { useParams, useSearch } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
+import { useBookingFlow } from '../hooks/useBookingFlow';
 import { useLocale } from '../context/LocaleContext';
 import { formatPrice } from '../utils/currency';
 import { formatAddress } from '../utils/address';
@@ -88,7 +89,7 @@ export default function PropertyDetailPage() {
   const [checkOut, setCheckOut] = useState<Dayjs | null>(qCheckOut ? dayjs(qCheckOut) : dayjs().add(8, 'day'));
   const [guests, setGuests] = useState<number>(qGuests > 0 ? qGuests : 1);
   const [descExpanded, setDescExpanded] = useState(false);
-  const navigate = useNavigate();
+  const { book } = useBookingFlow();
 
   const fromDate = checkIn?.format('YYYY-MM-DD');
   const toDate = checkOut?.format('YYYY-MM-DD');
@@ -377,22 +378,22 @@ export default function PropertyDetailPage() {
                             color="warning"
                             startIcon={<BookmarkIcon fontSize="small" />}
                             sx={{ textTransform: 'none', fontWeight: 600, whiteSpace: 'nowrap', borderRadius: 1 }}
-                            onClick={() =>
-                              void navigate({
-                                to: '/checkout',
-                                search: {
-                                  roomId: room.roomId,
-                                  propertyId: property.id,
-                                  partnerId: room.partnerId,
-                                  checkIn: fromDate ?? '',
-                                  checkOut: toDate ?? '',
-                                  guests: String(guests),
-                                  propertyName: property.name,
-                                  roomType: room.roomType,
-                                  totalUsd: String(room.estimatedTotalUsd),
-                                },
-                              })
-                            }
+                              onClick={() => book({
+                              property: { id: propertyId, name: property.name },
+                              room: {
+                                id: room.roomId,
+                                type: room.roomType,
+                                partnerId: room.partnerId ?? '',
+                                totalUsd: room.estimatedTotalUsd,
+                                thumbnailUrl: carouselImages[0] ?? property.thumbnailUrl,
+                                bedType: room.bedType,
+                              },
+                              stay: {
+                                checkIn: fromDate ?? '',
+                                checkOut: toDate ?? '',
+                                guests,
+                              },
+                            })}
                           >
                             {t('property_detail.book_now')}
                           </Button>

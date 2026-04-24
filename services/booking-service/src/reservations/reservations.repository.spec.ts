@@ -266,6 +266,81 @@ describe("ReservationsRepository", () => {
     });
   });
 
+  describe("findPendingByBookerAndStay", () => {
+    it("returns the row when a matching pending reservation exists", async () => {
+      const row = makeRow();
+      const db = makeDb({ single: row });
+      const repo = new ReservationsRepository(db);
+
+      const result = await repo.findPendingByBookerAndStay(
+        "booker-uuid",
+        "room-uuid",
+        "2026-05-01",
+        "2026-05-04",
+      );
+
+      expect(db.selectFrom).toHaveBeenCalledWith("reservations");
+      expect(db.where).toHaveBeenCalledWith("booker_id", "=", "booker-uuid");
+      expect(db.where).toHaveBeenCalledWith("room_id", "=", "room-uuid");
+      expect(db.where).toHaveBeenCalledWith("check_in", "=", "2026-05-01");
+      expect(db.where).toHaveBeenCalledWith("check_out", "=", "2026-05-04");
+      expect(db.where).toHaveBeenCalledWith("status", "=", "pending");
+      expect(result).toBe(row);
+    });
+
+    it("returns null when no matching pending reservation exists", async () => {
+      const db = makeDb({ single: undefined });
+      const repo = new ReservationsRepository(db);
+
+      const result = await repo.findPendingByBookerAndStay(
+        "booker-uuid",
+        "room-uuid",
+        "2026-05-01",
+        "2026-05-04",
+      );
+
+      expect(result).toBeNull();
+    });
+  });
+
+  describe("updateGuestInfo", () => {
+    it("updates guest_info and returns the updated row", async () => {
+      const updated = makeRow({
+        guest_info: {
+          firstName: "Ana",
+          lastName: "García",
+          email: "ana@example.com",
+        },
+      });
+      const db = makeDb({ single: updated });
+      const repo = new ReservationsRepository(db);
+
+      const guestInfo = {
+        firstName: "Ana",
+        lastName: "García",
+        email: "ana@example.com",
+      };
+      const result = await repo.updateGuestInfo("res-uuid", guestInfo);
+
+      expect(db.updateTable).toHaveBeenCalledWith("reservations");
+      expect(db.where).toHaveBeenCalledWith("id", "=", "res-uuid");
+      expect(result).toBe(updated);
+    });
+
+    it("throws NotFoundException when reservation not found", async () => {
+      const db = makeDb({ single: undefined });
+      const repo = new ReservationsRepository(db);
+
+      await expect(
+        repo.updateGuestInfo("nonexistent", {
+          firstName: "X",
+          lastName: "Y",
+          email: "x@y.com",
+        }),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
   describe("expire", () => {
     it("transitions status to expired and returns the row", async () => {
       const expired = makeRow({ status: "expired" });

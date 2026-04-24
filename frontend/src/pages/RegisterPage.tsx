@@ -121,7 +121,20 @@ export default function RegisterPage() {
         return;
       }
 
-      navigate({ to: '/register-success' });
+      const loginRes = await fetch(`${API_BASE}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: fields.email.trim().toLowerCase(),
+          password: fields.password,
+        }),
+      });
+      if (loginRes.ok) {
+        const loginData = await loginRes.json() as { challengeId: string };
+        navigate({ to: '/login/mfa', search: { challengeId: loginData.challengeId } });
+      } else {
+        navigate({ to: '/register-success' });
+      }
     } catch {
       setApiError(t('register.errors.generic'));
     } finally {

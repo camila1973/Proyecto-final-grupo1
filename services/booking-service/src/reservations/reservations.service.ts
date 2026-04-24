@@ -1,20 +1,15 @@
-import {
-  HttpException,
-  HttpStatus,
-  Injectable,
-  Logger,
-  UnauthorizedException,
-} from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import {
   FareCalculatorService,
   FareBreakdown,
 } from "../fare/fare-calculator.service.js";
 import { InventoryClient } from "../clients/inventory.client.js";
 import { ReservationsRepository } from "./reservations.repository.js";
-import { CacheService } from "../cache/cache.service.js";
+import { HoldsService } from "./holds.service.js";
 import { EventsPublisher } from "../events/events.publisher.js";
 import {
   CreateReservationDto,
+  GuestInfoDto,
   PreviewReservationDto,
 } from "./dto/create-reservation.dto.js";
 
@@ -26,7 +21,7 @@ export class ReservationsService {
     private readonly fareCalculator: FareCalculatorService,
     private readonly reservationsRepo: ReservationsRepository,
     private readonly inventoryClient: InventoryClient,
-    private readonly cache: CacheService,
+    private readonly holdsService: HoldsService,
     private readonly publisher: EventsPublisher,
   ) {}
 
@@ -43,57 +38,125 @@ export class ReservationsService {
   }
 
   async create(dto: CreateReservationDto) {
-    // Atomically consume the hold — GETDEL ensures exactly one reservation per hold
-    const idempKey = `booking:hold:idempotency:${dto.bookerId}:${dto.roomId}:${dto.checkIn}:${dto.checkOut}`;
-    const holdRaw = await this.cache.getAndDelete(idempKey);
-
-    if (!holdRaw) {
-      throw new HttpException("Hold not found or expired", HttpStatus.GONE);
+    // Idempotency guard — return existing pending reservation if one already exists
+    const existing = await this.reservationsRepo.findPendingByBookerAndStay(
+      dto.bookerId,
+      dto.roomId,
+      dto.checkIn,
+      dto.checkOut,
+    );
+    if (existing) {
+      const fareBreakdown = existing.fare_breakdown as unknown as FareBreakdown;
+      return {
+        created: false as const,
+        ...this.reservationsRepo.toResponse(existing),
+        fareBreakdown,
+        holdExpiresAt: existing.hold_expires_at
+          ? existing.hold_expires_at instanceof Date
+            ? existing.hold_expires_at.toISOString()
+            : String(existing.hold_expires_at)
+          : null,
+      };
     }
 
-    const holdData = JSON.parse(holdRaw) as {
-      holdId: string;
-      expiresAt: string;
-    };
-
-    if (holdData.holdId !== dto.holdId) {
-      throw new UnauthorizedException("holdId mismatch");
-    }
-
-    const holdExpiresAt = new Date(holdData.expiresAt);
-
-    const location = await this.inventoryClient.getRoomLocation(dto.roomId);
-
-    const fareBreakdown = await this.fareCalculator.calculate({
-      propertyId: dto.propertyId,
+    // Create inventory hold — locks room and starts 15-min clock
+    const { holdId, expiresAt } = await this.holdsService.create({
+      bookerId: dto.bookerId,
       roomId: dto.roomId,
-      partnerId: dto.partnerId,
-      checkIn: new Date(dto.checkIn),
-      checkOut: new Date(dto.checkOut),
-      propertyLocation: location,
+      checkIn: dto.checkIn,
+      checkOut: dto.checkOut,
     });
 
-    const row = await this.reservationsRepo.insert({
-      property_id: dto.propertyId,
-      room_id: dto.roomId,
-      partner_id: dto.partnerId,
-      booker_id: dto.bookerId,
-      guest_info: dto.guestInfo,
-      check_in: dto.checkIn,
-      check_out: dto.checkOut,
-      status: "pending",
-      fare_breakdown: fareBreakdown,
-      tax_total_usd: fareBreakdown.taxTotalUsd,
-      fee_total_usd: fareBreakdown.feeTotalUsd,
-      grand_total_usd: fareBreakdown.totalUsd,
-      hold_expires_at: holdExpiresAt,
-    });
+    const holdExpiresAt = new Date(expiresAt);
+
+    let fareBreakdown: FareBreakdown;
+    try {
+      const location = await this.inventoryClient.getRoomLocation(dto.roomId);
+      fareBreakdown = await this.fareCalculator.calculate({
+        propertyId: dto.propertyId,
+        roomId: dto.roomId,
+        partnerId: dto.partnerId,
+        checkIn: new Date(dto.checkIn),
+        checkOut: new Date(dto.checkOut),
+        propertyLocation: location,
+      });
+    } catch (err) {
+      // Release the hold if we can't compute the fare
+      this.logger.error(
+        `Fare calculation failed for room ${dto.roomId}: ${err}`,
+      );
+      await this.holdsService.release(holdId).catch((releaseErr) => {
+        this.logger.warn(
+          `Failed to release hold ${holdId} after fare error: ${releaseErr}`,
+        );
+      });
+      throw err;
+    }
+
+    let row: Awaited<ReturnType<typeof this.reservationsRepo.insert>>;
+    try {
+      row = await this.reservationsRepo.insert({
+        property_id: dto.propertyId,
+        room_id: dto.roomId,
+        partner_id: dto.partnerId,
+        booker_id: dto.bookerId,
+        check_in: dto.checkIn,
+        check_out: dto.checkOut,
+        status: "pending",
+        fare_breakdown: fareBreakdown,
+        tax_total_usd: fareBreakdown.taxTotalUsd,
+        fee_total_usd: fareBreakdown.feeTotalUsd,
+        grand_total_usd: fareBreakdown.totalUsd,
+        hold_expires_at: holdExpiresAt,
+      });
+    } catch (err: any) {
+      // Unique constraint violation — a concurrent request already inserted the row.
+      // Re-query and return the existing pending reservation idempotently.
+      if (err?.code === "23505") {
+        await this.holdsService.release(holdId).catch(() => undefined);
+        const existing = await this.reservationsRepo.findPendingByBookerAndStay(
+          dto.bookerId,
+          dto.roomId,
+          dto.checkIn,
+          dto.checkOut,
+        );
+        if (existing) {
+          return {
+            created: false as const,
+            ...this.reservationsRepo.toResponse(existing),
+            fareBreakdown: existing.fare_breakdown as unknown as FareBreakdown,
+            holdExpiresAt: existing.hold_expires_at
+              ? existing.hold_expires_at instanceof Date
+                ? existing.hold_expires_at.toISOString()
+                : String(existing.hold_expires_at)
+              : null,
+          };
+        }
+      }
+      await this.holdsService.release(holdId).catch((releaseErr) => {
+        this.logger.warn(
+          `Failed to release hold ${holdId} after insert error: ${releaseErr}`,
+        );
+      });
+      throw err;
+    }
 
     return {
+      created: true as const,
       ...this.reservationsRepo.toResponse(row),
       fareBreakdown,
       holdExpiresAt: holdExpiresAt.toISOString(),
     };
+  }
+
+  async updateGuestInfo(id: string, dto: GuestInfoDto) {
+    const row = await this.reservationsRepo.updateGuestInfo(id, {
+      firstName: dto.firstName,
+      lastName: dto.lastName,
+      email: dto.email,
+      phone: dto.phone,
+    });
+    return this.reservationsRepo.toResponse(row);
   }
 
   async findAll(bookerId?: string) {

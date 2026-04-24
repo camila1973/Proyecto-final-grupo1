@@ -9,6 +9,7 @@ import {
   createHmac,
   randomBytes,
   randomInt,
+  randomUUID,
   scryptSync,
   timingSafeEqual,
 } from "crypto";
@@ -44,7 +45,7 @@ export class AuthService {
       throw new ConflictException("Email is already registered");
     }
 
-    const userId = this.generateId("usr");
+    const userId = randomUUID();
     const createdAt = new Date().toISOString();
 
     await this.authRepository.createUser({
@@ -76,7 +77,7 @@ export class AuthService {
 
     const otp = this.generateOtp();
     const otpHash = this.hashOtp(otp);
-    const challengeId = this.generateId("mfa");
+    const challengeId = randomUUID();
 
     await this.authRepository.createChallenge({
       id: challengeId,
@@ -260,10 +261,6 @@ export class AuthService {
     if (!password || password.length < 8) {
       throw new BadRequestException("Password must have at least 8 characters");
     }
-  }
-
-  private generateId(prefix: string): string {
-    return `${prefix}_${randomBytes(8).toString("hex")}`;
   }
 
   private base64UrlEncode(input: string): string {

@@ -1,9 +1,4 @@
-import {
-  HttpException,
-  HttpStatus,
-  NotFoundException,
-  UnauthorizedException,
-} from "@nestjs/common";
+import { NotFoundException } from "@nestjs/common";
 import { ReservationsService } from "./reservations.service.js";
 import { FareBreakdown } from "../fare/fare-calculator.service.js";
 
@@ -58,27 +53,13 @@ const PREVIEW_DTO = {
   checkOut: "2026-05-04",
 };
 
-const GUEST_INFO = {
-  firstName: "Ana",
-  lastName: "García",
-  email: "ana@example.com",
-};
 const HOLD_ID = "hold-uuid";
 const HOLD_EXPIRES_AT = new Date(Date.now() + 900_000).toISOString();
-const HOLD_PAYLOAD = JSON.stringify({
-  holdId: HOLD_ID,
-  bookerId: "booker-uuid",
-  roomId: "room-uuid",
-  checkIn: "2026-05-01",
-  checkOut: "2026-05-04",
-  expiresAt: HOLD_EXPIRES_AT,
-});
 
+// CREATE_DTO no longer includes holdId — hold is created internally
 const CREATE_DTO = {
   ...PREVIEW_DTO,
-  holdId: HOLD_ID,
   bookerId: "booker-uuid",
-  guestInfo: GUEST_INFO,
 };
 
 // ─── Tests ─────────────────────────────────────────────────────────────────────
@@ -91,6 +72,8 @@ describe("ReservationsService", () => {
     findAll: jest.Mock;
     findByBookerId: jest.Mock;
     findById: jest.Mock;
+    findPendingByBookerAndStay: jest.Mock;
+    updateGuestInfo: jest.Mock;
     toResponse: jest.Mock;
     confirm: jest.Mock;
   };
@@ -98,7 +81,10 @@ describe("ReservationsService", () => {
     getRoomLocation: jest.Mock;
     confirmHold: jest.Mock;
   };
-  let cache: { getAndDelete: jest.Mock };
+  let holdsService: {
+    create: jest.Mock;
+    release: jest.Mock;
+  };
 
   const fareBreakdown = makeFareBreakdown();
   const row = makeRow();
@@ -109,14 +95,19 @@ describe("ReservationsService", () => {
       getRoomLocation: jest.fn().mockResolvedValue(LOCATION),
       confirmHold: jest.fn().mockResolvedValue(undefined),
     };
-    cache = {
-      getAndDelete: jest.fn().mockResolvedValue(HOLD_PAYLOAD),
+    holdsService = {
+      create: jest
+        .fn()
+        .mockResolvedValue({ holdId: HOLD_ID, expiresAt: HOLD_EXPIRES_AT }),
+      release: jest.fn().mockResolvedValue(undefined),
     };
     reservationsRepo = {
       insert: jest.fn().mockResolvedValue(row),
       findAll: jest.fn().mockResolvedValue([row, row]),
       findByBookerId: jest.fn().mockResolvedValue([row]),
       findById: jest.fn().mockResolvedValue(row),
+      findPendingByBookerAndStay: jest.fn().mockResolvedValue(null),
+      updateGuestInfo: jest.fn().mockResolvedValue(row),
       toResponse: jest.fn().mockImplementation((r) => ({ id: r.id })),
       confirm: jest.fn(),
     };
@@ -124,7 +115,7 @@ describe("ReservationsService", () => {
       fareCalculator as any,
       reservationsRepo as any,
       inventoryClient as any,
-      cache as any,
+      holdsService as any,
       { publish: jest.fn() } as any,
     );
   });
@@ -169,19 +160,21 @@ describe("ReservationsService", () => {
   // ─── create ─────────────────────────────────────────────────────────────────
 
   describe("create", () => {
-    it("consumes the hold via GETDEL and inserts a reservation", async () => {
+    it("creates a hold then inserts a reservation", async () => {
       await service.create(CREATE_DTO);
 
-      expect(cache.getAndDelete).toHaveBeenCalledWith(
-        `booking:hold:idempotency:booker-uuid:room-uuid:2026-05-01:2026-05-04`,
-      );
+      expect(holdsService.create).toHaveBeenCalledWith({
+        bookerId: "booker-uuid",
+        roomId: "room-uuid",
+        checkIn: "2026-05-01",
+        checkOut: "2026-05-04",
+      });
       expect(reservationsRepo.insert).toHaveBeenCalledWith(
         expect.objectContaining({
           property_id: "prop-uuid",
           room_id: "room-uuid",
           partner_id: "partner-uuid",
           booker_id: "booker-uuid",
-          guest_info: GUEST_INFO,
           check_in: "2026-05-01",
           check_out: "2026-05-04",
           status: "pending",
@@ -192,11 +185,18 @@ describe("ReservationsService", () => {
       );
     });
 
-    it("sets hold_expires_at from the Redis payload, not now+15min", async () => {
+    it("sets hold_expires_at from the hold response", async () => {
       await service.create(CREATE_DTO);
 
       const inserted = reservationsRepo.insert.mock.calls[0][0];
       expect(inserted.hold_expires_at).toEqual(new Date(HOLD_EXPIRES_AT));
+    });
+
+    it("does not include guest_info in the insert (DB default applies)", async () => {
+      await service.create(CREATE_DTO);
+
+      const inserted = reservationsRepo.insert.mock.calls[0][0];
+      expect(inserted.guest_info).toBeUndefined();
     });
 
     it("returns fareBreakdown and holdExpiresAt in the response", async () => {
@@ -215,30 +215,20 @@ describe("ReservationsService", () => {
       });
     });
 
-    it("throws 410 Gone when hold is not found or expired", async () => {
-      cache.getAndDelete.mockResolvedValue(null);
-
-      await expect(service.create(CREATE_DTO)).rejects.toThrow(
-        new HttpException("Hold not found or expired", HttpStatus.GONE),
+    it("returns existing pending reservation without creating a new hold (idempotency)", async () => {
+      const existingRow = makeRow({ fare_breakdown: fareBreakdown });
+      reservationsRepo.findPendingByBookerAndStay.mockResolvedValue(
+        existingRow,
       );
+
+      const result = await service.create(CREATE_DTO);
+
+      expect(holdsService.create).not.toHaveBeenCalled();
       expect(reservationsRepo.insert).not.toHaveBeenCalled();
+      expect(result.id).toBe(existingRow.id);
     });
 
-    it("throws 401 when holdId in DTO does not match Redis payload", async () => {
-      await expect(
-        service.create({ ...CREATE_DTO, holdId: "wrong-hold-id" }),
-      ).rejects.toThrow(UnauthorizedException);
-      expect(reservationsRepo.insert).not.toHaveBeenCalled();
-    });
-
-    it("does not call inventoryClient.hold or unhold", async () => {
-      await service.create(CREATE_DTO);
-
-      expect((inventoryClient as any).hold).toBeUndefined();
-      expect((inventoryClient as any).unhold).toBeUndefined();
-    });
-
-    it("propagates fare calculation errors", async () => {
+    it("releases the hold when fare calculation fails", async () => {
       fareCalculator.calculate.mockRejectedValue(
         new NotFoundException("No price"),
       );
@@ -246,7 +236,64 @@ describe("ReservationsService", () => {
       await expect(service.create(CREATE_DTO)).rejects.toThrow(
         NotFoundException,
       );
+      expect(holdsService.release).toHaveBeenCalledWith(HOLD_ID);
       expect(reservationsRepo.insert).not.toHaveBeenCalled();
+    });
+
+    it("releases the hold when DB insert fails", async () => {
+      reservationsRepo.insert.mockRejectedValue(new Error("DB error"));
+
+      await expect(service.create(CREATE_DTO)).rejects.toThrow("DB error");
+      expect(holdsService.release).toHaveBeenCalledWith(HOLD_ID);
+    });
+
+    it("propagates hold creation errors without inserting", async () => {
+      holdsService.create.mockRejectedValue(new Error("inventory unavailable"));
+
+      await expect(service.create(CREATE_DTO)).rejects.toThrow(
+        "inventory unavailable",
+      );
+      expect(reservationsRepo.insert).not.toHaveBeenCalled();
+    });
+  });
+
+  // ─── updateGuestInfo ─────────────────────────────────────────────────────────
+
+  describe("updateGuestInfo", () => {
+    it("delegates to repository and returns mapped response", async () => {
+      const dto = {
+        firstName: "Ana",
+        lastName: "García",
+        email: "ana@example.com",
+        phone: "+52 1 555 123 4567",
+      };
+
+      await service.updateGuestInfo("res-uuid", dto);
+
+      expect(reservationsRepo.updateGuestInfo).toHaveBeenCalledWith(
+        "res-uuid",
+        {
+          firstName: "Ana",
+          lastName: "García",
+          email: "ana@example.com",
+          phone: "+52 1 555 123 4567",
+        },
+      );
+      expect(reservationsRepo.toResponse).toHaveBeenCalledWith(row);
+    });
+
+    it("propagates NotFoundException when reservation not found", async () => {
+      reservationsRepo.updateGuestInfo.mockRejectedValue(
+        new NotFoundException("Reservation not found"),
+      );
+
+      await expect(
+        service.updateGuestInfo("bad-id", {
+          firstName: "X",
+          lastName: "Y",
+          email: "x@y.com",
+        }),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -356,7 +403,7 @@ describe("ReservationsService", () => {
         fareCalculator as any,
         reservationsRepo as any,
         inventoryClient as any,
-        cache as any,
+        holdsService as any,
         publisher as any,
       );
 
@@ -387,7 +434,7 @@ describe("ReservationsService", () => {
         fareCalculator as any,
         reservationsRepo as any,
         inventoryClient as any,
-        cache as any,
+        holdsService as any,
         publisher as any,
       );
 
