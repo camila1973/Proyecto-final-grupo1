@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import {
   createMemoryHistory,
   createRouter,
@@ -34,6 +34,32 @@ function makeRouter() {
     component: RegisterSuccess,
   });
   const routeTree = rootRoute.addChildren([registerRoute, successRoute]);
+  const history = createMemoryHistory({ initialEntries: ['/register'] });
+  return createRouter({ routeTree, history });
+}
+
+function makeRouterWithMfa() {
+  const rootRoute = createRootRoute({
+    component: () => (
+      <LocaleProvider>
+        <Outlet />
+      </LocaleProvider>
+    ),
+  });
+  const registerRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/register',
+    component: RegisterPage,
+  });
+  const mfaRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/login/mfa',
+    validateSearch: (search: Record<string, unknown>) => ({
+      challengeId: search.challengeId as string | undefined,
+    }),
+    component: () => <div>MFA Page</div>,
+  });
+  const routeTree = rootRoute.addChildren([registerRoute, mfaRoute]);
   const history = createMemoryHistory({ initialEntries: ['/register'] });
   return createRouter({ routeTree, history });
 }
@@ -312,6 +338,26 @@ describe('RegisterPage', () => {
       fireEvent.click(await screen.findByRole('button', { name: es.register.submit }));
       expect(await screen.findByText(es.register.errors.name_required)).toBeInTheDocument();
       expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it('navigates to /login/mfa when auto-login succeeds after registration', async () => {
+      (global.fetch as jest.Mock)
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 201,
+          json: () => Promise.resolve({ id: 'usr_1', email: 'juan@example.com' }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ challengeId: 'challenge_abc' }),
+        });
+      const router = makeRouterWithMfa();
+      render(<RouterProvider router={router} />);
+      await fillValidForm();
+      fireEvent.click(screen.getByRole('button', { name: es.register.submit }));
+      await waitFor(() => {
+        expect(screen.getByText('MFA Page')).toBeInTheDocument();
+      });
     });
   });
 
