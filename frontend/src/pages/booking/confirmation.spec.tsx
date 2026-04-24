@@ -3,16 +3,26 @@ import BookingConfirmationPage from './confirmation';
 
 const mockNavigate = jest.fn();
 const mockUseSearch = jest.fn();
+const mockUseParams = jest.fn();
 
 jest.mock('@tanstack/react-router', () => ({
   useNavigate: () => mockNavigate,
   useSearch: (...args: unknown[]) => mockUseSearch(...args),
+  useParams: (...args: unknown[]) => mockUseParams(...args),
+}));
+
+jest.mock('../../context/LocaleContext', () => ({
+  useLocale: () => ({ currency: 'USD' }),
+}));
+
+jest.mock('../checkout/SummaryPanel', () => ({
+  SummaryPanel: () => <div>Resumen de reserva</div>,
 }));
 
 describe('BookingConfirmationPage', () => {
   beforeEach(() => {
+    mockUseParams.mockReturnValue({ id: 'res_123' });
     mockUseSearch.mockReturnValue({
-      reservationId: 'res_123',
       propertyName: 'Hotel Test',
       roomType: 'Suite',
       checkIn: '2026-07-01',
@@ -50,11 +60,9 @@ describe('BookingConfirmationPage', () => {
 
     render(<BookingConfirmationPage />);
 
-    expect(await screen.findByText('¡Reserva confirmada!')).toBeInTheDocument();
-    expect(screen.getByText('Hotel Test')).toBeInTheDocument();
-    expect(screen.getByText('USD $250.50')).toBeInTheDocument();
+    expect(await screen.findByText('¡Reserva exitosa!')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Volver al inicio' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ir al inicio' }));
     expect(mockNavigate).toHaveBeenCalledWith({ to: '/' });
   });
 

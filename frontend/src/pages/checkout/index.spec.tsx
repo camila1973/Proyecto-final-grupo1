@@ -13,6 +13,7 @@ jest.mock('@tanstack/react-router', () => ({
 }));
 
 jest.mock('../../hooks/useBookingFlow', () => ({
+  peekCheckoutIntent: () => mockConsumeCheckoutIntent(),
   consumeCheckoutIntent: () => mockConsumeCheckoutIntent(),
   consumeReservationPromise: () => null,
   startCheckoutAfterLogin: jest.fn(() => false),
