@@ -5,6 +5,10 @@ const mockNavigate = jest.fn();
 const mockConfirmPayment = jest.fn();
 const mockSubmitElements = jest.fn();
 
+// Mutable so individual tests can set stripe/elements to null
+let mockStripe: Record<string, jest.Mock> | null = { confirmPayment: mockConfirmPayment };
+let mockElements: Record<string, jest.Mock> | null = { submit: mockSubmitElements };
+
 jest.mock('@tanstack/react-router', () => ({
   useNavigate: () => mockNavigate,
 }));
@@ -15,8 +19,8 @@ jest.mock('../../context/LocaleContext', () => ({
 
 jest.mock('@stripe/react-stripe-js', () => ({
   PaymentElement: () => <div data-testid="payment-element" />,
-  useStripe: () => ({ confirmPayment: mockConfirmPayment }),
-  useElements: () => ({ submit: mockSubmitElements }),
+  useStripe: () => mockStripe,
+  useElements: () => mockElements,
 }));
 
 jest.mock('../../env', () => ({ API_BASE: 'http://localhost:3000' }));
@@ -67,6 +71,9 @@ describe('CheckoutForm', () => {
     mockConfirmPayment.mockReset();
     mockSubmitElements.mockReset();
     mockNavigate.mockReset();
+    // Restore stripe/elements to their default truthy values
+    mockStripe = { confirmPayment: mockConfirmPayment };
+    mockElements = { submit: mockSubmitElements };
     // Default: elements.submit() succeeds with no error
     mockSubmitElements.mockResolvedValue({ error: undefined });
   });
@@ -214,6 +221,56 @@ describe('CheckoutForm', () => {
       await waitFor(() => {
         expect(screen.getByText('Tu tarjeta fue rechazada.')).toBeInTheDocument();
       });
+    });
+  });
+
+  describe('handleSubmit — guard: stripe not ready', () => {
+    it('does nothing when stripe is not loaded', () => {
+      mockStripe = null;
+
+      renderForm();
+      fireEvent.submit(getForm());
+
+      // No error shown, no navigation
+      expect(mockNavigate).not.toHaveBeenCalled();
+      expect(screen.queryByRole('alert')).toBeNull();
+    });
+  });
+
+  describe('handleSubmit — error message fallbacks', () => {
+    it('shows fallback message when submitError has no message', async () => {
+      mockSubmitElements.mockResolvedValue({ error: {} }); // error without message
+      renderForm();
+      fireEvent.submit(getForm());
+      await waitFor(() => {
+        expect(screen.getByText('Error en el formulario de pago')).toBeInTheDocument();
+      });
+    });
+
+    it('shows fallback message when stripeError has no message', async () => {
+      (global.fetch as jest.Mock)
+        .mockResolvedValueOnce({ ok: true }) // PATCH guest info
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ clientSecret: 'secret_123' }),
+        }) // POST initiate
+        .mockResolvedValueOnce({ ok: true }); // PATCH submit
+      mockConfirmPayment.mockResolvedValue({ error: {} }); // error without message
+      renderForm();
+      fireEvent.submit(getForm());
+      await waitFor(() => {
+        expect(screen.getByText('Error procesando el pago')).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('"Finalizar después" button', () => {
+    it('calls history.back() when clicked', () => {
+      const backSpy = jest.spyOn(history, 'back').mockImplementation(() => {});
+      renderForm();
+      fireEvent.click(screen.getByRole('button', { name: 'Finalizar después' }));
+      expect(backSpy).toHaveBeenCalled();
+      backSpy.mockRestore();
     });
   });
 

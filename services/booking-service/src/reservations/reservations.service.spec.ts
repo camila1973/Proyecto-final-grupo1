@@ -351,6 +351,21 @@ describe("ReservationsService", () => {
     });
   });
 
+  // ─── submitPayment ──────────────────────────────────────────────────────────
+
+  describe("submitPayment", () => {
+    it("delegates to repository and returns mapped response", async () => {
+      const pendingRow = makeRow({ status: "pending" });
+      reservationsRepo.submitPayment = jest.fn().mockResolvedValue(pendingRow);
+
+      const result = await service.submitPayment("res-uuid");
+
+      expect(reservationsRepo.submitPayment).toHaveBeenCalledWith("res-uuid");
+      expect(reservationsRepo.toResponse).toHaveBeenCalledWith(pendingRow);
+      expect(result).toEqual({ id: pendingRow.id });
+    });
+  });
+
   // ─── confirm ────────────────────────────────────────────────────────────────
 
   describe("confirm", () => {

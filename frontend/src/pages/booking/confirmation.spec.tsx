@@ -80,4 +80,66 @@ describe('BookingConfirmationPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Volver al inicio' }));
     expect(mockNavigate).toHaveBeenCalledWith({ to: '/' });
   });
+
+  it('shows default failure message when failureReason is absent', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ status: 'failed' }),
+    });
+
+    render(<BookingConfirmationPage />);
+
+    expect(await screen.findByText('Pago no procesado')).toBeInTheDocument();
+    expect(
+      screen.getByText('Tu pago fue rechazado. Intenta con otra tarjeta.'),
+    ).toBeInTheDocument();
+  });
+
+  it('schedules a retry when the status fetch returns a non-ok response', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({ ok: false, status: 503 });
+
+    render(<BookingConfirmationPage />);
+
+    // After the first failed poll the component stays in the pending spinner state
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/payment/payments/res_123/status'),
+      );
+    });
+    expect(screen.getByText('Procesando tu pago…')).toBeInTheDocument();
+  });
+
+  it('schedules a retry when the status fetch throws a network error', async () => {
+    (global.fetch as jest.Mock).mockRejectedValue(new Error('Network error'));
+
+    render(<BookingConfirmationPage />);
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/payment/payments/res_123/status'),
+      );
+    });
+    expect(screen.getByText('Procesando tu pago…')).toBeInTheDocument();
+  });
+
+  it('shows timed-out success state when polling exceeds the timeout', async () => {
+    // Make Date.now() jump past the timeout after the first call (startedAt)
+    let nowCallCount = 0;
+    const startTs = 1_000_000;
+    jest.spyOn(Date, 'now').mockImplementation(() => {
+      nowCallCount++;
+      return nowCallCount === 1 ? startTs : startTs + 90_001;
+    });
+
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ status: 'pending' }),
+    });
+
+    render(<BookingConfirmationPage />);
+
+    expect(await screen.findByText('¡Pago recibido!')).toBeInTheDocument();
+
+    jest.restoreAllMocks();
+  });
 });

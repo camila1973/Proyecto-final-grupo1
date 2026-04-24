@@ -341,6 +341,30 @@ describe("ReservationsRepository", () => {
     });
   });
 
+  describe("submitPayment", () => {
+    it("transitions status from on_hold to pending and returns the updated row", async () => {
+      const pending = makeRow({ status: "pending" });
+      const db = makeDb({ single: pending });
+      const repo = new ReservationsRepository(db);
+
+      const result = await repo.submitPayment("res-uuid");
+
+      expect(db.updateTable).toHaveBeenCalledWith("reservations");
+      expect(db.where).toHaveBeenCalledWith("id", "=", "res-uuid");
+      expect(db.where).toHaveBeenCalledWith("status", "=", "on_hold");
+      expect(result).toBe(pending);
+    });
+
+    it("throws NotFoundException when reservation not found or not on_hold", async () => {
+      const db = makeDb({ single: undefined });
+      const repo = new ReservationsRepository(db);
+
+      await expect(repo.submitPayment("res-uuid")).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
   describe("expire", () => {
     it("transitions status to expired and returns the row", async () => {
       const expired = makeRow({ status: "expired" });
