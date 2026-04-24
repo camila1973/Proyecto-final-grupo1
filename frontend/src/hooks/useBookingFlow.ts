@@ -14,7 +14,7 @@ const KEY = 'checkoutIntent';
 const saveCheckoutIntent = (intent: CheckoutIntent): void =>
   sessionStorage.setItem(KEY, JSON.stringify(intent));
 
-const peekCheckoutIntent = (): CheckoutIntent | null => {
+export const peekCheckoutIntent = (): CheckoutIntent | null => {
   const raw = sessionStorage.getItem(KEY);
   return raw ? (JSON.parse(raw) as CheckoutIntent) : null;
 };
@@ -48,14 +48,13 @@ async function fetchReservation(
   intent: CheckoutIntent,
   token: string,
   userId: string,
-  userEmail: string,
 ): Promise<ReservationResponse> {
   const headers = {
     'Content-Type': 'application/json',
     Authorization: `Bearer ${token}`,
   };
 
-  const holdRes = await fetch(`${API_BASE}/api/booking/reservations`, {
+  const res = await fetch(`${API_BASE}/api/booking/reservations`, {
     method: 'POST',
     headers,
     body: JSON.stringify({
@@ -67,25 +66,8 @@ async function fetchReservation(
       checkOut: intent.stay.checkOut,
     }),
   });
-  if (!holdRes.ok) throw new Error(`Hold failed: HTTP ${holdRes.status}`);
-  const { holdId } = (await holdRes.json()) as { holdId: string };
-
-  const resRes = await fetch(`${API_BASE}/api/booking/reservations`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({
-      holdId,
-      propertyId: intent.property.id,
-      roomId: intent.room.id,
-      partnerId: intent.room.partnerId,
-      bookerId: userId,
-      guestInfo: { firstName: userEmail, lastName: '', email: userEmail },
-      checkIn: intent.stay.checkIn,
-      checkOut: intent.stay.checkOut,
-    }),
-  });
-  if (!resRes.ok) throw new Error(`Reservation failed: HTTP ${resRes.status}`);
-  return resRes.json() as Promise<ReservationResponse>;
+  if (!res.ok) throw new Error(`Reservation failed: HTTP ${res.status}`);
+  return res.json() as Promise<ReservationResponse>;
 }
 
 /**
@@ -96,11 +78,10 @@ async function fetchReservation(
 export const startCheckoutAfterLogin = (
   token: string,
   userId: string,
-  userEmail: string,
 ): boolean => {
   const intent = peekCheckoutIntent();
   if (!intent) return false;
-  pendingReservation = fetchReservation(intent, token, userId, userEmail);
+  pendingReservation = fetchReservation(intent, token, userId);
   return true;
 };
 
@@ -109,13 +90,13 @@ export function useBookingFlow() {
   const navigate = useNavigate();
 
   const createReservation = (intent: CheckoutIntent): Promise<ReservationResponse> =>
-    fetchReservation(intent, auth.token!, auth.user!.id, auth.user!.email);
+    fetchReservation(intent, auth.token!, auth.user!.id);
 
   const book = (intent: CheckoutIntent): void => {
     saveCheckoutIntent(intent);
     if (auth?.user) {
       pendingReservation = createReservation(intent);
-      void navigate({ to: '/checkout' });
+      void navigate({ to: '/booking/checkout' });
     } else {
       void navigate({ to: '/login' });
     }

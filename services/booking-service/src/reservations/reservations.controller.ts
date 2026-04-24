@@ -51,6 +51,12 @@ export class ReservationsController {
     return this.reservationsService.findOne(id);
   }
 
+  @Patch(":id/submit")
+  @HttpCode(HttpStatus.OK)
+  submitPayment(@Param("id") id: string) {
+    return this.reservationsService.submitPayment(id);
+  }
+
   @Patch(":id/confirm")
   @HttpCode(HttpStatus.OK)
   confirm(@Param("id") id: string) {

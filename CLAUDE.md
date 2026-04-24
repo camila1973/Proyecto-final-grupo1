@@ -354,6 +354,45 @@ Required secrets (repository or `production` GitHub Environment):
 | `GCP_PROJECT_ID` | Your GCP project ID |
 | `PULUMI_CONFIG_PASSPHRASE` | Empty string `""` |
 
+## Booking — Reservation State Machine
+
+Reservations go through the following states:
+
+```
+[User clicks Book]
+        ↓
+   on_hold  ──(15 min expires)──→  expired
+        │
+  [payment-service.initiate() called]
+        ↓
+    pending  ──(Stripe webhook: payment_failed)──→  (no transition, stays pending — manual retry)
+        │
+  [Stripe webhook: payment_intent.succeeded]
+        ↓
+  confirmed
+```
+
+| Status | Meaning | Inventory hold | Can re-book same room? |
+|---|---|---|---|
+| `on_hold` | User is in checkout, room locked | Active (15-min TTL) | No |
+| `pending` | Payment submitted to Stripe, awaiting webhook | Consumed | Yes |
+| `confirmed` | Webhook fired, booking finalized | Confirmed | No |
+| `expired` | Hold timed out without payment submission | Released | Yes |
+
+### Key transitions
+
+| Trigger | From → To | Who calls it |
+|---|---|---|
+| `POST /reservations` | — → `on_hold` | Frontend (via `useBookingFlow`) |
+| `POST /payment/payments/initiate` | `on_hold` → `pending` | payment-service calls `PATCH /reservations/:id/submit` internally |
+| Stripe webhook `payment_intent.succeeded` | `pending` → `confirmed` | payment-service calls `PATCH /reservations/:id/confirm` |
+| Hold expiry job (runs every 60s) | `on_hold` → `expired` | booking-service `HoldExpiryService` |
+
+### Important notes
+- The partial unique index on reservations only covers `on_hold` rows — a `pending` reservation does **not** block a new hold for the same room/dates.
+- `HoldExpiryService` only expires `on_hold` reservations, not `pending` ones.
+- In local dev without Stripe webhooks configured, reservations stay `pending` after payment. Use the Stripe CLI (`stripe listen --forward-to localhost:3005/payments/webhook`) to test the full flow.
+
 ## Event Bus (Pub/Sub in GCP, RabbitMQ locally)
 
 Events flow from `inventory-service` (publisher) to `search-service` (consumer) via a message broker selected by `MESSAGE_BROKER_TYPE`:

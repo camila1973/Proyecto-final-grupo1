@@ -63,6 +63,22 @@ export class ReservationsRepository {
     return row;
   }
 
+  async submitPayment(id: string): Promise<ReservationRow> {
+    const row = await this.db
+      .updateTable("reservations")
+      .set({ status: "pending", updated_at: new Date() })
+      .where("id", "=", id)
+      .where("status", "=", "on_hold")
+      .returningAll()
+      .executeTakeFirst();
+
+    if (!row) {
+      throw new NotFoundException(`Reservation ${id} not found or not on_hold`);
+    }
+
+    return row;
+  }
+
   async confirm(id: string): Promise<ReservationRow> {
     const row = await this.db
       .updateTable("reservations")
@@ -82,7 +98,7 @@ export class ReservationsRepository {
   async findExpiredHolds(): Promise<ReservationRow[]> {
     return this.db
       .selectFrom("reservations")
-      .where("status", "=", "pending")
+      .where("status", "=", "on_hold")
       .where("hold_expires_at", "<", new Date())
       .selectAll()
       .execute();
@@ -100,7 +116,7 @@ export class ReservationsRepository {
       .where("room_id", "=", roomId)
       .where("check_in", "=", checkIn)
       .where("check_out", "=", checkOut)
-      .where("status", "=", "pending")
+      .where("status", "=", "on_hold")
       .selectAll()
       .executeTakeFirst();
 
@@ -130,7 +146,7 @@ export class ReservationsRepository {
       .updateTable("reservations")
       .set({ status: "expired", updated_at: new Date() })
       .where("id", "=", id)
-      .where("status", "=", "pending")
+      .where("status", "=", "on_hold")
       .returningAll()
       .executeTakeFirst();
   }

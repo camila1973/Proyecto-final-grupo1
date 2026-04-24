@@ -102,7 +102,7 @@ export class ReservationsService {
         booker_id: dto.bookerId,
         check_in: dto.checkIn,
         check_out: dto.checkOut,
-        status: "pending",
+        status: "on_hold",
         fare_breakdown: fareBreakdown,
         tax_total_usd: fareBreakdown.taxTotalUsd,
         fee_total_usd: fareBreakdown.feeTotalUsd,
@@ -171,6 +171,11 @@ export class ReservationsService {
 
   async findOne(id: string) {
     const row = await this.reservationsRepo.findById(id);
+    return this.reservationsRepo.toResponse(row);
+  }
+
+  async submitPayment(id: string) {
+    const row = await this.reservationsRepo.submitPayment(id);
     return this.reservationsRepo.toResponse(row);
   }
 

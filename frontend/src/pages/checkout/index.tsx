@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from '@tanstack/react-router';
-import { consumeCheckoutIntent, consumeReservationPromise, useBookingFlow, type CheckoutIntent } from '../../hooks/useBookingFlow';
+import { consumeCheckoutIntent, peekCheckoutIntent, consumeReservationPromise, useBookingFlow, type CheckoutIntent } from '../../hooks/useBookingFlow';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements } from '@stripe/react-stripe-js';
 import { STRIPE_PUBLISHABLE_KEY } from '../../env';
@@ -15,11 +15,11 @@ import Typography from '@mui/material/Typography';
 
 const stripePromise = loadStripe(STRIPE_PUBLISHABLE_KEY);
 
-function CheckoutPage() {
+export default function CheckoutPageWithStripe() {
   const { auth, createReservation } = useBookingFlow();
   const navigate = useNavigate();
   const { currency } = useLocale();
-  const [intent] = useState<CheckoutIntent | null>(() => consumeCheckoutIntent());
+  const [intent] = useState<CheckoutIntent | null>(() => peekCheckoutIntent());
   const [reservation, setReservation] = useState<ReservationResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -33,10 +33,9 @@ function CheckoutPage() {
       return;
     }
 
-    // Consume the promise started in book() — already in flight, fires exactly once
     const promise = consumeReservationPromise() ?? createReservation(intent);
     promise
-      .then(setReservation)
+      .then((res) => { consumeCheckoutIntent(); setReservation(res); })
       .catch(() => setError('No se pudo crear la reserva. Intenta de nuevo.'));
   }, []);
 
@@ -61,26 +60,27 @@ function CheckoutPage() {
           </Box>
         ) : reservation ? (
           <>
-            <CheckoutForm
-              reservation={reservation}
-              email={auth.user.email}
-              intent={intent}
-              firstName={auth.user.firstName}
-              lastName={auth.user.lastName}
-              phone={auth.user.phone}
-            />
+            <Elements
+              stripe={stripePromise}
+              options={{
+                mode: 'payment',
+                amount: Math.round(reservation.grandTotalUsd * 100),
+                currency: 'usd',
+              }}
+            >
+              <CheckoutForm
+                reservation={reservation}
+                email={auth.user.email}
+                intent={intent}
+                firstName={auth.user.firstName}
+                lastName={auth.user.lastName}
+                phone={auth.user.phone}
+              />
+            </Elements>
             <SummaryPanel intent={intent} reservation={reservation} currency={currency} />
           </>
         ) : null}
       </Box>
     </main>
-  );
-}
-
-export default function CheckoutPageWithStripe() {
-  return (
-    <Elements stripe={stripePromise}>
-      <CheckoutPage />
-    </Elements>
   );
 }

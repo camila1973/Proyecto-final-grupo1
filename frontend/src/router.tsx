@@ -93,15 +93,14 @@ const mfaRoute = createRoute({
 
 const checkoutRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/checkout',
+  path: '/booking/checkout',
   component: CheckoutPage,
 });
 
 const bookingConfirmationRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/booking/confirmation',
+  path: '/booking/confirmation/$id',
   validateSearch: (search: Record<string, unknown>) => ({
-    reservationId: (search.reservationId as string) ?? '',
     propertyName: (search.propertyName as string) ?? '',
     roomType: (search.roomType as string) ?? '',
     checkIn: (search.checkIn as string) ?? '',

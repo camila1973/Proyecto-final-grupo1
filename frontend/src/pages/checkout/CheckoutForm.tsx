@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { type CheckoutIntent } from '../../hooks/useBookingFlow';
-import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { API_BASE } from '../../env';
 import { useLocale } from '../../context/LocaleContext';
 import { formatPrice } from '../../utils/currency';
@@ -11,15 +11,9 @@ import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
 import CircularProgress from '@mui/material/CircularProgress';
-import FormControlLabel from '@mui/material/FormControlLabel';
-import Radio from '@mui/material/Radio';
-import RadioGroup from '@mui/material/RadioGroup';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
-import CreditCardIcon from '@mui/icons-material/CreditCard';
 import QrCode2Icon from '@mui/icons-material/QrCode2';
-
-type PaymentMethod = 'credit_card' | 'google_pay' | 'paypal';
 
 export function CheckoutForm({
   reservation,
@@ -45,19 +39,18 @@ export function CheckoutForm({
   const [firstName, setFirstName] = useState(initialFirstName ?? '');
   const [lastName, setLastName] = useState(initialLastName ?? '');
   const [phone, setPhone] = useState(initialPhone ?? '');
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('credit_card');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!stripe || !elements || paymentMethod !== 'credit_card') return;
+    if (!stripe || !elements) return;
     setLoading(true);
     setError(null);
 
-    const card = elements.getElement(CardElement);
-    if (!card) {
-      setError('Card element not found');
+    const { error: submitError } = await elements.submit();
+    if (submitError) {
+      setError(submitError.message ?? 'Error en el formulario de pago');
       setLoading(false);
       return;
     }
@@ -68,7 +61,7 @@ export function CheckoutForm({
         {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ firstName, lastName, email: email, phone }),
+          body: JSON.stringify({ firstName, lastName, email, phone }),
         },
       );
       if (!patchRes.ok) throw new Error('guest_info_failed');
@@ -87,7 +80,7 @@ export function CheckoutForm({
           reservationId: reservation.id,
           amountUsd: reservation.grandTotalUsd,
           currency: 'usd',
-          email,
+          guestEmail: email,
         }),
       });
       if (!res.ok) throw new Error('Failed to initiate payment');
@@ -99,15 +92,18 @@ export function CheckoutForm({
       return;
     }
 
-    const { error: stripeError } = await stripe.confirmCardPayment(clientSecret, {
-      payment_method: {
-        card,
-        billing_details: {
-          name: `${firstName} ${lastName}`.trim() || email,
-          email: email,
-          phone,
-        },
+    // Transition reservation on_hold → pending (awaiting webhook confirmation)
+    await fetch(`${API_BASE}/api/booking/reservations/${reservation.id}/submit`, {
+      method: 'PATCH',
+    }).catch(() => null);
+
+    const { error: stripeError } = await stripe.confirmPayment({
+      elements,
+      clientSecret,
+      confirmParams: {
+        return_url: `${window.location.origin}/booking/confirmation`,
       },
+      redirect: 'if_required',
     });
 
     if (stripeError) {
@@ -117,9 +113,9 @@ export function CheckoutForm({
     }
 
     void navigate({
-      to: '/booking/confirmation',
+      to: '/booking/confirmation/$id',
+      params: { id: reservation.id },
       search: {
-        reservationId: reservation.id,
         propertyName: intent.property.name,
         roomType: intent.room.type,
         checkIn: intent.stay.checkIn,
@@ -133,7 +129,7 @@ export function CheckoutForm({
     <form onSubmit={handleSubmit} style={{ flex: 1, minWidth: 0 }}>
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
 
-        {/* ── Detalles de la orden ── */}
+        {/* ── Detalles del huésped ── */}
         <Box>
           <Typography variant="h6" fontWeight={700} mb={2}>
             Detalles del huésped
@@ -167,7 +163,6 @@ export function CheckoutForm({
               </Typography>
               <TextField size="small" fullWidth type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1.5 } }} />
             </Box>
-
           </Box>
         </Box>
 
@@ -176,39 +171,7 @@ export function CheckoutForm({
           <Typography variant="h6" fontWeight={700} mb={2}>
             Forma de pago
           </Typography>
-          <RadioGroup value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}>
-            {/* Credit card */}
-            <Box sx={{ border: '1px solid', borderColor: paymentMethod === 'credit_card' ? 'primary.main' : 'divider', borderRadius: 2, px: 2, py: 1, mb: 1 }}>
-              <FormControlLabel
-                value="credit_card"
-                control={<Radio size="small" />}
-                label={
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <span>Tarjeta de crédito</span>
-                    <CreditCardIcon fontSize="small" sx={{ color: 'text.secondary' }} />
-                  </Box>
-                }
-                sx={{ m: 0, width: '100%' }}
-              />
-              {paymentMethod === 'credit_card' && (
-                <Box sx={{ mt: 1.5, mb: 0.5, border: '1px solid', borderColor: 'divider', borderRadius: 1.5, p: 1.5, bgcolor: 'background.paper' }}>
-                  <CardElement options={{ style: { base: { fontSize: '15px', color: '#424770', '::placeholder': { color: '#aab7c4' } } } }} />
-                </Box>
-              )}
-            </Box>
-
-            {/* Google Pay */}
-            <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, px: 2, py: 1, mb: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', opacity: 0.5 }}>
-              <FormControlLabel value="google_pay" control={<Radio size="small" disabled />} label="Google Pay" sx={{ m: 0 }} disabled />
-              <Chip label="Próximamente" size="small" sx={{ fontSize: '0.65rem', height: 20 }} />
-            </Box>
-
-            {/* PayPal */}
-            <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, px: 2, py: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', opacity: 0.5 }}>
-              <FormControlLabel value="paypal" control={<Radio size="small" disabled />} label="Paypal" sx={{ m: 0 }} disabled />
-              <Chip label="Próximamente" size="small" sx={{ fontSize: '0.65rem', height: 20 }} />
-            </Box>
-          </RadioGroup>
+          <PaymentElement />
         </Box>
 
         {/* ── Políticas de cancelación ── */}
@@ -239,7 +202,7 @@ export function CheckoutForm({
             variant="contained"
             color="warning"
             size="large"
-            disabled={!stripe || loading || paymentMethod !== 'credit_card'}
+            disabled={!stripe || loading}
             sx={{ borderRadius: 2, fontWeight: 700, py: 1.5, flex: 1 }}
           >
             {loading ? <CircularProgress size={22} color="inherit" /> : `Reservar ${formatPrice(reservation.grandTotalUsd, currency)}`}
