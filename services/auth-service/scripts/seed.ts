@@ -30,18 +30,24 @@ const USERS = [
     email: "admin@travelhub.com",
     role: "admin" as const,
     password: "Admin1234!",
+    firstName: "Admin",
+    lastName: "TravelHub",
   },
   {
     id: "e1000000-0000-0000-0000-000000000002",
     email: "partner@travelhub.com",
     role: "partner" as const,
     password: "Partner1234!",
+    firstName: "Partner",
+    lastName: "TravelHub",
   },
   {
     id: "e1000000-0000-0000-0000-000000000003",
     email: "guest@travelhub.com",
     role: "guest" as const,
     password: "Guest1234!",
+    firstName: "Guest",
+    lastName: "TravelHub",
   },
 ];
 
@@ -63,6 +69,9 @@ async function seed() {
         role: u.role,
         password_hash: hashPassword(u.password),
         created_at: new Date().toISOString(),
+        first_name: u.firstName,
+        last_name: u.lastName,
+        phone: null,
       })),
     )
     .execute();

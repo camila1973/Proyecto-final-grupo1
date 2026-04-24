@@ -4,6 +4,9 @@ export type RegisterBody = {
   email: string;
   password: string;
   role?: UserRole;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
 };
 
 export type LoginBody = {
@@ -20,6 +23,9 @@ export type PublicUser = {
   id: string;
   email: string;
   role: UserRole;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
 };
 
 export type RegisterResponse = PublicUser & {
@@ -49,6 +55,9 @@ export type DbUser = {
   role: UserRole;
   password_hash: string;
   created_at: string;
+  first_name: string | null;
+  last_name: string | null;
+  phone: string | null;
 };
 
 export type DbChallenge = {

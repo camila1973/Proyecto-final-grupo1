@@ -54,12 +54,18 @@ export class AuthService {
       role: body.role ?? "guest",
       passwordHash: this.hashPassword(body.password),
       createdAt,
+      firstName: body.firstName?.trim() || undefined,
+      lastName: body.lastName?.trim() || undefined,
+      phone: body.phone?.trim() || undefined,
     });
 
     return {
       id: userId,
       email: normalizedEmail,
       role: body.role ?? "guest",
+      firstName: body.firstName?.trim() || undefined,
+      lastName: body.lastName?.trim() || undefined,
+      phone: body.phone?.trim() || undefined,
       createdAt,
     };
   }
@@ -97,6 +103,9 @@ export class AuthService {
         id: user.id,
         email: user.email,
         role: user.role,
+        firstName: user.first_name ?? undefined,
+        lastName: user.last_name ?? undefined,
+        phone: user.phone ?? undefined,
       },
     };
   }
@@ -163,6 +172,9 @@ export class AuthService {
         id: user.id,
         email: user.email,
         role: user.role,
+        firstName: user.first_name ?? undefined,
+        lastName: user.last_name ?? undefined,
+        phone: user.phone ?? undefined,
       },
     };
   }
@@ -173,6 +185,9 @@ export class AuthService {
       id: user.id,
       email: user.email,
       role: user.role,
+      firstName: user.first_name ?? undefined,
+      lastName: user.last_name ?? undefined,
+      phone: user.phone ?? undefined,
       createdAt: user.created_at,
     }));
   }

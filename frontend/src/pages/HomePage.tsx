@@ -1,7 +1,12 @@
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
-import HotelCard from '../components/HotelCard';
+import VerticalCard from '../components/VerticalCard';
+import Button from '@mui/material/Button';
+import Typography from '@mui/material/Typography';
+import BookmarkIcon from '@mui/icons-material/Bookmark';
+import { useLocale } from '../context/LocaleContext';
+import { formatPrice } from '../utils/currency';
 import SearchBarForm from '../components/SearchBarForm';
 import { API_BASE } from '../env';
 import { formatAddress } from '../utils/address';
@@ -18,6 +23,7 @@ async function fetchFeatured(): Promise<SearchResult[]> {
 export default function HomePage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { currency } = useLocale();
 
   const { data: featured = [] } = useQuery({
     queryKey: ['featured-properties'],
@@ -38,14 +44,25 @@ export default function HomePage() {
         <h2 className="text-xl font-bold text-gray-900 mb-6">{t('recommendations.title')}</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
           {featured.map((result) => (
-            <HotelCard
+            <VerticalCard
               key={result.property.id}
-              id={result.property.id}
-              name={result.property.name}
-              location={formatAddress(result.property.neighborhood, result.property.city, result.property.countryCode)}
-              price={result.basePriceUsd}
-              img={result.property.thumbnailUrl}
+              imageUrl={result.property.thumbnailUrl}
+              imageAlt={result.property.name}
               onClick={() => navigate({ to: '/properties/$propertyId', params: { propertyId: result.property.id }, search: { checkIn: todayISO(), checkOut: offsetDateISO(2), guests: 2 } })}
+              content={
+                <>
+                  <Typography variant="subtitle2" fontWeight="bold" color="text.primary">{result.property.name}</Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>{formatAddress(result.property.neighborhood, result.property.city, result.property.countryCode)}</Typography>
+                  <Typography variant="h6" fontWeight="bold" color="text.primary">{formatPrice(result.basePriceUsd, currency)}</Typography>
+                  <Typography variant="caption" color="text.secondary">{t('recommendations.per_night')}</Typography>
+                  <Typography variant="caption" color="text.secondary" display="block">{t('recommendations.taxes_not_included')}</Typography>
+                </>
+              }
+              footer={
+                <Button fullWidth variant="contained" color="warning" startIcon={<BookmarkIcon fontSize="small" />} sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 2 }}>
+                  {t('recommendations.book')}
+                </Button>
+              }
             />
           ))}
         </div>

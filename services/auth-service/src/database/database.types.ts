@@ -7,6 +7,9 @@ export type AuthUsersTable = {
   role: UserRole;
   password_hash: string;
   created_at: Generated<string>;
+  first_name: string | null;
+  last_name: string | null;
+  phone: string | null;
 };
 
 export type AuthLoginChallengesTable = {
