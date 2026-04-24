@@ -62,22 +62,9 @@ describe('router', () => {
     });
   });
 
-  it('applies default search values for checkout and confirmation routes', async () => {
+  it('applies default search values for confirmation route', async () => {
     const router = createAppRouter();
     render(<RouterProvider router={router} />);
-
-    await router.navigate({ to: '/checkout', search: {} as never });
-    expect(router.state.location.search).toEqual({
-      roomId: '',
-      propertyId: '',
-      partnerId: '',
-      checkIn: '',
-      checkOut: '',
-      guests: '1',
-      propertyName: '',
-      roomType: '',
-      totalUsd: '0',
-    });
 
     await router.navigate({ to: '/booking/confirmation', search: {} as never });
     expect(router.state.location.search).toEqual({

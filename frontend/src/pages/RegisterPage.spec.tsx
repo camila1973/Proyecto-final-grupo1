@@ -261,11 +261,14 @@ describe('RegisterPage', () => {
 
   describe('API interaction', () => {
     it('navigates to /register-success on successful registration', async () => {
-      (global.fetch as jest.Mock).mockResolvedValue({
-        ok: true,
-        status: 201,
-        json: () => Promise.resolve({ id: 'usr_1', email: 'juan@example.com' }),
-      });
+      // First call: register succeeds. Second call: auto-login fails → falls through to /register-success.
+      (global.fetch as jest.Mock)
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 201,
+          json: () => Promise.resolve({ id: 'usr_1', email: 'juan@example.com' }),
+        })
+        .mockResolvedValueOnce({ ok: false, json: () => Promise.resolve({}) });
       renderRegisterPage();
       await fillValidForm();
       fireEvent.click(screen.getByRole('button', { name: es.register.submit }));
@@ -314,11 +317,14 @@ describe('RegisterPage', () => {
 
   describe('RegisterSuccess', () => {
     it('renders success title, message and CTA button after successful registration', async () => {
-      (global.fetch as jest.Mock).mockResolvedValue({
-        ok: true,
-        status: 201,
-        json: () => Promise.resolve({ id: 'usr_1' }),
-      });
+      // First call: register succeeds. Second call: auto-login fails → falls through to /register-success.
+      (global.fetch as jest.Mock)
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 201,
+          json: () => Promise.resolve({ id: 'usr_1' }),
+        })
+        .mockResolvedValueOnce({ ok: false, json: () => Promise.resolve({}) });
       renderRegisterPage();
       await fillValidForm();
       fireEvent.click(screen.getByRole('button', { name: es.register.submit }));
