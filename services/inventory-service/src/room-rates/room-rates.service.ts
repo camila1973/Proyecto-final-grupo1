@@ -24,9 +24,22 @@ export class RoomRatesService {
     fromDate?: string,
     toDate?: string,
   ): Promise<PublicRoomRate[]> {
-    await this.roomsService.findOne(roomId);
+    const room = await this.roomsService.findOne(roomId);
     const rows = await this.repo.findByRoom(roomId, fromDate, toDate);
-    return rows.map((r) => this.toPublic(r));
+    if (rows.length > 0) return rows.map((r) => this.toPublic(r));
+
+    // No explicit rate periods — fall back to the room's base price
+    return [
+      {
+        id: "base",
+        roomId,
+        fromDate: fromDate ?? "2000-01-01",
+        toDate: toDate ?? "2099-12-31",
+        priceUsd: String(room.basePriceUsd),
+        currency: "USD",
+        createdAt: new Date(0),
+      },
+    ];
   }
 
   async create(

@@ -6,6 +6,7 @@ import Button from '@mui/material/Button';
 import Alert from '@mui/material/Alert';
 import { API_BASE } from '../env';
 import { useAuth } from '../hooks/useAuth';
+import { startCheckoutAfterLogin } from '../hooks/useBookingFlow';
 
 type MfaSearch = { challengeId: string | undefined };
 type MfaErrorKey = 'expired' | 'too_many_attempts' | 'invalid_code' | 'generic';
@@ -66,7 +67,8 @@ export default function MfaPage() {
       };
 
       login(data.accessToken, data.user);
-      navigate({ to: '/' });
+      const toCheckout = startCheckoutAfterLogin(data.accessToken, data.user.id, data.user.email);
+      void navigate({ to: toCheckout ? '/checkout' : '/' });
     } catch {
       setErrorKey('generic');
     } finally {

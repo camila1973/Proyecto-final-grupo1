@@ -88,6 +88,43 @@ export class ReservationsRepository {
       .execute();
   }
 
+  async findPendingByBookerAndStay(
+    bookerId: string,
+    roomId: string,
+    checkIn: string,
+    checkOut: string,
+  ): Promise<ReservationRow | null> {
+    const row = await this.db
+      .selectFrom("reservations")
+      .where("booker_id", "=", bookerId)
+      .where("room_id", "=", roomId)
+      .where("check_in", "=", checkIn)
+      .where("check_out", "=", checkOut)
+      .where("status", "=", "pending")
+      .selectAll()
+      .executeTakeFirst();
+
+    return row ?? null;
+  }
+
+  async updateGuestInfo(
+    id: string,
+    guestInfo: GuestInfo,
+  ): Promise<ReservationRow> {
+    const row = await this.db
+      .updateTable("reservations")
+      .set({ guest_info: guestInfo, updated_at: new Date() })
+      .where("id", "=", id)
+      .returningAll()
+      .executeTakeFirst();
+
+    if (!row) {
+      throw new NotFoundException(`Reservation ${id} not found`);
+    }
+
+    return row;
+  }
+
   async expire(id: string): Promise<ReservationRow | undefined> {
     return this.db
       .updateTable("reservations")

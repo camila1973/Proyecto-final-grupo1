@@ -6,12 +6,11 @@ export class GuestInfoDto {
 }
 
 export class CreateReservationDto {
-  holdId: string; // UUID returned by POST /holds
   propertyId: string;
   roomId: string;
   partnerId: string;
   bookerId: string;
-  guestInfo: GuestInfoDto;
+  guestInfo?: GuestInfoDto; // optional — patched separately via PATCH /guest-info
   checkIn: string; // YYYY-MM-DD
   checkOut: string; // YYYY-MM-DD
 }

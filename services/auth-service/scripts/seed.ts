@@ -23,21 +23,22 @@ function hashPassword(password: string): string {
 
 // ─── seed data ────────────────────────────────────────────────────────────────
 
+// UUIDs must match booking-service/scripts/seed.ts BOOKER() values
 const USERS = [
   {
-    id: "usr_0000000000000001",
+    id: "e1000000-0000-0000-0000-000000000001",
     email: "admin@travelhub.com",
     role: "admin" as const,
     password: "Admin1234!",
   },
   {
-    id: "usr_0000000000000002",
+    id: "e1000000-0000-0000-0000-000000000002",
     email: "partner@travelhub.com",
     role: "partner" as const,
     password: "Partner1234!",
   },
   {
-    id: "usr_0000000000000003",
+    id: "e1000000-0000-0000-0000-000000000003",
     email: "guest@travelhub.com",
     role: "guest" as const,
     password: "Guest1234!",

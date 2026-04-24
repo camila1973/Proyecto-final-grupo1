@@ -4,6 +4,7 @@ import { ReservationsService } from "./reservations.service.js";
 import { ReservationsRepository } from "./reservations.repository.js";
 import { HoldExpiryService } from "./hold-expiry.service.js";
 import { FareCalculatorService } from "../fare/fare-calculator.service.js";
+import { HoldsService } from "./holds.service.js";
 import { ClientsModule } from "../clients/clients.module.js";
 import { CacheModule } from "../cache/cache.module.js";
 import { TaxRulesModule } from "../tax-rules/tax-rules.module.js";
@@ -24,6 +25,7 @@ import { PublisherModule } from "../events/publisher.module.js";
     ReservationsRepository,
     HoldExpiryService,
     FareCalculatorService,
+    HoldsService,
   ],
 })
 export class ReservationsModule {}

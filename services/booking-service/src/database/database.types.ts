@@ -67,7 +67,7 @@ export interface ReservationsTable {
   room_id: string;
   partner_id: string;
   booker_id: string;
-  guest_info: ColumnType<GuestInfo, GuestInfo, GuestInfo>;
+  guest_info: ColumnType<GuestInfo, GuestInfo | undefined, GuestInfo>;
   check_in: DateColumn;
   check_out: DateColumn;
   status: Generated<string>; // DEFAULT 'pending'
