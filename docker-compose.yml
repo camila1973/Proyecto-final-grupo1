@@ -286,14 +286,13 @@ services:
       - "3005:3005"
     networks:
       - travelhub
+    env_file:
+      - services/payment-service/.env
     environment:
       NODE_ENV: production
       PORT: 3005
       DATABASE_URL: postgres://postgres:postgres@payment-db:5432/travelhub?sslmode=disable
       BOOKING_SERVICE_URL: http://booking-service:3004
-      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
-      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
-      STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY}
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_SECURE: ${SMTP_SECURE:-false}

@@ -46,7 +46,7 @@ function makeRow(overrides: Record<string, unknown> = {}) {
     },
     check_in: "2026-05-01",
     check_out: "2026-05-04",
-    status: "pending",
+    status: "on_hold",
     fare_breakdown: { total: 522 },
     tax_total_usd: "72.00",
     fee_total_usd: "0.00",
@@ -147,7 +147,7 @@ describe("ReservationsRepository", () => {
       });
       expect(result.checkIn).toBe("2026-05-01");
       expect(result.checkOut).toBe("2026-05-04");
-      expect(result.status).toBe("pending");
+      expect(result.status).toBe("on_hold");
     });
 
     it("parses numeric columns as floats", () => {
@@ -248,15 +248,15 @@ describe("ReservationsRepository", () => {
   });
 
   describe("findExpiredHolds", () => {
-    it("returns pending rows with hold_expires_at in the past", async () => {
-      const rows = [makeRow({ status: "pending" })];
+    it("returns on_hold rows with hold_expires_at in the past", async () => {
+      const rows = [makeRow({ status: "on_hold" })];
       const db = makeDb({ many: rows });
       const repo = new ReservationsRepository(db);
 
       const result = await repo.findExpiredHolds();
 
       expect(db.selectFrom).toHaveBeenCalledWith("reservations");
-      expect(db.where).toHaveBeenCalledWith("status", "=", "pending");
+      expect(db.where).toHaveBeenCalledWith("status", "=", "on_hold");
       expect(db.where).toHaveBeenCalledWith(
         "hold_expires_at",
         "<",
@@ -267,7 +267,7 @@ describe("ReservationsRepository", () => {
   });
 
   describe("findPendingByBookerAndStay", () => {
-    it("returns the row when a matching pending reservation exists", async () => {
+    it("returns the row when a matching on_hold reservation exists", async () => {
       const row = makeRow();
       const db = makeDb({ single: row });
       const repo = new ReservationsRepository(db);
@@ -284,7 +284,7 @@ describe("ReservationsRepository", () => {
       expect(db.where).toHaveBeenCalledWith("room_id", "=", "room-uuid");
       expect(db.where).toHaveBeenCalledWith("check_in", "=", "2026-05-01");
       expect(db.where).toHaveBeenCalledWith("check_out", "=", "2026-05-04");
-      expect(db.where).toHaveBeenCalledWith("status", "=", "pending");
+      expect(db.where).toHaveBeenCalledWith("status", "=", "on_hold");
       expect(result).toBe(row);
     });
 
@@ -341,6 +341,30 @@ describe("ReservationsRepository", () => {
     });
   });
 
+  describe("submitPayment", () => {
+    it("transitions status from on_hold to pending and returns the updated row", async () => {
+      const pending = makeRow({ status: "pending" });
+      const db = makeDb({ single: pending });
+      const repo = new ReservationsRepository(db);
+
+      const result = await repo.submitPayment("res-uuid");
+
+      expect(db.updateTable).toHaveBeenCalledWith("reservations");
+      expect(db.where).toHaveBeenCalledWith("id", "=", "res-uuid");
+      expect(db.where).toHaveBeenCalledWith("status", "=", "on_hold");
+      expect(result).toBe(pending);
+    });
+
+    it("throws NotFoundException when reservation not found or not on_hold", async () => {
+      const db = makeDb({ single: undefined });
+      const repo = new ReservationsRepository(db);
+
+      await expect(repo.submitPayment("res-uuid")).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
   describe("expire", () => {
     it("transitions status to expired and returns the row", async () => {
       const expired = makeRow({ status: "expired" });
@@ -351,7 +375,7 @@ describe("ReservationsRepository", () => {
 
       expect(db.updateTable).toHaveBeenCalledWith("reservations");
       expect(db.where).toHaveBeenCalledWith("id", "=", "res-uuid");
-      expect(db.where).toHaveBeenCalledWith("status", "=", "pending");
+      expect(db.where).toHaveBeenCalledWith("status", "=", "on_hold");
       expect(result).toBe(expired);
     });
 

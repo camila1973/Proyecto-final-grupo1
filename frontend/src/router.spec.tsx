@@ -66,9 +66,8 @@ describe('router', () => {
     const router = createAppRouter();
     render(<RouterProvider router={router} />);
 
-    await router.navigate({ to: '/booking/confirmation', search: {} as never });
+    await router.navigate({ to: '/booking/confirmation/$id', params: { id: 'res_123' }, search: {} as never });
     expect(router.state.location.search).toEqual({
-      reservationId: '',
       propertyName: '',
       roomType: '',
       checkIn: '',

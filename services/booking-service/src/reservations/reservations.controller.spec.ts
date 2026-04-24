@@ -50,6 +50,9 @@ describe("ReservationsController", () => {
             create: jest.fn(),
             findAll: jest.fn(),
             findOne: jest.fn(),
+            submitPayment: jest.fn(),
+            confirm: jest.fn(),
+            updateGuestInfo: jest.fn(),
           },
         },
       ],
@@ -136,6 +139,47 @@ describe("ReservationsController", () => {
       const result = await controller.findOne("res-1");
 
       expect(service.findOne).toHaveBeenCalledWith("res-1");
+      expect(result).toBe(reservation);
+    });
+  });
+
+  describe("submitPayment", () => {
+    it("delegates to service and returns the pending reservation", async () => {
+      const reservation = { id: "res-1", status: "pending" } as any;
+      (service.submitPayment as jest.Mock).mockResolvedValue(reservation);
+
+      const result = await controller.submitPayment("res-1");
+
+      expect(service.submitPayment).toHaveBeenCalledWith("res-1");
+      expect(result).toBe(reservation);
+    });
+  });
+
+  describe("confirm", () => {
+    it("delegates to service and returns the confirmed reservation", async () => {
+      const reservation = { id: "res-1", status: "confirmed" } as any;
+      (service.confirm as jest.Mock).mockResolvedValue(reservation);
+
+      const result = await controller.confirm("res-1");
+
+      expect(service.confirm).toHaveBeenCalledWith("res-1");
+      expect(result).toBe(reservation);
+    });
+  });
+
+  describe("updateGuestInfo", () => {
+    it("delegates to service and returns the updated reservation", async () => {
+      const dto = {
+        firstName: "Ana",
+        lastName: "García",
+        email: "ana@example.com",
+      };
+      const reservation = { id: "res-1" } as any;
+      (service.updateGuestInfo as jest.Mock).mockResolvedValue(reservation);
+
+      const result = await controller.updateGuestInfo("res-1", dto as any);
+
+      expect(service.updateGuestInfo).toHaveBeenCalledWith("res-1", dto);
       expect(result).toBe(reservation);
     });
   });

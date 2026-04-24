@@ -67,8 +67,8 @@ export default function MfaPage() {
       };
 
       login(data.accessToken, data.user);
-      const toCheckout = startCheckoutAfterLogin(data.accessToken, data.user.id, data.user.email);
-      void navigate({ to: toCheckout ? '/checkout' : '/' });
+      const toCheckout = startCheckoutAfterLogin(data.accessToken, data.user.id);
+      void navigate({ to: toCheckout ? '/booking/checkout' : '/' });
     } catch {
       setErrorKey('generic');
     } finally {

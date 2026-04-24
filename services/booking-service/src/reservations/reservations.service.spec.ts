@@ -31,7 +31,7 @@ function makeRow(overrides: Record<string, unknown> = {}) {
     },
     check_in: "2026-05-01",
     check_out: "2026-05-04",
-    status: "pending",
+    status: "on_hold",
     fare_breakdown: null,
     tax_total_usd: "72.00",
     fee_total_usd: "0.00",
@@ -76,6 +76,7 @@ describe("ReservationsService", () => {
     updateGuestInfo: jest.Mock;
     toResponse: jest.Mock;
     confirm: jest.Mock;
+    submitPayment: jest.Mock;
   };
   let inventoryClient: {
     getRoomLocation: jest.Mock;
@@ -110,6 +111,7 @@ describe("ReservationsService", () => {
       updateGuestInfo: jest.fn().mockResolvedValue(row),
       toResponse: jest.fn().mockImplementation((r) => ({ id: r.id })),
       confirm: jest.fn(),
+      submitPayment: jest.fn().mockResolvedValue(row),
     };
     service = new ReservationsService(
       fareCalculator as any,
@@ -177,7 +179,7 @@ describe("ReservationsService", () => {
           booker_id: "booker-uuid",
           check_in: "2026-05-01",
           check_out: "2026-05-04",
-          status: "pending",
+          status: "on_hold",
           tax_total_usd: fareBreakdown.taxTotalUsd,
           fee_total_usd: fareBreakdown.feeTotalUsd,
           grand_total_usd: fareBreakdown.totalUsd,
@@ -348,6 +350,21 @@ describe("ReservationsService", () => {
       await expect(service.findOne("bad-id")).rejects.toThrow(
         NotFoundException,
       );
+    });
+  });
+
+  // ─── submitPayment ──────────────────────────────────────────────────────────
+
+  describe("submitPayment", () => {
+    it("delegates to repository and returns mapped response", async () => {
+      const pendingRow = makeRow({ status: "pending" });
+      reservationsRepo.submitPayment = jest.fn().mockResolvedValue(pendingRow);
+
+      const result = await service.submitPayment("res-uuid");
+
+      expect(reservationsRepo.submitPayment).toHaveBeenCalledWith("res-uuid");
+      expect(reservationsRepo.toResponse).toHaveBeenCalledWith(pendingRow);
+      expect(result).toEqual({ id: pendingRow.id });
     });
   });
 

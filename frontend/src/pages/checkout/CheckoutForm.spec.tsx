@@ -2,8 +2,12 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { CheckoutForm } from './CheckoutForm';
 
 const mockNavigate = jest.fn();
-const mockConfirmCardPayment = jest.fn();
-const mockGetElement = jest.fn();
+const mockConfirmPayment = jest.fn();
+const mockSubmitElements = jest.fn();
+
+// Mutable so individual tests can set stripe/elements to null
+let mockStripe: Record<string, jest.Mock> | null = { confirmPayment: mockConfirmPayment };
+let mockElements: Record<string, jest.Mock> | null = { submit: mockSubmitElements };
 
 jest.mock('@tanstack/react-router', () => ({
   useNavigate: () => mockNavigate,
@@ -14,9 +18,9 @@ jest.mock('../../context/LocaleContext', () => ({
 }));
 
 jest.mock('@stripe/react-stripe-js', () => ({
-  CardElement: () => <div data-testid="card-element" />,
-  useStripe: () => ({ confirmCardPayment: mockConfirmCardPayment }),
-  useElements: () => ({ getElement: mockGetElement }),
+  PaymentElement: () => <div data-testid="payment-element" />,
+  useStripe: () => mockStripe,
+  useElements: () => mockElements,
 }));
 
 jest.mock('../../env', () => ({ API_BASE: 'http://localhost:3000' }));
@@ -64,9 +68,14 @@ function getForm() {
 describe('CheckoutForm', () => {
   beforeEach(() => {
     global.fetch = jest.fn();
-    mockConfirmCardPayment.mockReset();
-    mockGetElement.mockReset();
+    mockConfirmPayment.mockReset();
+    mockSubmitElements.mockReset();
     mockNavigate.mockReset();
+    // Restore stripe/elements to their default truthy values
+    mockStripe = { confirmPayment: mockConfirmPayment };
+    mockElements = { submit: mockSubmitElements };
+    // Default: elements.submit() succeeds with no error
+    mockSubmitElements.mockResolvedValue({ error: undefined });
   });
 
   afterEach(() => {
@@ -85,14 +94,13 @@ describe('CheckoutForm', () => {
     it('renders with empty string defaults when optional props are omitted', () => {
       renderForm({ firstName: undefined, lastName: undefined, phone: undefined });
       const inputs = screen.getAllByRole('textbox');
-      // firstName and lastName should be empty
       expect(inputs[0]).toHaveValue('');
       expect(inputs[1]).toHaveValue('');
     });
 
-    it('renders the Stripe CardElement', () => {
+    it('renders the Stripe PaymentElement', () => {
       renderForm();
-      expect(screen.getByTestId('card-element')).toBeInTheDocument();
+      expect(screen.getByTestId('payment-element')).toBeInTheDocument();
     });
 
     it('renders the submit button with the reservation total', () => {
@@ -103,14 +111,6 @@ describe('CheckoutForm', () => {
     it('renders the "Finalizar después" button', () => {
       renderForm();
       expect(screen.getByRole('button', { name: 'Finalizar después' })).toBeInTheDocument();
-    });
-
-    it('renders Google Pay and PayPal as disabled options', () => {
-      renderForm();
-      expect(screen.getByText('Google Pay')).toBeInTheDocument();
-      expect(screen.getByText('Paypal')).toBeInTheDocument();
-      const googlePayRadio = screen.getByRole('radio', { name: 'Google Pay' });
-      expect(googlePayRadio).toBeDisabled();
     });
 
     it('renders the cancellation policy section', () => {
@@ -150,17 +150,16 @@ describe('CheckoutForm', () => {
   });
 
   describe('handleSubmit — error paths', () => {
-    it('shows error when the Stripe card element is not found', async () => {
-      mockGetElement.mockReturnValue(null);
+    it('shows error when elements.submit() returns an error', async () => {
+      mockSubmitElements.mockResolvedValue({ error: { message: 'Formulario inválido' } });
       renderForm();
       fireEvent.submit(getForm());
       await waitFor(() => {
-        expect(screen.getByText('Card element not found')).toBeInTheDocument();
+        expect(screen.getByText('Formulario inválido')).toBeInTheDocument();
       });
     });
 
     it('shows error when the guest-info PATCH request fails', async () => {
-      mockGetElement.mockReturnValue({});
       (global.fetch as jest.Mock).mockResolvedValueOnce({ ok: false });
       renderForm();
       fireEvent.submit(getForm());
@@ -172,7 +171,6 @@ describe('CheckoutForm', () => {
     });
 
     it('shows error when the guest-info PATCH throws a network error', async () => {
-      mockGetElement.mockReturnValue({});
       (global.fetch as jest.Mock).mockRejectedValueOnce(new Error('Network error'));
       renderForm();
       fireEvent.submit(getForm());
@@ -184,7 +182,6 @@ describe('CheckoutForm', () => {
     });
 
     it('shows error when the payment initiation request fails', async () => {
-      mockGetElement.mockReturnValue({});
       (global.fetch as jest.Mock)
         .mockResolvedValueOnce({ ok: true }) // PATCH guest info
         .mockResolvedValueOnce({ ok: false }); // POST payment initiate
@@ -198,7 +195,6 @@ describe('CheckoutForm', () => {
     });
 
     it('shows error when the payment initiation throws a network error', async () => {
-      mockGetElement.mockReturnValue({});
       (global.fetch as jest.Mock)
         .mockResolvedValueOnce({ ok: true })
         .mockRejectedValueOnce(new Error('Network error'));
@@ -211,15 +207,15 @@ describe('CheckoutForm', () => {
       });
     });
 
-    it('shows Stripe error message when card payment is declined', async () => {
-      mockGetElement.mockReturnValue({});
+    it('shows Stripe error message when payment is declined', async () => {
       (global.fetch as jest.Mock)
-        .mockResolvedValueOnce({ ok: true })
+        .mockResolvedValueOnce({ ok: true }) // PATCH guest info
         .mockResolvedValueOnce({
           ok: true,
           json: () => Promise.resolve({ clientSecret: 'secret_123' }),
-        });
-      mockConfirmCardPayment.mockResolvedValue({ error: { message: 'Tu tarjeta fue rechazada.' } });
+        }) // POST initiate
+        .mockResolvedValueOnce({ ok: true }); // PATCH submit
+      mockConfirmPayment.mockResolvedValue({ error: { message: 'Tu tarjeta fue rechazada.' } });
       renderForm();
       fireEvent.submit(getForm());
       await waitFor(() => {
@@ -228,23 +224,73 @@ describe('CheckoutForm', () => {
     });
   });
 
-  describe('handleSubmit — success path', () => {
-    it('navigates to the confirmation page after a successful payment', async () => {
-      mockGetElement.mockReturnValue({});
+  describe('handleSubmit — guard: stripe not ready', () => {
+    it('does nothing when stripe is not loaded', () => {
+      mockStripe = null;
+
+      renderForm();
+      fireEvent.submit(getForm());
+
+      // No error shown, no navigation
+      expect(mockNavigate).not.toHaveBeenCalled();
+      expect(screen.queryByRole('alert')).toBeNull();
+    });
+  });
+
+  describe('handleSubmit — error message fallbacks', () => {
+    it('shows fallback message when submitError has no message', async () => {
+      mockSubmitElements.mockResolvedValue({ error: {} }); // error without message
+      renderForm();
+      fireEvent.submit(getForm());
+      await waitFor(() => {
+        expect(screen.getByText('Error en el formulario de pago')).toBeInTheDocument();
+      });
+    });
+
+    it('shows fallback message when stripeError has no message', async () => {
       (global.fetch as jest.Mock)
-        .mockResolvedValueOnce({ ok: true })
+        .mockResolvedValueOnce({ ok: true }) // PATCH guest info
         .mockResolvedValueOnce({
           ok: true,
           json: () => Promise.resolve({ clientSecret: 'secret_123' }),
-        });
-      mockConfirmCardPayment.mockResolvedValue({ error: null });
+        }) // POST initiate
+        .mockResolvedValueOnce({ ok: true }); // PATCH submit
+      mockConfirmPayment.mockResolvedValue({ error: {} }); // error without message
+      renderForm();
+      fireEvent.submit(getForm());
+      await waitFor(() => {
+        expect(screen.getByText('Error procesando el pago')).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('"Finalizar después" button', () => {
+    it('calls history.back() when clicked', () => {
+      const backSpy = jest.spyOn(history, 'back').mockImplementation(() => {});
+      renderForm();
+      fireEvent.click(screen.getByRole('button', { name: 'Finalizar después' }));
+      expect(backSpy).toHaveBeenCalled();
+      backSpy.mockRestore();
+    });
+  });
+
+  describe('handleSubmit — success path', () => {
+    it('navigates to the confirmation page after a successful payment', async () => {
+      (global.fetch as jest.Mock)
+        .mockResolvedValueOnce({ ok: true }) // PATCH guest info
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ clientSecret: 'secret_123' }),
+        }) // POST initiate
+        .mockResolvedValueOnce({ ok: true }); // PATCH submit
+      mockConfirmPayment.mockResolvedValue({ error: null });
       renderForm();
       fireEvent.submit(getForm());
       await waitFor(() => {
         expect(mockNavigate).toHaveBeenCalledWith(
           expect.objectContaining({
-            to: '/booking/confirmation',
-            search: expect.objectContaining({ reservationId: 'res_123' }),
+            to: '/booking/confirmation/$id',
+            params: { id: 'res_123' },
           }),
         );
       });
