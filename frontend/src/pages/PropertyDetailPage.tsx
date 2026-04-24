@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useParams, useSearch } from '@tanstack/react-router';
+import { useParams, useSearch, useNavigate } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { useLocale } from '../context/LocaleContext';
 import { formatPrice } from '../utils/currency';
@@ -31,6 +31,7 @@ interface SearchRoom {
   basePriceUsd: number;
   priceUsd: number | null;
   taxRatePct: number;
+  partnerId: string;
   estimatedTotalUsd: number;
   hasFlatFees: boolean;
 }
@@ -87,6 +88,7 @@ export default function PropertyDetailPage() {
   const [checkOut, setCheckOut] = useState<Dayjs | null>(qCheckOut ? dayjs(qCheckOut) : dayjs().add(8, 'day'));
   const [guests, setGuests] = useState<number>(qGuests > 0 ? qGuests : 1);
   const [descExpanded, setDescExpanded] = useState(false);
+  const navigate = useNavigate();
 
   const fromDate = checkIn?.format('YYYY-MM-DD');
   const toDate = checkOut?.format('YYYY-MM-DD');
@@ -375,6 +377,22 @@ export default function PropertyDetailPage() {
                             color="warning"
                             startIcon={<BookmarkIcon fontSize="small" />}
                             sx={{ textTransform: 'none', fontWeight: 600, whiteSpace: 'nowrap', borderRadius: 1 }}
+                            onClick={() =>
+                              void navigate({
+                                to: '/checkout',
+                                search: {
+                                  roomId: room.roomId,
+                                  propertyId: property.id,
+                                  partnerId: room.partnerId,
+                                  checkIn: fromDate ?? '',
+                                  checkOut: toDate ?? '',
+                                  guests: String(guests),
+                                  propertyName: property.name,
+                                  roomType: room.roomType,
+                                  totalUsd: String(room.estimatedTotalUsd),
+                                },
+                              })
+                            }
                           >
                             {t('property_detail.book_now')}
                           </Button>

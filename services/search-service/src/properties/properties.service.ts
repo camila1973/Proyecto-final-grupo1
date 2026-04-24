@@ -239,7 +239,10 @@ export class PropertiesService {
       descriptionByLang: rawProperty.description,
     };
     const rooms = roomResults.map(
-      ({ property: _, _partnerId: __, ...roomFields }) => roomFields,
+      ({ property: _, _partnerId: partnerId, ...roomFields }) => ({
+        ...roomFields,
+        partnerId,
+      }),
     );
 
     const response = { property, rooms };

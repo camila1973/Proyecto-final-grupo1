@@ -20,3 +20,4 @@ ignore:
   - '**/*.spec.ts'
   - '**/*.spec.tsx'
   - '**/main.ts'
+  - '**/main.tsx'

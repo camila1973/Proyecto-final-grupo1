@@ -118,7 +118,7 @@ jobs:
       # - builds & pushes Docker images for all services
       # - creates/updates Cloud Run services
       # - provisions Cloud SQL, Memorystore, Pub/Sub, VPC, Artifact Registry
-      - name: Set SMTP config
+      - name: Set SMTP and Stripe config
         working-directory: pulumi
         env:
           PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
@@ -128,6 +128,9 @@ jobs:
           pulumi config set --stack ${{ env.PULUMI_STACK }} smtpUser "${{ secrets.SMTP_USER }}"
           pulumi config set --stack ${{ env.PULUMI_STACK }} --secret smtpPass "${{ secrets.SMTP_PASS }}"
           pulumi config set --stack ${{ env.PULUMI_STACK }} smtpFrom "${{ secrets.SMTP_FROM }}"
+          pulumi config set --stack ${{ env.PULUMI_STACK }} --secret stripeSecretKey "${{ secrets.STRIPE_SECRET_KEY }}"
+          pulumi config set --stack ${{ env.PULUMI_STACK }} --secret stripeWebhookSecret "${{ secrets.STRIPE_WEBHOOK_SECRET }}"
+          pulumi config set --stack ${{ env.PULUMI_STACK }} stripePublishableKey "${{ secrets.STRIPE_PUBLISHABLE_KEY }}"
 
       - name: Deploy infrastructure + services (pulumi up)
         uses: pulumi/actions@v6

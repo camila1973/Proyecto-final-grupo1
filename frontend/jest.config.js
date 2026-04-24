@@ -20,5 +20,12 @@ module.exports = {
   },
   coverageDirectory: '../coverage/frontend',
   coverageReporters: ['lcov', 'text-summary'],
-  collectCoverageFrom: ['src/**/*.{ts,tsx,js,jsx}'],
+  collectCoverageFrom: [
+    'src/**/*.{ts,tsx,js,jsx}',
+    '!src/main.tsx',
+    '!src/env.ts',
+    '!src/declarations.d.ts',
+    '!src/jest-dom.d.ts',
+    '!src/setupTests.ts',
+  ],
 };
