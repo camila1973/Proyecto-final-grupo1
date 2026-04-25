@@ -52,6 +52,9 @@ describe("ReservationsController", () => {
             findOne: jest.fn(),
             submit: jest.fn(),
             confirm: jest.fn(),
+            fail: jest.fn(),
+            cancel: jest.fn(),
+            rehold: jest.fn(),
             updateGuestInfo: jest.fn(),
           },
         },
@@ -180,6 +183,46 @@ describe("ReservationsController", () => {
       const result = await controller.updateGuestInfo("res-1", dto as any);
 
       expect(service.updateGuestInfo).toHaveBeenCalledWith("res-1", dto);
+      expect(result).toBe(reservation);
+    });
+  });
+
+  describe("fail", () => {
+    it("delegates to service with id and reason", async () => {
+      const reservation = { id: "res-1", status: "failed" } as any;
+      (service.fail as jest.Mock).mockResolvedValue(reservation);
+
+      const result = await controller.fail("res-1", {
+        reason: "card declined",
+      });
+
+      expect(service.fail).toHaveBeenCalledWith("res-1", "card declined");
+      expect(result).toBe(reservation);
+    });
+  });
+
+  describe("cancel", () => {
+    it("delegates to service with id and reason", async () => {
+      const reservation = { id: "res-1", status: "cancelled" } as any;
+      (service.cancel as jest.Mock).mockResolvedValue(reservation);
+
+      const result = await controller.cancel("res-1", {
+        reason: "changed mind",
+      });
+
+      expect(service.cancel).toHaveBeenCalledWith("res-1", "changed mind");
+      expect(result).toBe(reservation);
+    });
+  });
+
+  describe("rehold", () => {
+    it("delegates to service and returns the reheld reservation", async () => {
+      const reservation = { id: "res-1", status: "held" } as any;
+      (service.rehold as jest.Mock).mockResolvedValue(reservation);
+
+      const result = await controller.rehold("res-1");
+
+      expect(service.rehold).toHaveBeenCalledWith("res-1");
       expect(result).toBe(reservation);
     });
   });

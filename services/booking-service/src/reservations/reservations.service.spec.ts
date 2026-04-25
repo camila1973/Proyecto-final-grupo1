@@ -79,6 +79,7 @@ describe("ReservationsService", () => {
     submit: jest.Mock;
     fail: jest.Mock;
     cancel: jest.Mock;
+    rehold: jest.Mock;
   };
   let inventoryClient: {
     getRoomLocation: jest.Mock;
@@ -120,6 +121,7 @@ describe("ReservationsService", () => {
       submit: jest.fn().mockResolvedValue(row),
       fail: jest.fn(),
       cancel: jest.fn(),
+      rehold: jest.fn().mockResolvedValue(row),
     };
     service = new ReservationsService(
       fareCalculator as any,
@@ -625,6 +627,64 @@ describe("ReservationsService", () => {
           taxTotalUsd: 72,
           feeTotalUsd: 0,
         }),
+      );
+    });
+  });
+
+  // ─── rehold ──────────────────────────────────────────────────────────────────
+
+  describe("rehold", () => {
+    it("calls findById, holdsService.create, and repo.rehold with the new expiry", async () => {
+      const failedRow = makeRow({ status: "failed" });
+      reservationsRepo.findById = jest.fn().mockResolvedValue(failedRow);
+
+      await service.rehold("res-uuid");
+
+      expect(reservationsRepo.findById).toHaveBeenCalledWith("res-uuid");
+      expect(holdsService.create).toHaveBeenCalledWith({
+        bookerId: failedRow.booker_id,
+        roomId: failedRow.room_id,
+        checkIn: failedRow.check_in,
+        checkOut: failedRow.check_out,
+      });
+      expect(reservationsRepo.rehold).toHaveBeenCalledWith(
+        "res-uuid",
+        expect.any(Date),
+      );
+    });
+
+    it("returns the mapped response", async () => {
+      const reheld = makeRow({ status: "held" });
+      reservationsRepo.rehold = jest.fn().mockResolvedValue(reheld);
+
+      const result = await service.rehold("res-uuid");
+
+      expect(reservationsRepo.toResponse).toHaveBeenCalledWith(reheld);
+      expect(result).toEqual({ id: reheld.id });
+    });
+
+    it("releases the new hold when repo.rehold fails", async () => {
+      reservationsRepo.rehold = jest
+        .fn()
+        .mockRejectedValue(new NotFoundException("not failed"));
+
+      await expect(service.rehold("res-uuid")).rejects.toThrow(
+        NotFoundException,
+      );
+
+      expect(holdsService.release).toHaveBeenCalledWith(HOLD_ID);
+    });
+
+    it("does not rethrow the hold-release error when release itself fails", async () => {
+      reservationsRepo.rehold = jest
+        .fn()
+        .mockRejectedValue(new NotFoundException("not failed"));
+      holdsService.release = jest
+        .fn()
+        .mockRejectedValue(new Error("redis down"));
+
+      await expect(service.rehold("res-uuid")).rejects.toThrow(
+        NotFoundException,
       );
     });
   });

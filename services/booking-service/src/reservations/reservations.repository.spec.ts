@@ -386,4 +386,142 @@ describe("ReservationsRepository", () => {
       expect(result).toBeUndefined();
     });
   });
+
+  describe("fail", () => {
+    it("transitions status from submitted to failed and returns the row", async () => {
+      const failed = makeRow({ status: "failed", reason: "card declined" });
+      const db = makeDb({ single: failed });
+      const repo = new ReservationsRepository(db);
+
+      const result = await repo.fail("res-uuid", "card declined");
+
+      expect(db.updateTable).toHaveBeenCalledWith("reservations");
+      expect(db.where).toHaveBeenCalledWith("id", "=", "res-uuid");
+      expect(db.where).toHaveBeenCalledWith("status", "=", "submitted");
+      expect(result).toBe(failed);
+    });
+
+    it("throws NotFoundException when reservation not found or not submitted", async () => {
+      const db = makeDb({ single: undefined });
+      const repo = new ReservationsRepository(db);
+
+      await expect(repo.fail("res-uuid", "card declined")).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  describe("rehold", () => {
+    it("transitions status from failed to held and updates hold_expires_at", async () => {
+      const expiresAt = new Date(Date.now() + 900_000);
+      const reheld = makeRow({ status: "held", hold_expires_at: expiresAt });
+      const db = makeDb({ single: reheld });
+      const repo = new ReservationsRepository(db);
+
+      const result = await repo.rehold("res-uuid", expiresAt);
+
+      expect(db.updateTable).toHaveBeenCalledWith("reservations");
+      expect(db.where).toHaveBeenCalledWith("id", "=", "res-uuid");
+      expect(db.where).toHaveBeenCalledWith("status", "=", "failed");
+      expect(result).toBe(reheld);
+    });
+
+    it("throws NotFoundException when reservation not found or not failed", async () => {
+      const db = makeDb({ single: undefined });
+      const repo = new ReservationsRepository(db);
+
+      await expect(repo.rehold("res-uuid", new Date())).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  describe("cancel", () => {
+    function makeDbForCancel(
+      opts: {
+        currentStatus?: string | null;
+        cancelledRow?: Record<string, unknown>;
+      } = {},
+    ) {
+      const trx: Record<string, jest.Mock> = {};
+      const chain = [
+        "selectFrom",
+        "updateTable",
+        "set",
+        "where",
+        "select",
+        "selectAll",
+        "returningAll",
+        "forUpdate",
+      ];
+      chain.forEach((m) => {
+        trx[m] = jest.fn().mockReturnValue(trx);
+      });
+      trx.executeTakeFirst = jest
+        .fn()
+        .mockResolvedValue(
+          opts.currentStatus != null
+            ? { status: opts.currentStatus }
+            : undefined,
+        );
+      trx.executeTakeFirstOrThrow = jest
+        .fn()
+        .mockResolvedValue(
+          opts.cancelledRow ?? makeRow({ status: "cancelled" }),
+        );
+
+      const db = {
+        transaction: jest.fn().mockReturnValue({
+          execute: jest
+            .fn()
+            .mockImplementation((fn: (trx: unknown) => unknown) => fn(trx)),
+        }),
+      };
+      return db as any;
+    }
+
+    it("returns the cancelled row and prior status", async () => {
+      const cancelled = makeRow({
+        status: "cancelled",
+        reason: "changed mind",
+      });
+      const db = makeDbForCancel({
+        currentStatus: "held",
+        cancelledRow: cancelled,
+      });
+      const repo = new ReservationsRepository(db);
+
+      const result = await repo.cancel("res-uuid", "changed mind");
+
+      expect(result.row).toBe(cancelled);
+      expect(result.priorStatus).toBe("held");
+    });
+
+    it("throws NotFoundException when reservation does not exist", async () => {
+      const db = makeDbForCancel({ currentStatus: null });
+      const repo = new ReservationsRepository(db);
+
+      await expect(repo.cancel("res-uuid", "changed mind")).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it("throws NotFoundException when reservation is already terminal (cancelled)", async () => {
+      const db = makeDbForCancel({ currentStatus: "cancelled" });
+      const repo = new ReservationsRepository(db);
+
+      await expect(repo.cancel("res-uuid", "re-cancel")).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it("throws NotFoundException when reservation is already terminal (expired)", async () => {
+      const db = makeDbForCancel({ currentStatus: "expired" });
+      const repo = new ReservationsRepository(db);
+
+      await expect(repo.cancel("res-uuid", "too late")).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
 });
