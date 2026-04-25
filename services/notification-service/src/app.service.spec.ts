@@ -145,6 +145,7 @@ describe("AppService", () => {
         "user@example.com",
         "Welcome",
         "Thanks for booking",
+        undefined,
       );
     });
 

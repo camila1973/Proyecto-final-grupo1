@@ -84,6 +84,11 @@ export interface ReservationsTable {
     Date | null | undefined,
     Date | null | undefined
   >;
+  reason: ColumnType<
+    string | null,
+    string | null | undefined,
+    string | null | undefined
+  >;
   created_at: Generated<Date>;
   updated_at: Generated<Date>;
 }

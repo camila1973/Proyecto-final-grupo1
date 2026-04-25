@@ -1,16 +1,16 @@
 import { Injectable, Logger } from "@nestjs/common";
-import * as nodemailer from "nodemailer";
 
 @Injectable()
-export class EmailService {
-  private readonly logger = new Logger(EmailService.name);
+export class NotificationClient {
+  private readonly logger = new Logger(NotificationClient.name);
+  private readonly baseUrl =
+    process.env.NOTIFICATION_SERVICE_URL ?? "http://localhost:3006";
 
   async sendPaymentSucceeded(opts: {
     to: string;
     reservationId: string;
     amountUsd: string | number;
   }): Promise<void> {
-    const subject = "Reserva confirmada — TravelHub";
     const html = `
       <div style="font-family:sans-serif;max-width:520px;margin:auto;padding:32px">
         <h2 style="color:#1a56db">¡Tu reserva está confirmada!</h2>
@@ -31,7 +31,14 @@ export class EmailService {
         <p style="color:#6b7280;font-size:13px">— El equipo de TravelHub</p>
       </div>
     `;
-    await this.send(opts.to, subject, html);
+    await this.send({
+      userId: opts.reservationId,
+      to: opts.to,
+      channel: "email",
+      subject: "Reserva confirmada — TravelHub",
+      message: `Tu reserva ${opts.reservationId} ha sido confirmada. Total: USD $${Number(opts.amountUsd).toFixed(2)}`,
+      html,
+    });
   }
 
   async sendPaymentFailed(opts: {
@@ -39,7 +46,6 @@ export class EmailService {
     reservationId: string;
     reason: string;
   }): Promise<void> {
-    const subject = "Pago no procesado — TravelHub";
     const html = `
       <div style="font-family:sans-serif;max-width:520px;margin:auto;padding:32px">
         <h2 style="color:#dc2626">No pudimos procesar tu pago</h2>
@@ -60,36 +66,30 @@ export class EmailService {
         <p style="color:#6b7280;font-size:13px">— El equipo de TravelHub</p>
       </div>
     `;
-    await this.send(opts.to, subject, html);
-  }
-
-  private async send(to: string, subject: string, html: string): Promise<void> {
-    const smtpHost = process.env.SMTP_HOST;
-
-    if (!smtpHost) {
-      this.logger.log(
-        `[DEV MODE] Email to <${to}> | Subject: ${subject} | (SMTP not configured)`,
-      );
-      return;
-    }
-
-    const transporter = nodemailer.createTransport({
-      host: smtpHost,
-      port: parseInt(process.env.SMTP_PORT ?? "587"),
-      secure: process.env.SMTP_SECURE === "true",
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    });
-
-    await transporter.sendMail({
-      from: process.env.SMTP_FROM ?? "noreply@travelhub.com",
-      to,
-      subject,
+    await this.send({
+      userId: opts.reservationId,
+      to: opts.to,
+      channel: "email",
+      subject: "Pago no procesado — TravelHub",
+      message: `No pudimos procesar el pago para la reserva ${opts.reservationId}. Motivo: ${opts.reason}`,
       html,
     });
+  }
 
-    this.logger.log(`Email sent to <${to}> | Subject: ${subject}`);
+  private async send(payload: object): Promise<void> {
+    try {
+      const res = await fetch(`${this.baseUrl}/notifications/send`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        this.logger.error(
+          `notification-service responded ${res.status} for payload ${JSON.stringify(payload)}`,
+        );
+      }
+    } catch (err) {
+      this.logger.error(`Failed to reach notification-service: ${err}`);
+    }
   }
 }

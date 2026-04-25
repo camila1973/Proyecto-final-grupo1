@@ -31,7 +31,14 @@ function makeRepo() {
   };
 }
 
-function makeEmail() {
+function makeBookingClient() {
+  return {
+    confirmReservation: jest.fn().mockResolvedValue(undefined),
+    failReservation: jest.fn().mockResolvedValue(undefined),
+  };
+}
+
+function makeNotifications() {
   return {
     sendPaymentSucceeded: jest.fn().mockResolvedValue(undefined),
     sendPaymentFailed: jest.fn().mockResolvedValue(undefined),
@@ -82,13 +89,19 @@ const INITIATE_DTO = {
 describe("PaymentsService", () => {
   let service: PaymentsService;
   let repo: ReturnType<typeof makeRepo>;
-  let email: ReturnType<typeof makeEmail>;
+  let booking: ReturnType<typeof makeBookingClient>;
+  let notifications: ReturnType<typeof makeNotifications>;
 
   beforeEach(() => {
     jest.clearAllMocks();
     repo = makeRepo();
-    email = makeEmail();
-    service = new PaymentsService(repo as any, email as any);
+    booking = makeBookingClient();
+    notifications = makeNotifications();
+    service = new PaymentsService(
+      repo as any,
+      booking as any,
+      notifications as any,
+    );
   });
 
   // ─── initiate ─────────────────────────────────────────────────────────────
@@ -180,7 +193,6 @@ describe("PaymentsService", () => {
           type: "payment_intent.succeeded",
           data: { object: intent },
         });
-        mockFetch.mockResolvedValue({ ok: true });
 
         await service.handleWebhook(rawBody, sig);
 
@@ -198,7 +210,6 @@ describe("PaymentsService", () => {
           type: "payment_intent.succeeded",
           data: { object: intent },
         });
-        mockFetch.mockResolvedValue({ ok: true });
 
         await service.handleWebhook(rawBody, sig);
 
@@ -210,19 +221,15 @@ describe("PaymentsService", () => {
         );
       });
 
-      it("calls booking-service PATCH /reservations/{id}/confirm", async () => {
+      it("calls BookingClient.confirmReservation with the reservation id", async () => {
         mockWebhooksConstructEvent.mockReturnValue({
           type: "payment_intent.succeeded",
           data: { object: makeStripeIntent() },
         });
-        mockFetch.mockResolvedValue({ ok: true });
 
         await service.handleWebhook(rawBody, sig);
 
-        expect(mockFetch).toHaveBeenCalledWith(
-          expect.stringContaining("/reservations/res-uuid/confirm"),
-          expect.objectContaining({ method: "PATCH" }),
-        );
+        expect(booking.confirmReservation).toHaveBeenCalledWith("res-uuid");
       });
 
       it("sends the payment-succeeded email to the guest", async () => {
@@ -230,11 +237,10 @@ describe("PaymentsService", () => {
           type: "payment_intent.succeeded",
           data: { object: makeStripeIntent() },
         });
-        mockFetch.mockResolvedValue({ ok: true });
 
         await service.handleWebhook(rawBody, sig);
 
-        expect(email.sendPaymentSucceeded).toHaveBeenCalledWith(
+        expect(notifications.sendPaymentSucceeded).toHaveBeenCalledWith(
           expect.objectContaining({
             to: "guest@example.com",
             reservationId: "res-uuid",
@@ -248,7 +254,7 @@ describe("PaymentsService", () => {
           type: "payment_intent.succeeded",
           data: { object: makeStripeIntent() },
         });
-        mockFetch.mockResolvedValue({ ok: false, status: 503 });
+        booking.confirmReservation.mockRejectedValue(new Error("unavailable"));
 
         await expect(
           service.handleWebhook(rawBody, sig),
@@ -300,7 +306,7 @@ describe("PaymentsService", () => {
 
         await service.handleWebhook(rawBody, sig);
 
-        expect(email.sendPaymentFailed).toHaveBeenCalledWith(
+        expect(notifications.sendPaymentFailed).toHaveBeenCalledWith(
           expect.objectContaining({
             to: "guest@example.com",
             reservationId: "res-uuid",
@@ -309,7 +315,38 @@ describe("PaymentsService", () => {
         );
       });
 
-      it("does not call booking-service confirm for failed payments", async () => {
+      it("calls BookingClient.failReservation with reservation id and Stripe reason", async () => {
+        const intent = makeStripeIntent({
+          last_payment_error: { message: "Your card was declined." },
+        });
+        mockWebhooksConstructEvent.mockReturnValue({
+          type: "payment_intent.payment_failed",
+          data: { object: intent },
+        });
+
+        await service.handleWebhook(rawBody, sig);
+
+        expect(booking.failReservation).toHaveBeenCalledWith(
+          "res-uuid",
+          "Your card was declined.",
+        );
+      });
+
+      it("passes 'Payment declined' fallback reason when last_payment_error is null", async () => {
+        mockWebhooksConstructEvent.mockReturnValue({
+          type: "payment_intent.payment_failed",
+          data: { object: makeStripeIntent({ last_payment_error: null }) },
+        });
+
+        await service.handleWebhook(rawBody, sig);
+
+        expect(booking.failReservation).toHaveBeenCalledWith(
+          "res-uuid",
+          "Payment declined",
+        );
+      });
+
+      it("does not call BookingClient.confirmReservation for failed payments", async () => {
         mockWebhooksConstructEvent.mockReturnValue({
           type: "payment_intent.payment_failed",
           data: { object: makeStripeIntent() },
@@ -317,7 +354,7 @@ describe("PaymentsService", () => {
 
         await service.handleWebhook(rawBody, sig);
 
-        expect(mockFetch).not.toHaveBeenCalled();
+        expect(booking.confirmReservation).not.toHaveBeenCalled();
       });
     });
 

@@ -50,7 +50,7 @@ describe("ReservationsController", () => {
             create: jest.fn(),
             findAll: jest.fn(),
             findOne: jest.fn(),
-            submitPayment: jest.fn(),
+            submit: jest.fn(),
             confirm: jest.fn(),
             updateGuestInfo: jest.fn(),
           },
@@ -143,14 +143,14 @@ describe("ReservationsController", () => {
     });
   });
 
-  describe("submitPayment", () => {
-    it("delegates to service and returns the pending reservation", async () => {
-      const reservation = { id: "res-1", status: "pending" } as any;
-      (service.submitPayment as jest.Mock).mockResolvedValue(reservation);
+  describe("submit", () => {
+    it("delegates to service and returns the submitted reservation", async () => {
+      const reservation = { id: "res-1", status: "submitted" } as any;
+      (service.submit as jest.Mock).mockResolvedValue(reservation);
 
-      const result = await controller.submitPayment("res-1");
+      const result = await controller.submit("res-1");
 
-      expect(service.submitPayment).toHaveBeenCalledWith("res-1");
+      expect(service.submit).toHaveBeenCalledWith("res-1");
       expect(result).toBe(reservation);
     });
   });

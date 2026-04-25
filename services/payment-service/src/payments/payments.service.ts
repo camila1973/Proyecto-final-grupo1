@@ -6,7 +6,9 @@ import {
 } from "@nestjs/common";
 import Stripe from "stripe";
 import { PaymentsRepository } from "./payments.repository.js";
-import { EmailService } from "./email.service.js";
+import { BookingClient } from "../clients/booking.client.js";
+import { NotificationClient } from "../clients/notification.client.js";
+import { UpstreamServiceError } from "../clients/upstream-service.error.js";
 import { InitiatePaymentDto } from "./dto/initiate-payment.dto.js";
 
 // Minimal shapes extracted from the Stripe SDK objects we actually use.
@@ -23,16 +25,14 @@ interface StripePaymentIntent {
 export class PaymentsService {
   private readonly logger = new Logger(PaymentsService.name);
   private readonly stripe: InstanceType<typeof Stripe>;
-  private readonly bookingServiceUrl: string;
 
   constructor(
     private readonly repo: PaymentsRepository,
-    private readonly email: EmailService,
+    private readonly booking: BookingClient,
+    private readonly notifications: NotificationClient,
   ) {
     const secretKey = process.env.STRIPE_SECRET_KEY ?? "";
     this.stripe = new Stripe(secretKey);
-    this.bookingServiceUrl =
-      process.env.BOOKING_SERVICE_URL ?? "http://localhost:3004";
   }
 
   async initiate(dto: InitiatePaymentDto) {
@@ -115,9 +115,16 @@ export class PaymentsService {
       stripe_payment_method_id: paymentMethodId,
     });
 
-    await this.confirmBooking(reservationId);
+    await this.booking
+      .confirmReservation(reservationId)
+      .catch((err: unknown) => {
+        const detail = err instanceof UpstreamServiceError ? err.cause : err;
+        this.logger.error(
+          `Failed to confirm booking ${reservationId}: ${String(detail)}`,
+        );
+      });
 
-    await this.email
+    await this.notifications
       .sendPaymentSucceeded({
         to: guestEmail,
         reservationId,
@@ -138,28 +145,19 @@ export class PaymentsService {
       failure_reason: reason,
     });
 
-    await this.email
+    await this.booking
+      .failReservation(reservationId, reason)
+      .catch((err: unknown) => {
+        const detail = err instanceof UpstreamServiceError ? err.cause : err;
+        this.logger.error(
+          `Failed to mark reservation ${reservationId} as failed: ${String(detail)}`,
+        );
+      });
+
+    await this.notifications
       .sendPaymentFailed({ to: guestEmail, reservationId, reason })
       .catch((err) =>
         this.logger.error(`Failed to send failure email: ${err}`),
       );
-  }
-
-  private async confirmBooking(reservationId: string): Promise<void> {
-    try {
-      const res = await fetch(
-        `${this.bookingServiceUrl}/reservations/${reservationId}/confirm`,
-        { method: "PATCH" },
-      );
-      if (!res.ok) {
-        this.logger.error(
-          `Failed to confirm booking ${reservationId}: ${res.status}`,
-        );
-      } else {
-        this.logger.log(`Booking confirmed: ${reservationId}`);
-      }
-    } catch (err) {
-      this.logger.error(`Error confirming booking ${reservationId}: ${err}`);
-    }
   }
 }
