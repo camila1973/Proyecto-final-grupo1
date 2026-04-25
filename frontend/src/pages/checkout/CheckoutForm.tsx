@@ -2,18 +2,18 @@ import { useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { type CheckoutIntent } from '../../hooks/useBookingFlow';
 import { PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
-import { API_BASE } from '../../env';
 import { useLocale } from '../../context/LocaleContext';
 import { formatPrice } from '../../utils/currency';
+import { patchGuestInfo, initiatePayment } from '../../utils/queries';
 import { type ReservationResponse } from './types';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
 import CircularProgress from '@mui/material/CircularProgress';
-import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
-import QrCode2Icon from '@mui/icons-material/QrCode2';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import LabeledField from '../../components/LabeledField';
 
 export function CheckoutForm({
   reservation,
@@ -56,15 +56,7 @@ export function CheckoutForm({
     }
 
     try {
-      const patchRes = await fetch(
-        `${API_BASE}/api/booking/reservations/${reservation.id}/guest-info`,
-        {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ firstName, lastName, email, phone }),
-        },
-      );
-      if (!patchRes.ok) throw new Error('guest_info_failed');
+      await patchGuestInfo(reservation.id, { firstName, lastName, email, phone });
     } catch {
       setError('Error guardando los datos del huésped. Intenta de nuevo.');
       setLoading(false);
@@ -73,29 +65,17 @@ export function CheckoutForm({
 
     let clientSecret: string;
     try {
-      const res = await fetch(`${API_BASE}/api/payment/payments/initiate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          reservationId: reservation.id,
-          amountUsd: reservation.grandTotalUsd,
-          currency: 'usd',
-          guestEmail: email,
-        }),
+      clientSecret = await initiatePayment({
+        reservationId: reservation.id,
+        amountUsd: reservation.grandTotalUsd,
+        currency: 'usd',
+        guestEmail: email,
       });
-      if (!res.ok) throw new Error('Failed to initiate payment');
-      const data = await res.json() as { clientSecret: string };
-      clientSecret = data.clientSecret;
     } catch {
       setError('Error iniciando el pago. Intenta de nuevo.');
       setLoading(false);
       return;
     }
-
-    // Transition reservation on_hold → pending (awaiting webhook confirmation)
-    await fetch(`${API_BASE}/api/booking/reservations/${reservation.id}/submit`, {
-      method: 'PATCH',
-    }).catch(() => null);
 
     const { error: stripeError } = await stripe.confirmPayment({
       elements,
@@ -136,33 +116,39 @@ export function CheckoutForm({
           </Typography>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-              <Box>
-                <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: 1, display: 'block', mb: 0.5 }}>
-                  Nombre
-                </Typography>
-                <TextField size="small" fullWidth value={firstName} onChange={(e) => setFirstName(e.target.value)} sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1.5 } }} />
-              </Box>
-              <Box>
-                <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: 1, display: 'block', mb: 0.5 }}>
-                  Apellido
-                </Typography>
-                <TextField size="small" fullWidth value={lastName} onChange={(e) => setLastName(e.target.value)} sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1.5 } }} />
-              </Box>
+              <LabeledField
+                label="Nombre"
+                uppercase
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1.5 } }}
+              />
+              <LabeledField
+                label="Apellido"
+                uppercase
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1.5 } }}
+              />
             </Box>
 
-            <Box>
-              <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: 1, display: 'block', mb: 0.5 }}>
-                Correo electrónico
-              </Typography>
-              <TextField size="small" fullWidth type="email" value={email} onChange={(e) => setEmail(e.target.value)} sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1.5 } }} />
-            </Box>
+            <LabeledField
+              label="Correo electrónico"
+              uppercase
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1.5 } }}
+            />
 
-            <Box>
-              <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: 1, display: 'block', mb: 0.5 }}>
-                Teléfono
-              </Typography>
-              <TextField size="small" fullWidth type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1.5 } }} />
-            </Box>
+            <LabeledField
+              label="Teléfono"
+              uppercase
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1.5 } }}
+            />
           </Box>
         </Box>
 
@@ -182,7 +168,7 @@ export function CheckoutForm({
           <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, p: 2 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
               <Chip label="No reembolsable" size="small" sx={{ bgcolor: 'grey.200', fontWeight: 600, borderRadius: 1 }} />
-              <QrCode2Icon sx={{ color: 'text.disabled', fontSize: 40 }} />
+              <InfoOutlinedIcon sx={{ color: 'text.disabled', fontSize: 40 }} />
             </Box>
             <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6 }}>
               Esta tarifa es no reembolsable. Si modifica o cancela su reserva, no recibirá reembolso ni crédito para una futura estadía.
