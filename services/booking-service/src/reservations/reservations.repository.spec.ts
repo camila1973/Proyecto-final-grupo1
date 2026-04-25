@@ -46,7 +46,7 @@ function makeRow(overrides: Record<string, unknown> = {}) {
     },
     check_in: "2026-05-01",
     check_out: "2026-05-04",
-    status: "on_hold",
+    status: "held",
     fare_breakdown: { total: 522 },
     tax_total_usd: "72.00",
     fee_total_usd: "0.00",
@@ -147,7 +147,7 @@ describe("ReservationsRepository", () => {
       });
       expect(result.checkIn).toBe("2026-05-01");
       expect(result.checkOut).toBe("2026-05-04");
-      expect(result.status).toBe("on_hold");
+      expect(result.status).toBe("held");
     });
 
     it("parses numeric columns as floats", () => {
@@ -228,7 +228,7 @@ describe("ReservationsRepository", () => {
       expect(result).toEqual(confirmed);
     });
 
-    it("guards against confirming non-pending rows via status filter", async () => {
+    it("guards against confirming non-submitted rows via status filter", async () => {
       const db = makeDb({ single: undefined });
       const repo = new ReservationsRepository(db);
 
@@ -248,15 +248,15 @@ describe("ReservationsRepository", () => {
   });
 
   describe("findExpiredHolds", () => {
-    it("returns on_hold rows with hold_expires_at in the past", async () => {
-      const rows = [makeRow({ status: "on_hold" })];
+    it("returns held rows with hold_expires_at in the past", async () => {
+      const rows = [makeRow({ status: "held" })];
       const db = makeDb({ many: rows });
       const repo = new ReservationsRepository(db);
 
       const result = await repo.findExpiredHolds();
 
       expect(db.selectFrom).toHaveBeenCalledWith("reservations");
-      expect(db.where).toHaveBeenCalledWith("status", "=", "on_hold");
+      expect(db.where).toHaveBeenCalledWith("status", "=", "held");
       expect(db.where).toHaveBeenCalledWith(
         "hold_expires_at",
         "<",
@@ -266,13 +266,13 @@ describe("ReservationsRepository", () => {
     });
   });
 
-  describe("findPendingByBookerAndStay", () => {
-    it("returns the row when a matching on_hold reservation exists", async () => {
+  describe("findHoldByBookerAndStay", () => {
+    it("returns the row when a matching held reservation exists", async () => {
       const row = makeRow();
       const db = makeDb({ single: row });
       const repo = new ReservationsRepository(db);
 
-      const result = await repo.findPendingByBookerAndStay(
+      const result = await repo.findHoldByBookerAndStay(
         "booker-uuid",
         "room-uuid",
         "2026-05-01",
@@ -284,15 +284,15 @@ describe("ReservationsRepository", () => {
       expect(db.where).toHaveBeenCalledWith("room_id", "=", "room-uuid");
       expect(db.where).toHaveBeenCalledWith("check_in", "=", "2026-05-01");
       expect(db.where).toHaveBeenCalledWith("check_out", "=", "2026-05-04");
-      expect(db.where).toHaveBeenCalledWith("status", "=", "on_hold");
+      expect(db.where).toHaveBeenCalledWith("status", "=", "held");
       expect(result).toBe(row);
     });
 
-    it("returns null when no matching pending reservation exists", async () => {
+    it("returns null when no matching held reservation exists", async () => {
       const db = makeDb({ single: undefined });
       const repo = new ReservationsRepository(db);
 
-      const result = await repo.findPendingByBookerAndStay(
+      const result = await repo.findHoldByBookerAndStay(
         "booker-uuid",
         "room-uuid",
         "2026-05-01",
@@ -341,27 +341,25 @@ describe("ReservationsRepository", () => {
     });
   });
 
-  describe("submitPayment", () => {
-    it("transitions status from on_hold to pending and returns the updated row", async () => {
-      const pending = makeRow({ status: "pending" });
-      const db = makeDb({ single: pending });
+  describe("submit", () => {
+    it("transitions status from held to submitted and returns the updated row", async () => {
+      const submitted = makeRow({ status: "submitted" });
+      const db = makeDb({ single: submitted });
       const repo = new ReservationsRepository(db);
 
-      const result = await repo.submitPayment("res-uuid");
+      const result = await repo.submit("res-uuid");
 
       expect(db.updateTable).toHaveBeenCalledWith("reservations");
       expect(db.where).toHaveBeenCalledWith("id", "=", "res-uuid");
-      expect(db.where).toHaveBeenCalledWith("status", "=", "on_hold");
-      expect(result).toBe(pending);
+      expect(db.where).toHaveBeenCalledWith("status", "=", "held");
+      expect(result).toBe(submitted);
     });
 
-    it("throws NotFoundException when reservation not found or not on_hold", async () => {
+    it("throws NotFoundException when reservation not found or not held", async () => {
       const db = makeDb({ single: undefined });
       const repo = new ReservationsRepository(db);
 
-      await expect(repo.submitPayment("res-uuid")).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(repo.submit("res-uuid")).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -375,17 +373,155 @@ describe("ReservationsRepository", () => {
 
       expect(db.updateTable).toHaveBeenCalledWith("reservations");
       expect(db.where).toHaveBeenCalledWith("id", "=", "res-uuid");
-      expect(db.where).toHaveBeenCalledWith("status", "=", "on_hold");
+      expect(db.where).toHaveBeenCalledWith("status", "=", "held");
       expect(result).toBe(expired);
     });
 
-    it("returns undefined when row is not pending (idempotency guard)", async () => {
+    it("returns undefined when row is not held (idempotency guard)", async () => {
       const db = makeDb({ single: undefined });
       const repo = new ReservationsRepository(db);
 
       const result = await repo.expire("already-confirmed");
 
       expect(result).toBeUndefined();
+    });
+  });
+
+  describe("fail", () => {
+    it("transitions status from submitted to failed and returns the row", async () => {
+      const failed = makeRow({ status: "failed", reason: "card declined" });
+      const db = makeDb({ single: failed });
+      const repo = new ReservationsRepository(db);
+
+      const result = await repo.fail("res-uuid", "card declined");
+
+      expect(db.updateTable).toHaveBeenCalledWith("reservations");
+      expect(db.where).toHaveBeenCalledWith("id", "=", "res-uuid");
+      expect(db.where).toHaveBeenCalledWith("status", "=", "submitted");
+      expect(result).toBe(failed);
+    });
+
+    it("throws NotFoundException when reservation not found or not submitted", async () => {
+      const db = makeDb({ single: undefined });
+      const repo = new ReservationsRepository(db);
+
+      await expect(repo.fail("res-uuid", "card declined")).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  describe("rehold", () => {
+    it("transitions status from failed to held and updates hold_expires_at", async () => {
+      const expiresAt = new Date(Date.now() + 900_000);
+      const reheld = makeRow({ status: "held", hold_expires_at: expiresAt });
+      const db = makeDb({ single: reheld });
+      const repo = new ReservationsRepository(db);
+
+      const result = await repo.rehold("res-uuid", expiresAt);
+
+      expect(db.updateTable).toHaveBeenCalledWith("reservations");
+      expect(db.where).toHaveBeenCalledWith("id", "=", "res-uuid");
+      expect(db.where).toHaveBeenCalledWith("status", "=", "failed");
+      expect(result).toBe(reheld);
+    });
+
+    it("throws NotFoundException when reservation not found or not failed", async () => {
+      const db = makeDb({ single: undefined });
+      const repo = new ReservationsRepository(db);
+
+      await expect(repo.rehold("res-uuid", new Date())).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  describe("cancel", () => {
+    function makeDbForCancel(
+      opts: {
+        currentStatus?: string | null;
+        cancelledRow?: Record<string, unknown>;
+      } = {},
+    ) {
+      const trx: Record<string, jest.Mock> = {};
+      const chain = [
+        "selectFrom",
+        "updateTable",
+        "set",
+        "where",
+        "select",
+        "selectAll",
+        "returningAll",
+        "forUpdate",
+      ];
+      chain.forEach((m) => {
+        trx[m] = jest.fn().mockReturnValue(trx);
+      });
+      trx.executeTakeFirst = jest
+        .fn()
+        .mockResolvedValue(
+          opts.currentStatus != null
+            ? { status: opts.currentStatus }
+            : undefined,
+        );
+      trx.executeTakeFirstOrThrow = jest
+        .fn()
+        .mockResolvedValue(
+          opts.cancelledRow ?? makeRow({ status: "cancelled" }),
+        );
+
+      const db = {
+        transaction: jest.fn().mockReturnValue({
+          execute: jest
+            .fn()
+            .mockImplementation((fn: (trx: unknown) => unknown) => fn(trx)),
+        }),
+      };
+      return db as any;
+    }
+
+    it("returns the cancelled row and prior status", async () => {
+      const cancelled = makeRow({
+        status: "cancelled",
+        reason: "changed mind",
+      });
+      const db = makeDbForCancel({
+        currentStatus: "held",
+        cancelledRow: cancelled,
+      });
+      const repo = new ReservationsRepository(db);
+
+      const result = await repo.cancel("res-uuid", "changed mind");
+
+      expect(result.row).toBe(cancelled);
+      expect(result.priorStatus).toBe("held");
+    });
+
+    it("throws NotFoundException when reservation does not exist", async () => {
+      const db = makeDbForCancel({ currentStatus: null });
+      const repo = new ReservationsRepository(db);
+
+      await expect(repo.cancel("res-uuid", "changed mind")).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it("throws NotFoundException when reservation is already terminal (cancelled)", async () => {
+      const db = makeDbForCancel({ currentStatus: "cancelled" });
+      const repo = new ReservationsRepository(db);
+
+      await expect(repo.cancel("res-uuid", "re-cancel")).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it("throws NotFoundException when reservation is already terminal (expired)", async () => {
+      const db = makeDbForCancel({ currentStatus: "expired" });
+      const repo = new ReservationsRepository(db);
+
+      await expect(repo.cancel("res-uuid", "too late")).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });

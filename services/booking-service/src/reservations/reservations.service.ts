@@ -38,8 +38,8 @@ export class ReservationsService {
   }
 
   async create(dto: CreateReservationDto) {
-    // Idempotency guard — return existing pending reservation if one already exists
-    const existing = await this.reservationsRepo.findPendingByBookerAndStay(
+    // Idempotency guard — return existing held reservation if one already exists
+    const existing = await this.reservationsRepo.findHoldByBookerAndStay(
       dto.bookerId,
       dto.roomId,
       dto.checkIn,
@@ -102,7 +102,7 @@ export class ReservationsService {
         booker_id: dto.bookerId,
         check_in: dto.checkIn,
         check_out: dto.checkOut,
-        status: "on_hold",
+        status: "held",
         fare_breakdown: fareBreakdown,
         tax_total_usd: fareBreakdown.taxTotalUsd,
         fee_total_usd: fareBreakdown.feeTotalUsd,
@@ -114,7 +114,7 @@ export class ReservationsService {
       // Re-query and return the existing pending reservation idempotently.
       if (err?.code === "23505") {
         await this.holdsService.release(holdId).catch(() => undefined);
-        const existing = await this.reservationsRepo.findPendingByBookerAndStay(
+        const existing = await this.reservationsRepo.findHoldByBookerAndStay(
           dto.bookerId,
           dto.roomId,
           dto.checkIn,
@@ -174,9 +174,78 @@ export class ReservationsService {
     return this.reservationsRepo.toResponse(row);
   }
 
-  async submitPayment(id: string) {
-    const row = await this.reservationsRepo.submitPayment(id);
+  async submit(id: string) {
+    const row = await this.reservationsRepo.submit(id);
     return this.reservationsRepo.toResponse(row);
+  }
+
+  async fail(id: string, reason: string) {
+    const row = await this.reservationsRepo.fail(id, reason);
+
+    try {
+      await this.inventoryClient.unhold(
+        row.room_id,
+        row.check_in,
+        row.check_out,
+      );
+    } catch (err) {
+      this.logger.warn(
+        `Failed to unhold inventory for failed reservation ${id}: ${err}`,
+      );
+    }
+
+    return this.reservationsRepo.toResponse(row);
+  }
+
+  async cancel(id: string, reason: string) {
+    const { row, priorStatus } = await this.reservationsRepo.cancel(id, reason);
+
+    try {
+      if (priorStatus === "confirmed") {
+        await this.inventoryClient.release(
+          row.room_id,
+          row.check_in,
+          row.check_out,
+        );
+      } else if (priorStatus === "held" || priorStatus === "submitted") {
+        await this.inventoryClient.unhold(
+          row.room_id,
+          row.check_in,
+          row.check_out,
+        );
+      }
+      // failed: already unheld by fail() — no-op
+    } catch (err) {
+      this.logger.warn(
+        `Failed to update inventory for cancelled reservation ${id}: ${err}`,
+      );
+    }
+
+    return this.reservationsRepo.toResponse(row);
+  }
+
+  async rehold(id: string) {
+    const row = await this.reservationsRepo.findById(id);
+
+    const { holdId, expiresAt } = await this.holdsService.create({
+      bookerId: row.booker_id,
+      roomId: row.room_id,
+      checkIn: row.check_in,
+      checkOut: row.check_out,
+    });
+
+    const updated = await this.reservationsRepo
+      .rehold(id, new Date(expiresAt))
+      .catch(async (err) => {
+        await this.holdsService.release(holdId).catch((releaseErr) => {
+          this.logger.warn(
+            `Failed to release hold ${holdId} after rehold error: ${releaseErr}`,
+          );
+        });
+        throw err;
+      });
+
+    return this.reservationsRepo.toResponse(updated);
   }
 
   async confirm(id: string) {

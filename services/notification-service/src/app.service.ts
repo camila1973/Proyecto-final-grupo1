@@ -37,11 +37,14 @@ export class AppService {
     channel: string;
     subject: string;
     message: string;
+    html?: string;
   }): object {
     if (body.channel === "email" && body.to) {
-      this.sendEmail(body.to, body.subject, body.message).catch((err) => {
-        console.error("[notification-service] Email send error:", err);
-      });
+      this.sendEmail(body.to, body.subject, body.message, body.html).catch(
+        (err) => {
+          console.error("[notification-service] Email send error:", err);
+        },
+      );
     }
 
     return {
@@ -56,6 +59,7 @@ export class AppService {
     to: string,
     subject: string,
     text: string,
+    html?: string,
   ): Promise<void> {
     const smtpHost = process.env.SMTP_HOST;
 
@@ -81,6 +85,7 @@ export class AppService {
       to,
       subject,
       text,
+      ...(html ? { html } : {}),
     });
   }
 }

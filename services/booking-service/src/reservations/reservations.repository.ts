@@ -17,6 +17,7 @@ export interface ReservationResponse {
   checkIn: string;
   checkOut: string;
   status: string;
+  reason: string | null;
   fareBreakdown: unknown;
   taxTotalUsd: number | null;
   feeTotalUsd: number | null;
@@ -63,17 +64,17 @@ export class ReservationsRepository {
     return row;
   }
 
-  async submitPayment(id: string): Promise<ReservationRow> {
+  async submit(id: string): Promise<ReservationRow> {
     const row = await this.db
       .updateTable("reservations")
-      .set({ status: "pending", updated_at: new Date() })
+      .set({ status: "submitted", updated_at: new Date() })
       .where("id", "=", id)
-      .where("status", "=", "on_hold")
+      .where("status", "=", "held")
       .returningAll()
       .executeTakeFirst();
 
     if (!row) {
-      throw new NotFoundException(`Reservation ${id} not found or not on_hold`);
+      throw new NotFoundException(`Reservation ${id} not found or not held`);
     }
 
     return row;
@@ -84,7 +85,7 @@ export class ReservationsRepository {
       .updateTable("reservations")
       .set({ status: "confirmed", updated_at: new Date() })
       .where("id", "=", id)
-      .where("status", "=", "pending")
+      .where("status", "=", "submitted")
       .returningAll()
       .executeTakeFirst();
 
@@ -95,16 +96,69 @@ export class ReservationsRepository {
     return row;
   }
 
+  async fail(id: string, reason: string): Promise<ReservationRow> {
+    const row = await this.db
+      .updateTable("reservations")
+      .set({ status: "failed", reason, updated_at: new Date() })
+      .where("id", "=", id)
+      .where("status", "=", "submitted")
+      .returningAll()
+      .executeTakeFirst();
+
+    if (!row) {
+      throw new NotFoundException(
+        `Reservation ${id} not found or not submitted`,
+      );
+    }
+
+    return row;
+  }
+
+  async cancel(
+    id: string,
+    reason: string,
+  ): Promise<{ row: ReservationRow; priorStatus: string }> {
+    return this.db.transaction().execute(async (trx) => {
+      // Lock the row so concurrent state transitions (e.g. payment webhook)
+      // cannot change status between our read and our update.
+      const current = await trx
+        .selectFrom("reservations")
+        .where("id", "=", id)
+        .select("status")
+        .forUpdate()
+        .executeTakeFirst();
+
+      if (!current) {
+        throw new NotFoundException(`Reservation ${id} not found`);
+      }
+
+      if (current.status === "expired" || current.status === "cancelled") {
+        throw new NotFoundException(
+          `Reservation ${id} is already terminal (${current.status})`,
+        );
+      }
+
+      const row = await trx
+        .updateTable("reservations")
+        .set({ status: "cancelled", reason, updated_at: new Date() })
+        .where("id", "=", id)
+        .returningAll()
+        .executeTakeFirstOrThrow();
+
+      return { row, priorStatus: current.status };
+    });
+  }
+
   async findExpiredHolds(): Promise<ReservationRow[]> {
     return this.db
       .selectFrom("reservations")
-      .where("status", "=", "on_hold")
+      .where("status", "=", "held")
       .where("hold_expires_at", "<", new Date())
       .selectAll()
       .execute();
   }
 
-  async findPendingByBookerAndStay(
+  async findHoldByBookerAndStay(
     bookerId: string,
     roomId: string,
     checkIn: string,
@@ -116,7 +170,7 @@ export class ReservationsRepository {
       .where("room_id", "=", roomId)
       .where("check_in", "=", checkIn)
       .where("check_out", "=", checkOut)
-      .where("status", "=", "on_hold")
+      .where("status", "=", "held")
       .selectAll()
       .executeTakeFirst();
 
@@ -141,12 +195,32 @@ export class ReservationsRepository {
     return row;
   }
 
+  async rehold(id: string, holdExpiresAt: Date): Promise<ReservationRow> {
+    const row = await this.db
+      .updateTable("reservations")
+      .set({
+        status: "held",
+        hold_expires_at: holdExpiresAt,
+        updated_at: new Date(),
+      })
+      .where("id", "=", id)
+      .where("status", "=", "failed")
+      .returningAll()
+      .executeTakeFirst();
+
+    if (!row) {
+      throw new NotFoundException(`Reservation ${id} not found or not failed`);
+    }
+
+    return row;
+  }
+
   async expire(id: string): Promise<ReservationRow | undefined> {
     return this.db
       .updateTable("reservations")
       .set({ status: "expired", updated_at: new Date() })
       .where("id", "=", id)
-      .where("status", "=", "on_hold")
+      .where("status", "=", "held")
       .returningAll()
       .executeTakeFirst();
   }
@@ -161,6 +235,7 @@ export class ReservationsRepository {
       checkIn: row.check_in,
       checkOut: row.check_out,
       status: row.status,
+      reason: row.reason ?? null,
       fareBreakdown: row.fare_breakdown,
       taxTotalUsd: row.tax_total_usd ? parseFloat(row.tax_total_usd) : null,
       feeTotalUsd: row.fee_total_usd ? parseFloat(row.fee_total_usd) : null,

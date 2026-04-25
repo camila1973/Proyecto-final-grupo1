@@ -1,11 +1,12 @@
 /**
  * TravelHub — Booking Smoke Tests
  *
- * Validates functional correctness of the provisional cart flow:
- *   POST /holds → POST /reservations → PATCH /confirm
- *   + idempotency, double-submit, bad holdId, explicit release
+ * Validates functional correctness of the reservation flow:
+ *   POST /reservations (held) → PATCH /submit (submitted) → PATCH /confirm (confirmed)
+ *   + idempotency (same booker/room/dates returns existing held), double-submit guard,
+ *     guest-info update, cancel from held/submitted, fail + rehold retry path.
  *
- * Each of the 5 scenarios runs exactly once (1 VU × 5 iterations, cycled by __ITER).
+ * Each of the 8 scenarios runs exactly once (1 VU × 8 iterations, cycled by __ITER).
  * Dates are in 2027 — within the seeded rate range (2027-01-01 → 2027-12-31).
  *
  * Usage:
@@ -18,7 +19,7 @@
 import { check } from "k6";
 import { textSummary } from "https://jslib.k6.io/k6-summary/0.0.2/index.js";
 import { htmlReport } from "https://raw.githubusercontent.com/benc-uk/k6-reporter/main/dist/bundle.js";
-import { post, patch, del } from "../../lib/http.js";
+import { post, patch, get } from "../../lib/http.js";
 import { jitter } from "../../lib/utils.js";
 import {
   BOOKING_BOOKER_ID,
@@ -45,14 +46,11 @@ export const options = {
     booking: {
       executor: "per-vu-iterations",
       vus: 1,
-      iterations: 5,      // one pass per scenario type
+      iterations: 8,      // one pass per scenario type
       maxDuration: "5m",
     },
   },
   thresholds: {
-    // All checks must pass at 100% — any unexpected status surfaced here.
-    // http_req_failed is intentionally omitted: bad_hold_id (401) and
-    // release (404) are expected error paths that would inflate the rate.
     checks: ["rate>=1"],
   },
   tags: {
@@ -78,24 +76,14 @@ function datePair() {
   };
 }
 
-function placeHold(checkIn, checkOut) {
-  return post(
-    `${BOOKING}/holds`,
-    { bookerId: BOOKING_BOOKER_ID, roomId: BOOKING_ROOM_ID, checkIn, checkOut },
-    { name: "place_hold" },
-  );
-}
-
-function createReservation(holdId, checkIn, checkOut) {
+function createReservation(checkIn, checkOut) {
   return post(
     `${BOOKING}/reservations`,
     {
-      holdId,
       propertyId: BOOKING_PROPERTY_ID,
       roomId:     BOOKING_ROOM_ID,
       partnerId:  BOOKING_PARTNER_ID,
       bookerId:   BOOKING_BOOKER_ID,
-      guestInfo:  { firstName: "Smoke", lastName: "Test", email: "smoke@travelhub.com" },
       checkIn,
       checkOut,
     },
@@ -103,37 +91,76 @@ function createReservation(holdId, checkIn, checkOut) {
   );
 }
 
+function submitReservation(id) {
+  return patch(`${BOOKING}/reservations/${id}/submit`, null, { name: "submit_reservation" });
+}
+
 function confirmReservation(id) {
   return patch(`${BOOKING}/reservations/${id}/confirm`, null, { name: "confirm_reservation" });
+}
+
+function getReservation(id) {
+  return get(`${BOOKING}/reservations/${id}`, { name: "get_reservation" });
+}
+
+function updateGuestInfo(id) {
+  return patch(
+    `${BOOKING}/reservations/${id}/guest-info`,
+    { firstName: "Smoke", lastName: "Test", email: "smoke@travelhub.com", phone: "+52 555 000 0000" },
+    { name: "update_guest_info" },
+  );
+}
+
+function failReservation(id) {
+  return patch(
+    `${BOOKING}/reservations/${id}/fail`,
+    { reason: "Your card was declined." },
+    { name: "fail_reservation" },
+  );
+}
+
+function cancelReservation(id) {
+  return patch(
+    `${BOOKING}/reservations/${id}/cancel`,
+    { reason: "Smoke test cancellation" },
+    { name: "cancel_reservation" },
+  );
+}
+
+function reholdReservation(id) {
+  return patch(`${BOOKING}/reservations/${id}/rehold`, null, { name: "rehold_reservation" });
 }
 
 // ─── Scenarios ────────────────────────────────────────────────────────────────
 
 /**
  * 0 — Happy path
- * Full flow: hold → reserve → confirm.
+ * Full flow: create (held) → guest-info → submit (submitted) → confirm (confirmed).
  * Verifies HTTP statuses and response shape at each step.
  */
 function happyPath() {
   const { checkIn, checkOut } = datePair();
 
-  const holdRes = placeHold(checkIn, checkOut);
-  const holdOk = check(holdRes, {
-    "happy_path: hold 201":          (r) => r.status === 201,
-    "happy_path: holdId present":    (r) => { try { return !!JSON.parse(r.body).holdId; } catch { return false; } },
-    "happy_path: expiresAt present": (r) => { try { return !!JSON.parse(r.body).expiresAt; } catch { return false; } },
-  });
-  if (!holdOk || holdRes.status !== 201) return;
-  const { holdId } = JSON.parse(holdRes.body);
-
-  const resRes = createReservation(holdId, checkIn, checkOut);
+  const resRes = createReservation(checkIn, checkOut);
   const resOk = check(resRes, {
-    "happy_path: reservation 201":          (r) => r.status === 201,
-    "happy_path: fareBreakdown present":    (r) => { try { return !!JSON.parse(r.body).fareBreakdown; } catch { return false; } },
-    "happy_path: holdExpiresAt present":    (r) => { try { return !!JSON.parse(r.body).holdExpiresAt; } catch { return false; } },
+    "happy_path: reservation 201":       (r) => r.status === 201,
+    "happy_path: status held":            (r) => { try { return JSON.parse(r.body).status === "held"; } catch { return false; } },
+    "happy_path: fareBreakdown present": (r) => { try { return !!JSON.parse(r.body).fareBreakdown; } catch { return false; } },
+    "happy_path: holdExpiresAt present": (r) => { try { return !!JSON.parse(r.body).holdExpiresAt; } catch { return false; } },
   });
   if (!resOk || resRes.status !== 201) return;
   const { id } = JSON.parse(resRes.body);
+
+  const patchRes = updateGuestInfo(id);
+  check(patchRes, {
+    "happy_path: guest-info 200": (r) => r.status === 200,
+  });
+
+  const submitRes = submitReservation(id);
+  check(submitRes, {
+    "happy_path: submit 200":       (r) => r.status === 200,
+    "happy_path: status submitted":  (r) => { try { return JSON.parse(r.body).status === "submitted"; } catch { return false; } },
+  });
 
   const confirmRes = confirmReservation(id);
   check(confirmRes, {
@@ -143,104 +170,209 @@ function happyPath() {
 }
 
 /**
- * 1 — Idempotency (double-click on "Select Room")
- * Two POST /holds with the same params must return the same holdId.
- * inventory held_rooms must not be double-incremented.
- * Releases the hold at the end to keep inventory clean.
+ * 1 — Idempotency (double-click on "Book")
+ * Two POST /reservations with the same booker/room/dates return the same reservation ID.
+ * The partial unique index on held prevents duplicate active holds.
  */
 function idempotency() {
   const { checkIn, checkOut } = datePair();
 
-  const r1 = placeHold(checkIn, checkOut);
-  check(r1, { "idempotency: 1st hold 201": (r) => r.status === 201 });
+  const r1 = createReservation(checkIn, checkOut);
+  check(r1, { "idempotency: 1st reservation 201": (r) => r.status === 201 });
   if (r1.status !== 201) return;
-  const holdId1 = JSON.parse(r1.body).holdId;
+  const id1 = JSON.parse(r1.body).id;
 
-  const r2 = placeHold(checkIn, checkOut); // identical params
-  const holdId2 = r2.status < 300 ? JSON.parse(r2.body).holdId : null;
+  const r2 = createReservation(checkIn, checkOut); // identical params
+  const id2 = (r2.status === 200 || r2.status === 201) ? JSON.parse(r2.body).id : null;
   check(r2, {
-    "idempotency: 2nd hold is 2xx":         (r) => r.status >= 200 && r.status < 300,
-    "idempotency: same holdId returned":    () => holdId1 === holdId2,
+    "idempotency: 2nd call is 2xx":       (r) => r.status >= 200 && r.status < 300,
+    "idempotency: same reservation id":   () => id1 === id2,
   });
 
-  // Cleanup — release hold so inventory held_rooms returns to 0
-  del(`${BOOKING}/holds/${holdId1}`, { name: "release_hold" });
+  // Cleanup — confirm so the held is released
+  submitReservation(id1);
+  confirmReservation(id1);
 }
 
 /**
- * 2 — Double-submit protection
- * Two POST /reservations with the same holdId: first succeeds (201),
- * second is rejected (410 Gone) — GETDEL atomicity ensures one winner.
+ * 2 — Get reservation
+ * Creates a reservation and fetches it by ID.
+ * Verifies the response shape and status.
  */
-function doubleSubmit() {
+function getReservationScenario() {
   const { checkIn, checkOut } = datePair();
 
-  const holdRes = placeHold(checkIn, checkOut);
-  if (holdRes.status !== 201) return;
-  const { holdId } = JSON.parse(holdRes.body);
+  const resRes = createReservation(checkIn, checkOut);
+  if (resRes.status !== 201) return;
+  const { id } = JSON.parse(resRes.body);
 
-  const r1 = createReservation(holdId, checkIn, checkOut);
-  check(r1, { "double_submit: 1st reservation 201": (r) => r.status === 201 });
-  if (r1.status !== 201) return;
-  const { id } = JSON.parse(r1.body);
+  const getRes = getReservation(id);
+  check(getRes, {
+    "get_reservation: 200":              (r) => r.status === 200,
+    "get_reservation: id matches":       (r) => { try { return JSON.parse(r.body).id === id; } catch { return false; } },
+    "get_reservation: status held":       (r) => { try { return JSON.parse(r.body).status === "held"; } catch { return false; } },
+  });
 
-  const r2 = createReservation(holdId, checkIn, checkOut); // same holdId, hold already consumed
-  check(r2, { "double_submit: 2nd reservation 410": (r) => r.status === 410 });
+  // Cleanup
+  submitReservation(id);
+  confirmReservation(id);
+}
+
+/**
+ * 3 — Submit without prior held (idempotency guard)
+ * Submitting an already-submitted or confirmed reservation returns 404.
+ */
+function submitAlreadyPending() {
+  const { checkIn, checkOut } = datePair();
+
+  const resRes = createReservation(checkIn, checkOut);
+  if (resRes.status !== 201) return;
+  const { id } = JSON.parse(resRes.body);
+
+  // First submit: ok
+  const s1 = submitReservation(id);
+  check(s1, { "double_submit: 1st submit 200": (r) => r.status === 200 });
+
+  // Second submit on already-submitted: rejected (404 — not held anymore)
+  const s2 = submitReservation(id);
+  check(s2, { "double_submit: 2nd submit rejected": (r) => r.status === 404 || r.status === 409 || r.status === 400 });
 
   // Cleanup
   confirmReservation(id);
 }
 
 /**
- * 3 — Bad holdId
- * POST /reservations with a holdId that doesn't match the Redis payload
- * must be rejected with 401 Unauthorized.
- * Releases the real hold at the end.
+ * 4 — Full lifecycle check
+ * Creates, submits, confirms and verifies final state via GET.
  */
-function badHoldId() {
+function fullLifecycle() {
   const { checkIn, checkOut } = datePair();
 
-  const holdRes = placeHold(checkIn, checkOut);
-  if (holdRes.status !== 201) return;
-  const { holdId } = JSON.parse(holdRes.body);
+  const resRes = createReservation(checkIn, checkOut);
+  if (resRes.status !== 201) return;
+  const { id } = JSON.parse(resRes.body);
 
-  const r = createReservation(
-    "00000000-0000-0000-0000-000000000000", // wrong holdId
-    checkIn,
-    checkOut,
-  );
-  check(r, { "bad_hold_id: 401 Unauthorized": (r) => r.status === 401 });
+  submitReservation(id);
+  confirmReservation(id);
 
-  // Cleanup — Redis idempotency key is still alive (GETDEL reads the key
-  // before validating the holdId mismatch, so the key is consumed).
-  // Nothing to release — the hold in inventory is still active but the
-  // idempotency key is gone. Release via by-id key.
-  del(`${BOOKING}/holds/${holdId}`, { name: "release_hold" });
+  const getRes = getReservation(id);
+  check(getRes, {
+    "lifecycle: final status confirmed": (r) => { try { return JSON.parse(r.body).status === "confirmed"; } catch { return false; } },
+  });
 }
 
 /**
- * 4 — Explicit release
- * DELETE /holds/:holdId returns 204 on the first call.
- * A second DELETE on the same holdId returns 404 (already released).
+ * 5 — Cancel from held
+ * Creates a reservation and cancels it immediately (held → cancelled).
+ * Verifies the reservation reaches the cancelled state and the inventory hold
+ * is released (subsequent create on the same dates should succeed).
  */
-function releaseHold() {
+function cancelHeld() {
   const { checkIn, checkOut } = datePair();
 
-  const holdRes = placeHold(checkIn, checkOut);
-  check(holdRes, { "release: hold 201": (r) => r.status === 201 });
-  if (holdRes.status !== 201) return;
-  const { holdId } = JSON.parse(holdRes.body);
+  const resRes = createReservation(checkIn, checkOut);
+  check(resRes, { "cancel_held: reservation 201": (r) => r.status === 201 });
+  if (resRes.status !== 201) return;
+  const { id } = JSON.parse(resRes.body);
 
-  const r1 = del(`${BOOKING}/holds/${holdId}`, { name: "release_hold" });
-  check(r1, { "release: DELETE 204": (r) => r.status === 204 });
+  const cancelRes = cancelReservation(id);
+  check(cancelRes, {
+    "cancel_held: cancel 200":         (r) => r.status === 200,
+    "cancel_held: status cancelled":   (r) => { try { return JSON.parse(r.body).status === "cancelled"; } catch { return false; } },
+    "cancel_held: reason present":     (r) => { try { return !!JSON.parse(r.body).reason; } catch { return false; } },
+  });
 
-  const r2 = del(`${BOOKING}/holds/${holdId}`, { name: "release_hold" });
-  check(r2, { "release: 2nd DELETE 404": (r) => r.status === 404 });
+  // Inventory should be freed — same dates can be held again
+  const retryRes = createReservation(checkIn, checkOut);
+  check(retryRes, { "cancel_held: room available after cancel": (r) => r.status === 201 });
+  if (retryRes.status === 201) {
+    submitReservation(JSON.parse(retryRes.body).id);
+    confirmReservation(JSON.parse(retryRes.body).id);
+  }
+}
+
+/**
+ * 6 — Cancel from submitted
+ * Creates a reservation, submits it (submitted), then cancels.
+ * Verifies the reservation reaches the cancelled state.
+ */
+function cancelSubmitted() {
+  const { checkIn, checkOut } = datePair();
+
+  const resRes = createReservation(checkIn, checkOut);
+  check(resRes, { "cancel_submitted: reservation 201": (r) => r.status === 201 });
+  if (resRes.status !== 201) return;
+  const { id } = JSON.parse(resRes.body);
+
+  const submitRes = submitReservation(id);
+  check(submitRes, { "cancel_submitted: submit 200": (r) => r.status === 200 });
+
+  const cancelRes = cancelReservation(id);
+  check(cancelRes, {
+    "cancel_submitted: cancel 200":       (r) => r.status === 200,
+    "cancel_submitted: status cancelled": (r) => { try { return JSON.parse(r.body).status === "cancelled"; } catch { return false; } },
+  });
+}
+
+/**
+ * 7 — Fail + rehold + retry to confirmed
+ * Full retry path: held → submitted → failed → held (rehold) → submitted → confirmed.
+ * Verifies the reservation recovers from a failed payment and reaches confirmed.
+ */
+function failAndRetry() {
+  const { checkIn, checkOut } = datePair();
+
+  const resRes = createReservation(checkIn, checkOut);
+  check(resRes, { "fail_retry: reservation 201": (r) => r.status === 201 });
+  if (resRes.status !== 201) return;
+  const { id } = JSON.parse(resRes.body);
+
+  // Transition to submitted
+  const submitRes = submitReservation(id);
+  check(submitRes, { "fail_retry: submit 200": (r) => r.status === 200 });
+  if (submitRes.status !== 200) return;
+
+  // Simulate Stripe payment_failed webhook response
+  const failRes = failReservation(id);
+  check(failRes, {
+    "fail_retry: fail 200":        (r) => r.status === 200,
+    "fail_retry: status failed":   (r) => { try { return JSON.parse(r.body).status === "failed"; } catch { return false; } },
+    "fail_retry: reason present":  (r) => { try { return !!JSON.parse(r.body).reason; } catch { return false; } },
+  });
+  if (failRes.status !== 200) return;
+
+  // Re-acquire inventory hold (failed → held)
+  const reholdRes = reholdReservation(id);
+  check(reholdRes, {
+    "fail_retry: rehold 200":      (r) => r.status === 200,
+    "fail_retry: status held":     (r) => { try { return JSON.parse(r.body).status === "held"; } catch { return false; } },
+    "fail_retry: holdExpiresAt":   (r) => { try { return !!JSON.parse(r.body).holdExpiresAt; } catch { return false; } },
+  });
+  if (reholdRes.status !== 200) return;
+
+  // Retry: submit → confirm
+  const submitRes2 = submitReservation(id);
+  check(submitRes2, { "fail_retry: 2nd submit 200": (r) => r.status === 200 });
+
+  const confirmRes = confirmReservation(id);
+  check(confirmRes, {
+    "fail_retry: confirm 200":      (r) => r.status === 200,
+    "fail_retry: status confirmed": (r) => { try { return JSON.parse(r.body).status === "confirmed"; } catch { return false; } },
+  });
 }
 
 // ─── VU loop ─────────────────────────────────────────────────────────────────
 
-const SCENARIOS = [happyPath, idempotency, doubleSubmit, badHoldId, releaseHold];
+const SCENARIOS = [
+  happyPath,
+  idempotency,
+  getReservationScenario,
+  submitAlreadyPending,
+  fullLifecycle,
+  cancelHeld,
+  cancelSubmitted,
+  failAndRetry,
+];
 
 export default function () {
   SCENARIOS[__ITER % SCENARIOS.length]();

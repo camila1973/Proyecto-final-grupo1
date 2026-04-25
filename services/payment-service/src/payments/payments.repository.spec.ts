@@ -16,6 +16,7 @@ function makeDb(
     "set",
     "where",
     "selectAll",
+    "orderBy",
     "values",
     "returningAll",
   ];

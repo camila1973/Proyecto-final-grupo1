@@ -361,37 +361,47 @@ Reservations go through the following states:
 ```
 [User clicks Book]
         ↓
-   on_hold  ──(15 min expires)──→  expired
+     held  ──(15 min expires)──→  expired
+        │   ──(user cancel)────→  cancelled
         │
   [payment-service.initiate() called]
         ↓
-    pending  ──(Stripe webhook: payment_failed)──→  (no transition, stays pending — manual retry)
-        │
-  [Stripe webhook: payment_intent.succeeded]
-        ↓
-  confirmed
+  submitted  ──(Stripe webhook: payment_intent.payment_failed)──→  failed
+        │    ──(user cancel)────────────────────────────────────→  cancelled
+        │                                                              │
+  [Stripe webhook: payment_intent.succeeded]                [user retries payment]
+        ↓                                                              │
+  confirmed  ──(user cancel)──→  cancelled                            ↓
+                                                          failed ──(rehold)──→ held (retry)
 ```
 
 | Status | Meaning | Inventory hold | Can re-book same room? |
 |---|---|---|---|
-| `on_hold` | User is in checkout, room locked | Active (15-min TTL) | No |
-| `pending` | Payment submitted to Stripe, awaiting webhook | Consumed | Yes |
+| `held` | User is in checkout, room locked | Active (15-min TTL) | No |
+| `submitted` | Payment submitted to Stripe, awaiting webhook | Consumed | Yes |
 | `confirmed` | Webhook fired, booking finalized | Confirmed | No |
 | `expired` | Hold timed out without payment submission | Released | Yes |
+| `failed` | Stripe reported payment failure | Released | Yes |
+| `cancelled` | User cancelled (any non-terminal state) | Released | Yes |
 
 ### Key transitions
 
 | Trigger | From → To | Who calls it |
 |---|---|---|
-| `POST /reservations` | — → `on_hold` | Frontend (via `useBookingFlow`) |
-| `POST /payment/payments/initiate` | `on_hold` → `pending` | payment-service calls `PATCH /reservations/:id/submit` internally |
-| Stripe webhook `payment_intent.succeeded` | `pending` → `confirmed` | payment-service calls `PATCH /reservations/:id/confirm` |
-| Hold expiry job (runs every 60s) | `on_hold` → `expired` | booking-service `HoldExpiryService` |
+| `POST /reservations` | — → `held` | Frontend (via `useBookingFlow`) |
+| `POST /payment/payments/initiate` (first attempt) | `held` → `submitted` | payment-service calls `PATCH /reservations/:id/submit` internally |
+| `POST /payment/payments/initiate` (retry) | `failed` → `held` → `submitted` | payment-service calls `PATCH /reservations/:id/rehold` then `PATCH /reservations/:id/submit` |
+| Stripe webhook `payment_intent.succeeded` | `submitted` → `confirmed` | payment-service calls `PATCH /reservations/:id/confirm` |
+| Stripe webhook `payment_intent.payment_failed` | `submitted` → `failed` | payment-service calls `PATCH /reservations/:id/fail` |
+| `PATCH /reservations/:id/cancel` | any non-terminal → `cancelled` | Frontend/user |
+| Hold expiry job (runs every 60s) | `held` → `expired` | booking-service `HoldExpiryService` |
 
 ### Important notes
-- The partial unique index on reservations only covers `on_hold` rows — a `pending` reservation does **not** block a new hold for the same room/dates.
-- `HoldExpiryService` only expires `on_hold` reservations, not `pending` ones.
-- In local dev without Stripe webhooks configured, reservations stay `pending` after payment. Use the Stripe CLI (`stripe listen --forward-to localhost:3005/payments/webhook`) to test the full flow.
+- The partial unique index on reservations only covers `held` rows — a `submitted` reservation does **not** block a new hold for the same room/dates.
+- `HoldExpiryService` only expires `held` reservations, not `submitted` ones.
+- A reservation can have **multiple payment rows** (one per attempt). `payments.reservation_id` is not unique. `findByReservationId` returns the most recent row (`ORDER BY created_at DESC`).
+- On payment retry, `initiate()` detects an existing payment row (`isRetry = true`), calls `rehold` to re-acquire inventory, then proceeds with a new Stripe PaymentIntent and a new payment row.
+- In local dev without Stripe webhooks configured, reservations stay `submitted` after payment. Use the Stripe CLI (`stripe listen --forward-to localhost:3005/payments/webhook`) to test the full flow.
 
 ## Event Bus (Pub/Sub in GCP, RabbitMQ locally)
 

@@ -27,6 +27,7 @@ export class PaymentsRepository {
       .selectFrom("payments")
       .selectAll()
       .where("reservation_id", "=", reservationId)
+      .orderBy("created_at", "desc")
       .executeTakeFirst();
   }
 
