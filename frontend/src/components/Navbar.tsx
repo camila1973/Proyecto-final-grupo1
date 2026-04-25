@@ -24,8 +24,9 @@ export default function Navbar() {
         <nav className="flex items-center gap-6 text-sm text-gray-700">
           {user ? (
             <>
-              <span className="text-gray-600">{user.email}</span>
-              <button onClick={logout} className="hover:text-gray-900">
+              <Link to="/profile" className="hover:text-gray-900">{t('nav.profile')}</Link>
+              <Link to="/trips" className="hover:text-gray-900">{t('nav.myBookings')}</Link>
+              <button onClick={logout} className="bg-transparent border-0 p-0 text-sm text-gray-700 hover:text-gray-900 cursor-pointer">
                 {t('nav.logout')}
               </button>
             </>

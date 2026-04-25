@@ -12,6 +12,9 @@ import LoginPage from './pages/LoginPage';
 import MfaPage from './pages/MfaPage';
 import CheckoutPage from './pages/checkout/index';
 import BookingConfirmationPage from './pages/booking/confirmation';
+import ProfilePage from './pages/ProfilePage';
+import MyBookingsPage from './pages/MyBookingsPage';
+
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -110,6 +113,18 @@ const bookingConfirmationRoute = createRoute({
   component: BookingConfirmationPage,
 });
 
+const profileRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/profile',
+  component: ProfilePage,
+});
+
+const myBookingsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/trips',
+  component: MyBookingsPage,
+});
+
 const routeTree = rootRoute.addChildren([
   homeRoute,
   searchRoute,
@@ -120,6 +135,8 @@ const routeTree = rootRoute.addChildren([
   mfaRoute,
   checkoutRoute,
   bookingConfirmationRoute,
+  profileRoute,
+  myBookingsRoute,
 ]);
 
 export function createAppRouter() {

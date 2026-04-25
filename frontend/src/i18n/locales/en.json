@@ -5,6 +5,8 @@
     "locale_currency": "Currency",
     "register": "Register",
     "login": "Sign in",
+    "profile": "My Profile",
+    "myBookings": "My Bookings",
     "logout": "Sign out"
   },
   "hero": {
