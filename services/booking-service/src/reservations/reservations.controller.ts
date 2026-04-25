@@ -69,6 +69,12 @@ export class ReservationsController {
     return this.reservationsService.cancel(id, body.reason);
   }
 
+  @Patch(":id/rehold")
+  @HttpCode(HttpStatus.OK)
+  rehold(@Param("id") id: string) {
+    return this.reservationsService.rehold(id);
+  }
+
   @Patch(":id/confirm")
   @HttpCode(HttpStatus.OK)
   confirm(@Param("id") id: string) {

@@ -368,10 +368,11 @@ Reservations go through the following states:
         ↓
   submitted  ──(Stripe webhook: payment_intent.payment_failed)──→  failed
         │    ──(user cancel)────────────────────────────────────→  cancelled
-        │
-  [Stripe webhook: payment_intent.succeeded]
-        ↓
-  confirmed  ──(user cancel)──→  cancelled
+        │                                                              │
+  [Stripe webhook: payment_intent.succeeded]                [user retries payment]
+        ↓                                                              │
+  confirmed  ──(user cancel)──→  cancelled                            ↓
+                                                          failed ──(rehold)──→ held (retry)
 ```
 
 | Status | Meaning | Inventory hold | Can re-book same room? |
@@ -388,7 +389,8 @@ Reservations go through the following states:
 | Trigger | From → To | Who calls it |
 |---|---|---|
 | `POST /reservations` | — → `held` | Frontend (via `useBookingFlow`) |
-| `POST /payment/payments/initiate` | `held` → `submitted` | payment-service calls `PATCH /reservations/:id/submit` internally |
+| `POST /payment/payments/initiate` (first attempt) | `held` → `submitted` | payment-service calls `PATCH /reservations/:id/submit` internally |
+| `POST /payment/payments/initiate` (retry) | `failed` → `held` → `submitted` | payment-service calls `PATCH /reservations/:id/rehold` then `PATCH /reservations/:id/submit` |
 | Stripe webhook `payment_intent.succeeded` | `submitted` → `confirmed` | payment-service calls `PATCH /reservations/:id/confirm` |
 | Stripe webhook `payment_intent.payment_failed` | `submitted` → `failed` | payment-service calls `PATCH /reservations/:id/fail` |
 | `PATCH /reservations/:id/cancel` | any non-terminal → `cancelled` | Frontend/user |
@@ -397,6 +399,8 @@ Reservations go through the following states:
 ### Important notes
 - The partial unique index on reservations only covers `held` rows — a `submitted` reservation does **not** block a new hold for the same room/dates.
 - `HoldExpiryService` only expires `held` reservations, not `submitted` ones.
+- A reservation can have **multiple payment rows** (one per attempt). `payments.reservation_id` is not unique. `findByReservationId` returns the most recent row (`ORDER BY created_at DESC`).
+- On payment retry, `initiate()` detects an existing payment row (`isRetry = true`), calls `rehold` to re-acquire inventory, then proceeds with a new Stripe PaymentIntent and a new payment row.
 - In local dev without Stripe webhooks configured, reservations stay `submitted` after payment. Use the Stripe CLI (`stripe listen --forward-to localhost:3005/payments/webhook`) to test the full flow.
 
 ## Event Bus (Pub/Sub in GCP, RabbitMQ locally)

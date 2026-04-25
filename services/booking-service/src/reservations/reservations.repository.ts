@@ -195,6 +195,26 @@ export class ReservationsRepository {
     return row;
   }
 
+  async rehold(id: string, holdExpiresAt: Date): Promise<ReservationRow> {
+    const row = await this.db
+      .updateTable("reservations")
+      .set({
+        status: "held",
+        hold_expires_at: holdExpiresAt,
+        updated_at: new Date(),
+      })
+      .where("id", "=", id)
+      .where("status", "=", "failed")
+      .returningAll()
+      .executeTakeFirst();
+
+    if (!row) {
+      throw new NotFoundException(`Reservation ${id} not found or not failed`);
+    }
+
+    return row;
+  }
+
   async expire(id: string): Promise<ReservationRow | undefined> {
     return this.db
       .updateTable("reservations")

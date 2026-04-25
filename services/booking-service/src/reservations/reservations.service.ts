@@ -224,6 +224,30 @@ export class ReservationsService {
     return this.reservationsRepo.toResponse(row);
   }
 
+  async rehold(id: string) {
+    const row = await this.reservationsRepo.findById(id);
+
+    const { holdId, expiresAt } = await this.holdsService.create({
+      bookerId: row.booker_id,
+      roomId: row.room_id,
+      checkIn: row.check_in,
+      checkOut: row.check_out,
+    });
+
+    const updated = await this.reservationsRepo
+      .rehold(id, new Date(expiresAt))
+      .catch(async (err) => {
+        await this.holdsService.release(holdId).catch((releaseErr) => {
+          this.logger.warn(
+            `Failed to release hold ${holdId} after rehold error: ${releaseErr}`,
+          );
+        });
+        throw err;
+      });
+
+    return this.reservationsRepo.toResponse(updated);
+  }
+
   async confirm(id: string) {
     const row = await this.reservationsRepo.confirm(id);
 

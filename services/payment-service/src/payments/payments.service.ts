@@ -38,6 +38,15 @@ export class PaymentsService {
   async initiate(dto: InitiatePaymentDto) {
     const amountCents = Math.round(dto.amountUsd * 100);
 
+    // Determine if this is a retry (prior failed attempt exists)
+    const existing = await this.repo.findByReservationId(dto.reservationId);
+    const isRetry = !!existing;
+
+    // Re-acquire inventory hold before creating a new Stripe intent on retry
+    if (isRetry) {
+      await this.booking.reholdReservation(dto.reservationId);
+    }
+
     const intent = await this.stripe.paymentIntents.create({
       amount: amountCents,
       currency: dto.currency.toLowerCase(),
@@ -47,6 +56,9 @@ export class PaymentsService {
       },
       receipt_email: dto.guestEmail,
     });
+
+    // Transition held → submitted
+    await this.booking.submitReservation(dto.reservationId);
 
     const payment = await this.repo.create({
       reservation_id: dto.reservationId,

@@ -33,6 +33,8 @@ function makeRepo() {
 
 function makeBookingClient() {
   return {
+    submitReservation: jest.fn().mockResolvedValue(undefined),
+    reholdReservation: jest.fn().mockResolvedValue(undefined),
     confirmReservation: jest.fn().mockResolvedValue(undefined),
     failReservation: jest.fn().mockResolvedValue(undefined),
   };
