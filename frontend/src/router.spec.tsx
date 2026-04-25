@@ -11,7 +11,7 @@ jest.mock('./components/Footer', () => () => <div>footer</div>);
 
 jest.mock('./pages/HomePage', () => () => <div>home</div>);
 jest.mock('./pages/search', () => () => <div>search</div>);
-jest.mock('./pages/PropertyDetailPage', () => () => <div>property</div>);
+jest.mock('./pages/property', () => () => <div>property</div>);
 jest.mock('./pages/RegisterPage', () => () => <div>register</div>);
 jest.mock('./pages/RegisterSuccess', () => () => <div>register-success</div>);
 jest.mock('./pages/LoginPage', () => () => <div>login</div>);

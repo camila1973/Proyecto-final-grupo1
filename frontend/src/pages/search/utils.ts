@@ -1,5 +1,4 @@
-import { API_BASE } from '../../env';
-import type { TaxonomyCategory, TaxonomyResponse, LabelMap } from './types';
+import type { TaxonomyCategory, LabelMap } from './types';
 export { formatPrice, CURRENCY_RATES } from '../../utils/currency';
 
 export function todayISO(): string {
@@ -41,8 +40,3 @@ export function buildLabelMap(
   return Object.fromEntries(entries);
 }
 
-export async function fetchTaxonomies(): Promise<TaxonomyResponse> {
-  const res = await fetch(`${API_BASE}/api/search/taxonomies`);
-  if (!res.ok) throw new Error('Failed to fetch taxonomies');
-  return res.json();
-}

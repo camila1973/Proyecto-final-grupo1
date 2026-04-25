@@ -2,11 +2,11 @@ import { useSearch, useNavigate } from '@tanstack/react-router';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useLocale } from '../../context/LocaleContext';
-import { API_BASE } from '../../env';
 import SearchBarForm from '../../components/SearchBarForm';
 import ResultCard from './ResultCard';
 import FilterSidebar from './FilterSidebar';
-import { getNights, buildLabelMap, fetchTaxonomies } from './utils';
+import { getNights, buildLabelMap } from './utils';
+import { fetchTaxonomies, fetchSearchProperties } from '../../utils/queries';
 import type { FilterState } from './filterReducer';
 import type { SearchResponse, TaxonomyResponse, LabelMap } from './types';
 
@@ -111,11 +111,7 @@ export default function SearchPage() {
 
   const { data, isError, isFetching } = useQuery<SearchResponse>({
     queryKey: ['search', urlCity, urlCheckIn, urlCheckOut, urlGuests, currency, filters],
-    queryFn: async () => {
-      const res = await fetch(`${API_BASE}/api/search/properties?${queryParams}`);
-      if (!res.ok) throw new Error('Search failed');
-      return res.json();
-    },
+    queryFn: () => fetchSearchProperties(queryParams),
     placeholderData: keepPreviousData,
   });
 

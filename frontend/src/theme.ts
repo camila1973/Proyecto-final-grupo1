@@ -10,7 +10,7 @@ export const theme = createTheme({
     MuiButton: {
       defaultProps: { disableElevation: true },
       styleOverrides: {
-        root: { textTransform: 'none' },
+        root: { textTransform: 'none', borderRadius: 8, fontWeight: 600 },
       },
     },
   },

@@ -3,14 +3,14 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { createMemoryHistory, createRouter, createRootRoute, createRoute, RouterProvider } from '@tanstack/react-router';
-import { LocaleProvider } from '../context/LocaleContext';
-import { setupTestI18n } from '../i18n/test-utils';
-import PropertyDetailPage from './PropertyDetailPage';
-import es from '../i18n/locales/es.json';
+import { LocaleProvider } from '../../context/LocaleContext';
+import { setupTestI18n } from '../../i18n/test-utils';
+import PropertyDetailPage from '.';
+import es from '../../i18n/locales/es.json';
 
 setupTestI18n('es');
 
-jest.mock('../hooks/useBookingFlow', () => ({
+jest.mock('../../hooks/useBookingFlow', () => ({
   useBookingFlow: () => ({
     auth: null,
     book: jest.fn(),

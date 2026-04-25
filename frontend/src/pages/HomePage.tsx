@@ -8,17 +8,9 @@ import BookmarkIcon from '@mui/icons-material/Bookmark';
 import { useLocale } from '../context/LocaleContext';
 import { formatPrice } from '../utils/currency';
 import SearchBarForm from '../components/SearchBarForm';
-import { API_BASE } from '../env';
 import { formatAddress } from '../utils/address';
 import { todayISO, offsetDateISO } from './search/utils';
-import type { SearchResponse, SearchResult } from './search/types';
-
-async function fetchFeatured(): Promise<SearchResult[]> {
-  const res = await fetch(`${API_BASE}/api/search/featured?limit=3`);
-  if (!res.ok) throw new Error('Failed to fetch featured properties');
-  const data: SearchResponse = await res.json();
-  return data.results;
-}
+import { fetchFeatured } from '../utils/queries';
 
 export default function HomePage() {
   const { t } = useTranslation();
@@ -59,7 +51,7 @@ export default function HomePage() {
                 </>
               }
               footer={
-                <Button fullWidth variant="contained" color="warning" startIcon={<BookmarkIcon fontSize="small" />} sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 2 }}>
+                <Button size='large' fullWidth variant="contained" color="warning" startIcon={<BookmarkIcon fontSize="small" />}>
                   {t('recommendations.book')}
                 </Button>
               }

@@ -92,7 +92,6 @@ export default function ResultCard({
             color="warning"
             onClick={onBook}
             startIcon={<BookmarkIcon fontSize="small" />}
-            sx={{ textTransform: 'none', fontWeight: 600, whiteSpace: 'nowrap', borderRadius: 1 }}
           >
             {t('search.card.book')}
           </Button>

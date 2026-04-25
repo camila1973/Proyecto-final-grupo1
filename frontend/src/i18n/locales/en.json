@@ -1,6 +1,8 @@
 {
   "nav": {
     "language": "English",
+    "locale_language": "Language",
+    "locale_currency": "Currency",
     "register": "Register",
     "login": "Sign in",
     "logout": "Sign out"
@@ -16,6 +18,11 @@
     "check_out_label": "Check-out",
     "guests_label": "Who is traveling?",
     "guests_placeholder": "2 adults · 1 Room",
+    "guests_summary_one": "{{count}} traveler",
+    "guests_summary_other": "{{count}} travelers",
+    "guests_adults": "Adults",
+    "guests_children": "Children",
+    "guests_done": "Done",
     "search": "Search"
   },
   "recommendations": {

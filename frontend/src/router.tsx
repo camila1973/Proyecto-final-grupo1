@@ -5,7 +5,7 @@ import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import HomePage from './pages/HomePage';
 import SearchPage from './pages/search';
-import PropertyDetailPage from './pages/PropertyDetailPage';
+import PropertyDetailPage from './pages/property';
 import RegisterPage from './pages/RegisterPage';
 import RegisterSuccess from './pages/RegisterSuccess';
 import LoginPage from './pages/LoginPage';

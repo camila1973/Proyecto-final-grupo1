@@ -77,14 +77,14 @@ describe('SearchBarForm', () => {
       expect(screen.getByDisplayValue('Cancún')).toBeInTheDocument();
     });
 
-    it('pre-fills the guests input with defaultGuests', () => {
+    it('pre-fills the guest summary with defaultGuests', () => {
       renderForm({ defaultGuests: 4 });
-      expect(screen.getByDisplayValue('4')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /4 viajeros/i })).toBeInTheDocument();
     });
 
-    it('defaults guests to 2 when not provided', () => {
+    it('defaults guest summary to 2 when not provided', () => {
       renderForm();
-      expect(screen.getByDisplayValue('2')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /2 viajeros/i })).toBeInTheDocument();
     });
   });
 

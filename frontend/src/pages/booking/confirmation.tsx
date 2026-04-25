@@ -1,21 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useSearch, useNavigate, useParams } from '@tanstack/react-router';
-import { API_BASE } from '../../env';
 import { useLocale } from '../../context/LocaleContext';
 import { type ReservationResponse } from '../checkout/types';
+import { fetchPaymentStatus, fetchReservationById, type PaymentStatus } from '../../utils/queries';
 import { SummaryPanel } from '../checkout/SummaryPanel';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import Typography from '@mui/material/Typography';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
-
-type PaymentStatus = 'pending' | 'captured' | 'failed';
-
-interface StatusResponse {
-  status: PaymentStatus;
-  failureReason?: string;
-}
 
 const POLL_INTERVAL_MS = 2500;
 const POLL_TIMEOUT_MS = 90_000;
@@ -48,9 +41,7 @@ export default function BookingConfirmationPage() {
         return;
       }
       try {
-        const res = await fetch(`${API_BASE}/api/payment/payments/${id}/status`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json() as StatusResponse;
+        const data = await fetchPaymentStatus(id);
         setStatus(data.status);
         if (data.failureReason) setFailureReason(data.failureReason);
         if (data.status === 'pending') {
@@ -67,9 +58,8 @@ export default function BookingConfirmationPage() {
 
   // Fetch reservation details
   useEffect(() => {
-    fetch(`${API_BASE}/api/booking/reservations/${id}`)
-      .then((r) => r.json())
-      .then((data) => setReservation(data as ReservationResponse))
+    fetchReservationById(id)
+      .then((data) => setReservation(data))
       .catch(() => null);
   }, [id]);
 

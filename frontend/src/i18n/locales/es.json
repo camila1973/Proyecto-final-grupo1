@@ -1,6 +1,8 @@
 {
   "nav": {
     "language": "Español",
+    "locale_language": "Idioma",
+    "locale_currency": "Moneda",
     "register": "Registro",
     "login": "Iniciar sesión",
     "logout": "Cerrar sesión"
@@ -16,6 +18,11 @@
     "check_out_label": "Salida",
     "guests_label": "¿Quienes viajan?",
     "guests_placeholder": "2 adultos · 1 Habitación",
+    "guests_summary_one": "{{count}} viajero",
+    "guests_summary_other": "{{count}} viajeros",
+    "guests_adults": "Adultos",
+    "guests_children": "Niños",
+    "guests_done": "Listo",
     "search": "Buscar"
   },
   "recommendations": {
