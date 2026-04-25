@@ -4,9 +4,9 @@
  * Validates functional correctness of the reservation flow:
  *   POST /reservations (held) → PATCH /submit (submitted) → PATCH /confirm (confirmed)
  *   + idempotency (same booker/room/dates returns existing held), double-submit guard,
- *     guest-info update, and hold expiry path.
+ *     guest-info update, cancel from held/submitted, fail + rehold retry path.
  *
- * Each of the 5 scenarios runs exactly once (1 VU × 5 iterations, cycled by __ITER).
+ * Each of the 8 scenarios runs exactly once (1 VU × 8 iterations, cycled by __ITER).
  * Dates are in 2027 — within the seeded rate range (2027-01-01 → 2027-12-31).
  *
  * Usage:
@@ -46,7 +46,7 @@ export const options = {
     booking: {
       executor: "per-vu-iterations",
       vus: 1,
-      iterations: 5,      // one pass per scenario type
+      iterations: 8,      // one pass per scenario type
       maxDuration: "5m",
     },
   },
@@ -109,6 +109,26 @@ function updateGuestInfo(id) {
     { firstName: "Smoke", lastName: "Test", email: "smoke@travelhub.com", phone: "+52 555 000 0000" },
     { name: "update_guest_info" },
   );
+}
+
+function failReservation(id) {
+  return patch(
+    `${BOOKING}/reservations/${id}/fail`,
+    { reason: "Your card was declined." },
+    { name: "fail_reservation" },
+  );
+}
+
+function cancelReservation(id) {
+  return patch(
+    `${BOOKING}/reservations/${id}/cancel`,
+    { reason: "Smoke test cancellation" },
+    { name: "cancel_reservation" },
+  );
+}
+
+function reholdReservation(id) {
+  return patch(`${BOOKING}/reservations/${id}/rehold`, null, { name: "rehold_reservation" });
 }
 
 // ─── Scenarios ────────────────────────────────────────────────────────────────
@@ -241,9 +261,118 @@ function fullLifecycle() {
   });
 }
 
+/**
+ * 5 — Cancel from held
+ * Creates a reservation and cancels it immediately (held → cancelled).
+ * Verifies the reservation reaches the cancelled state and the inventory hold
+ * is released (subsequent create on the same dates should succeed).
+ */
+function cancelHeld() {
+  const { checkIn, checkOut } = datePair();
+
+  const resRes = createReservation(checkIn, checkOut);
+  check(resRes, { "cancel_held: reservation 201": (r) => r.status === 201 });
+  if (resRes.status !== 201) return;
+  const { id } = JSON.parse(resRes.body);
+
+  const cancelRes = cancelReservation(id);
+  check(cancelRes, {
+    "cancel_held: cancel 200":         (r) => r.status === 200,
+    "cancel_held: status cancelled":   (r) => { try { return JSON.parse(r.body).status === "cancelled"; } catch { return false; } },
+    "cancel_held: reason present":     (r) => { try { return !!JSON.parse(r.body).reason; } catch { return false; } },
+  });
+
+  // Inventory should be freed — same dates can be held again
+  const retryRes = createReservation(checkIn, checkOut);
+  check(retryRes, { "cancel_held: room available after cancel": (r) => r.status === 201 });
+  if (retryRes.status === 201) {
+    submitReservation(JSON.parse(retryRes.body).id);
+    confirmReservation(JSON.parse(retryRes.body).id);
+  }
+}
+
+/**
+ * 6 — Cancel from submitted
+ * Creates a reservation, submits it (submitted), then cancels.
+ * Verifies the reservation reaches the cancelled state.
+ */
+function cancelSubmitted() {
+  const { checkIn, checkOut } = datePair();
+
+  const resRes = createReservation(checkIn, checkOut);
+  check(resRes, { "cancel_submitted: reservation 201": (r) => r.status === 201 });
+  if (resRes.status !== 201) return;
+  const { id } = JSON.parse(resRes.body);
+
+  const submitRes = submitReservation(id);
+  check(submitRes, { "cancel_submitted: submit 200": (r) => r.status === 200 });
+
+  const cancelRes = cancelReservation(id);
+  check(cancelRes, {
+    "cancel_submitted: cancel 200":       (r) => r.status === 200,
+    "cancel_submitted: status cancelled": (r) => { try { return JSON.parse(r.body).status === "cancelled"; } catch { return false; } },
+  });
+}
+
+/**
+ * 7 — Fail + rehold + retry to confirmed
+ * Full retry path: held → submitted → failed → held (rehold) → submitted → confirmed.
+ * Verifies the reservation recovers from a failed payment and reaches confirmed.
+ */
+function failAndRetry() {
+  const { checkIn, checkOut } = datePair();
+
+  const resRes = createReservation(checkIn, checkOut);
+  check(resRes, { "fail_retry: reservation 201": (r) => r.status === 201 });
+  if (resRes.status !== 201) return;
+  const { id } = JSON.parse(resRes.body);
+
+  // Transition to submitted
+  const submitRes = submitReservation(id);
+  check(submitRes, { "fail_retry: submit 200": (r) => r.status === 200 });
+  if (submitRes.status !== 200) return;
+
+  // Simulate Stripe payment_failed webhook response
+  const failRes = failReservation(id);
+  check(failRes, {
+    "fail_retry: fail 200":        (r) => r.status === 200,
+    "fail_retry: status failed":   (r) => { try { return JSON.parse(r.body).status === "failed"; } catch { return false; } },
+    "fail_retry: reason present":  (r) => { try { return !!JSON.parse(r.body).reason; } catch { return false; } },
+  });
+  if (failRes.status !== 200) return;
+
+  // Re-acquire inventory hold (failed → held)
+  const reholdRes = reholdReservation(id);
+  check(reholdRes, {
+    "fail_retry: rehold 200":      (r) => r.status === 200,
+    "fail_retry: status held":     (r) => { try { return JSON.parse(r.body).status === "held"; } catch { return false; } },
+    "fail_retry: holdExpiresAt":   (r) => { try { return !!JSON.parse(r.body).holdExpiresAt; } catch { return false; } },
+  });
+  if (reholdRes.status !== 200) return;
+
+  // Retry: submit → confirm
+  const submitRes2 = submitReservation(id);
+  check(submitRes2, { "fail_retry: 2nd submit 200": (r) => r.status === 200 });
+
+  const confirmRes = confirmReservation(id);
+  check(confirmRes, {
+    "fail_retry: confirm 200":      (r) => r.status === 200,
+    "fail_retry: status confirmed": (r) => { try { return JSON.parse(r.body).status === "confirmed"; } catch { return false; } },
+  });
+}
+
 // ─── VU loop ─────────────────────────────────────────────────────────────────
 
-const SCENARIOS = [happyPath, idempotency, getReservationScenario, submitAlreadyPending, fullLifecycle];
+const SCENARIOS = [
+  happyPath,
+  idempotency,
+  getReservationScenario,
+  submitAlreadyPending,
+  fullLifecycle,
+  cancelHeld,
+  cancelSubmitted,
+  failAndRetry,
+];
 
 export default function () {
   SCENARIOS[__ITER % SCENARIOS.length]();
