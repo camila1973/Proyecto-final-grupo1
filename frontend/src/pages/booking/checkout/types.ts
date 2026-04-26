@@ -1,4 +1,4 @@
-import type { ReservationSnapshot } from '../../utils/queries';
+import type { ReservationSnapshot } from '../../../utils/queries';
 
 export type { ReservationSnapshot };
 
