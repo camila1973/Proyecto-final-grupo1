@@ -9,7 +9,7 @@ import { usePaymentPolling } from '@/hooks/usePaymentPolling';
 
 // ─── Processing State ─────────────────────────────────────────────────────────
 
-function ProcessingState({ theme }: { theme: ReturnType<typeof useTheme> }) {
+function ProcessingState({ theme }: { theme: any }) {
   const { t } = useTranslation();
   return (
     <View style={styles.container}>
@@ -30,7 +30,7 @@ interface SuccessStateProps {
   reservationId: string;
   propertyName?: string;
   timedOut: boolean;
-  theme: ReturnType<typeof useTheme>;
+  theme: any;
   onGoToTrips: () => void;
   onGoHome: () => void;
 }
@@ -124,7 +124,7 @@ function SuccessState({
 
 interface FailedStateProps {
   failureReason?: string;
-  theme: ReturnType<typeof useTheme>;
+  theme: any;
   onGoHome: () => void;
 }
 

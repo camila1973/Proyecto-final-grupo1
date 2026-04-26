@@ -291,6 +291,8 @@ export default function CheckoutScreen() {
         throw new Error(errorMessage);
       }
       
+      const paymentData = await payRes.json();
+      const clientSecret = paymentData.clientSecret;
       console.log('[Checkout] Payment client secret received');
 
       // 3. Init PaymentSheet
