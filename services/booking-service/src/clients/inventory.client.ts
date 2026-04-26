@@ -14,6 +14,18 @@ export interface RoomLocation {
   city: string;
 }
 
+export interface RoomDetails extends RoomLocation {
+  roomType: string;
+}
+
+export interface PropertySnapshot {
+  name: string;
+  thumbnailUrl: string | null;
+  neighborhood: string | null;
+  city: string;
+  countryCode: string;
+}
+
 interface RatePeriod {
   fromDate: string;
   toDate: string;
@@ -39,19 +51,50 @@ export class InventoryClient {
     this.baseUrl = process.env.INVENTORY_SERVICE_URL ?? "http://localhost:3003";
   }
 
-  async getRoomLocation(roomId: string): Promise<RoomLocation> {
+  async getRoomDetails(roomId: string): Promise<RoomDetails> {
     const cached = await this.cache.get(locationCacheKey(roomId));
-    if (cached) return JSON.parse(cached) as RoomLocation;
+    if (cached) return JSON.parse(cached) as RoomDetails;
 
     this.logger.debug(
       `Cache miss for room ${roomId} — fetching from inventory-service`,
     );
-    const room = await this.get<{ country: string; city: string }>(
-      `/rooms/${roomId}`,
+    const room = await this.get<{
+      country: string;
+      city: string;
+      roomType: string;
+    }>(`/rooms/${roomId}`);
+    const details: RoomDetails = {
+      country: room.country,
+      city: room.city,
+      roomType: room.roomType,
+    };
+    await this.cache.set(
+      locationCacheKey(roomId),
+      JSON.stringify(details),
+      LOCATION_TTL_SECONDS,
     );
-    const location: RoomLocation = { country: room.country, city: room.city };
-    await this.cacheRoomLocation(roomId, location);
-    return location;
+    return details;
+  }
+
+  async getRoomLocation(roomId: string): Promise<RoomLocation> {
+    return this.getRoomDetails(roomId);
+  }
+
+  async getPropertySnapshot(propertyId: string): Promise<PropertySnapshot> {
+    const property = await this.get<{
+      name: string;
+      thumbnailUrl: string | null;
+      neighborhood: string | null;
+      city: string;
+      countryCode: string;
+    }>(`/properties/${propertyId}`);
+    return {
+      name: property.name,
+      thumbnailUrl: property.thumbnailUrl,
+      neighborhood: property.neighborhood ?? null,
+      city: property.city,
+      countryCode: property.countryCode,
+    };
   }
 
   async cacheRoomLocation(

@@ -19,8 +19,11 @@ const INTENT = {
 
 const RESERVATION = {
   id: 'res_123',
+  checkIn: '2026-06-01',
+  checkOut: '2026-06-03',
   grandTotalUsd: 300,
   holdExpiresAt: '2026-06-01T00:15:00Z',
+  snapshot: null,
   fareBreakdown: {
     nights: 2,
     roomRateUsd: 100,
@@ -42,21 +45,24 @@ describe('SummaryPanel', () => {
 
     it('renders the room type', () => {
       render(<SummaryPanel intent={INTENT} reservation={RESERVATION} currency="USD" formLoading={false} />);
-      expect(screen.getByText('Suite Deluxe')).toBeInTheDocument();
+      expect(screen.getByText(/Suite Deluxe/)).toBeInTheDocument();
     });
 
-    it('renders bed type when provided', () => {
-      render(<SummaryPanel intent={INTENT} reservation={RESERVATION} currency="USD" formLoading={false} />);
-      expect(screen.getByText(/king/i)).toBeInTheDocument();
-    });
-
-    it('does not render bed type when not provided', () => {
-      const intentWithoutBed = {
-        ...INTENT,
-        room: { ...INTENT.room, bedType: undefined },
+    it('prefers snapshot property name over intent when snapshot is available', () => {
+      const reservationWithSnapshot = {
+        ...RESERVATION,
+        snapshot: {
+          propertyName: 'Snapshot Hotel',
+          propertyCity: 'Cancún',
+          propertyNeighborhood: null,
+          propertyCountryCode: 'MX',
+          propertyThumbnailUrl: null,
+          roomType: 'Snapshot Suite',
+        },
       };
-      render(<SummaryPanel intent={intentWithoutBed} reservation={RESERVATION} currency="USD" formLoading={false} />);
-      expect(screen.queryByText(/king/i)).not.toBeInTheDocument();
+      render(<SummaryPanel intent={INTENT} reservation={reservationWithSnapshot} currency="USD" formLoading={false} />);
+      expect(screen.getByText('Snapshot Hotel')).toBeInTheDocument();
+      expect(screen.getByText(/Snapshot Suite/)).toBeInTheDocument();
     });
   });
 

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
-import { type CheckoutIntent } from '../../../hooks/useBookingFlow';
+import { useTranslation } from 'react-i18next';
 import { PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { patchGuestInfo, initiatePayment } from '../../../utils/queries';
 import { type ReservationResponse } from './types';
@@ -13,7 +13,6 @@ import VerticalCard from '../../../components/VerticalCard';
 
 export function CheckoutForm({
   reservation,
-  intent,
   email: initialEmail,
   firstName: initialFirstName,
   lastName: initialLastName,
@@ -21,7 +20,6 @@ export function CheckoutForm({
   setLoading: setLoadingProp,
 }: {
   reservation: ReservationResponse;
-  intent: CheckoutIntent;
   email: string;
   firstName?: string;
   lastName?: string;
@@ -31,6 +29,7 @@ export function CheckoutForm({
   const stripe = useStripe();
   const elements = useElements();
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const [email, setEmail] = useState(initialEmail);
   const [firstName, setFirstName] = useState(initialFirstName ?? '');
@@ -48,14 +47,14 @@ export function CheckoutForm({
 
   const validate = (): boolean => {
     const errors: Record<string, string> = {};
-    if (!firstName.trim()) errors.firstName = 'El nombre es obligatorio';
-    if (!lastName.trim()) errors.lastName = 'El apellido es obligatorio';
+    if (!firstName.trim()) errors.firstName = t('booking.checkout.errors.first_name_required');
+    if (!lastName.trim()) errors.lastName = t('booking.checkout.errors.last_name_required');
     if (!email.trim()) {
-      errors.email = 'El correo electrónico es obligatorio';
+      errors.email = t('booking.checkout.errors.email_required');
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      errors.email = 'Ingresa un correo electrónico válido';
+      errors.email = t('booking.checkout.errors.email_invalid');
     }
-    if (!phone.trim()) errors.phone = 'El teléfono es obligatorio';
+    if (!phone.trim()) errors.phone = t('booking.checkout.errors.phone_required');
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -69,7 +68,7 @@ export function CheckoutForm({
 
     const { error: submitError } = await elements.submit();
     if (submitError) {
-      setError(submitError.message ?? 'Error en el formulario de pago');
+      setError(submitError.message ?? t('booking.checkout.errors.payment_form'));
       setLoadingBoth(false);
       return;
     }
@@ -77,7 +76,7 @@ export function CheckoutForm({
     try {
       await patchGuestInfo(reservation.id, { firstName, lastName, email, phone });
     } catch {
-      setError('Error guardando los datos del huésped. Intenta de nuevo.');
+      setError(t('booking.checkout.errors.guest_info'));
       setLoadingBoth(false);
       return;
     }
@@ -91,7 +90,7 @@ export function CheckoutForm({
         guestEmail: email,
       });
     } catch {
-      setError('Error iniciando el pago. Intenta de nuevo.');
+      setError(t('booking.checkout.errors.payment_initiate'));
       setLoadingBoth(false);
       return;
     }
@@ -100,27 +99,20 @@ export function CheckoutForm({
       elements,
       clientSecret,
       confirmParams: {
-        return_url: `${window.location.origin}/booking/confirmation`,
+        return_url: `${window.location.origin}/booking/confirmation?reservationId=${reservation.id}`,
       },
       redirect: 'if_required',
     });
 
     if (stripeError) {
-      setError(stripeError.message ?? 'Error procesando el pago');
+      setError(stripeError.message ?? t('booking.checkout.errors.payment_process'));
       setLoadingBoth(false);
       return;
     }
 
     void navigate({
-      to: '/booking/confirmation/$id',
-      params: { id: reservation.id },
-      search: {
-        propertyName: intent.property.name,
-        roomType: intent.room.type,
-        checkIn: intent.stay.checkIn,
-        checkOut: intent.stay.checkOut,
-        totalUsd: String(reservation.grandTotalUsd),
-      },
+      to: '/booking/confirmation',
+      search: { reservationId: reservation.id },
     });
   };
 
@@ -143,12 +135,12 @@ export function CheckoutForm({
             <>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, mb: 2 }}>
                 {numberedCircle(1)}
-                <Typography variant="subtitle1" fontWeight={500}>Detalles del huésped</Typography>
+                <Typography variant="subtitle1" fontWeight={600}>{t('booking.checkout.guest.section_title')}</Typography>
               </Box>
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
                 <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.5 }}>
                   <LabeledField
-                    label="Nombre"
+                    label={t('booking.checkout.guest.first_name')}
                     uppercase
                     value={firstName}
                     error={!!fieldErrors.firstName}
@@ -157,7 +149,7 @@ export function CheckoutForm({
                     sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1.5 } }}
                   />
                   <LabeledField
-                    label="Apellido"
+                    label={t('booking.checkout.guest.last_name')}
                     uppercase
                     value={lastName}
                     error={!!fieldErrors.lastName}
@@ -167,17 +159,17 @@ export function CheckoutForm({
                   />
                 </Box>
                 <LabeledField
-                  label="Correo electrónico"
+                  label={t('booking.checkout.guest.email')}
                   uppercase
                   type="email"
                   value={email}
                   error={!!fieldErrors.email}
-                  helperText={fieldErrors.email || 'Te enviaremos la confirmación a este correo'}
+                  helperText={fieldErrors.email || t('booking.checkout.guest.email_hint')}
                   onChange={(e) => { setEmail(e.target.value); clearFieldError('email'); }}
                   sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1.5 } }}
                 />
                 <LabeledField
-                  label="Teléfono"
+                  label={t('booking.checkout.guest.phone')}
                   uppercase
                   type="tel"
                   value={phone}
@@ -199,7 +191,7 @@ export function CheckoutForm({
             <>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, mb: 2 }}>
                 {numberedCircle(2)}
-                <Typography variant="subtitle1" fontWeight={500}>Forma de pago</Typography>
+                <Typography variant="subtitle1" fontWeight={600}>{t('booking.checkout.payment.section_title')}</Typography>
               </Box>
               <PaymentElement />
             </>
@@ -208,8 +200,8 @@ export function CheckoutForm({
 
         {/* ── Tarifa no reembolsable ── */}
         <Alert severity="warning" sx={{ borderRadius: 2 }}>
-          <AlertTitle sx={{ fontWeight: 500, mb: 0.25 }}>Tarifa no reembolsable</AlertTitle>
-          Si modificas o cancelas la reserva, no recibirás reembolso ni crédito para una estancia futura.
+          <AlertTitle sx={{ fontWeight: 600 }}>{t('booking.checkout.policy.title')}</AlertTitle>
+          {t('booking.checkout.policy.body')}
         </Alert>
 
         {error && <Alert severity="error">{error}</Alert>}

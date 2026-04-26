@@ -6,6 +6,7 @@ import {
   GuestInfo,
   NewReservation,
   ReservationRow,
+  ReservationSnapshot,
 } from "../database/database.types.js";
 
 export interface ReservationResponse {
@@ -23,6 +24,7 @@ export interface ReservationResponse {
   feeTotalUsd: number | null;
   grandTotalUsd: number | null;
   holdExpiresAt: string | null;
+  snapshot: ReservationSnapshot | null;
   createdAt: string;
 }
 
@@ -158,6 +160,17 @@ export class ReservationsRepository {
       .execute();
   }
 
+  async findHeldByBookerId(bookerId: string): Promise<ReservationRow | null> {
+    const row = await this.db
+      .selectFrom("reservations")
+      .where("booker_id", "=", bookerId)
+      .where("status", "=", "held")
+      .selectAll()
+      .executeTakeFirst();
+
+    return row ?? null;
+  }
+
   async findHoldByBookerAndStay(
     bookerId: string,
     roomId: string,
@@ -247,6 +260,7 @@ export class ReservationsRepository {
           ? row.hold_expires_at.toISOString()
           : String(row.hold_expires_at)
         : null,
+      snapshot: row.snapshot ?? null,
       createdAt:
         row.created_at instanceof Date
           ? row.created_at.toISOString()

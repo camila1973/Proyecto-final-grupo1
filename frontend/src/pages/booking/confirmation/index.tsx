@@ -1,6 +1,8 @@
-import { useNavigate, useParams, useSearch } from '@tanstack/react-router';
+import { useNavigate, useSearch } from '@tanstack/react-router';
+import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { usePaymentPolling } from '../../../hooks/usePaymentPolling';
-import { useReservation } from '../../../hooks/useReservation';
+import { fetchReservationById } from '../../../utils/queries';
 import HotelDetailCard from './HotelDetailCard';
 import PaymentSummaryCard from './PaymentSummaryCard';
 import Alert from '@mui/material/Alert';
@@ -14,25 +16,24 @@ import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 
 export default function BookingConfirmationPage() {
   const navigate = useNavigate();
-  const { id } = useParams({ from: '/booking/confirmation/$id' });
-  const search = useSearch({ from: '/booking/confirmation/$id' }) as {
-    propertyName: string;
-    roomType: string;
-    totalUsd: string;
-  };
+  const { t } = useTranslation();
+  const { reservationId } = useSearch({ from: '/booking/confirmation' });
 
-  const { status, failureReason, timedOut } = usePaymentPolling(id);
-  const reservation = useReservation(id);
+  const { status, failureReason, timedOut } = usePaymentPolling(reservationId);
+  const { data: reservation = null } = useQuery({
+    queryKey: ['reservation', reservationId],
+    queryFn: () => fetchReservationById(reservationId),
+  });
 
   if (status === 'pending' && !timedOut) {
     return (
       <Box sx={{ flex: 1, bgcolor: '#F5F7FA', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 20 }}>
         <CircularProgress size={48} sx={{ mb: 3 }} />
         <Typography variant="h6" fontWeight={500} mb={1}>
-          Procesando tu pago…
+          {t('booking.confirmation.processing_title')}
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          Esto puede tardar unos segundos. No cierres esta página.
+          {t('booking.confirmation.processing_body')}
         </Typography>
       </Box>
     );
@@ -43,17 +44,17 @@ export default function BookingConfirmationPage() {
       <Box sx={{ flex: 1, bgcolor: '#F5F7FA', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 20, px: 3 }}>
         <ErrorOutlineIcon sx={{ fontSize: 64, color: 'error.main', mb: 2 }} />
         <Typography variant="h5" fontWeight={500} mb={1}>
-          Pago no procesado
+          {t('booking.confirmation.failed_title')}
         </Typography>
         <Typography variant="body2" color="text.secondary" mb={1}>
-          {failureReason ?? 'Tu pago fue rechazado. Intenta con otra tarjeta.'}
+          {failureReason ?? t('booking.confirmation.failed_default')}
         </Typography>
         <Button
           variant="contained"
           onClick={() => void navigate({ to: '/' })}
           sx={{ mt: 3, borderRadius: 2, fontWeight: 500 }}
         >
-          Volver al inicio
+          {t('booking.confirmation.back_home')}
         </Button>
       </Box>
     );
@@ -61,7 +62,7 @@ export default function BookingConfirmationPage() {
 
   return (
     <Box sx={{ flex: 1, bgcolor: '#F5F7FA' }}>
-      <Box sx={{ maxWidth: 1100, mx: 'auto', px: 3, py: 4 }}>
+      <Box sx={{ maxWidth: '1152px', mx: 'auto', px: 3, py: 4 }}>
 
         <Alert
           severity="success"
@@ -69,10 +70,10 @@ export default function BookingConfirmationPage() {
           action={
             <Box sx={{ textAlign: 'right' }}>
               <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: 0.5, display: 'block' }}>
-                Reserva
+                {t('booking.confirmation.reservation_label')}
               </Typography>
               <Typography variant="body2" fontWeight={500} sx={{ fontFamily: 'monospace', mt: 0.25 }}>
-                #{id.slice(0, 8).toUpperCase()}
+                #{reservationId.slice(0, 8).toUpperCase()}
               </Typography>
             </Box>
           }
@@ -80,11 +81,11 @@ export default function BookingConfirmationPage() {
           slotProps={{ action: { sx: { marginRight: 0 } } }}
         >
           <AlertTitle sx={{ fontWeight: 500, mb: 0.25 }}>
-            {timedOut ? '¡Pago recibido!' : 'Reserva exitosa'}
+            {timedOut ? t('booking.confirmation.timeout_title') : t('booking.confirmation.success_title')}
           </AlertTitle>
           {timedOut
-            ? 'Recibimos tu pago. Te notificaremos por correo cuando tu reserva sea confirmada.'
-            : 'Recibirás un correo de confirmación con todos los detalles. ¡Buen viaje!'}
+            ? t('booking.confirmation.timeout_body')
+            : t('booking.confirmation.success_body')}
         </Alert>
 
         <Box sx={{
@@ -93,15 +94,10 @@ export default function BookingConfirmationPage() {
           gap: 2,
           alignItems: 'flex-start',
         }}>
-          <HotelDetailCard
-            propertyName={search.propertyName}
-            roomType={search.roomType}
-            reservation={reservation}
-          />
+          <HotelDetailCard reservation={reservation} />
 
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             <PaymentSummaryCard
-              totalUsd={Number(search.totalUsd)}
               fareBreakdown={reservation?.fareBreakdown}
             />
 
@@ -113,7 +109,7 @@ export default function BookingConfirmationPage() {
                 onClick={() => void navigate({ to: '/trips' })}
                 sx={{ borderRadius: 1.5, fontWeight: 500, py: 1.5 }}
               >
-                Ver mis reservas
+                {t('booking.confirmation.view_trips')}
               </Button>
               <Button
                 variant="outlined"
@@ -122,14 +118,14 @@ export default function BookingConfirmationPage() {
                 onClick={() => void navigate({ to: '/' })}
                 sx={{ borderRadius: 1.5, fontWeight: 500, borderColor: 'primary.main', color: 'primary.main' }}
               >
-                Ir al inicio
+                {t('booking.confirmation.go_home')}
               </Button>
             </Box>
           </Box>
         </Box>
 
         <Alert severity="warning" sx={{ mt: 2.5, borderRadius: 2 }}>
-          <strong>Cancelación gratuita</strong> hasta 24 horas antes del check-in. Después aplica el cargo de una noche.
+          {t('booking.confirmation.cancellation_notice')}
         </Alert>
 
       </Box>

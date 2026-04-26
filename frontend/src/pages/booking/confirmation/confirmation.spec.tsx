@@ -1,30 +1,49 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import BookingConfirmationPage from '.';
+import { setupTestI18n } from '../../../i18n/test-utils';
+
+setupTestI18n('es');
 
 const mockNavigate = jest.fn();
 const mockUseSearch = jest.fn();
-const mockUseParams = jest.fn();
 
 jest.mock('@tanstack/react-router', () => ({
   useNavigate: () => mockNavigate,
   useSearch: (...args: unknown[]) => mockUseSearch(...args),
-  useParams: (...args: unknown[]) => mockUseParams(...args),
 }));
 
-jest.mock('../../context/LocaleContext', () => ({
+jest.mock('../../../context/LocaleContext', () => ({
   useLocale: () => ({ currency: 'USD' }),
 }));
 
+jest.mock('../../../env', () => ({ API_BASE: 'http://localhost:3000' }));
+
+const queryState = { data: null as unknown };
+jest.mock('@tanstack/react-query', () => ({
+  useQuery: () => queryState,
+}));
+
 describe('BookingConfirmationPage', () => {
-  beforeEach(() => {
-    mockUseParams.mockReturnValue({ id: 'res_123' });
-    mockUseSearch.mockReturnValue({
+  const mockReservation = {
+    id: 'res_123',
+    checkIn: '2026-07-01',
+    checkOut: '2026-07-03',
+    fareBreakdown: { nights: 2, roomRateUsd: 100, subtotalUsd: 200, taxes: [], fees: [], taxTotalUsd: 0, feeTotalUsd: 0, totalUsd: 200 },
+    grandTotalUsd: 200,
+    holdExpiresAt: '2026-07-01T15:15:00Z',
+    snapshot: {
       propertyName: 'Hotel Test',
+      propertyCity: 'Cancún',
+      propertyNeighborhood: null,
+      propertyCountryCode: 'MX',
+      propertyThumbnailUrl: null,
       roomType: 'Suite',
-      checkIn: '2026-07-01',
-      checkOut: '2026-07-03',
-      totalUsd: '250.5',
-    });
+    },
+  };
+
+  beforeEach(() => {
+    mockUseSearch.mockReturnValue({ reservationId: 'res_123' });
+    queryState.data = null;
     global.fetch = jest.fn();
   });
 
@@ -49,6 +68,7 @@ describe('BookingConfirmationPage', () => {
   });
 
   it('shows confirmation details when payment is captured', async () => {
+    queryState.data = mockReservation;
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ status: 'captured' }),
@@ -57,8 +77,8 @@ describe('BookingConfirmationPage', () => {
     render(<BookingConfirmationPage />);
 
     expect(await screen.findByText('Reserva exitosa')).toBeInTheDocument();
-    expect(screen.getByText('Hotel Test')).toBeInTheDocument();
-    expect(screen.getByText('Suite')).toBeInTheDocument();
+    expect(await screen.findByText('Hotel Test')).toBeInTheDocument();
+    expect(await screen.findByText('Suite')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Ver mis reservas' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Ir al inicio' })).toBeInTheDocument();
   });

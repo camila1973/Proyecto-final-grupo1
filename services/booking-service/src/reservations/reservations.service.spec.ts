@@ -73,6 +73,7 @@ describe("ReservationsService", () => {
     findByBookerId: jest.Mock;
     findById: jest.Mock;
     findHoldByBookerAndStay: jest.Mock;
+    findHeldByBookerId: jest.Mock;
     updateGuestInfo: jest.Mock;
     toResponse: jest.Mock;
     confirm: jest.Mock;
@@ -83,6 +84,8 @@ describe("ReservationsService", () => {
   };
   let inventoryClient: {
     getRoomLocation: jest.Mock;
+    getRoomDetails: jest.Mock;
+    getPropertySnapshot: jest.Mock;
     confirmHold: jest.Mock;
     unhold: jest.Mock;
     release: jest.Mock;
@@ -99,6 +102,16 @@ describe("ReservationsService", () => {
     fareCalculator = { calculate: jest.fn().mockResolvedValue(fareBreakdown) };
     inventoryClient = {
       getRoomLocation: jest.fn().mockResolvedValue(LOCATION),
+      getRoomDetails: jest
+        .fn()
+        .mockResolvedValue({ ...LOCATION, roomType: "Suite" }),
+      getPropertySnapshot: jest.fn().mockResolvedValue({
+        name: "Hotel Test",
+        thumbnailUrl: null,
+        neighborhood: null,
+        city: "cancún",
+        countryCode: "MX",
+      }),
       confirmHold: jest.fn().mockResolvedValue(undefined),
       unhold: jest.fn().mockResolvedValue(undefined),
       release: jest.fn().mockResolvedValue(undefined),
@@ -115,6 +128,7 @@ describe("ReservationsService", () => {
       findByBookerId: jest.fn().mockResolvedValue([row]),
       findById: jest.fn().mockResolvedValue(row),
       findHoldByBookerAndStay: jest.fn().mockResolvedValue(null),
+      findHeldByBookerId: jest.fn().mockResolvedValue(null),
       updateGuestInfo: jest.fn().mockResolvedValue(row),
       toResponse: jest.fn().mockImplementation((r) => ({ id: r.id })),
       confirm: jest.fn(),

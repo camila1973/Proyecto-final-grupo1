@@ -12,7 +12,7 @@ export default function Navbar() {
 
   return (
     <header className="bg-white" style={{ borderBottom: `2px solid ${theme.palette.primary.main}` }}>
-      <div className="max-w-6xl mx-auto px-6 h-20 flex items-center justify-between">
+      <div className="max-w-[1152px] mx-auto px-6 h-20 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Link to="/" className="flex items-center hover:opacity-80">
             <img src={logo} alt="TravelHub" className="h-8 w-auto" />

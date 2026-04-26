@@ -123,7 +123,7 @@ export default function SearchPage() {
     <>
       {/* Hero Search Bar — key resets form state when URL params change */}
       <section className="bg-[#4a6fa5] py-8 px-6">
-        <div className="max-w-6xl mx-auto">
+        <div className="max-w-[1152px] mx-auto">
           <SearchBarForm
             key={`${urlCity}-${urlCheckIn}-${urlCheckOut}-${urlGuests}`}
             defaultCity={urlCity}
@@ -136,7 +136,7 @@ export default function SearchPage() {
       </section>
 
       {/* Main Content */}
-      <main className="max-w-6xl mx-auto w-full px-6 py-8 flex gap-8 flex-1">
+      <main className="max-w-[1152px] mx-auto w-full px-6 py-8 flex gap-8 flex-1">
         <FilterSidebar
           facets={facets}
           committedFilters={filters}

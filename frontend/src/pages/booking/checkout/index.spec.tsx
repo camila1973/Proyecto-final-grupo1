@@ -1,5 +1,8 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import CheckoutPage from './index';
+import { setupTestI18n } from '../../../i18n/test-utils';
+
+setupTestI18n('es');
 
 const mockNavigate = jest.fn();
 const mockCreateReservation = jest.fn();
@@ -12,7 +15,7 @@ jest.mock('@tanstack/react-router', () => ({
   useNavigate: () => mockNavigate,
 }));
 
-jest.mock('../../hooks/useBookingFlow', () => ({
+jest.mock('../../../hooks/useBookingFlow', () => ({
   peekCheckoutIntent: () => mockConsumeCheckoutIntent(),
   consumeCheckoutIntent: () => mockConsumeCheckoutIntent(),
   consumeReservationPromise: () => null,
@@ -20,9 +23,11 @@ jest.mock('../../hooks/useBookingFlow', () => ({
   useBookingFlow: jest.fn(),
 }));
 
-jest.mock('../../context/LocaleContext', () => ({
+jest.mock('../../../context/LocaleContext', () => ({
   useLocale: () => ({ currency: 'USD', setCurrency: jest.fn() }),
 }));
+
+jest.mock('../../../env', () => ({ STRIPE_PUBLISHABLE_KEY: 'pk_test_mock', API_BASE: 'http://localhost:3000' }));
 
 jest.mock('@stripe/stripe-js', () => ({
   loadStripe: jest.fn(() => Promise.resolve({})),
@@ -45,7 +50,7 @@ jest.mock('./CheckoutForm', () => ({
   ),
 }));
 
-const { useBookingFlow } = jest.requireMock('../../hooks/useBookingFlow') as {
+const { useBookingFlow } = jest.requireMock('../../../hooks/useBookingFlow') as {
   useBookingFlow: jest.Mock;
 };
 
@@ -94,7 +99,7 @@ describe('CheckoutPage', () => {
 
     renderPage({ id: 'u1', email: 'user@example.com', role: 'guest' });
 
-    expect(await screen.findByText('No se pudo crear la reserva. Intenta de nuevo.')).toBeInTheDocument();
+    expect(await screen.findByText(/no se pudo crear la reserva/i)).toBeInTheDocument();
   });
 
   it('renders the summary panel and checkout form once reservation is created', async () => {

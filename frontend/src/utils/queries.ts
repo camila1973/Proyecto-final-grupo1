@@ -196,7 +196,16 @@ export async function fetchReservationById(id: string): Promise<ReservationRespo
 
 // ─── My Reservations ──────────────────────────────────────────────────────────
 
-export type ReservationStatus = 'on_hold' | 'pending' | 'confirmed' | 'expired' | 'cancelled';
+export type ReservationStatus = 'held' | 'submitted' | 'confirmed' | 'failed' | 'expired' | 'cancelled';
+
+export interface ReservationSnapshot {
+  propertyName: string;
+  propertyCity: string;
+  propertyNeighborhood: string | null;
+  propertyCountryCode: string;
+  propertyThumbnailUrl: string | null;
+  roomType: string;
+}
 
 export interface ReservationListItem {
   id: string;
@@ -205,19 +214,11 @@ export interface ReservationListItem {
   checkOut: string;
   grandTotalUsd: number;
   createdAt: string;
-  property: {
-    id: string;
-    name: string;
-    address: string;
-    thumbnailUrl: string | null;
-  } | null;
-  room: {
-    roomType: string;
-  } | null;
+  snapshot: ReservationSnapshot | null;
 }
 
-export async function fetchMyReservations(token: string): Promise<ReservationListItem[]> {
-  const res = await fetch(`${API_BASE}/api/booking/reservations`, {
+export async function fetchMyReservations(token: string, bookerId: string): Promise<ReservationListItem[]> {
+  const res = await fetch(`${API_BASE}/api/booking/reservations?bookerId=${encodeURIComponent(bookerId)}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -225,10 +226,11 @@ export async function fetchMyReservations(token: string): Promise<ReservationLis
   return Array.isArray(data) ? data : (data.reservations ?? []);
 }
 
-export async function cancelReservation(id: string, token: string): Promise<void> {
+export async function cancelReservation(id: string, token: string, reason: string): Promise<void> {
   const res = await fetch(`${API_BASE}/api/booking/reservations/${id}/cancel`, {
     method: 'PATCH',
-    headers: { Authorization: `Bearer ${token}` },
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ reason }),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
 }

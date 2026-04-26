@@ -1,5 +1,8 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { CheckoutForm } from './CheckoutForm';
+import { setupTestI18n } from '../../../i18n/test-utils';
+
+setupTestI18n('es');
 
 const mockNavigate = jest.fn();
 const mockConfirmPayment = jest.fn();
@@ -13,7 +16,7 @@ jest.mock('@tanstack/react-router', () => ({
   useNavigate: () => mockNavigate,
 }));
 
-jest.mock('../../context/LocaleContext', () => ({
+jest.mock('../../../context/LocaleContext', () => ({
   useLocale: () => ({ currency: 'USD' }),
 }));
 
@@ -23,12 +26,15 @@ jest.mock('@stripe/react-stripe-js', () => ({
   useElements: () => mockElements,
 }));
 
-jest.mock('../../env', () => ({ API_BASE: 'http://localhost:3000' }));
+jest.mock('../../../env', () => ({ API_BASE: 'http://localhost:3000' }));
 
 const RESERVATION = {
   id: 'res_123',
+  checkIn: '2026-06-01',
+  checkOut: '2026-06-03',
   grandTotalUsd: 250,
   holdExpiresAt: '2026-06-01T00:15:00Z',
+  snapshot: null,
   fareBreakdown: {
     nights: 2,
     roomRateUsd: 100,
@@ -41,17 +47,10 @@ const RESERVATION = {
   },
 };
 
-const INTENT = {
-  property: { id: 'prop_1', name: 'Hotel Test' },
-  room: { id: 'room_1', type: 'Suite', partnerId: 'partner_1', totalUsd: 250 },
-  stay: { checkIn: '2026-06-01', checkOut: '2026-06-03', guests: 2 },
-};
-
 function renderForm(overrides: Partial<React.ComponentProps<typeof CheckoutForm>> = {}) {
   return render(
     <CheckoutForm
       reservation={RESERVATION}
-      intent={INTENT}
       email="user@example.com"
       firstName="Juan"
       lastName="García"
@@ -281,12 +280,10 @@ describe('CheckoutForm', () => {
       renderForm();
       fireEvent.submit(getForm());
       await waitFor(() => {
-        expect(mockNavigate).toHaveBeenCalledWith(
-          expect.objectContaining({
-            to: '/booking/confirmation/$id',
-            params: { id: 'res_123' },
-          }),
-        );
+        expect(mockNavigate).toHaveBeenCalledWith({
+          to: '/booking/confirmation',
+          search: { reservationId: 'res_123' },
+        });
       });
     });
   });

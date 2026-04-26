@@ -22,7 +22,9 @@ const rootRoute = createRootRoute({
       <LocaleProvider>
         <div className="flex flex-col min-h-screen bg-[#f8f9ff]">
           <Navbar />
-          <Outlet />
+          <div className="flex flex-col flex-1">
+            <Outlet />
+          </div>
           <Footer />
         </div>
       </LocaleProvider>
@@ -102,13 +104,9 @@ const checkoutRoute = createRoute({
 
 const bookingConfirmationRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/booking/confirmation/$id',
+  path: '/booking/confirmation',
   validateSearch: (search: Record<string, unknown>) => ({
-    propertyName: (search.propertyName as string) ?? '',
-    roomType: (search.roomType as string) ?? '',
-    checkIn: (search.checkIn as string) ?? '',
-    checkOut: (search.checkOut as string) ?? '',
-    totalUsd: (search.totalUsd as string) ?? '0',
+    reservationId: (search.reservationId as string) ?? '',
   }),
   component: BookingConfirmationPage,
 });

@@ -1,3 +1,7 @@
+import type { ReservationSnapshot } from '../../utils/queries';
+
+export type { ReservationSnapshot };
+
 export interface FareBreakdown {
   nights: number;
   roomRateUsd: number;
@@ -16,4 +20,5 @@ export interface ReservationResponse {
   fareBreakdown: FareBreakdown;
   grandTotalUsd: number;
   holdExpiresAt: string;
+  snapshot: ReservationSnapshot | null;
 }

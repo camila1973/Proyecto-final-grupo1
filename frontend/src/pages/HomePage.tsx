@@ -25,14 +25,14 @@ export default function HomePage() {
   return (
     <>
       <section className="bg-[#3a608f] py-12 px-6">
-        <div className="max-w-6xl mx-auto">
+        <div className="max-w-[1152px] mx-auto">
           <h1 className="text-white text-3xl font-bold mb-1">{t('hero.title')}</h1>
           <p className="text-blue-200 text-base mb-8">{t('hero.subtitle')}</p>
           <SearchBarForm />
         </div>
       </section>
 
-      <main className="flex-1 max-w-6xl mx-auto w-full px-6 py-10">
+      <main className="flex-1 max-w-[1152px] mx-auto w-full px-6 py-10">
         <h2 className="text-xl font-bold text-gray-900 mb-6">{t('recommendations.title')}</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
           {featured.map((result) => (

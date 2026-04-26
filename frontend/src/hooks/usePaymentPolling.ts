@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { fetchPaymentStatus, type PaymentStatus } from '../utils/queries';
 
 const POLL_INTERVAL_MS = 2500;
-const POLL_TIMEOUT_MS = 90_000;
+const POLL_TIMEOUT_MS = 60_000;
 
 export function usePaymentPolling(id: string) {
   const [status, setStatus] = useState<PaymentStatus>('pending');

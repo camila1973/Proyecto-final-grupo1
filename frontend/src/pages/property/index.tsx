@@ -65,7 +65,7 @@ export default function PropertyDetailPage() {
 
   if (isPending && !data) {
     return (
-      <main className="max-w-6xl mx-auto w-full px-6 py-8 flex-1">
+      <main className="max-w-[1152px] mx-auto w-full px-6 py-8 flex-1">
         <p className="text-gray-500">{t('property_detail.loading')}</p>
       </main>
     );
@@ -73,7 +73,7 @@ export default function PropertyDetailPage() {
 
   if (isError || !data?.property) {
     return (
-      <main className="max-w-6xl mx-auto w-full px-6 py-8 flex-1">
+      <main className="max-w-[1152px] mx-auto w-full px-6 py-8 flex-1">
         <p className="text-red-500">{t('property_detail.error')}</p>
       </main>
     );
@@ -107,7 +107,7 @@ export default function PropertyDetailPage() {
     <>
       {/* Hero — same SearchBarForm as SearchPage */}
       <section className="bg-[#4a6fa5] py-8 px-6">
-        <div className="max-w-6xl mx-auto">
+        <div className="max-w-[1152px] mx-auto">
           <SearchBarForm
             defaultCity={property.city}
             defaultCountryCode={property.countryCode}
@@ -119,7 +119,7 @@ export default function PropertyDetailPage() {
       </section>
 
       {/* Main content */}
-      <main className="max-w-6xl mx-auto w-full px-6 py-8 flex-1">
+      <main className="max-w-[1152px] mx-auto w-full px-6 py-8 flex-1">
         {/* Back button */}
         <Button
           startIcon={<ArrowBackIosNew />}

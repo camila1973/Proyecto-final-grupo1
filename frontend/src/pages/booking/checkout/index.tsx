@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from '@tanstack/react-router';
+import { useTranslation } from 'react-i18next';
 import { consumeCheckoutIntent, peekCheckoutIntent, consumeReservationPromise, useBookingFlow, type CheckoutIntent } from '../../../hooks/useBookingFlow';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements } from '@stripe/react-stripe-js';
@@ -20,6 +21,7 @@ const stripePromise = loadStripe(STRIPE_PUBLISHABLE_KEY);
 export default function CheckoutPageWithStripe() {
   const { auth, createReservation } = useBookingFlow();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { currency } = useLocale();
   const [intent] = useState<CheckoutIntent | null>(() => peekCheckoutIntent());
   const [reservation, setReservation] = useState<ReservationResponse | null>(null);
@@ -39,37 +41,37 @@ export default function CheckoutPageWithStripe() {
     const promise = consumeReservationPromise() ?? createReservation(intent);
     promise
       .then((res) => { consumeCheckoutIntent(); setReservation(res); })
-      .catch(() => setError('No se pudo crear la reserva. Intenta de nuevo.'));
+      .catch(() => setError(t('booking.checkout.error_create')));
   }, []);
 
   if (!auth?.user || !intent) return null;
 
   return (
     <Box sx={{ flex: 1, bgcolor: '#F5F7FA', minHeight: 'calc(100vh - 64px)' }}>
-      <Box sx={{ maxWidth: 1100, mx: 'auto', px: 3, py: 4 }}>
+      <Box sx={{ maxWidth: '1152px', mx: 'auto', px: 3, py: 4 }}>
         <Button
           startIcon={<ArrowBackIosNew />}
           onClick={() => history.back()}
           sx={{ color: 'text.secondary', fontWeight: 500, mb: 3 }}
         >
-          Volver al hotel
+          {t('booking.checkout.back')}
         </Button>
 
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Typography variant="h5" fontWeight={500}>Finalizar reserva</Typography>
+          <Typography variant="h5" fontWeight={500}>{t('booking.checkout.title')}</Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <Box sx={{
               width: 22, height: 22, borderRadius: '50%', bgcolor: 'primary.main', color: '#fff',
               display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 600,
             }}>1</Box>
-            <Typography variant="caption" fontWeight={600}>Detalles</Typography>
+            <Typography variant="caption" fontWeight={600}>{t('booking.checkout.step_details')}</Typography>
             <Box sx={{ width: 24, height: 1, bgcolor: 'divider', mx: 0.5 }} />
             <Box sx={{
               width: 22, height: 22, borderRadius: '50%', bgcolor: 'white', color: 'text.secondary',
               border: '0.5px solid', borderColor: 'divider',
               display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11,
             }}>2</Box>
-            <Typography variant="caption" color="text.secondary">Confirmación</Typography>
+            <Typography variant="caption" color="text.secondary">{t('booking.checkout.step_confirmation')}</Typography>
           </Box>
         </Box>
 
@@ -102,7 +104,6 @@ export default function CheckoutPageWithStripe() {
                 <CheckoutForm
                   reservation={reservation}
                   email={auth.user.email}
-                  intent={intent}
                   firstName={auth.user.firstName}
                   lastName={auth.user.lastName}
                   phone={auth.user.phone}

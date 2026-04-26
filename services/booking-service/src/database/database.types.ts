@@ -7,6 +7,15 @@ export interface GuestInfo {
   phone?: string;
 }
 
+export interface ReservationSnapshot {
+  propertyName: string;
+  propertyCity: string;
+  propertyNeighborhood: string | null;
+  propertyCountryCode: string;
+  propertyThumbnailUrl: string | null;
+  roomType: string;
+}
+
 // DATE columns: pg returns 'YYYY-MM-DD' strings; accept Date or string on insert/update
 type DateColumn = ColumnType<string, Date | string, Date | string>;
 type NullableDateColumn = ColumnType<
@@ -88,6 +97,11 @@ export interface ReservationsTable {
     string | null,
     string | null | undefined,
     string | null | undefined
+  >;
+  snapshot: ColumnType<
+    ReservationSnapshot | null,
+    ReservationSnapshot | null | undefined,
+    ReservationSnapshot | null | undefined
   >;
   created_at: Generated<Date>;
   updated_at: Generated<Date>;

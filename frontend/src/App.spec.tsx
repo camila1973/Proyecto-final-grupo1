@@ -58,7 +58,7 @@ describe('App (integration)', () => {
     i18n.changeLanguage('es');
     render(<App />);
 
-    expect(await screen.findByText('TravelHub')).toBeInTheDocument();
+    expect(await screen.findByRole('img', { name: 'TravelHub' })).toBeInTheDocument();
     expect(screen.getByText(es.hero.title)).toBeInTheDocument();
     expect(screen.getByText(es.recommendations.title)).toBeInTheDocument();
     expect(screen.getByText(es.footer.copyright)).toBeInTheDocument();
@@ -68,7 +68,7 @@ describe('App (integration)', () => {
     i18n.changeLanguage('en');
     render(<App />);
 
-    expect(await screen.findByText('TravelHub')).toBeInTheDocument();
+    expect(await screen.findByRole('img', { name: 'TravelHub' })).toBeInTheDocument();
     expect(screen.getByText(en.hero.title)).toBeInTheDocument();
     expect(screen.getByText(en.recommendations.title)).toBeInTheDocument();
     expect(screen.getByText(en.footer.copyright)).toBeInTheDocument();
