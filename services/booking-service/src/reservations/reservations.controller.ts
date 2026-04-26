@@ -53,8 +53,26 @@ export class ReservationsController {
 
   @Patch(":id/submit")
   @HttpCode(HttpStatus.OK)
-  submitPayment(@Param("id") id: string) {
-    return this.reservationsService.submitPayment(id);
+  submit(@Param("id") id: string) {
+    return this.reservationsService.submit(id);
+  }
+
+  @Patch(":id/fail")
+  @HttpCode(HttpStatus.OK)
+  fail(@Param("id") id: string, @Body() body: { reason: string }) {
+    return this.reservationsService.fail(id, body.reason);
+  }
+
+  @Patch(":id/cancel")
+  @HttpCode(HttpStatus.OK)
+  cancel(@Param("id") id: string, @Body() body: { reason: string }) {
+    return this.reservationsService.cancel(id, body.reason);
+  }
+
+  @Patch(":id/rehold")
+  @HttpCode(HttpStatus.OK)
+  rehold(@Param("id") id: string) {
+    return this.reservationsService.rehold(id);
   }
 
   @Patch(":id/confirm")

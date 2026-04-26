@@ -301,7 +301,7 @@ const RESERVATIONS = [
     grand_total_usd: 978.9,
     hold_expires_at: new Date("2026-04-10T09:00:00.000Z"),
   },
-  // ── pending — Hostal Sol Cancún, Standard Double (room 6), 3 nights @ $60 ──
+  // ── submitted — Hostal Sol Cancún, Standard Double (room 6), 3 nights @ $60 ──
   // Hold placed just now via POST /holds; reservation submitted immediately after.
   // hold_expires_at mirrors the Redis TTL so the sweeper fires at the right moment.
   {
@@ -313,7 +313,7 @@ const RESERVATIONS = [
     guest_info: GUEST_INFO[2],
     check_in: "2027-05-10",
     check_out: "2027-05-13",
-    status: "pending",
+    status: "submitted",
     fare_breakdown: {
       nights: 3,
       roomRateUsd: 60,

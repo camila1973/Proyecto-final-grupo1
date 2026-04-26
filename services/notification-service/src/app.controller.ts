@@ -24,6 +24,7 @@ export class AppController {
       channel: string;
       subject: string;
       message: string;
+      html?: string;
     },
   ) {
     return this.appService.sendNotification(body);

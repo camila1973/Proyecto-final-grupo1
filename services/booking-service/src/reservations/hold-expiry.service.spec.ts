@@ -9,7 +9,7 @@ function makeRow(overrides: Record<string, unknown> = {}) {
     room_id: "room-uuid",
     check_in: "2026-05-01",
     check_out: "2026-05-04",
-    status: "pending",
+    status: "held",
     ...overrides,
   };
 }
