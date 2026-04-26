@@ -121,13 +121,18 @@ export default function CheckoutScreen() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const [paying, setPaying] = useState(false);
+  
+  // Prevent multiple reservation creation
+  const reservationCreatedRef = useRef(false);
 
   const countdown = useCountdown(reservation?.holdExpiresAt ?? null);
 
   // ─── Create reservation (hold) on mount ──────────────────────────────────────
 
   const createReservation = useCallback(async () => {
-    if (!intent || !token || !user) return;
+    if (!intent || !token || !user || reservationCreatedRef.current) return;
+    
+    reservationCreatedRef.current = true;
     setLoadingReservation(true);
     setReservationError(null);
     try {
@@ -141,6 +146,10 @@ export default function CheckoutScreen() {
       };
       
       console.log('[Checkout] Creating reservation with:', payload);
+      console.log('[Checkout] Property:', intent.propertyName);
+      console.log('[Checkout] Room type:', intent.roomType);
+      console.log('[Checkout] Dates:', intent.checkIn, 'to', intent.checkOut);
+      console.log('[Checkout] API endpoint:', `${API_BASE}/api/booking/reservations`);
       
       const res = await fetch(`${API_BASE}/api/booking/reservations`, {
         method: 'POST',
@@ -154,19 +163,24 @@ export default function CheckoutScreen() {
       if (!res.ok) {
         const errorText = await res.text();
         console.error('[Checkout] Reservation creation failed:', res.status, errorText);
-        // Log detalles técnicos para debugging, pero mostrar mensaje genérico al usuario
+        
+        // Extraer mensaje específico del backend
+        let backendMessage = t('checkout.errorHold');
         try {
           const errorJson = JSON.parse(errorText);
           if (errorJson.message) {
             console.error('[Checkout] Backend error details:', errorJson.message);
+            backendMessage = errorJson.message; // Usar mensaje real del backend
+          } else if (errorJson.error) {
+            backendMessage = errorJson.error;
           }
         } catch {
-          // No es JSON, loggear el texto plano
-          if (errorText) {
-            console.error('[Checkout] Backend response:', errorText);
+          // No es JSON, usar el texto plano si existe
+          if (errorText && errorText.length < 200) {
+            backendMessage = errorText;
           }
         }
-        throw new Error(t('checkout.errorHold'));
+        throw new Error(backendMessage);
       }
       
       const data = (await res.json()) as Reservation;
@@ -175,7 +189,19 @@ export default function CheckoutScreen() {
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : t('checkout.errorHold');
       console.error('[Checkout] Error:', errorMsg);
+      
+      // En desarrollo, mostrar detalles del error
+      if (__DEV__) {
+        console.error('[Checkout] Full error details:', err);
+        Alert.alert(
+          'Error de Reserva (DEV)',
+          `${errorMsg}\n\nRevisa la consola para más detalles.`,
+          [{ text: 'OK' }]
+        );
+      }
+      
       setReservationError(errorMsg);
+      reservationCreatedRef.current = false; // Allow retry
     } finally {
       setLoadingReservation(false);
     }
@@ -214,6 +240,7 @@ export default function CheckoutScreen() {
 
     try {
       // 1. Save guest info
+      console.log('[Checkout] Saving guest info for reservation:', reservation.id);
       const guestRes = await fetch(
         `${API_BASE}/api/booking/reservations/${reservation.id}/guest-info`,
         {
@@ -222,9 +249,17 @@ export default function CheckoutScreen() {
           body: JSON.stringify({ firstName, lastName, email, phone }),
         },
       );
-      if (!guestRes.ok) throw new Error('guest_info');
+      
+      if (!guestRes.ok) {
+        const errorText = await guestRes.text();
+        console.error('[Checkout] Guest info update failed:', guestRes.status, errorText);
+        throw new Error('guest_info');
+      }
+      
+      console.log('[Checkout] Guest info saved successfully');
 
       // 2. Initiate payment → get clientSecret
+      console.log('[Checkout] Initiating payment for reservation:', reservation.id);
       const payRes = await fetch(`${API_BASE}/api/payment/payments/initiate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -235,10 +270,31 @@ export default function CheckoutScreen() {
           guestEmail: email,
         }),
       });
-      if (!payRes.ok) throw new Error('initiate');
-      const { clientSecret } = (await payRes.json()) as { clientSecret: string };
+      
+      if (!payRes.ok) {
+        const errorText = await payRes.text();
+        console.error('[Checkout] Payment initiation failed:', payRes.status, errorText);
+        
+        // Extraer mensaje específico del backend
+        let errorMessage = 'initiate';
+        try {
+          const errorJson = JSON.parse(errorText);
+          if (errorJson.message) {
+            console.error('[Checkout] Payment backend error:', errorJson.message);
+            errorMessage = errorJson.message;
+          }
+        } catch {
+          if (errorText && errorText.length < 200) {
+            errorMessage = errorText;
+          }
+        }
+        throw new Error(errorMessage);
+      }
+      
+      console.log('[Checkout] Payment client secret received');
 
       // 3. Init PaymentSheet
+      console.log('[Checkout] Initializing Stripe PaymentSheet');
       const { error: initError } = await initPaymentSheet({
         paymentIntentClientSecret: clientSecret,
         merchantDisplayName: 'TravelHub',
@@ -254,32 +310,53 @@ export default function CheckoutScreen() {
           },
         },
       });
-      if (initError) throw new Error(initError.message);
+      
+      if (initError) {
+        console.error('[Checkout] PaymentSheet init error:', initError);
+        throw new Error(initError.message);
+      }
+      
+      console.log('[Checkout] PaymentSheet initialized, presenting to user');
 
       // 4. Present PaymentSheet
       const { error: presentError } = await presentPaymentSheet();
+      
       if (presentError) {
+        console.error('[Checkout] PaymentSheet present error:', presentError);
         if (presentError.code !== 'Canceled') {
           Alert.alert(t('checkout.errorPayment'), presentError.message);
+        } else {
+          console.log('[Checkout] User canceled payment');
         }
         setPaying(false);
         return;
       }
 
       // 5. Success
+      console.log('[Checkout] Payment completed successfully');
       clearCheckoutIntent();
       router.replace({
         pathname: '/booking/confirmation',
         params: { reservationId: reservation.id, propertyName: intent?.propertyName ?? '' },
       });
     } catch (err: unknown) {
+      console.error('[Checkout] Payment flow error:', err);
       const msg = err instanceof Error ? err.message : 'unknown';
+      
+      // Mensajes específicos conocidos
       if (msg === 'guest_info') {
         Alert.alert(t('checkout.errorGuestInfo'));
       } else if (msg === 'initiate') {
         Alert.alert(t('checkout.errorInitiate'));
       } else {
-        Alert.alert(t('checkout.errorPayment'));
+        // Mostrar el mensaje real del backend o un mensaje genérico
+        const displayMsg = msg !== 'unknown' && msg.length < 200 
+          ? msg 
+          : t('checkout.errorPayment');
+        Alert.alert(
+          t('checkout.errorPayment'), 
+          displayMsg
+        );
       }
       setPaying(false);
     }
