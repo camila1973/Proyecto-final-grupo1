@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -213,5 +213,36 @@ describe('PropertyDetailPage', () => {
     mockFetch();
     renderPage();
     expect(await screen.findByText(es.property_detail.reviews)).toBeInTheDocument();
+  });
+
+  it('expands the description when read_more is clicked', async () => {
+    mockFetch();
+    renderPage();
+    const readMore = await screen.findByText(es.property_detail.read_more);
+    fireEvent.click(readMore);
+    expect(await screen.findByText(es.property_detail.read_less)).toBeInTheDocument();
+  });
+
+  it('collapses the description when read_less is clicked after expanding', async () => {
+    mockFetch();
+    renderPage();
+    fireEvent.click(await screen.findByText(es.property_detail.read_more));
+    const readLess = await screen.findByText(es.property_detail.read_less);
+    fireEvent.click(readLess);
+    expect(await screen.findByText(es.property_detail.read_more)).toBeInTheDocument();
+  });
+
+  it('renders with a thumbnailUrl fallback when imageUrls is empty', async () => {
+    mockFetch(true, mockRooms, { ...mockProperty, imageUrls: [] });
+    const { container } = renderPage();
+    await screen.findByText('Hotel Test');
+    const imgs = container.querySelectorAll('img[src="https://example.com/hotel.jpg"]');
+    expect(imgs.length).toBeGreaterThan(0);
+  });
+
+  it('renders correctly when property has no imageUrls and no thumbnailUrl', async () => {
+    mockFetch(true, mockRooms, { ...mockProperty, imageUrls: [], thumbnailUrl: '' });
+    renderPage();
+    expect(await screen.findByText('Hotel Test')).toBeInTheDocument();
   });
 });

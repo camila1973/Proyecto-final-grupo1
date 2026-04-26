@@ -279,6 +279,44 @@ describe("ReservationsService", () => {
       );
       expect(reservationsRepo.insert).not.toHaveBeenCalled();
     });
+
+    it("cancels a stale held reservation before creating a new one", async () => {
+      const staleRow = makeRow({ id: "stale-uuid", status: "held" });
+      reservationsRepo.findHeldByBookerId.mockResolvedValue(staleRow);
+      reservationsRepo.cancel = jest.fn().mockResolvedValue({
+        row: { ...staleRow, status: "cancelled" },
+        priorStatus: "held",
+      });
+
+      await service.create(CREATE_DTO);
+
+      expect(reservationsRepo.cancel).toHaveBeenCalledWith(
+        "stale-uuid",
+        "superseded by new hold",
+      );
+      expect(reservationsRepo.insert).toHaveBeenCalled();
+    });
+
+    it("continues creating the reservation even when stale hold cancellation fails", async () => {
+      const staleRow = makeRow({ id: "stale-uuid", status: "held" });
+      reservationsRepo.findHeldByBookerId.mockResolvedValue(staleRow);
+      reservationsRepo.cancel = jest
+        .fn()
+        .mockRejectedValue(new Error("cancel failed"));
+
+      await expect(service.create(CREATE_DTO)).resolves.toBeDefined();
+      expect(reservationsRepo.insert).toHaveBeenCalled();
+    });
+
+    it("stores the property snapshot in the reservation row", async () => {
+      await service.create(CREATE_DTO);
+
+      const inserted = reservationsRepo.insert.mock.calls[0][0];
+      expect(inserted.snapshot).toMatchObject({
+        propertyName: "Hotel Test",
+        roomType: "Suite",
+      });
+    });
   });
 
   // ─── updateGuestInfo ─────────────────────────────────────────────────────────
