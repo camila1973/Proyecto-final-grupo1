@@ -13,14 +13,14 @@ export interface NetInfoResult {
   isLoading: boolean;
 }
 
-function resolveType(state: NetInfoState): ConnectionType {
+export function resolveType(state: NetInfoState): ConnectionType {
   if (state.type === 'wifi') return 'wifi';
   if (state.type === 'cellular') return 'cellular';
   if (state.isConnected) return 'unknown';
   return 'none';
 }
 
-function resolveConnected(state: NetInfoState): boolean {
+export function resolveConnected(state: NetInfoState): boolean {
   // isInternetReachable is the ground truth — it probes an external host.
   // Fall back to isConnected only if reachability hasn't been determined yet (null).
   if (state.isInternetReachable === true) return true;

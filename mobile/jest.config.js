@@ -16,5 +16,6 @@ module.exports = {
     'components/**/*.ts',
     'hooks/**/*.ts',
     'constants/**/*.ts',
+    'services/**/*.ts',
   ],
 };
