@@ -26,7 +26,10 @@ export class HoldExpiryService {
     const expired = await this.reservationsRepo.findExpiredHolds();
 
     for (const row of expired) {
-      const updated = await this.reservationsRepo.expire(row.id);
+      const updated = await this.reservationsRepo.expire(
+        row.id,
+        "hold ttl elapsed",
+      );
       if (!updated) {
         // Row was confirmed (or already expired) between the query and the update
         continue;

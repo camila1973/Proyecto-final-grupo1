@@ -210,6 +210,9 @@ export interface ReservationSnapshot {
 export interface ReservationListItem {
   id: string;
   status: ReservationStatus;
+  propertyId: string;
+  roomId: string;
+  partnerId: string;
   checkIn: string;
   checkOut: string;
   grandTotalUsd: number;

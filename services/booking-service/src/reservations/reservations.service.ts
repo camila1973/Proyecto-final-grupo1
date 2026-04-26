@@ -59,14 +59,14 @@ export class ReservationsService {
       };
     }
 
-    // Cancel any stale hold the booker has on a different room/dates
+    // Expire any stale hold the booker has on a different room/dates
     const staleHold = await this.reservationsRepo.findHeldByBookerId(
       dto.bookerId,
     );
     if (staleHold) {
-      await this.cancel(staleHold.id, "superseded by new hold").catch((err) => {
+      await this.expire(staleHold.id, "superseded by new hold").catch((err) => {
         this.logger.warn(
-          `Failed to cancel stale hold ${staleHold.id} for booker ${dto.bookerId}: ${err}`,
+          `Failed to expire stale hold ${staleHold.id} for booker ${dto.bookerId}: ${err}`,
         );
       });
     }
@@ -216,6 +216,25 @@ export class ReservationsService {
     } catch (err) {
       this.logger.warn(
         `Failed to unhold inventory for failed reservation ${id}: ${err}`,
+      );
+    }
+
+    return this.reservationsRepo.toResponse(row);
+  }
+
+  async expire(id: string, reason: string) {
+    const row = await this.reservationsRepo.expire(id, reason);
+    if (!row) return;
+
+    try {
+      await this.inventoryClient.unhold(
+        row.room_id,
+        row.check_in,
+        row.check_out,
+      );
+    } catch (err) {
+      this.logger.warn(
+        `Failed to unhold inventory for expired reservation ${id}: ${err}`,
       );
     }
 

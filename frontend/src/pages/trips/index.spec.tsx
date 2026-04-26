@@ -20,7 +20,12 @@ jest.mock('../../context/LocaleContext', () => ({
   useLocale: () => ({ currency: 'USD' }),
 }));
 
+jest.mock('../../hooks/useBookingFlow', () => ({
+  saveCheckoutIntent: jest.fn(),
+}));
+
 const { useAuth } = jest.requireMock('../../hooks/useAuth') as { useAuth: jest.Mock };
+const { saveCheckoutIntent } = jest.requireMock('../../hooks/useBookingFlow') as { saveCheckoutIntent: jest.Mock };
 
 const USER = { id: 'u1', email: 'test@example.com', role: 'guest' };
 const TOKEN = 'mock-token';
@@ -29,6 +34,9 @@ function makeReservation(status: string, overrides: Record<string, unknown> = {}
   return {
     id: 'aaaa-bbbb-cccc',
     status,
+    propertyId: 'prop-uuid',
+    roomId: 'room-uuid',
+    partnerId: 'partner-uuid',
     checkIn: '2026-06-01T14:00:00Z',
     checkOut: '2026-06-03T12:00:00Z',
     grandTotalUsd: 300,
@@ -153,14 +161,80 @@ describe('TripsPage', () => {
       expect(await screen.findByText(es.trips.status.submitted)).toBeInTheDocument();
     });
 
-    it('shows cancel button for a held reservation', async () => {
+    it('shows complete payment button for a held reservation', async () => {
       useAuth.mockReturnValue({ token: TOKEN, user: USER });
       (global.fetch as jest.Mock).mockResolvedValue({
         ok: true,
         json: () => Promise.resolve({ reservations: [makeReservation('held')] }),
       });
       renderPage();
+      expect(await screen.findByRole('button', { name: new RegExp(es.trips.card.complete_payment) })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: es.trips.card.cancel })).not.toBeInTheDocument();
+    });
+
+    it('shows cancel button for a confirmed reservation', async () => {
+      useAuth.mockReturnValue({ token: TOKEN, user: USER });
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ reservations: [makeReservation('confirmed')] }),
+      });
+      renderPage();
       expect(await screen.findByRole('button', { name: es.trips.card.cancel })).toBeInTheDocument();
+    });
+  });
+
+  describe('pending payment banner', () => {
+    it('shows the banner when a held reservation exists', async () => {
+      useAuth.mockReturnValue({ token: TOKEN, user: USER });
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ reservations: [makeReservation('held')] }),
+      });
+      renderPage();
+      expect(await screen.findByText(es.trips.banner.title)).toBeInTheDocument();
+    });
+
+    it('does not show the banner for confirmed reservations', async () => {
+      useAuth.mockReturnValue({ token: TOKEN, user: USER });
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ reservations: [makeReservation('confirmed')] }),
+      });
+      renderPage();
+      await screen.findByText(es.trips.status.confirmed);
+      expect(screen.queryByText(es.trips.banner.title)).not.toBeInTheDocument();
+    });
+
+    it('calls saveCheckoutIntent and navigates to checkout when card button is clicked', async () => {
+      useAuth.mockReturnValue({ token: TOKEN, user: USER });
+      const reservation = makeReservation('held');
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ reservations: [reservation] }),
+      });
+      renderPage();
+      const btn = await screen.findByRole('button', { name: new RegExp(es.trips.card.complete_payment) });
+      fireEvent.click(btn);
+      expect(saveCheckoutIntent).toHaveBeenCalledWith(
+        expect.objectContaining({ property: expect.objectContaining({ id: 'prop-uuid' }) }),
+      );
+      expect(mockNavigate).toHaveBeenCalledWith({ to: '/booking/checkout' });
+    });
+
+    it('calls saveCheckoutIntent and navigates to checkout when banner CTA is clicked', async () => {
+      useAuth.mockReturnValue({ token: TOKEN, user: USER });
+      const reservation = makeReservation('held');
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ reservations: [reservation] }),
+      });
+      renderPage();
+      const cta = await screen.findByRole('button', { name: new RegExp(es.trips.banner.cta) });
+      fireEvent.click(cta);
+      expect(saveCheckoutIntent).toHaveBeenCalledWith(
+        expect.objectContaining({ property: expect.objectContaining({ id: 'prop-uuid' }) }),
+      );
+      expect(mockNavigate).toHaveBeenCalledWith({ to: '/booking/checkout' });
     });
   });
 
@@ -195,25 +269,15 @@ describe('TripsPage', () => {
       expect(await screen.findByText(es.trips.status.failed)).toBeInTheDocument();
     });
 
-    it('shows expired status chip', async () => {
+    it('does not render expired reservations', async () => {
       useAuth.mockReturnValue({ token: TOKEN, user: USER });
       (global.fetch as jest.Mock).mockResolvedValue({
         ok: true,
         json: () => Promise.resolve({ reservations: [makeReservation('expired')] }),
       });
       renderPage();
-      expect(await screen.findByText(es.trips.status.expired)).toBeInTheDocument();
-    });
-
-    it('does not show cancel button for expired reservations', async () => {
-      useAuth.mockReturnValue({ token: TOKEN, user: USER });
-      (global.fetch as jest.Mock).mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({ reservations: [makeReservation('expired')] }),
-      });
-      renderPage();
-      await screen.findByText(es.trips.status.expired);
-      expect(screen.queryByRole('button', { name: es.trips.card.cancel })).not.toBeInTheDocument();
+      expect(await screen.findByText(es.trips.empty)).toBeInTheDocument();
+      expect(screen.queryByText(es.trips.status.expired)).not.toBeInTheDocument();
     });
 
     it('does not show cancel button for failed reservations', async () => {
@@ -229,14 +293,14 @@ describe('TripsPage', () => {
   });
 
   describe('reservation card content', () => {
-    it('renders property name in uppercase when snapshot is present', async () => {
+    it('renders property name when snapshot is present', async () => {
       useAuth.mockReturnValue({ token: TOKEN, user: USER });
       (global.fetch as jest.Mock).mockResolvedValue({
         ok: true,
         json: () => Promise.resolve({ reservations: [makeReservation('confirmed')] }),
       });
       renderPage();
-      expect(await screen.findByText('HOTEL TEST')).toBeInTheDocument();
+      expect(await screen.findByText('Hotel Test')).toBeInTheDocument();
     });
 
     it('renders em-dash placeholder when snapshot is null', async () => {
@@ -281,6 +345,23 @@ describe('TripsPage', () => {
       await waitFor(() => {
         expect(screen.queryByText(es.trips.cancel_dialog.title)).not.toBeInTheDocument();
       });
+    });
+
+    it('does not close the dialog when cancellation is in progress', async () => {
+      useAuth.mockReturnValue({ token: TOKEN, user: USER });
+      (global.fetch as jest.Mock)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ reservations: [makeReservation('confirmed')] }),
+        })
+        .mockReturnValue(new Promise(() => {}));
+      renderPage();
+      const cancelBtn = await screen.findByRole('button', { name: es.trips.card.cancel });
+      fireEvent.click(cancelBtn);
+      await screen.findByText(es.trips.cancel_dialog.title);
+      fireEvent.click(screen.getByRole('button', { name: es.trips.cancel_dialog.confirm }));
+      // dialog should still be open (cancelling in progress)
+      expect(screen.getByText(es.trips.cancel_dialog.title)).toBeInTheDocument();
     });
 
     it('calls the cancel endpoint when confirm cancel is clicked', async () => {

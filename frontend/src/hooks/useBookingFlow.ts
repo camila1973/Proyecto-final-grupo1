@@ -11,7 +11,7 @@ export interface CheckoutIntent {
 
 const KEY = 'checkoutIntent';
 
-const saveCheckoutIntent = (intent: CheckoutIntent): void =>
+export const saveCheckoutIntent = (intent: CheckoutIntent): void =>
   sessionStorage.setItem(KEY, JSON.stringify(intent));
 
 export const peekCheckoutIntent = (): CheckoutIntent | null => {

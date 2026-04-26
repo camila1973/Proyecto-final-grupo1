@@ -72,7 +72,7 @@ describe("HoldExpiryService", () => {
 
       await service.expireHolds();
 
-      expect(expire).toHaveBeenCalledWith(row.id);
+      expect(expire).toHaveBeenCalledWith(row.id, "hold ttl elapsed");
       expect(unhold).toHaveBeenCalledWith(
         row.room_id,
         row.check_in,
