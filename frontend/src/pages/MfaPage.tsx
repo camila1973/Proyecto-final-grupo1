@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
-import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
 import Alert from '@mui/material/Alert';
 import { API_BASE } from '../env';
 import { useAuth } from '../hooks/useAuth';
 import { startCheckoutAfterLogin } from '../hooks/useBookingFlow';
+import LabeledField from '../components/LabeledField';
 
 type MfaSearch = { challengeId: string | undefined };
 type MfaErrorKey = 'expired' | 'too_many_attempts' | 'invalid_code' | 'generic';
@@ -90,7 +90,7 @@ export default function MfaPage() {
             {showRetryLink && (
               <span>
                 {' '}
-                <a href="#/login" className="underline">
+                <a href="/login" className="underline">
                   {t('mfa.try_again_link')}
                 </a>
               </span>
@@ -99,46 +99,37 @@ export default function MfaPage() {
         )}
 
         <form onSubmit={handleSubmit} noValidate>
-          <div className="mb-6">
-            <label className="block text-xs font-semibold text-gray-500 mb-1">
-              {t('mfa.code_label')}
-            </label>
-            <TextField
-              fullWidth
-              size="small"
-              placeholder="000000"
-              value={code}
-              onChange={(e) => {
-                const val = e.target.value.replace(/\D/g, '').slice(0, 6);
-                setCode(val);
-                if (codeError) setCodeError(undefined);
-              }}
-              error={!!codeError}
-              helperText={codeError}
-              inputProps={{
+          <LabeledField
+            label={t('mfa.code_label')}
+            wrapperClassName="mb-6"
+            placeholder="000000"
+            value={code}
+            onChange={(e) => {
+              const val = e.target.value.replace(/\D/g, '').slice(0, 6);
+              setCode(val);
+              if (codeError) setCodeError(undefined);
+            }}
+            error={!!codeError}
+            helperText={codeError}
+            slotProps={{
+              htmlInput: {
                 'aria-label': t('mfa.code_label'),
                 inputMode: 'numeric',
                 maxLength: 6,
                 style: { letterSpacing: '0.3em', fontSize: '1.25rem', textAlign: 'center' },
-              }}
-            />
-          </div>
+              },
+            }}
+          />
 
           <Button
             type="submit"
             fullWidth
             variant="contained"
+            size='large'
             disabled={loading}
-            sx={{
-              bgcolor: '#2d3a8c',
-              '&:hover': { bgcolor: '#1e2a6e' },
-              textTransform: 'none',
-              fontWeight: 600,
-              py: 1.2,
-              fontSize: '0.95rem',
-            }}
+            loading={loading}
           >
-            {loading ? '...' : t('mfa.submit')}
+            {t('mfa.submit')}
           </Button>
         </form>
       </div>

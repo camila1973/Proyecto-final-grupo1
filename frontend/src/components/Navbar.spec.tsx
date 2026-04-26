@@ -31,16 +31,16 @@ describe('Navbar', () => {
   describe('branding', () => {
     it('renders the TravelHub brand name', async () => {
       renderNavbar();
-      expect(await screen.findByText('TravelHub')).toBeInTheDocument();
+      expect(await screen.findByRole('img', { name: 'TravelHub' })).toBeInTheDocument();
     });
   });
 
   describe('Spanish', () => {
     it('shows the Spanish language name and currency in the trigger button', async () => {
       renderNavbar('es');
-      expect(await screen.findByRole('button', { name: /select language/i })).toHaveTextContent(
-        `${es.nav.language} · COP`,
-      );
+      const btn = await screen.findByRole('button', { name: /select language/i });
+      expect(btn).toHaveTextContent(es.nav.language);
+      expect(btn).toHaveTextContent('COP');
     });
 
     it('renders register and login links in Spanish', async () => {
@@ -68,48 +68,46 @@ describe('Navbar', () => {
   describe('dropdown', () => {
     it('is closed by default', async () => {
       renderNavbar('es');
-      await screen.findByText('TravelHub');
-      expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+      await screen.findByRole('img', { name: 'TravelHub' });
+      expect(screen.queryByRole('button', { name: 'Español' })).not.toBeInTheDocument();
     });
 
     it('opens when the trigger button is clicked', async () => {
       renderNavbar('es');
       fireEvent.click(await screen.findByRole('button', { name: /select language/i }));
-      expect(screen.getByRole('listbox')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Español' })).toBeInTheDocument();
     });
 
     it('lists all available languages', async () => {
       renderNavbar('es');
       fireEvent.click(await screen.findByRole('button', { name: /select language/i }));
-      expect(screen.getByRole('option', { name: 'Español' })).toBeInTheDocument();
-      expect(screen.getByRole('option', { name: 'English' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Español' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'English' })).toBeInTheDocument();
     });
 
     it('marks the current language as selected', async () => {
       renderNavbar('es');
       fireEvent.click(await screen.findByRole('button', { name: /select language/i }));
-      expect(screen.getByRole('option', { name: 'Español' })).toHaveAttribute('aria-selected', 'true');
-      expect(screen.getByRole('option', { name: 'English' })).toHaveAttribute('aria-selected', 'false');
+      expect(screen.getByRole('button', { name: 'Español' })).toHaveAttribute('aria-pressed', 'true');
+      expect(screen.getByRole('button', { name: 'English' })).toHaveAttribute('aria-pressed', 'false');
     });
 
-    it('switches to English and closes the dropdown when English is selected', async () => {
+    it('switches to English when English is selected', async () => {
       renderNavbar('es');
       fireEvent.click(await screen.findByRole('button', { name: /select language/i }));
-      fireEvent.click(screen.getByRole('option', { name: 'English' }));
+      fireEvent.click(screen.getByRole('button', { name: 'English' }));
 
-      expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /select language/i })).toHaveTextContent(
-        en.nav.language,
-      );
+      expect(screen.getByRole('button', { name: 'English' })).toHaveAttribute('aria-pressed', 'true');
+      expect(screen.getByRole('button', { name: 'Español' })).toHaveAttribute('aria-pressed', 'false');
     });
 
-    it('closes when clicking outside', async () => {
+    it('closes when the Done button is clicked', async () => {
       renderNavbar('es');
       fireEvent.click(await screen.findByRole('button', { name: /select language/i }));
-      expect(screen.getByRole('listbox')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Español' })).toBeInTheDocument();
 
-      fireEvent.mouseDown(document.body);
-      expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Listo' }));
+      expect(screen.queryByRole('button', { name: 'Español' })).not.toBeInTheDocument();
     });
   });
 });

@@ -1,8 +1,12 @@
 {
   "nav": {
     "language": "English",
+    "locale_language": "Language",
+    "locale_currency": "Currency",
     "register": "Register",
     "login": "Sign in",
+    "profile": "My Profile",
+    "myBookings": "My Bookings",
     "logout": "Sign out"
   },
   "hero": {
@@ -16,6 +20,11 @@
     "check_out_label": "Check-out",
     "guests_label": "Who is traveling?",
     "guests_placeholder": "2 adults · 1 Room",
+    "guests_summary_one": "{{count}} traveler",
+    "guests_summary_other": "{{count}} travelers",
+    "guests_adults": "Adults",
+    "guests_children": "Children",
+    "guests_done": "Done",
     "search": "Search"
   },
   "recommendations": {
@@ -221,6 +230,124 @@
       "ocean": "Ocean View",
       "mountain": "Mountain View",
       "pool": "Pool View"
+    }
+  },
+  "trips": {
+    "title": "My Bookings",
+    "error": "Could not load your reservations. Please try again.",
+    "empty": "You have no reservations yet.",
+    "explore": "Explore destinations",
+    "section": {
+      "active": "Reservations",
+      "past": "Past reservations"
+    },
+    "status": {
+      "held": "On hold",
+      "submitted": "Pending",
+      "confirmed": "Confirmed",
+      "failed": "Failed",
+      "expired": "Expired",
+      "cancelled": "Cancelled"
+    },
+    "card": {
+      "reservation_id": "Reservation",
+      "check_in": "Check In:",
+      "check_out": "Check Out:",
+      "booked_on": "Booked on",
+      "total_paid": "total paid",
+      "cancel": "Cancel"
+    },
+    "cancel_dialog": {
+      "title": "Cancel reservation?",
+      "body": "This action cannot be undone. Are you sure you want to cancel this reservation?",
+      "keep": "Keep reservation",
+      "confirm": "Yes, cancel"
+    }
+  },
+  "booking": {
+    "checkout": {
+      "back": "Back to hotel",
+      "title": "Complete your booking",
+      "step_details": "Details",
+      "step_confirmation": "Confirmation",
+      "error_create": "Could not create the reservation. Please try again.",
+      "guest": {
+        "section_title": "Guest details",
+        "first_name": "First name",
+        "last_name": "Last name",
+        "email": "Email address",
+        "email_hint": "We'll send your confirmation to this email",
+        "phone": "Phone"
+      },
+      "payment": {
+        "section_title": "Payment method"
+      },
+      "policy": {
+        "title": "Non-refundable rate",
+        "body": "If you modify or cancel the reservation, you will not receive a refund or credit for a future stay."
+      },
+      "errors": {
+        "first_name_required": "First name is required",
+        "last_name_required": "Last name is required",
+        "email_required": "Email address is required",
+        "email_invalid": "Enter a valid email address",
+        "phone_required": "Phone number is required",
+        "payment_form": "Payment form error",
+        "guest_info": "Error saving guest details. Please try again.",
+        "payment_initiate": "Error initiating payment. Please try again.",
+        "payment_process": "Error processing payment"
+      },
+      "summary": {
+        "title": "Payment summary",
+        "price_per_night": "Price per night",
+        "subtotal": "Subtotal",
+        "total": "Total",
+        "taxes_included": "Taxes included",
+        "book_now": "Book now",
+        "finish_later": "Finish later",
+        "hold_notice": "We hold your reservation for 15 minutes",
+        "secure_payment": "Secure encrypted payment · TLS 1.3",
+        "check_in": "Check-in",
+        "check_out": "Check-out",
+        "check_in_time": "3:00 PM",
+        "check_out_time": "12:00 PM",
+        "room_type_label": "Room",
+        "nights_one": "{{count}} night",
+        "nights_other": "{{count}} nights",
+        "guests_one": "{{count}} guest",
+        "guests_other": "{{count}} guests"
+      }
+    },
+    "confirmation": {
+      "processing_title": "Processing your payment…",
+      "processing_body": "This may take a few seconds. Do not close this page.",
+      "failed_title": "Payment not processed",
+      "failed_default": "Your payment was declined. Please try another card.",
+      "back_home": "Back to home",
+      "reservation_label": "Booking",
+      "timeout_title": "Payment received!",
+      "success_title": "Booking confirmed",
+      "timeout_body": "We received your payment. We will notify you by email when your booking is confirmed.",
+      "success_body": "You will receive a confirmation email with all the details. Have a great trip!",
+      "view_trips": "View my bookings",
+      "go_home": "Go to home",
+      "cancellation_notice": "Free cancellation up to 24 hours before check-in. After that, a one-night charge applies.",
+      "hotel_card": {
+        "check_in": "Check-in",
+        "check_in_time": "From 3:00 PM",
+        "check_out": "Check-out",
+        "check_out_time": "Until 12:00 PM",
+        "room_section": "Room",
+        "nights_one": "{{count}} night",
+        "nights_other": "{{count}} nights",
+        "confirmed_chip": "Confirmed"
+      },
+      "payment_summary": {
+        "title": "Payment summary",
+        "price_per_night": "Price per night",
+        "subtotal": "Subtotal",
+        "total": "Total"
+      }
     }
   },
   "footer": {

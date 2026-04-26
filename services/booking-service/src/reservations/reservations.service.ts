@@ -59,6 +59,18 @@ export class ReservationsService {
       };
     }
 
+    // Cancel any stale hold the booker has on a different room/dates
+    const staleHold = await this.reservationsRepo.findHeldByBookerId(
+      dto.bookerId,
+    );
+    if (staleHold) {
+      await this.cancel(staleHold.id, "superseded by new hold").catch((err) => {
+        this.logger.warn(
+          `Failed to cancel stale hold ${staleHold.id} for booker ${dto.bookerId}: ${err}`,
+        );
+      });
+    }
+
     // Create inventory hold — locks room and starts 15-min clock
     const { holdId, expiresAt } = await this.holdsService.create({
       bookerId: dto.bookerId,
@@ -70,24 +82,36 @@ export class ReservationsService {
     const holdExpiresAt = new Date(expiresAt);
 
     let fareBreakdown: FareBreakdown;
+    let snapshot: import("../database/database.types.js").ReservationSnapshot;
     try {
-      const location = await this.inventoryClient.getRoomLocation(dto.roomId);
+      const [roomDetails, propertyInfo] = await Promise.all([
+        this.inventoryClient.getRoomDetails(dto.roomId),
+        this.inventoryClient.getPropertySnapshot(dto.propertyId),
+      ]);
       fareBreakdown = await this.fareCalculator.calculate({
         propertyId: dto.propertyId,
         roomId: dto.roomId,
         partnerId: dto.partnerId,
         checkIn: new Date(dto.checkIn),
         checkOut: new Date(dto.checkOut),
-        propertyLocation: location,
+        propertyLocation: roomDetails,
       });
+      snapshot = {
+        propertyName: propertyInfo.name,
+        propertyCity: propertyInfo.city,
+        propertyNeighborhood: propertyInfo.neighborhood,
+        propertyCountryCode: propertyInfo.countryCode,
+        propertyThumbnailUrl: propertyInfo.thumbnailUrl,
+        roomType: roomDetails.roomType,
+      };
     } catch (err) {
-      // Release the hold if we can't compute the fare
+      // Release the hold if we can't compute the fare or fetch snapshot
       this.logger.error(
-        `Fare calculation failed for room ${dto.roomId}: ${err}`,
+        `Reservation setup failed for room ${dto.roomId}: ${err}`,
       );
       await this.holdsService.release(holdId).catch((releaseErr) => {
         this.logger.warn(
-          `Failed to release hold ${holdId} after fare error: ${releaseErr}`,
+          `Failed to release hold ${holdId} after setup error: ${releaseErr}`,
         );
       });
       throw err;
@@ -108,6 +132,7 @@ export class ReservationsService {
         fee_total_usd: fareBreakdown.feeTotalUsd,
         grand_total_usd: fareBreakdown.totalUsd,
         hold_expires_at: holdExpiresAt,
+        snapshot,
       });
     } catch (err: any) {
       // Unique constraint violation — a concurrent request already inserted the row.

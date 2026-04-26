@@ -8,7 +8,9 @@ import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
 import SearchIcon from '@mui/icons-material/Search';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import { API_BASE } from '../env';
+import { fetchCitySuggestions, type CitySuggestion } from '../utils/queries';
+import LabeledField from './LabeledField';
+import GuestSelector from './GuestSelector';
 
 interface SearchBarFormProps {
   defaultCity?: string;
@@ -16,22 +18,6 @@ interface SearchBarFormProps {
   defaultCheckIn?: string;
   defaultCheckOut?: string;
   defaultGuests?: number;
-}
-
-export interface CitySuggestion {
-  id: string;
-  city: string;
-  country: string;
-}
-
-async function fetchCitySuggestions(query: string): Promise<CitySuggestion[]> {
-  if (!query.trim()) return [];
-  const res = await fetch(
-    `${API_BASE}/api/search/cities?q=${encodeURIComponent(query)}`,
-  );
-  if (!res.ok) return [];
-  const data = await res.json();
-  return data.suggestions ?? [];
 }
 
 // ─── CityAutocomplete ─────────────────────────────────────────────────────────
@@ -130,7 +116,8 @@ export default function SearchBarForm({
   const [checkOut, setCheckOut] = useState<Dayjs | null>(
     dayjs(defaultCheckOut || offsetDateISO(2)),
   );
-  const [guests, setGuests] = useState(defaultGuests);
+  const [adults, setAdults] = useState(defaultGuests);
+  const [children, setChildren] = useState(0);
   const [checkInOpen, setCheckInOpen] = useState(false);
   const [checkOutOpen, setCheckOutOpen] = useState(false);
   const [cityError, setCityError] = useState('');
@@ -154,7 +141,7 @@ export default function SearchBarForm({
         countryCode: countryCode.trim(),
         checkIn: checkIn?.format('YYYY-MM-DD') ?? todayISO(),
         checkOut: checkOut?.format('YYYY-MM-DD') ?? offsetDateISO(2),
-        guests: Math.max(1, guests),
+        guests: adults + children,
         priceMin: undefined,
         priceMax: undefined,
         amenities: undefined,
@@ -174,27 +161,29 @@ export default function SearchBarForm({
   return (
     <div className="bg-white rounded-xl px-5 py-3.5 flex flex-col md:flex-row items-stretch gap-0">
       {/* Destination */}
-      <div className="flex-1 flex flex-col justify-center py-1 pr-4">
-        <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-0.5">
-          {t('hero.destination_label')}
-        </label>
+      <LabeledField
+        label={t('hero.destination_label')}
+        compact
+        wrapperClassName="flex-1 flex flex-col justify-center py-1 pr-4"
+      >
         <CityAutocomplete
           onChange={(val, code) => { setCity(val); setCountryCode(code ?? ''); }}
           onKeyDown={(e) => { if (e.key === 'Enter') handleSearch(); }}
-          value={{ id: '', city, country: countryCode }} // for correct option highlighting
+          value={{ id: '', city, country: countryCode }}
           error={!!cityError}
           helperText={cityError}
           placeholder={t('hero.destination_placeholder')}
         />
-      </div>
+      </LabeledField>
 
       <div className="hidden md:block w-px bg-gray-200 my-2" />
 
       {/* Check-in */}
-      <div className="flex-1 flex flex-col justify-center py-1 px-4">
-        <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-0.5">
-          {t('hero.check_in_label')}
-        </label>
+      <LabeledField
+        label={t('hero.check_in_label')}
+        compact
+        wrapperClassName="flex-1 flex flex-col justify-center py-1 px-4"
+      >
         <DatePicker
           value={checkIn}
           onChange={(val) => {
@@ -216,15 +205,16 @@ export default function SearchBarForm({
           }}
           sx={dateSx}
         />
-      </div>
+      </LabeledField>
 
       <div className="hidden md:block w-px bg-gray-200 my-2" />
 
       {/* Check-out */}
-      <div className="flex-1 flex flex-col justify-center py-1 px-4">
-        <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-0.5">
-          {t('hero.check_out_label')}
-        </label>
+      <LabeledField
+        label={t('hero.check_out_label')}
+        compact
+        wrapperClassName="flex-1 flex flex-col justify-center py-1 px-4"
+      >
         <DatePicker
           value={checkOut}
           onChange={(val) => setCheckOut(val)}
@@ -241,33 +231,34 @@ export default function SearchBarForm({
           }}
           sx={dateSx}
         />
-      </div>
+      </LabeledField>
 
       <div className="hidden md:block w-px bg-gray-200 my-2" />
 
       {/* Guests */}
-      <div className="flex-1 flex flex-col justify-center py-1 pl-4 pr-4">
-        <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-0.5">
-          {t('hero.guests_label')}
-        </label>
-        <TextField
-          variant="standard"
-          type="number"
-          value={guests}
-          onChange={(e) => setGuests(Math.max(1, Number(e.target.value)))}
-          slotProps={{ htmlInput: { min: 1 }, input: { disableUnderline: true } }}
-          sx={{ '& .MuiInputBase-root': { fontSize: '0.875rem', color: '#374151' } }}
+      <LabeledField
+        label={t('hero.guests_label')}
+        compact
+        wrapperClassName="flex-1 flex flex-col justify-center py-1 pl-4 pr-4"
+      >
+        <GuestSelector
+          adults={adults}
+          children={children}
+          onChange={({ adults: a, children: c }) => {
+            setAdults(a);
+            setChildren(c);
+          }}
         />
-      </div>
+      </LabeledField>
 
       {/* Search button */}
       <div className="flex items-center pl-2">
         <Button
           variant="contained"
+          size="large"
           color="warning"
           onClick={handleSearch}
           startIcon={<SearchIcon fontSize="small" />}
-          sx={{ textTransform: 'none', fontWeight: 600, whiteSpace: 'nowrap', px: 3, py: 1.5, borderRadius: 2 }}
         >
           {t('hero.search')}
         </Button>

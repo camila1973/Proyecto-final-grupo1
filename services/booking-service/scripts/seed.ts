@@ -210,6 +210,41 @@ const PARTNER_FEES = [
 
 const HOLD_TTL_MS = 900_000; // 900 s — matches holds.service.ts HOLD_TTL_SECONDS
 
+const SNAPSHOTS = {
+  gran_caribe_deluxe: {
+    propertyName: "Gran Caribe Resort",
+    propertyCity: "Cancún",
+    propertyNeighborhood: "Zona Hotelera",
+    propertyCountryCode: "MX",
+    propertyThumbnailUrl: null,
+    roomType: "deluxe",
+  },
+  gran_caribe_suite: {
+    propertyName: "Gran Caribe Resort",
+    propertyCity: "Cancún",
+    propertyNeighborhood: "Zona Hotelera",
+    propertyCountryCode: "MX",
+    propertyThumbnailUrl: null,
+    roomType: "suite",
+  },
+  historico_cdmx_deluxe: {
+    propertyName: "Hotel Histórico Centro",
+    propertyCity: "Ciudad de México",
+    propertyNeighborhood: "Centro Histórico",
+    propertyCountryCode: "MX",
+    propertyThumbnailUrl: null,
+    roomType: "deluxe",
+  },
+  hostal_sol_standard: {
+    propertyName: "Hostal Sol Cancún",
+    propertyCity: "Cancún",
+    propertyNeighborhood: null,
+    propertyCountryCode: "MX",
+    propertyThumbnailUrl: null,
+    roomType: "standard",
+  },
+};
+
 const RESERVATIONS = [
   // ── confirmed — Gran Caribe, Deluxe King (room 1), 3 nights @ $310 ─────────
   // Hold placed ~2026-04-01, reservation confirmed same day.
@@ -223,6 +258,7 @@ const RESERVATIONS = [
     check_in: "2027-03-01",
     check_out: "2027-03-04",
     status: "confirmed",
+    snapshot: SNAPSHOTS.gran_caribe_deluxe,
     fare_breakdown: {
       nights: 3,
       roomRateUsd: 310,
@@ -253,6 +289,7 @@ const RESERVATIONS = [
     check_in: "2027-07-05",
     check_out: "2027-07-09",
     status: "confirmed",
+    snapshot: SNAPSHOTS.gran_caribe_suite,
     fare_breakdown: {
       nights: 4,
       roomRateUsd: 370,
@@ -283,6 +320,7 @@ const RESERVATIONS = [
     check_in: "2027-02-10",
     check_out: "2027-02-13",
     status: "confirmed",
+    snapshot: SNAPSHOTS.historico_cdmx_deluxe,
     fare_breakdown: {
       nights: 3,
       roomRateUsd: 270,
@@ -314,6 +352,7 @@ const RESERVATIONS = [
     check_in: "2027-05-10",
     check_out: "2027-05-13",
     status: "submitted",
+    snapshot: SNAPSHOTS.hostal_sol_standard,
     fare_breakdown: {
       nights: 3,
       roomRateUsd: 60,
@@ -414,6 +453,7 @@ async function seed() {
         check_in: r.check_in,
         check_out: r.check_out,
         status: r.status,
+        snapshot: r.snapshot,
         fare_breakdown: r.fare_breakdown,
         tax_total_usd: r.tax_total_usd,
         fee_total_usd: r.fee_total_usd,

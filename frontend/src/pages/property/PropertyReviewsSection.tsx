@@ -2,49 +2,7 @@ import { useInfiniteQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import Button from '@mui/material/Button';
 import StarIcon from '@mui/icons-material/Star';
-import { API_BASE } from '../env';
-
-interface Review {
-  id: string;
-  reviewerName: string;
-  reviewerCountry: string | null;
-  rating: number;
-  language: string;
-  title: string | null;
-  comment: string;
-  createdAt: string;
-}
-
-interface ReviewsResponse {
-  meta: {
-    page: number;
-    pageSize: number;
-    total: number;
-    totalPages: number;
-    averageRating: number;
-  };
-  reviews: Review[];
-}
-
-const PAGE_SIZE = 5;
-
-async function fetchReviews(
-  propertyId: string,
-  page: number,
-  lang?: string,
-): Promise<ReviewsResponse> {
-  const params = new URLSearchParams({
-    page: String(page),
-    limit: String(PAGE_SIZE),
-  });
-  if (lang) params.set('lang', lang);
-  const url = `${API_BASE}/api/search/properties/${propertyId}/reviews?${params.toString()}`;
-  const res = await fetch(url);
-  if (!res.ok) {
-    throw new Error(`Failed to fetch reviews for property ${propertyId}`);
-  }
-  return res.json() as Promise<ReviewsResponse>;
-}
+import { fetchReviews } from '../../utils/queries';
 
 function StarRow({ value }: { value: number }) {
   const rounded = Math.round(value);

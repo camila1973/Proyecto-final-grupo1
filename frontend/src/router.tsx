@@ -5,13 +5,16 @@ import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import HomePage from './pages/HomePage';
 import SearchPage from './pages/search';
-import PropertyDetailPage from './pages/PropertyDetailPage';
+import PropertyDetailPage from './pages/property';
 import RegisterPage from './pages/RegisterPage';
 import RegisterSuccess from './pages/RegisterSuccess';
 import LoginPage from './pages/LoginPage';
 import MfaPage from './pages/MfaPage';
-import CheckoutPage from './pages/checkout/index';
+import CheckoutPage from './pages/booking/checkout';
 import BookingConfirmationPage from './pages/booking/confirmation';
+import ProfilePage from './pages/ProfilePage';
+import TripsPage from './pages/trips';
+
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -19,7 +22,9 @@ const rootRoute = createRootRoute({
       <LocaleProvider>
         <div className="flex flex-col min-h-screen bg-[#f8f9ff]">
           <Navbar />
-          <Outlet />
+          <div className="flex flex-col flex-1">
+            <Outlet />
+          </div>
           <Footer />
         </div>
       </LocaleProvider>
@@ -99,15 +104,23 @@ const checkoutRoute = createRoute({
 
 const bookingConfirmationRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/booking/confirmation/$id',
+  path: '/booking/confirmation',
   validateSearch: (search: Record<string, unknown>) => ({
-    propertyName: (search.propertyName as string) ?? '',
-    roomType: (search.roomType as string) ?? '',
-    checkIn: (search.checkIn as string) ?? '',
-    checkOut: (search.checkOut as string) ?? '',
-    totalUsd: (search.totalUsd as string) ?? '0',
+    reservationId: (search.reservationId as string) ?? '',
   }),
   component: BookingConfirmationPage,
+});
+
+const profileRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/profile',
+  component: ProfilePage,
+});
+
+const myBookingsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/trips',
+  component: TripsPage,
 });
 
 const routeTree = rootRoute.addChildren([
@@ -120,6 +133,8 @@ const routeTree = rootRoute.addChildren([
   mfaRoute,
   checkoutRoute,
   bookingConfirmationRoute,
+  profileRoute,
+  myBookingsRoute,
 ]);
 
 export function createAppRouter() {

@@ -1,5 +1,8 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { CheckoutForm } from './CheckoutForm';
+import { setupTestI18n } from '../../../i18n/test-utils';
+
+setupTestI18n('es');
 
 const mockNavigate = jest.fn();
 const mockConfirmPayment = jest.fn();
@@ -13,7 +16,7 @@ jest.mock('@tanstack/react-router', () => ({
   useNavigate: () => mockNavigate,
 }));
 
-jest.mock('../../context/LocaleContext', () => ({
+jest.mock('../../../context/LocaleContext', () => ({
   useLocale: () => ({ currency: 'USD' }),
 }));
 
@@ -23,12 +26,15 @@ jest.mock('@stripe/react-stripe-js', () => ({
   useElements: () => mockElements,
 }));
 
-jest.mock('../../env', () => ({ API_BASE: 'http://localhost:3000' }));
+jest.mock('../../../env', () => ({ API_BASE: 'http://localhost:3000' }));
 
 const RESERVATION = {
   id: 'res_123',
+  checkIn: '2026-06-01',
+  checkOut: '2026-06-03',
   grandTotalUsd: 250,
   holdExpiresAt: '2026-06-01T00:15:00Z',
+  snapshot: null,
   fareBreakdown: {
     nights: 2,
     roomRateUsd: 100,
@@ -41,17 +47,10 @@ const RESERVATION = {
   },
 };
 
-const INTENT = {
-  property: { id: 'prop_1', name: 'Hotel Test' },
-  room: { id: 'room_1', type: 'Suite', partnerId: 'partner_1', totalUsd: 250 },
-  stay: { checkIn: '2026-06-01', checkOut: '2026-06-03', guests: 2 },
-};
-
 function renderForm(overrides: Partial<React.ComponentProps<typeof CheckoutForm>> = {}) {
   return render(
     <CheckoutForm
       reservation={RESERVATION}
-      intent={INTENT}
       email="user@example.com"
       firstName="Juan"
       lastName="García"
@@ -62,7 +61,7 @@ function renderForm(overrides: Partial<React.ComponentProps<typeof CheckoutForm>
 }
 
 function getForm() {
-  return screen.getByRole('button', { name: /Reservar/i }).closest('form')!;
+  return document.querySelector<HTMLFormElement>('#checkout-form')!;
 }
 
 describe('CheckoutForm', () => {
@@ -103,19 +102,9 @@ describe('CheckoutForm', () => {
       expect(screen.getByTestId('payment-element')).toBeInTheDocument();
     });
 
-    it('renders the submit button with the reservation total', () => {
-      renderForm();
-      expect(screen.getByRole('button', { name: /Reservar/i })).toBeInTheDocument();
-    });
-
-    it('renders the "Finalizar después" button', () => {
-      renderForm();
-      expect(screen.getByRole('button', { name: 'Finalizar después' })).toBeInTheDocument();
-    });
-
     it('renders the cancellation policy section', () => {
       renderForm();
-      expect(screen.getByText('No reembolsable')).toBeInTheDocument();
+      expect(screen.getByText('Tarifa no reembolsable')).toBeInTheDocument();
     });
   });
 
@@ -233,7 +222,7 @@ describe('CheckoutForm', () => {
 
       // No error shown, no navigation
       expect(mockNavigate).not.toHaveBeenCalled();
-      expect(screen.queryByRole('alert')).toBeNull();
+      expect(screen.queryByRole('alert', { name: /error/i })).toBeNull();
     });
   });
 
@@ -264,13 +253,17 @@ describe('CheckoutForm', () => {
     });
   });
 
-  describe('"Finalizar después" button', () => {
-    it('calls history.back() when clicked', () => {
-      const backSpy = jest.spyOn(history, 'back').mockImplementation(() => {});
-      renderForm();
-      fireEvent.click(screen.getByRole('button', { name: 'Finalizar después' }));
-      expect(backSpy).toHaveBeenCalled();
-      backSpy.mockRestore();
+  describe('handleSubmit — setLoading prop callback', () => {
+    it('calls setLoading(true) when submit starts and setLoading(false) on error', async () => {
+      const setLoading = jest.fn();
+      mockSubmitElements.mockResolvedValue({ error: { message: 'Formulario inválido' } });
+      renderForm({ setLoading });
+      fireEvent.submit(getForm());
+      await waitFor(() => {
+        expect(screen.getByText('Formulario inválido')).toBeInTheDocument();
+      });
+      expect(setLoading).toHaveBeenCalledWith(true);
+      expect(setLoading).toHaveBeenCalledWith(false);
     });
   });
 
@@ -287,12 +280,10 @@ describe('CheckoutForm', () => {
       renderForm();
       fireEvent.submit(getForm());
       await waitFor(() => {
-        expect(mockNavigate).toHaveBeenCalledWith(
-          expect.objectContaining({
-            to: '/booking/confirmation/$id',
-            params: { id: 'res_123' },
-          }),
-        );
+        expect(mockNavigate).toHaveBeenCalledWith({
+          to: '/booking/confirmation',
+          search: { reservationId: 'res_123' },
+        });
       });
     });
   });

@@ -294,5 +294,115 @@ describe("InventoryClient", () => {
         "Upstream service error: inventory-service",
       );
     });
+
+    it("hold throws NotFoundException when inventory returns 404", async () => {
+      const { client } = makeClient({
+        httpPost: jest
+          .fn()
+          .mockReturnValue(
+            throwError(() => ({ response: { status: 404, data: {} } })),
+          ),
+      });
+
+      await expect(client.hold(ROOM, FROM, TO)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  describe("getRoomDetails", () => {
+    it("returns country, city, and roomType on cache miss", async () => {
+      const { client, httpGet } = makeClient({
+        httpGet: jest
+          .fn()
+          .mockReturnValue(
+            of({ data: { country: "MX", city: "cancún", roomType: "Suite" } }),
+          ),
+      });
+
+      const result = await client.getRoomDetails("room-1");
+
+      expect(result).toEqual({
+        country: "MX",
+        city: "cancún",
+        roomType: "Suite",
+      });
+      expect(httpGet).toHaveBeenCalledWith(
+        expect.stringContaining("/rooms/room-1"),
+        expect.anything(),
+      );
+    });
+
+    it("returns cached value without calling inventory-service on cache hit", async () => {
+      const { client, httpGet } = makeClient({
+        cacheGet: jest.fn().mockResolvedValue(
+          JSON.stringify({
+            country: "MX",
+            city: "cancún",
+            roomType: "Suite",
+          }),
+        ),
+      });
+
+      const result = await client.getRoomDetails("room-1");
+
+      expect(result).toEqual({
+        country: "MX",
+        city: "cancún",
+        roomType: "Suite",
+      });
+      expect(httpGet).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("getPropertySnapshot", () => {
+    it("returns snapshot fields on success", async () => {
+      const property = {
+        name: "Hotel Test",
+        thumbnailUrl: "https://example.com/img.jpg",
+        neighborhood: "Centro",
+        city: "Cancún",
+        countryCode: "MX",
+      };
+      const { client } = makeClient({
+        httpGet: jest.fn().mockReturnValue(of({ data: property })),
+      });
+
+      const result = await client.getPropertySnapshot("prop-1");
+
+      expect(result).toEqual(property);
+    });
+
+    it("defaults neighborhood to null when absent", async () => {
+      const { client } = makeClient({
+        httpGet: jest.fn().mockReturnValue(
+          of({
+            data: {
+              name: "Hotel Test",
+              thumbnailUrl: null,
+              neighborhood: undefined,
+              city: "Cancún",
+              countryCode: "MX",
+            },
+          }),
+        ),
+      });
+
+      const result = await client.getPropertySnapshot("prop-1");
+
+      expect(result.neighborhood).toBeNull();
+    });
+
+    it("throws NotFoundException when inventory returns 404", async () => {
+      const { client } = makeClient({
+        httpGet: jest
+          .fn()
+          .mockReturnValue(throwError(() => ({ response: { status: 404 } }))),
+      });
+
+      await expect(client.getPropertySnapshot("missing-prop")).rejects.toThrow(
+        NotFoundException,
+      );
+    });
   });
 });

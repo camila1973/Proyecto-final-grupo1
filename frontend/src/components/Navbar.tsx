@@ -1,115 +1,32 @@
-import { useState, useEffect, useRef } from 'react';
+import logo from '../assets/logo.png';
 import { useTranslation } from 'react-i18next';
 import { Link } from '@tanstack/react-router';
-import { useLocale, LANGUAGES, type Language } from '../context/LocaleContext';
 import { useAuth } from '../hooks/useAuth';
-import Button from '@mui/material/Button';
+import { useTheme } from '@mui/material/styles';
+import LocaleSelector from './LocaleSelector';
 
 export default function Navbar() {
   const { t } = useTranslation();
-  const { language, currency, setLanguage } = useLocale();
   const { user, logout } = useAuth();
-  const [open, setOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  const handleSelect = (lang: Language) => {
-    setLanguage(lang);
-    setOpen(false);
-  };
-
-  useEffect(() => {
-    const handleMouseDown = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleMouseDown);
-    return () => document.removeEventListener('mousedown', handleMouseDown);
-  }, []);
+  const theme = useTheme();
 
   return (
-    <header className="bg-white border-b border-gray-200">
-      <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
+    <header className="bg-white" style={{ borderBottom: `2px solid ${theme.palette.primary.main}` }}>
+      <div className="max-w-[1152px] mx-auto px-6 h-20 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Link to="/" className="flex items-center gap-2 hover:opacity-80">
-            <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-              <circle cx="14" cy="14" r="14" fill="#3a608f" />
-              <path d="M8 14c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke="white" strokeWidth="2" fill="none" strokeLinecap="round"/>
-              <circle cx="14" cy="17" r="2.5" fill="white" />
-            </svg>
-            <span className="font-bold text-lg text-gray-900">TravelHub</span>
-            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">v2</span>
+          <Link to="/" className="flex items-center hover:opacity-80">
+            <img src={logo} alt="TravelHub" className="h-8 w-auto" />
           </Link>
-
-          <div ref={containerRef} style={{ position: 'relative' }}>
-            <Button
-              size="small"
-              aria-label="select language"
-              onClick={() => setOpen((prev) => !prev)}
-              endIcon={
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                  <path d="M3 4.5l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              }
-              sx={{
-                ml: 1,
-                borderRadius: 99,
-                border: '1px solid',
-                borderColor: 'grey.300',
-                color: 'text.secondary',
-                textTransform: 'none',
-                fontSize: '0.875rem',
-                px: 1.5,
-                py: 0.5,
-              }}
-            >
-              {t('nav.language')} · {currency}
-            </Button>
-
-            {open && (
-              <ul
-                role="listbox"
-                style={{
-                  position: 'absolute',
-                  top: '100%',
-                  left: 0,
-                  marginTop: 4,
-                  minWidth: 144,
-                  background: '#fff',
-                  border: '1px solid #e0e0e0',
-                  borderRadius: 4,
-                  padding: 0,
-                  listStyle: 'none',
-                  zIndex: 1300,
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-                }}
-              >
-                {LANGUAGES.map((lang) => (
-                  <li
-                    key={lang.value}
-                    role="option"
-                    aria-selected={language === lang.value}
-                    onClick={() => handleSelect(lang.value)}
-                    style={{
-                      padding: '8px 16px',
-                      fontSize: '0.875rem',
-                      cursor: 'pointer',
-                      background: language === lang.value ? '#f5f5f5' : 'transparent',
-                    }}
-                  >
-                    {lang.label}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+          <div className="w-px h-6 bg-gray-200 ml-3" />
+          <LocaleSelector />
         </div>
 
         <nav className="flex items-center gap-6 text-sm text-gray-700">
           {user ? (
             <>
-              <span className="text-gray-600">{user.email}</span>
-              <button onClick={logout} className="hover:text-gray-900">
+              <Link to="/profile" className="hover:text-gray-900">{t('nav.profile')}</Link>
+              <Link to="/trips" className="hover:text-gray-900">{t('nav.myBookings')}</Link>
+              <button onClick={logout} className="bg-transparent border-0 p-0 text-sm text-gray-700 hover:text-gray-900 cursor-pointer">
                 {t('nav.logout')}
               </button>
             </>

@@ -1,0 +1,62 @@
+import Box from '@mui/material/Box';
+import CircularProgress from '@mui/material/CircularProgress';
+import Divider from '@mui/material/Divider';
+import Typography from '@mui/material/Typography';
+import { useTranslation } from 'react-i18next';
+import { useLocale } from '../../../context/LocaleContext';
+import { formatPrice } from '../../../utils/currency';
+import VerticalCard from '../../../components/VerticalCard';
+import { type FareBreakdown } from '../checkout/types';
+
+function PriceRow({ label, value }: { label: string; value: string }) {
+  return (
+    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+      <Typography variant="body2" color="text.secondary">{label}</Typography>
+      <Typography variant="body2">{value}</Typography>
+    </Box>
+  );
+}
+
+interface Props {
+  fareBreakdown: FareBreakdown | undefined;
+}
+
+export default function PaymentSummaryCard({ fareBreakdown: bd }: Props) {
+  const { currency } = useLocale();
+  const { t } = useTranslation();
+
+  return (
+    <VerticalCard
+      contentPadding={2.5}
+      sx={{ borderRadius: 2 }}
+      content={
+        <>
+          <Typography variant="body1" fontWeight={600} sx={{ mb: 1.75 }}>{t('booking.confirmation.payment_summary.title')}</Typography>
+          {bd ? (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
+              <PriceRow label={t('booking.confirmation.payment_summary.price_per_night')} value={formatPrice(bd.roomRateUsd, currency)} />
+              <PriceRow label={t('booking.confirmation.payment_summary.subtotal')} value={formatPrice(bd.subtotalUsd, currency)} />
+              {bd.taxes.map((t) => (
+                <PriceRow key={t.name} label={t.name} value={formatPrice(t.amountUsd, currency)} />
+              ))}
+              {bd.fees.map((f) => (
+                <PriceRow key={f.name} label={f.name} value={formatPrice(f.totalUsd, currency)} />
+              ))}
+              <Divider sx={{ my: 0.75 }} />
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                <Typography variant="body2" fontWeight={500}>{t('booking.confirmation.payment_summary.total')}</Typography>
+                <Typography variant="h6" fontWeight={500} color="primary.main" lineHeight={1.2}>
+                  {formatPrice(bd.totalUsd, currency)}
+                </Typography>
+              </Box>
+            </Box>
+          ) : (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+              <CircularProgress size={20} />
+            </Box>
+          )}
+        </>
+      }
+    />
+  );
+}

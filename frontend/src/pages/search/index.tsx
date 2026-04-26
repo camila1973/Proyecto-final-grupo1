@@ -2,11 +2,11 @@ import { useSearch, useNavigate } from '@tanstack/react-router';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useLocale } from '../../context/LocaleContext';
-import { API_BASE } from '../../env';
 import SearchBarForm from '../../components/SearchBarForm';
 import ResultCard from './ResultCard';
 import FilterSidebar from './FilterSidebar';
-import { getNights, buildLabelMap, fetchTaxonomies } from './utils';
+import { getNights, buildLabelMap } from './utils';
+import { fetchTaxonomies, fetchSearchProperties } from '../../utils/queries';
 import type { FilterState } from './filterReducer';
 import type { SearchResponse, TaxonomyResponse, LabelMap } from './types';
 
@@ -111,11 +111,7 @@ export default function SearchPage() {
 
   const { data, isError, isFetching } = useQuery<SearchResponse>({
     queryKey: ['search', urlCity, urlCheckIn, urlCheckOut, urlGuests, currency, filters],
-    queryFn: async () => {
-      const res = await fetch(`${API_BASE}/api/search/properties?${queryParams}`);
-      if (!res.ok) throw new Error('Search failed');
-      return res.json();
-    },
+    queryFn: () => fetchSearchProperties(queryParams),
     placeholderData: keepPreviousData,
   });
 
@@ -127,7 +123,7 @@ export default function SearchPage() {
     <>
       {/* Hero Search Bar — key resets form state when URL params change */}
       <section className="bg-[#4a6fa5] py-8 px-6">
-        <div className="max-w-6xl mx-auto">
+        <div className="max-w-[1152px] mx-auto">
           <SearchBarForm
             key={`${urlCity}-${urlCheckIn}-${urlCheckOut}-${urlGuests}`}
             defaultCity={urlCity}
@@ -140,7 +136,7 @@ export default function SearchPage() {
       </section>
 
       {/* Main Content */}
-      <main className="max-w-6xl mx-auto w-full px-6 py-8 flex gap-8 flex-1">
+      <main className="max-w-[1152px] mx-auto w-full px-6 py-8 flex gap-8 flex-1">
         <FilterSidebar
           facets={facets}
           committedFilters={filters}

@@ -1,8 +1,12 @@
 {
   "nav": {
     "language": "Español",
+    "locale_language": "Idioma",
+    "locale_currency": "Moneda",
     "register": "Registro",
     "login": "Iniciar sesión",
+    "profile": "Mi perfil",
+    "myBookings": "Mis reservaciones",
     "logout": "Cerrar sesión"
   },
   "hero": {
@@ -16,6 +20,11 @@
     "check_out_label": "Salida",
     "guests_label": "¿Quienes viajan?",
     "guests_placeholder": "2 adultos · 1 Habitación",
+    "guests_summary_one": "{{count}} viajero",
+    "guests_summary_other": "{{count}} viajeros",
+    "guests_adults": "Adultos",
+    "guests_children": "Niños",
+    "guests_done": "Listo",
     "search": "Buscar"
   },
   "recommendations": {
@@ -221,6 +230,124 @@
       "ocean": "Vista al mar",
       "mountain": "Vista a la montaña",
       "pool": "Vista a la piscina"
+    }
+  },
+  "trips": {
+    "title": "Mis reservaciones",
+    "error": "No se pudieron cargar las reservaciones. Intenta de nuevo.",
+    "empty": "Aún no tienes reservaciones.",
+    "explore": "Explorar destinos",
+    "section": {
+      "active": "Reservaciones",
+      "past": "Reservaciones pasadas"
+    },
+    "status": {
+      "held": "En espera",
+      "submitted": "Pendiente",
+      "confirmed": "Confirmada",
+      "failed": "Fallida",
+      "expired": "Expirada",
+      "cancelled": "Cancelado"
+    },
+    "card": {
+      "reservation_id": "Reserva",
+      "check_in": "Check In:",
+      "check_out": "Check Out:",
+      "booked_on": "Reservado en",
+      "total_paid": "total pagado",
+      "cancel": "Cancelar"
+    },
+    "cancel_dialog": {
+      "title": "¿Cancelar reservación?",
+      "body": "Esta acción no se puede deshacer. ¿Estás seguro de que deseas cancelar esta reservación?",
+      "keep": "Mantener",
+      "confirm": "Sí, cancelar"
+    }
+  },
+  "booking": {
+    "checkout": {
+      "back": "Volver al hotel",
+      "title": "Finalizar reserva",
+      "step_details": "Detalles",
+      "step_confirmation": "Confirmación",
+      "error_create": "No se pudo crear la reserva. Intenta de nuevo.",
+      "guest": {
+        "section_title": "Detalles del huésped",
+        "first_name": "Nombre",
+        "last_name": "Apellido",
+        "email": "Correo electrónico",
+        "email_hint": "Te enviaremos la confirmación a este correo",
+        "phone": "Teléfono"
+      },
+      "payment": {
+        "section_title": "Forma de pago"
+      },
+      "policy": {
+        "title": "Tarifa no reembolsable",
+        "body": "Si modificas o cancelas la reserva, no recibirás reembolso ni crédito para una estancia futura."
+      },
+      "errors": {
+        "first_name_required": "El nombre es obligatorio",
+        "last_name_required": "El apellido es obligatorio",
+        "email_required": "El correo electrónico es obligatorio",
+        "email_invalid": "Ingresa un correo electrónico válido",
+        "phone_required": "El teléfono es obligatorio",
+        "payment_form": "Error en el formulario de pago",
+        "guest_info": "Error guardando los datos del huésped. Intenta de nuevo.",
+        "payment_initiate": "Error iniciando el pago. Intenta de nuevo.",
+        "payment_process": "Error procesando el pago"
+      },
+      "summary": {
+        "title": "Resumen de pago",
+        "price_per_night": "Precio por noche",
+        "subtotal": "Subtotal",
+        "total": "Total",
+        "taxes_included": "Impuestos incluidos",
+        "book_now": "Reservar ahora",
+        "finish_later": "Finalizar después",
+        "hold_notice": "Mantenemos tu reserva por 15 minutos",
+        "secure_payment": "Pago seguro cifrado · TLS 1.3",
+        "check_in": "Check-in",
+        "check_out": "Check-out",
+        "check_in_time": "3:00 PM",
+        "check_out_time": "12:00 PM",
+        "room_type_label": "Habitación",
+        "nights_one": "{{count}} noche",
+        "nights_other": "{{count}} noches",
+        "guests_one": "{{count}} huésped",
+        "guests_other": "{{count}} huéspedes"
+      }
+    },
+    "confirmation": {
+      "processing_title": "Procesando tu pago…",
+      "processing_body": "Esto puede tardar unos segundos. No cierres esta página.",
+      "failed_title": "Pago no procesado",
+      "failed_default": "Tu pago fue rechazado. Intenta con otra tarjeta.",
+      "back_home": "Volver al inicio",
+      "reservation_label": "Reserva",
+      "timeout_title": "¡Pago recibido!",
+      "success_title": "Reserva exitosa",
+      "timeout_body": "Recibimos tu pago. Te notificaremos por correo cuando tu reserva sea confirmada.",
+      "success_body": "Recibirás un correo de confirmación con todos los detalles. ¡Buen viaje!",
+      "view_trips": "Ver mis reservas",
+      "go_home": "Ir al inicio",
+      "cancellation_notice": "Cancelación gratuita hasta 24 horas antes del check-in. Después aplica el cargo de una noche.",
+      "hotel_card": {
+        "check_in": "Check-in",
+        "check_in_time": "Desde 3:00 PM",
+        "check_out": "Check-out",
+        "check_out_time": "Hasta 12:00 PM",
+        "room_section": "Habitación",
+        "nights_one": "{{count}} noche",
+        "nights_other": "{{count}} noches",
+        "confirmed_chip": "Confirmado"
+      },
+      "payment_summary": {
+        "title": "Resumen de pago",
+        "price_per_night": "Precio por noche",
+        "subtotal": "Subtotal",
+        "total": "Total"
+      }
     }
   },
   "footer": {

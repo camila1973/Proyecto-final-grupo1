@@ -6,8 +6,8 @@ import {
   buildLabelMap,
   todayISO,
   offsetDateISO,
-  fetchTaxonomies,
 } from './utils';
+import { fetchTaxonomies } from '../../utils/queries';
 import type { TaxonomyCategory } from './types';
 
 // ─── CURRENCY_RATES ──────────────────────────────────────────────────────────

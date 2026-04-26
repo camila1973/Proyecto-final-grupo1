@@ -11,12 +11,12 @@ jest.mock('./components/Footer', () => () => <div>footer</div>);
 
 jest.mock('./pages/HomePage', () => () => <div>home</div>);
 jest.mock('./pages/search', () => () => <div>search</div>);
-jest.mock('./pages/PropertyDetailPage', () => () => <div>property</div>);
+jest.mock('./pages/property', () => () => <div>property</div>);
 jest.mock('./pages/RegisterPage', () => () => <div>register</div>);
 jest.mock('./pages/RegisterSuccess', () => () => <div>register-success</div>);
 jest.mock('./pages/LoginPage', () => () => <div>login</div>);
 jest.mock('./pages/MfaPage', () => () => <div>mfa</div>);
-jest.mock('./pages/checkout/index', () => () => <div>checkout</div>);
+jest.mock('./pages/booking/checkout', () => () => <div>checkout</div>);
 jest.mock('./pages/booking/confirmation', () => () => <div>booking-confirmation</div>);
 
 describe('router', () => {
@@ -66,13 +66,9 @@ describe('router', () => {
     const router = createAppRouter();
     render(<RouterProvider router={router} />);
 
-    await router.navigate({ to: '/booking/confirmation/$id', params: { id: 'res_123' }, search: {} as never });
+    await router.navigate({ to: '/booking/confirmation', search: { reservationId: '' } });
     expect(router.state.location.search).toEqual({
-      propertyName: '',
-      roomType: '',
-      checkIn: '',
-      checkOut: '',
-      totalUsd: '0',
+      reservationId: '',
     });
   });
 });

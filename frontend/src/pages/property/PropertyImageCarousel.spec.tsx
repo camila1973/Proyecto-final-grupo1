@@ -1,6 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import PropertyImageCarousel from './PropertyImageCarousel';
-import { setupTestI18n } from '../i18n/test-utils';
+import { setupTestI18n } from '../../i18n/test-utils';
 
 setupTestI18n('es');
 

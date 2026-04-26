@@ -11,6 +11,7 @@ interface VerticalCardProps {
   imageAlt?: string;
   imageFallbackUrl?: string;
   imageHeight?: number;
+  contentPadding?: number;
   content: React.ReactNode;
   footer?: React.ReactNode;
   sx?: SxProps<Theme>;
@@ -22,6 +23,7 @@ export default function VerticalCard({
   imageAlt = '',
   imageFallbackUrl = DEFAULT_FALLBACK,
   imageHeight = 176,
+  contentPadding = 2,
   content,
   footer,
   sx,
@@ -44,11 +46,14 @@ export default function VerticalCard({
           }}
         />
       )}
-      <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+      <CardContent sx={{
+        flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0,
+        p: contentPadding, '&:last-child': { pb: contentPadding },
+      }}>
         {content}
       </CardContent>
       {footer && (
-        <Box sx={{ px: 2, pb: 2 }}>
+        <Box sx={{ px: contentPadding, pb: contentPadding }}>
           {footer}
         </Box>
       )}

@@ -1,8 +1,8 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import PropertyReviewsSection from './PropertyReviewsSection';
-import { setupTestI18n } from '../i18n/test-utils';
-import es from '../i18n/locales/es.json';
+import { setupTestI18n } from '../../i18n/test-utils';
+import es from '../../i18n/locales/es.json';
 
 setupTestI18n('es');
 

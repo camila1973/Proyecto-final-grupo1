@@ -1,14 +1,17 @@
 import { useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
-import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
 import Checkbox from '@mui/material/Checkbox';
+import Link from '@mui/material/Link';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import InputAdornment from '@mui/material/InputAdornment';
 import IconButton from '@mui/material/IconButton';
 import Alert from '@mui/material/Alert';
+import Visibility from '@mui/icons-material/Visibility';
+import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import { API_BASE } from '../env';
+import LabeledField from '../components/LabeledField';
 
 interface FormFields {
   firstName: string;
@@ -144,32 +147,15 @@ export default function RegisterPage() {
     }
   };
 
-  const EyeIcon = ({ visible }: { visible: boolean }) => (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      {visible ? (
-        <>
-          <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94" />
-          <path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19" />
-          <line x1="1" y1="1" x2="23" y2="23" />
-        </>
-      ) : (
-        <>
-          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-          <circle cx="12" cy="12" r="3" />
-        </>
-      )}
-    </svg>
-  );
-
   return (
     <main className="flex-1 flex items-center justify-center py-10 px-4">
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 w-full max-w-lg p-8">
         <h1 className="text-2xl font-bold text-gray-900 mb-1">{t('register.title')}</h1>
         <p className="text-sm text-gray-600 mb-6">
           {t('register.already_have_account')}{' '}
-          <a href="/login" className="text-blue-600 hover:underline">
+          <Link href="/login" underline="hover">
             {t('register.login_link')}
-          </a>
+          </Link>
         </p>
 
         {apiError && (
@@ -180,67 +166,49 @@ export default function RegisterPage() {
 
         <form onSubmit={handleSubmit} noValidate>
           <div className="flex gap-4 mb-4">
-            <div className="flex-1">
-              <label className="block text-xs font-semibold text-gray-500 mb-1">
-                {t('register.name_label')}
-              </label>
-              <TextField
-                fullWidth
-                size="small"
-                value={fields.firstName}
-                onChange={handleChange('firstName')}
-                error={!!errors.firstName}
-                helperText={errors.firstName}
-                inputProps={{ 'aria-label': t('register.name_label') }}
-              />
-            </div>
-            <div className="flex-1">
-              <label className="block text-xs font-semibold text-gray-500 mb-1">
-                {t('register.last_name_label')}
-              </label>
-              <TextField
-                fullWidth
-                size="small"
-                value={fields.lastName}
-                onChange={handleChange('lastName')}
-                error={!!errors.lastName}
-                helperText={errors.lastName}
-                inputProps={{ 'aria-label': t('register.last_name_label') }}
-              />
-            </div>
-          </div>
-
-          <div className="mb-4">
-            <label className="block text-xs font-semibold text-gray-500 mb-1">
-              {t('register.email_label')}
-            </label>
-            <TextField
-              fullWidth
-              size="small"
-              type="email"
-              placeholder="micorreo@example.com"
-              value={fields.email}
-              onChange={handleChange('email')}
-              error={!!errors.email}
-              helperText={errors.email}
-              inputProps={{ 'aria-label': t('register.email_label') }}
+            <LabeledField
+              label={t('register.name_label')}
+              wrapperClassName="flex-1"
+              value={fields.firstName}
+              onChange={handleChange('firstName')}
+              error={!!errors.firstName}
+              helperText={errors.firstName}
+              slotProps={{ htmlInput: { 'aria-label': t('register.name_label') } }}
+            />
+            <LabeledField
+              label={t('register.last_name_label')}
+              wrapperClassName="flex-1"
+              value={fields.lastName}
+              onChange={handleChange('lastName')}
+              error={!!errors.lastName}
+              helperText={errors.lastName}
+              slotProps={{ htmlInput: { 'aria-label': t('register.last_name_label') } }}
             />
           </div>
 
-          <div className="mb-4">
-            <label className="block text-xs font-semibold text-gray-500 mb-1">
-              {t('register.password_label')}
-            </label>
-            <TextField
-              fullWidth
-              size="small"
-              type={showPassword ? 'text' : 'password'}
-              value={fields.password}
-              onChange={handleChange('password')}
-              error={!!errors.password}
-              helperText={errors.password}
-              inputProps={{ 'aria-label': t('register.password_label') }}
-              InputProps={{
+          <LabeledField
+            label={t('register.email_label')}
+            wrapperClassName="mb-4"
+            type="email"
+            placeholder="micorreo@example.com"
+            value={fields.email}
+            onChange={handleChange('email')}
+            error={!!errors.email}
+            helperText={errors.email}
+            slotProps={{ htmlInput: { 'aria-label': t('register.email_label') } }}
+          />
+
+          <LabeledField
+            label={t('register.password_label')}
+            wrapperClassName="mb-4"
+            type={showPassword ? 'text' : 'password'}
+            value={fields.password}
+            onChange={handleChange('password')}
+            error={!!errors.password}
+            helperText={errors.password}
+            slotProps={{
+              htmlInput: { 'aria-label': t('register.password_label') },
+              input: {
                 endAdornment: (
                   <InputAdornment position="end">
                     <IconButton
@@ -249,28 +217,25 @@ export default function RegisterPage() {
                       edge="end"
                       size="small"
                     >
-                      <EyeIcon visible={showPassword} />
+                      {showPassword ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
                     </IconButton>
                   </InputAdornment>
                 ),
-              }}
-            />
-          </div>
+              },
+            }}
+          />
 
-          <div className="mb-5">
-            <label className="block text-xs font-semibold text-gray-500 mb-1">
-              {t('register.confirm_password_label')}
-            </label>
-            <TextField
-              fullWidth
-              size="small"
-              type={showConfirm ? 'text' : 'password'}
-              value={fields.confirmPassword}
-              onChange={handleChange('confirmPassword')}
-              error={!!errors.confirmPassword}
-              helperText={errors.confirmPassword}
-              inputProps={{ 'aria-label': t('register.confirm_password_label') }}
-              InputProps={{
+          <LabeledField
+            label={t('register.confirm_password_label')}
+            wrapperClassName="mb-5"
+            type={showConfirm ? 'text' : 'password'}
+            value={fields.confirmPassword}
+            onChange={handleChange('confirmPassword')}
+            error={!!errors.confirmPassword}
+            helperText={errors.confirmPassword}
+            slotProps={{
+              htmlInput: { 'aria-label': t('register.confirm_password_label') },
+              input: {
                 endAdornment: (
                   <InputAdornment position="end">
                     <IconButton
@@ -279,13 +244,13 @@ export default function RegisterPage() {
                       edge="end"
                       size="small"
                     >
-                      <EyeIcon visible={showConfirm} />
+                      {showConfirm ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
                     </IconButton>
                   </InputAdornment>
                 ),
-              }}
-            />
-          </div>
+              },
+            }}
+          />
 
           <div className="mb-6">
             <FormControlLabel
@@ -294,19 +259,15 @@ export default function RegisterPage() {
                   checked={fields.terms}
                   onChange={handleChange('terms')}
                   size="small"
-                  inputProps={{ 'aria-label': 'accept terms' } as React.InputHTMLAttributes<HTMLInputElement>}
+                  slotProps={{ input: { 'aria-label': 'accept terms' } as React.InputHTMLAttributes<HTMLInputElement> }}
                 />
               }
               label={
                 <span className="text-sm text-gray-700">
                   {t('register.terms')}{' '}
-                  <a href="/terms" className="text-blue-600 hover:underline">
-                    {t('register.terms_link')}
-                  </a>{' '}
+                  <Link href="/terms" underline="hover">{t('register.terms_link')}</Link>{' '}
                   {t('register.terms_and')}{' '}
-                  <a href="/privacy" className="text-blue-600 hover:underline">
-                    {t('register.privacy_link')}
-                  </a>{' '}
+                  <Link href="/privacy" underline="hover">{t('register.privacy_link')}</Link>{' '}
                   {t('register.terms_suffix')}
                 </span>
               }
@@ -320,17 +281,11 @@ export default function RegisterPage() {
             type="submit"
             fullWidth
             variant="contained"
+            size="large"
             disabled={loading}
-            sx={{
-              bgcolor: '#2d3a8c',
-              '&:hover': { bgcolor: '#1e2a6e' },
-              textTransform: 'none',
-              fontWeight: 600,
-              py: 1.2,
-              fontSize: '0.95rem',
-            }}
+            loading={loading}
           >
-            {loading ? '...' : t('register.submit')}
+            {t('register.submit')}
           </Button>
         </form>
       </div>
