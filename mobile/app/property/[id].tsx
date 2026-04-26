@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Dimensions,
   FlatList,
   Image,
@@ -17,6 +18,9 @@ import {
   type NativeSyntheticEvent,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
+import { useAuth } from '@/hooks/useAuth';
+import { setCheckoutIntent } from '@/services/checkout-store';
 
 const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
 
@@ -33,6 +37,7 @@ interface SearchRoom {
   basePriceUsd: number;
   priceUsd: number | null;
   taxRatePct: number;
+  partnerId: string;
   estimatedTotalUsd: number;
   hasFlatFees: boolean;
 }
@@ -99,6 +104,8 @@ const DESCRIPTION_PREVIEW = 260;
 
 export default function PropertyDetailScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
+  const { user } = useAuth();
   const { id, checkIn: qIn, checkOut: qOut, guests: qGuests } =
     useLocalSearchParams<{
       id: string;
@@ -207,6 +214,43 @@ export default function PropertyDetailScreen() {
     return map.es ?? map.en ?? Object.values(map)[0] ?? '';
   }, [data]);
 
+  const property = data?.property;
+  const images =
+    property?.imageUrls && property.imageUrls.length > 0
+      ? property.imageUrls
+      : property?.thumbnailUrl
+        ? [property.thumbnailUrl]
+        : [];
+
+  const handleBook = useCallback(
+    (room: SearchRoom) => {
+      if (!checkIn || !checkOut) {
+        Alert.alert(t('property.selectDatesTitle'), t('property.selectDatesMsg'));
+        return;
+      }
+      if (!user) {
+        router.push('/(tabs)/account');
+        return;
+      }
+      if (!property) return;
+      setCheckoutIntent({
+        propertyId: property.id,
+        propertyName: property.name,
+        propertyCity: property.city,
+        propertyThumbnailUrl: images[0] ?? property.thumbnailUrl ?? null,
+        roomId: room.roomId,
+        roomType: ROOM_TYPE_LABELS[room.roomType] ?? room.roomType,
+        partnerId: room.partnerId,
+        checkIn,
+        checkOut,
+        guests,
+        estimatedTotalUsd: room.estimatedTotalUsd,
+      });
+      router.push('/booking/checkout');
+    },
+    [checkIn, checkOut, user, property, images, guests, router, t],
+  );
+
   const showDescPreview = description.length > DESCRIPTION_PREVIEW && !descExpanded;
   const displayedDescription = showDescPreview
     ? description.slice(0, DESCRIPTION_PREVIEW).trimEnd() + '…'
@@ -223,7 +267,7 @@ export default function PropertyDetailScreen() {
     );
   }
 
-  if (error || !data?.property) {
+  if (error || !property) {
     return (
       <View style={[styles.center, isDark && styles.darkBg]}>
         <Text style={[styles.errorText]}>
@@ -239,13 +283,7 @@ export default function PropertyDetailScreen() {
     );
   }
 
-  const { property, rooms } = data;
-  const images =
-    property.imageUrls && property.imageUrls.length > 0
-      ? property.imageUrls
-      : property.thumbnailUrl
-        ? [property.thumbnailUrl]
-        : [];
+  const { rooms } = data!;
 
   return (
     <ScrollView
@@ -336,6 +374,7 @@ export default function PropertyDetailScreen() {
                 room={room}
                 heroImage={images[0] ?? property.thumbnailUrl}
                 property={property}
+                onBook={handleBook}
               />
             ))
           )}
@@ -444,10 +483,12 @@ function RoomCard({
   room,
   heroImage,
   property,
+  onBook,
 }: {
   room: SearchRoom;
   heroImage: string | null;
   property: PropertyInfo;
+  onBook: (room: SearchRoom) => void;
 }) {
   const roomLabel = ROOM_TYPE_LABELS[room.roomType] ?? room.roomType;
   const bedLabel = BED_TYPE_LABELS[room.bedType] ?? room.bedType;
@@ -472,7 +513,7 @@ function RoomCard({
           ${price.toFixed(0)}{' '}
           <Text style={styles.roomPriceSuffix}>Por noche</Text>
         </Text>
-        <TouchableOpacity style={styles.selectBtn}>
+        <TouchableOpacity style={styles.selectBtn} onPress={() => onBook(room)}>
           <Text style={styles.selectBtnText}>Seleccionar habitación</Text>
         </TouchableOpacity>
       </View>

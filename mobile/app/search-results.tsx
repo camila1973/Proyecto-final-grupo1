@@ -34,11 +34,20 @@ function nightsBetween(checkIn: string, checkOut: string): number {
 
 // ─── Property Card ─────────────────────────────────────────────────────────────
 
-function PropertyCard({ item, nights }: { item: PropertyResult; nights: number }) {
+function PropertyCard({
+  item,
+  nights,
+  onPress,
+}: {
+  item: PropertyResult;
+  nights: number;
+  onPress: () => void;
+}) {
   const pricePerNight = item.priceUsd ?? item.basePriceUsd ?? null;
   const totalPrice = nights > 0 ? item.estimatedTotalUsd : null;
 
   return (
+    <TouchableOpacity onPress={onPress} activeOpacity={0.85}>
     <AppCard style={cardStyles.card}>
       <Image
         source="https://cf.bstatic.com/xdata/images/hotel/max1024x768/484083124.jpg?k=f129efcf29b69ac37463eb551c3fd79e43e3a66a223194e917d3844c721ee338&o="
@@ -82,6 +91,7 @@ function PropertyCard({ item, nights }: { item: PropertyResult; nights: number }
         </View>
       </View>
     </AppCard>
+    </TouchableOpacity>
   );
 }
 
@@ -200,7 +210,23 @@ export default function SearchResultsScreen() {
         <FlatList
           data={data?.results ?? []}
           keyExtractor={item => item.roomId}
-          renderItem={({ item }) => <PropertyCard item={item} nights={nights} />}
+          renderItem={({ item }) => (
+            <PropertyCard
+              item={item}
+              nights={nights}
+              onPress={() =>
+                router.push({
+                  pathname: '/property/[id]',
+                  params: {
+                    id: item.property.id,
+                    checkIn,
+                    checkOut,
+                    guests,
+                  },
+                })
+              }
+            />
+          )}
           contentContainerStyle={styles.list}
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.3}

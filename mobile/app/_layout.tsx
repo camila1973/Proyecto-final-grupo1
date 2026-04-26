@@ -5,12 +5,15 @@ import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
 import 'react-native-reanimated';
 import { PaperProvider } from 'react-native-paper';
+import { StripeProvider } from '@stripe/stripe-react-native';
 import '@/i18n';
 
 import { AnimatedSplash } from '@/components/animated-splash';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { paperTheme } from '@/constants/paper-theme';
 import { AuthProvider } from '@/context/AuthContext';
+
+const STRIPE_PK = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -30,6 +33,7 @@ export default function RootLayout() {
   const handleSplashEnd = useCallback(() => setSplashDone(true), []);
 
   return (
+    <StripeProvider publishableKey={STRIPE_PK} merchantIdentifier="merchant.com.travelhub">
     <AuthProvider>
     <PaperProvider theme={paperTheme}>
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
@@ -40,6 +44,8 @@ export default function RootLayout() {
           <Stack.Screen name="notifications" options={{ headerShown: false }} />
           <Stack.Screen name="settings" options={{ headerShown: false }} />
           <Stack.Screen name="property/[id]" options={{ headerShown: false }} />
+          <Stack.Screen name="booking/checkout" options={{ headerShown: false }} />
+          <Stack.Screen name="booking/confirmation" options={{ headerShown: false }} />
         </Stack>
         <StatusBar style="auto" />
       </ThemeProvider>
@@ -48,5 +54,6 @@ export default function RootLayout() {
       )}
     </PaperProvider>
     </AuthProvider>
+    </StripeProvider>
   );
 }
