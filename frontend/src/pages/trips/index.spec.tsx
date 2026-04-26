@@ -205,6 +205,22 @@ describe('TripsPage', () => {
       expect(screen.queryByText(es.trips.banner.title)).not.toBeInTheDocument();
     });
 
+    it('calls saveCheckoutIntent and navigates to checkout when card button is clicked', async () => {
+      useAuth.mockReturnValue({ token: TOKEN, user: USER });
+      const reservation = makeReservation('held');
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ reservations: [reservation] }),
+      });
+      renderPage();
+      const btn = await screen.findByRole('button', { name: new RegExp(es.trips.card.complete_payment) });
+      fireEvent.click(btn);
+      expect(saveCheckoutIntent).toHaveBeenCalledWith(
+        expect.objectContaining({ property: expect.objectContaining({ id: 'prop-uuid' }) }),
+      );
+      expect(mockNavigate).toHaveBeenCalledWith({ to: '/booking/checkout' });
+    });
+
     it('calls saveCheckoutIntent and navigates to checkout when banner CTA is clicked', async () => {
       useAuth.mockReturnValue({ token: TOKEN, user: USER });
       const reservation = makeReservation('held');
@@ -329,6 +345,23 @@ describe('TripsPage', () => {
       await waitFor(() => {
         expect(screen.queryByText(es.trips.cancel_dialog.title)).not.toBeInTheDocument();
       });
+    });
+
+    it('does not close the dialog when cancellation is in progress', async () => {
+      useAuth.mockReturnValue({ token: TOKEN, user: USER });
+      (global.fetch as jest.Mock)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ reservations: [makeReservation('confirmed')] }),
+        })
+        .mockReturnValue(new Promise(() => {}));
+      renderPage();
+      const cancelBtn = await screen.findByRole('button', { name: es.trips.card.cancel });
+      fireEvent.click(cancelBtn);
+      await screen.findByText(es.trips.cancel_dialog.title);
+      fireEvent.click(screen.getByRole('button', { name: es.trips.cancel_dialog.confirm }));
+      // dialog should still be open (cancelling in progress)
+      expect(screen.getByText(es.trips.cancel_dialog.title)).toBeInTheDocument();
     });
 
     it('calls the cancel endpoint when confirm cancel is clicked', async () => {
