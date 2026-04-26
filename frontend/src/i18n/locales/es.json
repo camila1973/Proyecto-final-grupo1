@@ -238,24 +238,33 @@
     "empty": "Aún no tienes reservaciones.",
     "explore": "Explorar destinos",
     "section": {
-      "active": "Reservaciones",
+      "active": "Reservaciones activas",
       "past": "Reservaciones pasadas"
     },
+    "banner": {
+      "title": "Tienes una reserva sin completar",
+      "subtitle": "{{propertyName}} — tu plaza está guardada. Completa el pago antes de que expire.",
+      "cta": "Completar ahora"
+    },
     "status": {
-      "held": "En espera",
+      "held": "En espera · Completar pago",
       "submitted": "Pendiente",
       "confirmed": "Confirmada",
       "failed": "Fallida",
       "expired": "Expirada",
-      "cancelled": "Cancelado"
+      "cancelled": "Cancelada"
     },
     "card": {
       "reservation_id": "Reserva",
-      "check_in": "Check In:",
-      "check_out": "Check Out:",
-      "booked_on": "Reservado en",
+      "check_in": "Check-in",
+      "check_out": "Check-out",
+      "booked_on": "Reservado",
       "total_paid": "total pagado",
-      "cancel": "Cancelar"
+      "pending_payment": "pendiente de pago",
+      "not_charged": "no cobrado",
+      "cancel": "Cancelar",
+      "complete_payment": "Completar pago",
+      "rebook": "Volver a reservar"
     },
     "cancel_dialog": {
       "title": "¿Cancelar reservación?",

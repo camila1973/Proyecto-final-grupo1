@@ -11,10 +11,11 @@ interface HorizontalCardProps {
   imageAlt: string;
   imageFallbackUrl?: string;
   imageWidth?: number;
+  imageFilter?: string;
   contentPadding?: number;
   bgcolor?: string;
   middleContent: React.ReactNode;
-  rightPanel: React.ReactNode;
+  rightPanel?: React.ReactNode;
   sx?: SxProps<Theme>;
 }
 
@@ -23,6 +24,7 @@ export default function HorizontalCard({
   imageAlt,
   imageFallbackUrl = DEFAULT_FALLBACK,
   imageWidth = 220,
+  imageFilter,
   contentPadding = 2.5,
   bgcolor = 'background.paper',
   middleContent,
@@ -38,7 +40,13 @@ export default function HorizontalCard({
         component="img"
         image={imageUrl}
         alt={imageAlt}
-        sx={{ width: imageWidth, flexShrink: 0, objectFit: 'cover', alignSelf: 'stretch' }}
+        sx={{
+          width: imageWidth,
+          flexShrink: 0,
+          objectFit: 'cover',
+          alignSelf: 'stretch',
+          filter: imageFilter,
+        }}
         onError={(e) => {
           (e.currentTarget as HTMLImageElement).src = imageFallbackUrl;
         }}
@@ -58,19 +66,21 @@ export default function HorizontalCard({
       >
         {middleContent}
       </CardContent>
-      <Box
-        sx={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'flex-end',
-          justifyContent: 'space-between',
-          px: contentPadding,
-          py: contentPadding,
-          flexShrink: 0,
-        }}
-      >
-        {rightPanel}
-      </Box>
+      {rightPanel != null && (
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'flex-end',
+            justifyContent: 'space-between',
+            px: contentPadding,
+            py: contentPadding,
+            flexShrink: 0,
+          }}
+        >
+          {rightPanel}
+        </Box>
+      )}
     </Card>
   );
 }

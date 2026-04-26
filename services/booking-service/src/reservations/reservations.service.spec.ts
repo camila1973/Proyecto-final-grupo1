@@ -80,6 +80,7 @@ describe("ReservationsService", () => {
     submit: jest.Mock;
     fail: jest.Mock;
     cancel: jest.Mock;
+    expire: jest.Mock;
     rehold: jest.Mock;
   };
   let inventoryClient: {
@@ -135,6 +136,7 @@ describe("ReservationsService", () => {
       submit: jest.fn().mockResolvedValue(row),
       fail: jest.fn(),
       cancel: jest.fn(),
+      expire: jest.fn().mockResolvedValue(makeRow({ status: "expired" })),
       rehold: jest.fn().mockResolvedValue(row),
     };
     service = new ReservationsService(
@@ -280,29 +282,28 @@ describe("ReservationsService", () => {
       expect(reservationsRepo.insert).not.toHaveBeenCalled();
     });
 
-    it("cancels a stale held reservation before creating a new one", async () => {
+    it("expires a stale held reservation before creating a new one", async () => {
       const staleRow = makeRow({ id: "stale-uuid", status: "held" });
       reservationsRepo.findHeldByBookerId.mockResolvedValue(staleRow);
-      reservationsRepo.cancel = jest.fn().mockResolvedValue({
-        row: { ...staleRow, status: "cancelled" },
-        priorStatus: "held",
-      });
+      reservationsRepo.expire = jest
+        .fn()
+        .mockResolvedValue({ ...staleRow, status: "expired" });
 
       await service.create(CREATE_DTO);
 
-      expect(reservationsRepo.cancel).toHaveBeenCalledWith(
+      expect(reservationsRepo.expire).toHaveBeenCalledWith(
         "stale-uuid",
         "superseded by new hold",
       );
       expect(reservationsRepo.insert).toHaveBeenCalled();
     });
 
-    it("continues creating the reservation even when stale hold cancellation fails", async () => {
+    it("continues creating the reservation even when stale hold expiry fails", async () => {
       const staleRow = makeRow({ id: "stale-uuid", status: "held" });
       reservationsRepo.findHeldByBookerId.mockResolvedValue(staleRow);
-      reservationsRepo.cancel = jest
+      reservationsRepo.expire = jest
         .fn()
-        .mockRejectedValue(new Error("cancel failed"));
+        .mockRejectedValue(new Error("expire failed"));
 
       await expect(service.create(CREATE_DTO)).resolves.toBeDefined();
       expect(reservationsRepo.insert).toHaveBeenCalled();

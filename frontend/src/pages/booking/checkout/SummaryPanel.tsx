@@ -150,7 +150,7 @@ export function SummaryPanel({
                 size="large"
                 disabled={formLoading || !reservation}
                 startIcon={formLoading ? undefined : <LockIcon sx={{ fontSize: 14 }} />}
-                sx={{ borderRadius: 1.5, fontWeight: 500, py: 1.5 }}
+                sx={{ py: 1.5 }}
               >
                 {formLoading ? <CircularProgress size={22} color="inherit" /> : t('booking.checkout.summary.book_now')}
               </Button>
@@ -160,7 +160,6 @@ export function SummaryPanel({
                 fullWidth
                 size="large"
                 onClick={() => history.back()}
-                sx={{ borderRadius: 1.5, fontWeight: 500, borderColor: 'primary.main', color: 'primary.main' }}
               >
                 {t('booking.checkout.summary.finish_later')}
               </Button>

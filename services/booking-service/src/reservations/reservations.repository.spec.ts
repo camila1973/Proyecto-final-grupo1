@@ -364,12 +364,15 @@ describe("ReservationsRepository", () => {
   });
 
   describe("expire", () => {
-    it("transitions status to expired and returns the row", async () => {
-      const expired = makeRow({ status: "expired" });
+    it("transitions status to expired with reason and returns the row", async () => {
+      const expired = makeRow({
+        status: "expired",
+        reason: "hold ttl elapsed",
+      });
       const db = makeDb({ single: expired });
       const repo = new ReservationsRepository(db);
 
-      const result = await repo.expire("res-uuid");
+      const result = await repo.expire("res-uuid", "hold ttl elapsed");
 
       expect(db.updateTable).toHaveBeenCalledWith("reservations");
       expect(db.where).toHaveBeenCalledWith("id", "=", "res-uuid");
@@ -381,7 +384,7 @@ describe("ReservationsRepository", () => {
       const db = makeDb({ single: undefined });
       const repo = new ReservationsRepository(db);
 
-      const result = await repo.expire("already-confirmed");
+      const result = await repo.expire("already-confirmed", "hold ttl elapsed");
 
       expect(result).toBeUndefined();
     });

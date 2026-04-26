@@ -228,10 +228,13 @@ export class ReservationsRepository {
     return row;
   }
 
-  async expire(id: string): Promise<ReservationRow | undefined> {
+  async expire(
+    id: string,
+    reason: string,
+  ): Promise<ReservationRow | undefined> {
     return this.db
       .updateTable("reservations")
-      .set({ status: "expired", updated_at: new Date() })
+      .set({ status: "expired", reason, updated_at: new Date() })
       .where("id", "=", id)
       .where("status", "=", "held")
       .returningAll()
