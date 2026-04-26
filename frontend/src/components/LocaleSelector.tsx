@@ -22,7 +22,7 @@ export default function LocaleSelector() {
       <button
         aria-label="select language and currency"
         onClick={(e) => setAnchorEl(e.currentTarget)}
-        className="flex items-center gap-2 rounded-full border-gray-300 px-3 py-1 hover:bg-gray-50 transition-colors"
+        className="flex items-center gap-2 rounded-full border-gray-300 px-3 py-1 hover:bg-gray-50 transition-colors cursor-pointer"
       >
         <LanguageIcon sx={{ fontSize: 20, color: 'text.secondary' }} />
         <span className="flex flex-col items-start text-left">

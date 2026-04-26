@@ -16,7 +16,7 @@ jest.mock('./pages/RegisterPage', () => () => <div>register</div>);
 jest.mock('./pages/RegisterSuccess', () => () => <div>register-success</div>);
 jest.mock('./pages/LoginPage', () => () => <div>login</div>);
 jest.mock('./pages/MfaPage', () => () => <div>mfa</div>);
-jest.mock('./pages/checkout/index', () => () => <div>checkout</div>);
+jest.mock('./pages/booking/checkout', () => () => <div>checkout</div>);
 jest.mock('./pages/booking/confirmation', () => () => <div>booking-confirmation</div>);
 
 describe('router', () => {

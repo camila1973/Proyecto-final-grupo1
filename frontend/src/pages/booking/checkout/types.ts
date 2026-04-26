@@ -11,6 +11,8 @@ export interface FareBreakdown {
 
 export interface ReservationResponse {
   id: string;
+  checkIn: string;
+  checkOut: string;
   fareBreakdown: FareBreakdown;
   grandTotalUsd: number;
   holdExpiresAt: string;

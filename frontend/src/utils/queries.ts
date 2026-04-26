@@ -1,6 +1,6 @@
 import { API_BASE } from '../env';
 import type { SearchResult, SearchResponse, TaxonomyResponse } from '../pages/search/types';
-import type { ReservationResponse } from '../pages/checkout/types';
+import type { ReservationResponse } from '../pages/booking/checkout/types';
 
 // ─── Search ───────────────────────────────────────────────────────────────────
 
@@ -192,4 +192,43 @@ export async function fetchReservationById(id: string): Promise<ReservationRespo
   const res = await fetch(`${API_BASE}/api/booking/reservations/${id}`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json() as Promise<ReservationResponse>;
+}
+
+// ─── My Reservations ──────────────────────────────────────────────────────────
+
+export type ReservationStatus = 'on_hold' | 'pending' | 'confirmed' | 'expired' | 'cancelled';
+
+export interface ReservationListItem {
+  id: string;
+  status: ReservationStatus;
+  checkIn: string;
+  checkOut: string;
+  grandTotalUsd: number;
+  createdAt: string;
+  property: {
+    id: string;
+    name: string;
+    address: string;
+    thumbnailUrl: string | null;
+  } | null;
+  room: {
+    roomType: string;
+  } | null;
+}
+
+export async function fetchMyReservations(token: string): Promise<ReservationListItem[]> {
+  const res = await fetch(`${API_BASE}/api/booking/reservations`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = (await res.json()) as { reservations?: ReservationListItem[] } | ReservationListItem[];
+  return Array.isArray(data) ? data : (data.reservations ?? []);
+}
+
+export async function cancelReservation(id: string, token: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/booking/reservations/${id}/cancel`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
 }

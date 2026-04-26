@@ -10,10 +10,10 @@ import RegisterPage from './pages/RegisterPage';
 import RegisterSuccess from './pages/RegisterSuccess';
 import LoginPage from './pages/LoginPage';
 import MfaPage from './pages/MfaPage';
-import CheckoutPage from './pages/checkout/index';
+import CheckoutPage from './pages/booking/checkout';
 import BookingConfirmationPage from './pages/booking/confirmation';
 import ProfilePage from './pages/ProfilePage';
-import MyBookingsPage from './pages/MyBookingsPage';
+import TripsPage from './pages/trips';
 
 
 const rootRoute = createRootRoute({
@@ -122,7 +122,7 @@ const profileRoute = createRoute({
 const myBookingsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/trips',
-  component: MyBookingsPage,
+  component: TripsPage,
 });
 
 const routeTree = rootRoute.addChildren([

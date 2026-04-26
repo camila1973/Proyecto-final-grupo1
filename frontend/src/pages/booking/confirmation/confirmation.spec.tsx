@@ -1,5 +1,5 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import BookingConfirmationPage from './confirmation';
+import BookingConfirmationPage from '.';
 
 const mockNavigate = jest.fn();
 const mockUseSearch = jest.fn();
@@ -13,10 +13,6 @@ jest.mock('@tanstack/react-router', () => ({
 
 jest.mock('../../context/LocaleContext', () => ({
   useLocale: () => ({ currency: 'USD' }),
-}));
-
-jest.mock('../checkout/SummaryPanel', () => ({
-  SummaryPanel: () => <div>Resumen de reserva</div>,
 }));
 
 describe('BookingConfirmationPage', () => {
@@ -60,7 +56,34 @@ describe('BookingConfirmationPage', () => {
 
     render(<BookingConfirmationPage />);
 
-    expect(await screen.findByText('¡Reserva exitosa!')).toBeInTheDocument();
+    expect(await screen.findByText('Reserva exitosa')).toBeInTheDocument();
+    expect(screen.getByText('Hotel Test')).toBeInTheDocument();
+    expect(screen.getByText('Suite')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Ver mis reservas' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Ir al inicio' })).toBeInTheDocument();
+  });
+
+  it('navigates to trips when "Ver mis reservas" is clicked', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ status: 'captured' }),
+    });
+
+    render(<BookingConfirmationPage />);
+    await screen.findByText('Reserva exitosa');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ver mis reservas' }));
+    expect(mockNavigate).toHaveBeenCalledWith({ to: '/trips' });
+  });
+
+  it('navigates home when "Ir al inicio" is clicked', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ status: 'captured' }),
+    });
+
+    render(<BookingConfirmationPage />);
+    await screen.findByText('Reserva exitosa');
 
     fireEvent.click(screen.getByRole('button', { name: 'Ir al inicio' }));
     expect(mockNavigate).toHaveBeenCalledWith({ to: '/' });
@@ -100,7 +123,6 @@ describe('BookingConfirmationPage', () => {
 
     render(<BookingConfirmationPage />);
 
-    // After the first failed poll the component stays in the pending spinner state
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith(
         expect.stringContaining('/api/payment/payments/res_123/status'),
@@ -123,7 +145,6 @@ describe('BookingConfirmationPage', () => {
   });
 
   it('shows timed-out success state when polling exceeds the timeout', async () => {
-    // Make Date.now() jump past the timeout after the first call (startedAt)
     let nowCallCount = 0;
     const startTs = 1_000_000;
     jest.spyOn(Date, 'now').mockImplementation(() => {

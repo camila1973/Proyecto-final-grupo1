@@ -20,6 +20,7 @@ import PropertyImageCarousel from './PropertyImageCarousel';
 import PropertyReviewsSection from './PropertyReviewsSection';
 import LabeledField from '../../components/LabeledField';
 import GuestSelector from '../../components/GuestSelector';
+import ArrowBackIosNew from '@mui/icons-material/ArrowBackIosNew';
 
 const DESCRIPTION_PREVIEW_CHARS = 260;
 
@@ -121,16 +122,11 @@ export default function PropertyDetailPage() {
       <main className="max-w-6xl mx-auto w-full px-6 py-8 flex-1">
         {/* Back button */}
         <Button
+          startIcon={<ArrowBackIosNew />}
           onClick={() => history.back()}
-          color="primary"
-          startIcon={
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          }
-          sx={{ textTransform: 'none', fontWeight: 500, mb: 3 }}
+          sx={{ color: 'text.secondary', fontWeight: 500, mb: 3 }}
         >
-          {t('property_detail.back')}
+        {t('property_detail.back')}
         </Button>
 
         {/* Image carousel — async loaded from CDN */}

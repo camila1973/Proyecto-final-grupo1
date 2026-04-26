@@ -1,7 +1,7 @@
 import { useNavigate } from '@tanstack/react-router';
 import { useAuth } from './useAuth';
 import { API_BASE } from '../env';
-import type { ReservationResponse } from '../pages/checkout/types';
+import type { ReservationResponse } from '../pages/booking/checkout/types';
 
 export interface CheckoutIntent {
   property: { id: string; name: string };

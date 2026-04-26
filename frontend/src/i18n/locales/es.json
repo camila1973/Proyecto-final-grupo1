@@ -232,6 +232,37 @@
       "pool": "Vista a la piscina"
     }
   },
+  "trips": {
+    "title": "Mis reservaciones",
+    "error": "No se pudieron cargar las reservaciones. Intenta de nuevo.",
+    "empty": "Aún no tienes reservaciones.",
+    "explore": "Explorar destinos",
+    "section": {
+      "active": "Reservaciones",
+      "past": "Reservaciones pasadas"
+    },
+    "status": {
+      "on_hold": "En espera",
+      "pending": "Pendiente",
+      "confirmed": "Confirmada",
+      "expired": "Expirada",
+      "cancelled": "Cancelado"
+    },
+    "card": {
+      "reservation_id": "Reserva",
+      "check_in": "Check In:",
+      "check_out": "Check Out:",
+      "booked_on": "Reservado en",
+      "total_paid": "total pagado",
+      "cancel": "Cancelar"
+    },
+    "cancel_dialog": {
+      "title": "¿Cancelar reservación?",
+      "body": "Esta acción no se puede deshacer. ¿Estás seguro de que deseas cancelar esta reservación?",
+      "keep": "Mantener",
+      "confirm": "Sí, cancelar"
+    }
+  },
   "footer": {
     "copyright": "© 2026 TravelHub",
     "privacy": "Política de privacidad",

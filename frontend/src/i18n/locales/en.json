@@ -232,6 +232,37 @@
       "pool": "Pool View"
     }
   },
+  "trips": {
+    "title": "My Bookings",
+    "error": "Could not load your reservations. Please try again.",
+    "empty": "You have no reservations yet.",
+    "explore": "Explore destinations",
+    "section": {
+      "active": "Reservations",
+      "past": "Past reservations"
+    },
+    "status": {
+      "on_hold": "On hold",
+      "pending": "Pending",
+      "confirmed": "Confirmed",
+      "expired": "Expired",
+      "cancelled": "Cancelled"
+    },
+    "card": {
+      "reservation_id": "Reservation",
+      "check_in": "Check In:",
+      "check_out": "Check Out:",
+      "booked_on": "Booked on",
+      "total_paid": "total paid",
+      "cancel": "Cancel"
+    },
+    "cancel_dialog": {
+      "title": "Cancel reservation?",
+      "body": "This action cannot be undone. Are you sure you want to cancel this reservation?",
+      "keep": "Keep reservation",
+      "confirm": "Yes, cancel"
+    }
+  },
   "footer": {
     "copyright": "© 2026 TravelHub",
     "privacy": "Privacy policy",
