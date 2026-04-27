@@ -142,8 +142,10 @@ export class InventoryClient {
     let cursor = fromDate;
 
     for (const period of periods) {
-      const periodStart = period.fromDate > cursor ? period.fromDate : cursor;
-      const periodEnd = period.toDate < toDate ? period.toDate : toDate;
+      const pFrom = period.fromDate.slice(0, 10);
+      const pTo = period.toDate.slice(0, 10);
+      const periodStart = pFrom > cursor ? pFrom : cursor;
+      const periodEnd = pTo < toDate ? pTo : toDate;
 
       if (periodStart >= periodEnd) continue;
 
