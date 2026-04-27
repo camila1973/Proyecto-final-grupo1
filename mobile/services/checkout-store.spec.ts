@@ -7,6 +7,7 @@ import {
   getCheckoutIntent,
   setCheckoutIntent,
   clearCheckoutIntent,
+  rebuildIntent,
   type CheckoutIntent,
 } from './checkout-store';
 
@@ -162,6 +163,100 @@ describe('checkout-store', () => {
       expect(retrieved?.checkOut).toBe(intent.checkOut);
       expect(retrieved?.guests).toBe(intent.guests);
       expect(retrieved?.estimatedTotalUsd).toBe(intent.estimatedTotalUsd);
+    });
+  });
+
+  describe('rebuildIntent', () => {
+    it('should rebuild CheckoutIntent from reservation with snapshot', () => {
+      const reservation = {
+        propertyId: 'prop-123',
+        roomId: 'room-456',
+        partnerId: 'partner-789',
+        checkIn: '2026-05-01',
+        checkOut: '2026-05-03',
+        grandTotalUsd: 500,
+        snapshot: {
+          propertyName: 'Hotel Paradise',
+          propertyCity: 'Miami',
+          propertyThumbnailUrl: 'https://example.com/hotel.jpg',
+          roomType: 'Suite',
+        },
+      };
+
+      const result = rebuildIntent(reservation);
+
+      expect(result).not.toBeNull();
+      expect(result?.propertyId).toBe('prop-123');
+      expect(result?.propertyName).toBe('Hotel Paradise');
+      expect(result?.propertyCity).toBe('Miami');
+      expect(result?.propertyThumbnailUrl).toBe('https://example.com/hotel.jpg');
+      expect(result?.roomId).toBe('room-456');
+      expect(result?.roomType).toBe('Suite');
+      expect(result?.partnerId).toBe('partner-789');
+      expect(result?.checkIn).toBe('2026-05-01');
+      expect(result?.checkOut).toBe('2026-05-03');
+      expect(result?.guests).toBe(2); // Default value
+      expect(result?.estimatedTotalUsd).toBe(500);
+    });
+
+    it('should return null when snapshot is missing', () => {
+      const reservation = {
+        propertyId: 'prop-123',
+        roomId: 'room-456',
+        partnerId: 'partner-789',
+        checkIn: '2026-05-01',
+        checkOut: '2026-05-03',
+        grandTotalUsd: 500,
+        snapshot: null,
+      };
+
+      const result = rebuildIntent(reservation);
+
+      expect(result).toBeNull();
+    });
+
+    it('should handle null grandTotalUsd', () => {
+      const reservation = {
+        propertyId: 'prop-123',
+        roomId: 'room-456',
+        partnerId: 'partner-789',
+        checkIn: '2026-05-01',
+        checkOut: '2026-05-03',
+        grandTotalUsd: null,
+        snapshot: {
+          propertyName: 'Hotel Paradise',
+          propertyCity: 'Miami',
+          propertyThumbnailUrl: null,
+          roomType: 'Suite',
+        },
+      };
+
+      const result = rebuildIntent(reservation);
+
+      expect(result).not.toBeNull();
+      expect(result?.estimatedTotalUsd).toBe(0);
+    });
+
+    it('should handle null propertyThumbnailUrl in snapshot', () => {
+      const reservation = {
+        propertyId: 'prop-123',
+        roomId: 'room-456',
+        partnerId: 'partner-789',
+        checkIn: '2026-05-01',
+        checkOut: '2026-05-03',
+        grandTotalUsd: 300,
+        snapshot: {
+          propertyName: 'Budget Hotel',
+          propertyCity: 'Orlando',
+          propertyThumbnailUrl: null,
+          roomType: 'Standard',
+        },
+      };
+
+      const result = rebuildIntent(reservation);
+
+      expect(result).not.toBeNull();
+      expect(result?.propertyThumbnailUrl).toBeNull();
     });
   });
 });

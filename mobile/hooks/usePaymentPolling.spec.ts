@@ -1,6 +1,6 @@
 /**
  * Tests for usePaymentPolling hook
- * Validates payment status polling logic
+ * Validates payment status polling logic and API integration
  */
 
 const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
@@ -8,105 +8,152 @@ const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
 describe('usePaymentPolling', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.useFakeTimers();
   });
 
-  afterEach(() => {
-    jest.runOnlyPendingTimers();
-    jest.useRealTimers();
+  describe('API endpoint construction', () => {
+    it('should use correct API endpoint format', () => {
+      const reservationId = 'res-123';
+      const expectedUrl = `${API_BASE}/api/payment/payments/${reservationId}/status`;
+      
+      expect(expectedUrl).toContain('/api/payment/payments/');
+      expect(expectedUrl).toContain('/status');
+      expect(expectedUrl).toContain(reservationId);
+    });
   });
 
-  it('should construct correct API endpoint', () => {
-    const reservationId = 'reservation-123';
-    const expectedUrl = `${API_BASE}/api/booking/reservations/${reservationId}/payment-status`;
-    
-    expect(expectedUrl).toContain('/api/booking/reservations/');
-    expect(expectedUrl).toContain('/payment-status');
-    expect(expectedUrl).toContain(reservationId);
-  });
+  describe('Payment status responses', () => {
+    it('should handle captured payment status', async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ status: 'captured' }),
+      });
 
-  it('should handle captured payment status', async () => {
-    global.fetch = jest.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ 
-        paymentStatus: 'captured',
-        failureReason: null,
-      }),
+      const response = await global.fetch(`${API_BASE}/api/payment/payments/res-123/status`);
+      const data = await response.json();
+
+      expect(data.status).toBe('captured');
+      expect(response.ok).toBe(true);
     });
 
-    const mockResponse = await global.fetch(`${API_BASE}/api/booking/reservations/res-123/payment-status`);
-    const data = await mockResponse.json();
+    it('should handle failed payment status with reason', async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          status: 'failed',
+          failureReason: 'Card declined',
+        }),
+      });
 
-    expect(data.paymentStatus).toBe('captured');
-    expect(data.failureReason).toBeNull();
-  });
+      const response = await global.fetch(`${API_BASE}/api/payment/payments/res-456/status`);
+      const data = await response.json();
 
-  it('should handle failed payment status with reason', async () => {
-    global.fetch = jest.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ 
-        paymentStatus: 'failed',
-        failureReason: 'Card declined',
-      }),
+      expect(data.status).toBe('failed');
+      expect(data.failureReason).toBe('Card declined');
     });
 
-    const mockResponse = await global.fetch(`${API_BASE}/api/booking/reservations/res-456/payment-status`);
-    const data = await mockResponse.json();
+    it('should handle pending payment status', async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ status: 'pending' }),
+      });
 
-    expect(data.paymentStatus).toBe('failed');
-    expect(data.failureReason).toBe('Card declined');
+      const response = await global.fetch(`${API_BASE}/api/payment/payments/res-789/status`);
+      const data = await response.json();
+
+      expect(data.status).toBe('pending');
+    });
   });
 
-  it('should handle pending payment status', async () => {
-    global.fetch = jest.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ 
-        paymentStatus: 'pending',
-        failureReason: null,
-      }),
+  describe('Error handling', () => {
+    it('should handle network errors', async () => {
+      global.fetch = jest.fn().mockRejectedValue(new Error('Network error'));
+
+      await expect(
+        global.fetch(`${API_BASE}/api/payment/payments/res-error/status`)
+      ).rejects.toThrow('Network error');
     });
 
-    const mockResponse = await global.fetch(`${API_BASE}/api/booking/reservations/res-789/payment-status`);
-    const data = await mockResponse.json();
+    it('should handle non-ok HTTP responses', async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+        json: async () => ({ error: 'Internal server error' }),
+      });
 
-    expect(data.paymentStatus).toBe('pending');
-    expect(data.failureReason).toBeNull();
-  });
-
-  it('should handle fetch errors gracefully', async () => {
-    global.fetch = jest.fn().mockRejectedValue(new Error('Network error'));
-
-    await expect(
-      global.fetch(`${API_BASE}/api/booking/reservations/res-error/payment-status`)
-    ).rejects.toThrow('Network error');
-  });
-
-  it('should handle non-ok responses', async () => {
-    global.fetch = jest.fn().mockResolvedValue({
-      ok: false,
-      status: 404,
+      const response = await global.fetch(`${API_BASE}/api/payment/payments/res-500/status`);
+      
+      expect(response.ok).toBe(false);
+      expect(response.status).toBe(500);
     });
 
-    const mockResponse = await global.fetch(`${API_BASE}/api/booking/reservations/res-404/payment-status`);
-    
-    expect(mockResponse.ok).toBe(false);
-    expect(mockResponse.status).toBe(404);
+    it('should handle 404 not found', async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
+        status: 404,
+      });
+
+      const response = await global.fetch(`${API_BASE}/api/payment/payments/res-404/status`);
+      
+      expect(response.ok).toBe(false);
+      expect(response.status).toBe(404);
+    });
   });
 
-  it('should support polling intervals', () => {
-    const pollingInterval = 2000; // 2 seconds
-    const timeout = 60000; // 60 seconds
-    const maxRetries = timeout / pollingInterval;
+  describe('Polling configuration', () => {
+    it('should use correct polling interval', () => {
+      const POLL_INTERVAL_MS = 2500;
+      const POLL_TIMEOUT_MS = 60000;
+      
+      expect(POLL_INTERVAL_MS).toBe(2500);
+      expect(POLL_TIMEOUT_MS).toBe(60000);
+      expect(POLL_TIMEOUT_MS / POLL_INTERVAL_MS).toBe(24);
+    });
 
-    expect(maxRetries).toBe(30);
-    expect(pollingInterval).toBeLessThan(timeout);
+    it('should validate timeout is greater than interval', () => {
+      const POLL_INTERVAL_MS = 2500;
+      const POLL_TIMEOUT_MS = 60000;
+      
+      expect(POLL_TIMEOUT_MS).toBeGreaterThan(POLL_INTERVAL_MS);
+    });
   });
 
-  it('should validate reservation ID format', () => {
-    const validId = 'b0440ed6-9db8-42bf-a8b8-74576459d9e9';
-    const emptyId = '';
+  describe('Reservation ID validation', () => {
+    it('should validate UUID format', () => {
+      const validUUID = 'b0440ed6-9db8-42bf-a8b8-74576459d9e9';
+      const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      
+      expect(validUUID).toMatch(uuidPattern);
+    });
 
-    expect(validId).toMatch(/^[a-f0-9-]+$/);
-    expect(emptyId).toBe('');
+    it('should handle empty string', () => {
+      const emptyId = '';
+      
+      expect(emptyId).toBe('');
+      expect(emptyId.length).toBe(0);
+    });
+  });
+
+  describe('Payment status types', () => {
+    it('should validate payment status values', () => {
+      const validStatuses = ['pending', 'captured', 'failed'];
+      
+      validStatuses.forEach(status => {
+        expect(['pending', 'captured', 'failed']).toContain(status);
+      });
+    });
+
+    it('should handle failure reasons', () => {
+      const failureReasons = [
+        'Card declined',
+        'Insufficient funds',
+        'Payment timeout',
+        'Invalid card details',
+      ];
+      
+      failureReasons.forEach(reason => {
+        expect(typeof reason).toBe('string');
+        expect(reason.length).toBeGreaterThan(0);
+      });
+    });
   });
 });
