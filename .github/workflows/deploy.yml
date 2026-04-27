@@ -11,6 +11,11 @@ on:
         description: Target environment
         required: false
         default: prod
+      force_full_deploy:
+        description: Skip change detection and force a full deploy of all services and infrastructure
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: deploy-${{ github.event.inputs.environment || 'prod' }}
@@ -33,8 +38,10 @@ jobs:
   detect:
     name: Detect changes
     runs-on: ubuntu-latest
-    # For workflow_run: only proceed when CI succeeded. Manual dispatch always runs.
-    if: github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch'
+    # Skipped when force_full_deploy is set — deploy-infra runs unconditionally in that case.
+    if: |
+      (github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch') &&
+      github.event.inputs.force_full_deploy != 'true'
     outputs:
       infra_changed: ${{ steps.diff.outputs.infra }}
       frontend_changed: ${{ steps.diff.outputs.frontend }}
@@ -90,7 +97,11 @@ jobs:
   deploy-infra:
     name: Full deploy (Pulumi)
     needs: detect
-    if: needs.detect.outputs.infra_changed == 'true' || github.event_name == 'workflow_dispatch'
+    if: |
+      always() && (
+        needs.detect.outputs.infra_changed == 'true' ||
+        github.event_name == 'workflow_dispatch'
+      )
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
