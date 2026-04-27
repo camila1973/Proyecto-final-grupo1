@@ -97,6 +97,7 @@
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-i18next": "^16.5.8",
+    "recharts": "^3.8.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "stripe": "^22.0.1",

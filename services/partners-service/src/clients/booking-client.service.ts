@@ -1,4 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
+import type { ReservationDto } from "../dashboard/dashboard.types.js";
 
 interface FeeData {
   id?: string;
@@ -13,11 +14,27 @@ interface FeeData {
   effectiveTo?: string;
 }
 
+interface ReservationsListResponse {
+  total: number;
+  reservations: ReservationDto[];
+}
+
 @Injectable()
 export class BookingClientService {
   private readonly logger = new Logger(BookingClientService.name);
   private readonly baseUrl =
     process.env.BOOKING_SERVICE_URL ?? "http://localhost:3004";
+
+  async listReservations(): Promise<ReservationDto[]> {
+    const res = await fetch(`${this.baseUrl}/reservations`);
+    if (!res.ok) {
+      throw new Error(
+        `booking-service list reservations failed [${res.status}]`,
+      );
+    }
+    const data = (await res.json()) as ReservationsListResponse;
+    return data.reservations ?? [];
+  }
 
   async upsertFee(data: FeeData): Promise<Record<string, unknown>> {
     const res = await fetch(`${this.baseUrl}/internal/fees`, {
