@@ -259,8 +259,8 @@ export default function HomeScreen() {
   const theme = useTheme();
 
   const [city, setCity] = useState('');
-  const [checkIn, setCheckIn] = useState('');
-  const [checkOut, setCheckOut] = useState('');
+  const [checkIn, setCheckIn] = useState(toIso(new Date()));
+  const [checkOut, setCheckOut] = useState(addDays(toIso(new Date()), 2));
   const [guests, setGuests] = useState(2);
   const [rooms, setRooms] = useState(1);
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -307,7 +307,9 @@ export default function HomeScreen() {
   }
 
   function handleSearch() {
-    if (!city.trim()) return;
+    // Validar que todos los campos requeridos estén completos
+    if (!city.trim() || !checkIn || !checkOut) return;
+    
     router.push({
       pathname: '/search-results',
       params: { city: city.trim(), checkIn, checkOut, guests: String(guests) },
@@ -400,7 +402,7 @@ export default function HomeScreen() {
               mode="contained"
               icon="magnify"
               onPress={handleSearch}
-              disabled={!city.trim()}
+              disabled={!city.trim() || !checkIn || !checkOut}
               contentStyle={styles.searchBtnContent}
               style={styles.searchBtn}
               buttonColor={theme.colors.secondary}

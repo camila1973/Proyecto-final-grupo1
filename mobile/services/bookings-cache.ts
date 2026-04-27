@@ -24,6 +24,7 @@ export interface Reservation {
   id: string;
   propertyId: string;
   roomId: string;
+  partnerId: string;
   bookerId: string;
   checkIn: string;
   checkOut: string;

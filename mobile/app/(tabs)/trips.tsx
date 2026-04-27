@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
-  FlatList,
   RefreshControl,
+  SectionList,
   StyleSheet,
   View,
 } from 'react-native';
@@ -16,8 +16,9 @@ import {
 } from 'react-native-paper';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 
 import { useAuth } from '@/hooks/useAuth';
 import { useNetInfo } from '@/hooks/useNetInfo';
@@ -28,6 +29,7 @@ import {
   type Reservation,
   type ReservationStatus,
 } from '@/services/bookings-cache';
+import { rebuildIntent, setCheckoutIntent } from '@/services/checkout-store';
 
 const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
 
@@ -71,20 +73,88 @@ function nightsBetween(checkIn: string, checkOut: string): number {
   );
 }
 
+// ─── Countdown hook ───────────────────────────────────────────────────────────
+
+function useCountdown(expiresAt: string | null): string {
+  const [label, setLabel] = useState('');
+
+  useEffect(() => {
+    if (!expiresAt) return;
+    const tick = () => {
+      const diff = Math.max(0, new Date(expiresAt).getTime() - Date.now());
+      const m = Math.floor(diff / 60_000);
+      const s = Math.floor((diff % 60_000) / 1000);
+      setLabel(`${m}:${String(s).padStart(2, '0')}`);
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [expiresAt]);
+
+  return label;
+}
+
+// ─── Held Banner ──────────────────────────────────────────────────────────────
+
+interface HeldBannerProps {
+  reservation: Reservation;
+  onCompletePayment: (item: Reservation) => void;
+  theme: any; // MD3 theme from react-native-paper
+}
+
+function HeldBanner({ reservation, onCompletePayment, theme }: HeldBannerProps) {
+  const { t } = useTranslation();
+  const countdown = useCountdown(reservation.holdExpiresAt);
+  const propertyName = reservation.snapshot?.propertyName ?? t('bookings.property');
+
+  return (
+    <View style={[styles.heldBanner, { backgroundColor: '#fef3c7', borderColor: '#f59e0b' }]}>
+      <View style={styles.heldBannerIcon}>
+        <MaterialIcons name="schedule" size={24} color="#d97706" />
+      </View>
+      <View style={styles.heldBannerContent}>
+        <Text variant="titleSmall" style={{ color: '#78350f', fontWeight: '700' }}>
+          {t('bookings.heldBanner.title')}
+        </Text>
+        <Text variant="bodySmall" style={{ color: '#78350f', marginTop: 2 }}>
+          {t('bookings.heldBanner.subtitle', { propertyName })}
+        </Text>
+        {countdown && (
+          <Text variant="labelSmall" style={{ color: '#d97706', marginTop: 4, fontWeight: '600' }}>
+            {t('bookings.heldBanner.expires', { time: countdown })}
+          </Text>
+        )}
+      </View>
+      <Button
+        mode="contained"
+        compact
+        onPress={() => onCompletePayment(reservation)}
+        buttonColor={theme.colors.secondary}
+        style={styles.heldBannerBtn}
+        labelStyle={{ fontSize: 13, fontWeight: '700' }}
+      >
+        {t('bookings.completePayment')}
+      </Button>
+    </View>
+  );
+}
+
 // ─── Reservation card ──────────────────────────────────────────────────────────
 
 interface CardProps {
   item: Reservation;
   onCancel: (id: string) => void;
+  onCompletePayment: (item: Reservation) => void;
   isOnline: boolean;
 }
 
-function ReservationCard({ item, onCancel, isOnline }: CardProps) {
+function ReservationCard({ item, onCancel, onCompletePayment, isOnline }: CardProps) {
   const theme = useTheme();
   const { t } = useTranslation();
   const snap = item.snapshot;
   const nights = nightsBetween(item.checkIn, item.checkOut);
   const canCancel = isOnline && (item.status === 'confirmed' || item.status === 'held');
+  const isHeld = item.status === 'held';
 
   return (
     <View style={[styles.card, { backgroundColor: theme.colors.surface }]}>
@@ -145,7 +215,18 @@ function ReservationCard({ item, onCancel, isOnline }: CardProps) {
               {t('bookings.total', { amount: item.grandTotalUsd.toFixed(2) })}
             </Text>
           )}
-          {canCancel && (
+          {isHeld && isOnline ? (
+            <Button
+              mode="contained"
+              compact
+              onPress={() => onCompletePayment(item)}
+              buttonColor={theme.colors.secondary}
+              style={styles.completeBtn}
+              labelStyle={{ fontSize: 12 }}
+            >
+              {t('bookings.completePayment')}
+            </Button>
+          ) : canCancel ? (
             <Button
               mode="outlined"
               compact
@@ -156,7 +237,7 @@ function ReservationCard({ item, onCancel, isOnline }: CardProps) {
             >
               {t('bookings.cancel')}
             </Button>
-          )}
+          ) : null}
         </View>
       </View>
     </View>
@@ -168,6 +249,7 @@ function ReservationCard({ item, onCancel, isOnline }: CardProps) {
 export default function TripsScreen() {
   const { t } = useTranslation();
   const theme = useTheme();
+  const router = useRouter();
   const { token, user } = useAuth();
   const { isConnected } = useNetInfo();
 
@@ -251,6 +333,28 @@ export default function TripsScreen() {
     [t, token, loadData],
   );
 
+  /**
+   * Permite al usuario retomar el flujo de checkout para completar el pago
+   * de una reserva "held" o reintentar una reserva "failed".
+   */
+  const handleCompletePayment = useCallback(
+    (reservation: Reservation) => {
+      const intent = rebuildIntent(reservation);
+      
+      if (!intent) {
+        Alert.alert(
+          t('bookings.errorTitle'),
+          t('bookings.errorRebuildIntent'),
+        );
+        return;
+      }
+
+      setCheckoutIntent(intent);
+      router.push('/booking/checkout');
+    },
+    [router, t],
+  );
+
   // ─── Render states ────────────────────────────────────────────────────────────
 
   const renderContent = () => {
@@ -296,15 +400,54 @@ export default function TripsScreen() {
       );
     }
 
+    // Buscar la primera reserva "held" para mostrar el banner
+    const heldReservation = reservations.find(r => r.status === 'held');
+
+    // Separar reservas en activas y pasadas
+    const ACTIVE_STATUSES: ReservationStatus[] = ['held', 'submitted', 'confirmed'];
+    const PAST_STATUSES: ReservationStatus[] = ['cancelled', 'expired', 'failed'];
+    
+    const activeReservations = reservations.filter(r => ACTIVE_STATUSES.includes(r.status));
+    const pastReservations = reservations.filter(r => PAST_STATUSES.includes(r.status));
+
+    // Crear secciones solo si existen reservas en cada categoría
+    const sections = [
+      ...(activeReservations.length > 0 ? [{ title: t('bookings.sections.active'), data: activeReservations }] : []),
+      ...(pastReservations.length > 0 ? [{ title: t('bookings.sections.past'), data: pastReservations }] : []),
+    ];
+
     return (
-      <FlatList
-        data={reservations}
-        keyExtractor={r => r.id}
+      <SectionList
+        sections={sections}
+        keyExtractor={(item) => item.id}
+        ListHeaderComponent={
+          heldReservation ? (
+            <HeldBanner 
+              reservation={heldReservation} 
+              onCompletePayment={handleCompletePayment}
+              theme={theme}
+            />
+          ) : null
+        }
+        renderSectionHeader={({ section }) => (
+          <View style={[styles.sectionHeader, { backgroundColor: theme.colors.background }]}>
+            <Text variant="titleMedium" style={{ color: theme.colors.onSurface, fontWeight: '700' }}>
+              {section.title}
+            </Text>
+          </View>
+        )}
         renderItem={({ item }) => (
-          <ReservationCard item={item} onCancel={handleCancel} isOnline={isConnected} />
+          <ReservationCard 
+            item={item} 
+            onCancel={handleCancel} 
+            onCompletePayment={handleCompletePayment}
+            isOnline={isConnected} 
+          />
         )}
         contentContainerStyle={styles.list}
         ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
+        SectionSeparatorComponent={() => <View style={{ height: 20 }} />}
+        stickySectionHeadersEnabled={false}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -343,6 +486,11 @@ const styles = StyleSheet.create({
   loadingText: { marginTop: 12 },
   emptyDesc: { marginTop: 8, textAlign: 'center' },
   list: { padding: 16, paddingBottom: 32 },
+  sectionHeader: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 12,
+  },
 
   // Card
   card: {
@@ -364,8 +512,36 @@ const styles = StyleSheet.create({
   dateBlock: { gap: 2 },
   cardFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 12 },
   cancelBtn: { borderRadius: 8 },
+  completeBtn: { borderRadius: 8 },
 
   // Status chip
   chip: { alignSelf: 'flex-start' },
   chipText: { fontSize: 11, fontWeight: '700' },
+
+  // Held banner
+  heldBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 14,
+    marginHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  heldBannerIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#fef3c7',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heldBannerContent: {
+    flex: 1,
+  },
+  heldBannerBtn: {
+    borderRadius: 8,
+  },
 });

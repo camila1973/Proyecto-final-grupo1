@@ -50,6 +50,7 @@ const RESERVATION: Reservation = {
   id: 'res-001',
   propertyId: 'prop-001',
   roomId: 'room-001',
+  partnerId: 'partner-001',
   bookerId: 'user-001',
   checkIn: '2026-03-03',
   checkOut: '2026-03-09',
