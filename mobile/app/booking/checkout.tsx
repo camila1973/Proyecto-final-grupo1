@@ -20,7 +20,7 @@ import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { useStripe } from '@stripe/stripe-react-native';
+import { useStripe } from '@/services/stripe-wrapper';
 
 import { useAuth } from '@/hooks/useAuth';
 import { getCheckoutIntent, clearCheckoutIntent } from '@/services/checkout-store';

@@ -5,7 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
 import 'react-native-reanimated';
 import { PaperProvider } from 'react-native-paper';
-import { StripeProvider } from '@stripe/stripe-react-native';
+import { StripeProvider } from '@/services/stripe-wrapper';
 import '@/i18n';
 
 import { AnimatedSplash } from '@/components/animated-splash';
