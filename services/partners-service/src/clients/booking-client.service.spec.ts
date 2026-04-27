@@ -62,6 +62,33 @@ describe("BookingClientService", () => {
     });
   });
 
+  describe("listReservations", () => {
+    it("returns reservations array on success", async () => {
+      global.fetch = mockFetch(true, {
+        total: 1,
+        reservations: [{ id: "r1", partnerId: "p1" }],
+      }) as typeof fetch;
+      const svc = new BookingClientService();
+      const result = await svc.listReservations();
+      expect(result).toEqual([{ id: "r1", partnerId: "p1" }]);
+    });
+
+    it("returns empty array when reservations missing", async () => {
+      global.fetch = mockFetch(true, { total: 0 }) as typeof fetch;
+      const svc = new BookingClientService();
+      const result = await svc.listReservations();
+      expect(result).toEqual([]);
+    });
+
+    it("throws on non-ok response", async () => {
+      global.fetch = mockFetch(false, "Error", 500) as typeof fetch;
+      const svc = new BookingClientService();
+      await expect(svc.listReservations()).rejects.toThrow(
+        "booking-service list reservations failed [500]",
+      );
+    });
+  });
+
   describe("deleteFee", () => {
     it("resolves on 204", async () => {
       global.fetch = jest

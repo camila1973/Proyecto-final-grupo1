@@ -14,6 +14,8 @@ import CheckoutPage from './pages/booking/checkout';
 import BookingConfirmationPage from './pages/booking/confirmation';
 import ProfilePage from './pages/ProfilePage';
 import TripsPage from './pages/trips';
+import MiHotelPage from './pages/partner/MiHotelPage';
+import PagosPage from './pages/partner/PagosPage';
 
 
 const rootRoute = createRootRoute({
@@ -123,6 +125,18 @@ const myBookingsRoute = createRoute({
   component: TripsPage,
 });
 
+const miHotelRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/mi-hotel',
+  component: MiHotelPage,
+});
+
+const pagosRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/mi-hotel/pagos',
+  component: PagosPage,
+});
+
 const routeTree = rootRoute.addChildren([
   homeRoute,
   searchRoute,
@@ -135,6 +149,8 @@ const routeTree = rootRoute.addChildren([
   bookingConfirmationRoute,
   profileRoute,
   myBookingsRoute,
+  miHotelRoute,
+  pagosRoute,
 ]);
 
 export function createAppRouter() {

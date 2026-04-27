@@ -237,3 +237,102 @@ export async function cancelReservation(id: string, token: string, reason: strin
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
 }
+
+// ─── Partner Dashboard (B2B) ──────────────────────────────────────────────────
+
+export interface PartnerMetricCard {
+  confirmed: number;
+  cancelled: number;
+  revenueUsd: number;
+  lossesUsd: number;
+  netUsd: number;
+}
+
+export interface PartnerMonthlyPoint {
+  month: string;
+  revenueUsd: number;
+  lossesUsd: number;
+  occupancyRate: number;
+}
+
+export interface PartnerReservationRow {
+  id: string;
+  status: string;
+  guestName: string;
+  guestEmail: string;
+  guestPhone: string;
+  guestCount: number;
+  checkIn: string;
+  checkOut: string;
+  roomType: string;
+  grandTotalUsd: number | null;
+}
+
+export interface PartnerHotelState {
+  partnerId: string;
+  month: string;
+  roomType: string | null;
+  metrics: PartnerMetricCard;
+  monthlySeries: PartnerMonthlyPoint[];
+  reservations: PartnerReservationRow[];
+}
+
+export interface PartnerPaymentRow {
+  reservationId: string;
+  status: string;
+  paymentMethod: string;
+  reference: string;
+  nights: number;
+  ratePerNightUsd: number;
+  subtotalUsd: number;
+  taxesUsd: number;
+  totalPaidUsd: number;
+  commissionUsd: number;
+  earningsUsd: number;
+  createdAt: string;
+}
+
+export interface PartnerPayments {
+  partnerId: string;
+  month: string | null;
+  total: number;
+  page: number;
+  pageSize: number;
+  rows: PartnerPaymentRow[];
+}
+
+export async function fetchPartnerHotelState(
+  partnerId: string,
+  month: string,
+  roomType: string | null,
+  token: string,
+): Promise<PartnerHotelState> {
+  const params = new URLSearchParams({ month });
+  if (roomType) params.set('roomType', roomType);
+  const res = await fetch(
+    `${API_BASE}/api/partners/partners/${encodeURIComponent(partnerId)}/hotel-state?${params}`,
+    { headers: { Authorization: `Bearer ${token}` } },
+  );
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json() as Promise<PartnerHotelState>;
+}
+
+export async function fetchPartnerPayments(
+  partnerId: string,
+  month: string | null,
+  page: number,
+  pageSize: number,
+  token: string,
+): Promise<PartnerPayments> {
+  const params = new URLSearchParams({
+    page: String(page),
+    pageSize: String(pageSize),
+  });
+  if (month) params.set('month', month);
+  const res = await fetch(
+    `${API_BASE}/api/partners/partners/${encodeURIComponent(partnerId)}/payments?${params}`,
+    { headers: { Authorization: `Bearer ${token}` } },
+  );
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json() as Promise<PartnerPayments>;
+}
