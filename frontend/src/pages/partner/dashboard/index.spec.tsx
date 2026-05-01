@@ -110,6 +110,9 @@ function mockFetch(overrides: { propertiesOk?: boolean } = {}) {
     if ((url as string).includes('/payments')) {
       return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(PAYMENTS_RESPONSE) });
     }
+    if ((url as string).includes('/members')) {
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve([]) });
+    }
     // Partner details: GET /partners/:id
     return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(PARTNER_DETAILS_RESPONSE) });
   }) as never;
@@ -164,13 +167,12 @@ describe('MiHotelPage (org dashboard)', () => {
     expect(sectionHeaders.length).toBeGreaterThanOrEqual(1);
   });
 
-  it('navigates to property dashboard on action button click', async () => {
+  it('navigates to property dashboard on property name click', async () => {
     renderPage();
     await waitFor(() => {
       expect(screen.getAllByText('Hotel Central Park').length).toBeGreaterThanOrEqual(1);
     });
-    const buttons = screen.getAllByRole('button', { name: 'Ir' });
-    fireEvent.click(buttons[0]);
+    fireEvent.click(screen.getAllByText('Hotel Central Park')[0]);
     expect(mockNavigate).toHaveBeenCalledWith({
       to: '/mi-hotel/$propertyId',
       params: { propertyId: 'prop-abc' },
