@@ -24,6 +24,11 @@ function hashPassword(password: string): string {
 // ─── seed data ────────────────────────────────────────────────────────────────
 
 // UUIDs must match booking-service/scripts/seed.ts BOOKER() values
+// partner_id values must match partners-service/scripts/seed.ts PARTNER_* constants
+// PARTNER_1 = Gran Caribe Hospitality Group, PARTNER_2 = Sol Boutique Hotels & Hostales
+const PARTNER_1 = "a1000000-0000-0000-0000-000000000001";
+const PARTNER_2 = "a1000000-0000-0000-0000-000000000002";
+
 const USERS = [
   {
     id: "e1000000-0000-0000-0000-000000000001",
@@ -32,6 +37,7 @@ const USERS = [
     password: "Admin1234!",
     firstName: "Admin",
     lastName: "TravelHub",
+    partnerId: null,
   },
   {
     id: "e1000000-0000-0000-0000-000000000002",
@@ -39,7 +45,17 @@ const USERS = [
     role: "partner" as const,
     password: "Partner1234!",
     firstName: "Partner",
-    lastName: "TravelHub",
+    lastName: "One",
+    partnerId: PARTNER_1,
+  },
+  {
+    id: "e1000000-0000-0000-0000-000000000004",
+    email: "partner2@travelhub.com",
+    role: "partner" as const,
+    password: "Partner1234!",
+    firstName: "Partner",
+    lastName: "Two",
+    partnerId: PARTNER_2,
   },
   {
     id: "e1000000-0000-0000-0000-000000000003",
@@ -48,6 +64,7 @@ const USERS = [
     password: "Guest1234!",
     firstName: "Guest",
     lastName: "TravelHub",
+    partnerId: null,
   },
 ];
 
@@ -72,6 +89,7 @@ async function seed() {
         first_name: u.firstName,
         last_name: u.lastName,
         phone: null,
+        partner_id: u.partnerId,
       })),
     )
     .execute();

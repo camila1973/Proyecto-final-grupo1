@@ -57,6 +57,7 @@ export class AuthService {
       firstName: body.firstName?.trim() || undefined,
       lastName: body.lastName?.trim() || undefined,
       phone: body.phone?.trim() || undefined,
+      partnerId: body.partnerId || undefined,
     });
 
     return {
@@ -66,8 +67,52 @@ export class AuthService {
       firstName: body.firstName?.trim() || undefined,
       lastName: body.lastName?.trim() || undefined,
       phone: body.phone?.trim() || undefined,
+      partnerId: body.partnerId || undefined,
       createdAt,
     };
+  }
+
+  async registerInternal(body: RegisterBody): Promise<{ challengeId: string }> {
+    this.validateEmailAndPassword(body.email, body.password);
+
+    const normalizedEmail = body.email.trim().toLowerCase();
+    const existingUser =
+      await this.authRepository.findUserByEmail(normalizedEmail);
+    if (existingUser) {
+      throw new ConflictException("Email is already registered");
+    }
+
+    const userId = randomUUID();
+    const createdAt = new Date().toISOString();
+
+    await this.authRepository.createUser({
+      id: userId,
+      email: normalizedEmail,
+      role: body.role ?? "guest",
+      passwordHash: this.hashPassword(body.password),
+      createdAt,
+      firstName: body.firstName?.trim() || undefined,
+      lastName: body.lastName?.trim() || undefined,
+      phone: body.phone?.trim() || undefined,
+      partnerId: body.partnerId || undefined,
+    });
+
+    await this.authRepository.purgeExpiredChallenges();
+
+    const otp = this.generateOtp();
+    const otpHash = this.hashOtp(otp);
+    const challengeId = randomUUID();
+
+    await this.authRepository.createChallenge({
+      id: challengeId,
+      userId,
+      otpCodeHash: otpHash,
+      expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+    });
+
+    await this.sendOtpEmail(normalizedEmail, userId, otp);
+
+    return { challengeId };
   }
 
   async login(body: LoginBody): Promise<LoginResponse> {
@@ -160,22 +205,21 @@ export class AuthService {
 
     await this.authRepository.deleteChallengeById(challenge.id);
 
+    const publicUser: PublicUser = {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      firstName: user.first_name ?? undefined,
+      lastName: user.last_name ?? undefined,
+      phone: user.phone ?? undefined,
+      partnerId: user.partner_id ?? undefined,
+    };
+
     return {
-      accessToken: this.createAccessToken({
-        id: user.id,
-        email: user.email,
-        role: user.role,
-      }),
+      accessToken: this.createAccessToken(publicUser),
       tokenType: "Bearer",
       expiresIn: 3600,
-      user: {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-        firstName: user.first_name ?? undefined,
-        lastName: user.last_name ?? undefined,
-        phone: user.phone ?? undefined,
-      },
+      user: publicUser,
     };
   }
 
@@ -188,6 +232,7 @@ export class AuthService {
       firstName: user.first_name ?? undefined,
       lastName: user.last_name ?? undefined,
       phone: user.phone ?? undefined,
+      partnerId: user.partner_id ?? undefined,
       createdAt: user.created_at,
     }));
   }
@@ -225,7 +270,7 @@ export class AuthService {
 
   private createAccessToken(user: PublicUser): string {
     const now = Math.floor(Date.now() / 1000);
-    const payload = {
+    const payload: Record<string, unknown> = {
       sub: user.id,
       email: user.email,
       role: user.role,
@@ -234,6 +279,7 @@ export class AuthService {
       iat: now,
       exp: now + 3600,
     };
+    if (user.partnerId) payload.partnerId = user.partnerId;
     return this.signJwt(payload);
   }
 

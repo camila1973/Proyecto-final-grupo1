@@ -344,7 +344,9 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: travelhub
+      POSTGRES_DB: partners_service
+    ports:
+      - "5438:5432"
     volumes:
       - partners_pg_data:/var/lib/postgresql/data
     networks:
@@ -365,12 +367,15 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3007
-      DATABASE_URL: postgres://postgres:postgres@partners-db:5432/travelhub
+      DATABASE_URL: postgres://postgres:postgres@partners-db:5432/partners_service?sslmode=disable
       BOOKING_SERVICE_URL: http://booking-service:3004
+      AUTH_SERVICE_URL: http://auth-service:3001
     depends_on:
       partners-db:
         condition: service_healthy
       booking-service:
+        condition: service_started
+      auth-service:
         condition: service_started
 
   # ─── Integration Service ──────────────────────────────────────────────────────

@@ -1,4 +1,11 @@
-import { Body, Controller, Get, Post } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Post,
+} from "@nestjs/common";
 import { AuthService } from "./auth/auth.service";
 import type {
   LoginBody,
@@ -42,5 +49,13 @@ export class AppController {
   @Get("users")
   async getUsers(): Promise<UserListResponse> {
     return this.authService.getUsers();
+  }
+
+  @Post("internal/users")
+  @HttpCode(HttpStatus.CREATED)
+  async createInternalUser(
+    @Body() body: RegisterBody,
+  ): Promise<{ challengeId: string }> {
+    return this.authService.registerInternal(body);
   }
 }

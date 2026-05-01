@@ -23,6 +23,14 @@
       "executor": "@nx/jest:jest",
       "outputs": ["{workspaceRoot}/coverage/partners-service"],
       "options": { "jestConfig": "services/partners-service/jest.config.js", "passWithNoTests": true }
+    },
+    "migrate": {
+      "executor": "nx:run-commands",
+      "options": { "command": "pnpm exec kysely migrate:latest", "cwd": "services/partners-service" }
+    },
+    "seed": {
+      "executor": "nx:run-commands",
+      "options": { "command": "npx tsx scripts/seed.ts", "cwd": "services/partners-service" }
     }
   }
 }
