@@ -56,6 +56,7 @@ const DB_USER = (overrides: Partial<DbUser> = {}): DbUser => ({
   first_name: null,
   last_name: null,
   phone: null,
+  partner_id: null,
   ...overrides,
 });
 
@@ -432,6 +433,7 @@ describe("AuthService", () => {
           first_name: null,
           last_name: null,
           phone: null,
+          partner_id: null,
         },
         {
           id: "usr_2",
@@ -442,6 +444,7 @@ describe("AuthService", () => {
           first_name: null,
           last_name: null,
           phone: null,
+          partner_id: null,
         },
       ]);
 
