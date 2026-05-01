@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
+import { useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import Button from '@mui/material/Button';
 import Link from '@mui/material/Link';
@@ -104,7 +105,26 @@ export default function PartnerRegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+
+  const mutation = useMutation({
+    mutationFn: registerPartner,
+    onSuccess: (data) => {
+      navigate({ to: '/login/mfa', search: { challengeId: data.challengeId } });
+    },
+    onError: (err: unknown) => {
+      const e = err as { status?: number; body?: { message?: string } };
+      if (e.status === 409) {
+        const msg = (e.body?.message ?? '').toLowerCase();
+        if (msg.includes('email')) {
+          setErrors((prev) => ({ ...prev, ownerEmail: t('partner_register.errors.email_taken') }));
+        } else {
+          setErrors((prev) => ({ ...prev, slug: t('partner_register.errors.slug_taken') }));
+        }
+      } else {
+        setApiError(t('partner_register.errors.generic'));
+      }
+    },
+  });
 
   const handleChange = (field: keyof FormFields) => (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -118,7 +138,7 @@ export default function PartnerRegisterPage() {
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: undefined }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setApiError(null);
 
@@ -128,32 +148,14 @@ export default function PartnerRegisterPage() {
       return;
     }
 
-    setLoading(true);
-    try {
-      const data = await registerPartner({
-        orgName: fields.orgName.trim(),
-        slug: fields.slug.trim(),
-        firstName: fields.firstName.trim(),
-        lastName: fields.lastName.trim(),
-        ownerEmail: fields.ownerEmail.trim().toLowerCase(),
-        ownerPassword: fields.ownerPassword,
-      });
-      navigate({ to: '/login/mfa', search: { challengeId: data.challengeId } });
-    } catch (err: unknown) {
-      const e = err as { status?: number; body?: { message?: string } };
-      if (e.status === 409) {
-        const msg = (e.body?.message ?? '').toLowerCase();
-        if (msg.includes('email')) {
-          setErrors((prev) => ({ ...prev, ownerEmail: t('partner_register.errors.email_taken') }));
-        } else {
-          setErrors((prev) => ({ ...prev, slug: t('partner_register.errors.slug_taken') }));
-        }
-      } else {
-        setApiError(t('partner_register.errors.generic'));
-      }
-    } finally {
-      setLoading(false);
-    }
+    mutation.mutate({
+      orgName: fields.orgName.trim(),
+      slug: fields.slug.trim(),
+      firstName: fields.firstName.trim(),
+      lastName: fields.lastName.trim(),
+      ownerEmail: fields.ownerEmail.trim().toLowerCase(),
+      ownerPassword: fields.ownerPassword,
+    });
   };
 
   return (
@@ -301,8 +303,8 @@ export default function PartnerRegisterPage() {
             fullWidth
             variant="contained"
             size="large"
-            disabled={loading}
-            loading={loading}
+            disabled={mutation.isPending}
+            loading={mutation.isPending}
           >
             {t('partner_register.submit')}
           </Button>
