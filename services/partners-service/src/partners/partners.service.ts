@@ -62,7 +62,7 @@ export class PartnersService {
       await this.membersRepo.insert({
         partnerId: partner.id,
         userId,
-        role: "partner",
+        role: "owner",
         propertyId: null,
       });
     } catch (err) {
