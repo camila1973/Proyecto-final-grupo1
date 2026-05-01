@@ -573,6 +573,8 @@ describe("AuthService", () => {
           last_name: null,
           phone: null,
           partner_id: null,
+          property_id: null,
+          last_login_at: null,
         },
         {
           id: "usr_2",
@@ -584,6 +586,8 @@ describe("AuthService", () => {
           last_name: null,
           phone: null,
           partner_id: null,
+          property_id: null,
+          last_login_at: null,
         },
       ]);
 
@@ -595,12 +599,24 @@ describe("AuthService", () => {
           email: "a@b.com",
           role: "guest",
           createdAt: "2024-01-01",
+          firstName: undefined,
+          lastName: undefined,
+          phone: undefined,
+          partnerId: undefined,
+          propertyId: undefined,
+          lastLoginAt: null,
         },
         {
           id: "usr_2",
           email: "c@d.com",
           role: "admin",
           createdAt: "2024-02-01",
+          firstName: undefined,
+          lastName: undefined,
+          phone: undefined,
+          partnerId: undefined,
+          propertyId: undefined,
+          lastLoginAt: null,
         },
       ]);
     });
