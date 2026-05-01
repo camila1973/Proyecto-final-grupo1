@@ -1,9 +1,9 @@
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Box, Typography } from '@mui/material';
 import { useTranslation } from 'react-i18next';
-import { useLocale } from '../../context/LocaleContext';
-import { shortMonthLabel } from '../../utils/month';
-import type { PartnerMonthlyPoint } from '../../utils/queries';
+import { useLocale } from '../../../context/LocaleContext';
+import { shortMonthLabel } from '../../../utils/month';
+import type { PartnerMonthlyPoint } from '../../../utils/queries';
 import { buildLegendFormatter, buildTooltipFormatter } from './chart-formatters';
 
 export interface MonthlyChartProps {

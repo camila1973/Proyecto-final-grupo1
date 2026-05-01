@@ -20,10 +20,10 @@ import {
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import SearchIcon from '@mui/icons-material/Search';
-import { useAuth } from '../../hooks/useAuth';
-import { useLocale } from '../../context/LocaleContext';
-import { fetchPartnerPayments } from '../../utils/queries';
-import { formatPrice } from '../../utils/currency';
+import { useAuth } from '../../../hooks/useAuth';
+import { useLocale } from '../../../context/LocaleContext';
+import { fetchPartnerPayments } from '../../../utils/queries';
+import { formatPrice } from '../../../utils/currency';
 
 const PAGE_SIZE = 20;
 
@@ -35,7 +35,7 @@ export default function PagosPage() {
   const [filter, setFilter] = useState<string>('');
   const [page, setPage] = useState<number>(1);
 
-  const partnerId = user?.id ?? '';
+  const partnerId = user?.partnerId ?? '';
   const enabled = !!token && !!partnerId;
 
   const { data, isLoading, isError } = useQuery({

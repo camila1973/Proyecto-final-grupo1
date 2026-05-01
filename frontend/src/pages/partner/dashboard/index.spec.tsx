@@ -1,9 +1,9 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { setupTestI18n } from '../../i18n/test-utils';
-import { LocaleProvider } from '../../context/LocaleContext';
-import { AuthContext } from '../../context/auth-context';
-import MiHotelPage from './MiHotelPage';
+import { setupTestI18n } from '../../../i18n/test-utils';
+import { LocaleProvider } from '../../../context/LocaleContext';
+import { AuthContext } from '../../../context/auth-context';
+import MiHotelPage from '.';
 
 setupTestI18n('es');
 
@@ -60,7 +60,7 @@ const HOTEL_STATE = {
 
 const MOCK_AUTH = {
   token: 'test-token',
-  user: { id: 'partner-1', email: 'p@h.com', role: 'partner' },
+  user: { id: 'usr-1', email: 'p@h.com', role: 'partner', partnerId: 'partner-1' },
   login: jest.fn(),
   logout: jest.fn(),
 };

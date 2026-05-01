@@ -14,9 +14,9 @@ import CheckoutPage from './pages/booking/checkout';
 import BookingConfirmationPage from './pages/booking/confirmation';
 import ProfilePage from './pages/ProfilePage';
 import TripsPage from './pages/trips';
-import MiHotelPage from './pages/partner/MiHotelPage';
-import PagosPage from './pages/partner/PagosPage';
-import PartnerRegisterPage from './pages/PartnerRegisterPage';
+import MiHotelPage from './pages/partner/dashboard';
+import PagosPage from './pages/partner/payments';
+import PartnerRegisterPage from './pages/partner/register';
 
 
 const rootRoute = createRootRoute({

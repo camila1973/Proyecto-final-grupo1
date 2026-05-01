@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
-import { setupTestI18n } from '../../i18n/test-utils';
-import { LocaleProvider } from '../../context/LocaleContext';
+import { setupTestI18n } from '../../../i18n/test-utils';
+import { LocaleProvider } from '../../../context/LocaleContext';
 import MonthlyChart from './MonthlyChart';
 import { buildLegendFormatter, buildTooltipFormatter } from './chart-formatters';
 

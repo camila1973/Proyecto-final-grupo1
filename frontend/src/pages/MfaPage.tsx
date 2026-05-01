@@ -63,7 +63,7 @@ export default function MfaPage() {
 
       const data = await response.json() as {
         accessToken: string;
-        user: { id: string; email: string; role: string };
+        user: { id: string; email: string; role: string; partnerId?: string };
       };
 
       login(data.accessToken, data.user);

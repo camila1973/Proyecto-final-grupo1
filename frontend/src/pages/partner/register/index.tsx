@@ -11,8 +11,8 @@ import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import BusinessIcon from '@mui/icons-material/Business';
 import PersonIcon from '@mui/icons-material/Person';
-import { registerPartner } from '../utils/queries';
-import LabeledField from '../components/LabeledField';
+import { registerPartner, type RegisterPartnerParams, type RegisterPartnerResponse } from '../../../utils/queries';
+import LabeledField from '../../../components/LabeledField';
 
 interface FormFields {
   orgName: string;
@@ -106,7 +106,7 @@ export default function PartnerRegisterPage() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
 
-  const mutation = useMutation({
+  const mutation = useMutation<RegisterPartnerResponse, unknown, RegisterPartnerParams>({
     mutationFn: registerPartner,
     onSuccess: (data) => {
       navigate({ to: '/login/mfa', search: { challengeId: data.challengeId } });
