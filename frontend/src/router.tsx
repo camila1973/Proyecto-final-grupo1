@@ -14,8 +14,9 @@ import CheckoutPage from './pages/booking/checkout';
 import BookingConfirmationPage from './pages/booking/confirmation';
 import ProfilePage from './pages/ProfilePage';
 import TripsPage from './pages/trips';
-import MiHotelPage from './pages/partner/MiHotelPage';
-import PagosPage from './pages/partner/PagosPage';
+import MiHotelPage from './pages/partner/dashboard';
+import PagosPage from './pages/partner/payments';
+import PartnerRegisterPage from './pages/partner/register';
 
 
 const rootRoute = createRootRoute({
@@ -83,6 +84,12 @@ const registerSuccessRoute = createRoute({
   component: RegisterSuccess,
 });
 
+const partnerRegisterRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/register/partner',
+  component: PartnerRegisterPage,
+});
+
 const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/login',
@@ -143,6 +150,7 @@ const routeTree = rootRoute.addChildren([
   propertyRoute,
   registerRoute,
   registerSuccessRoute,
+  partnerRegisterRoute,
   loginRoute,
   mfaRoute,
   checkoutRoute,

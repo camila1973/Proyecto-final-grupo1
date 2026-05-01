@@ -24,13 +24,13 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import SettingsIcon from '@mui/icons-material/Settings';
 import SearchIcon from '@mui/icons-material/Search';
-import { useAuth } from '../../hooks/useAuth';
-import { useLocale } from '../../context/LocaleContext';
-import { fetchPartnerHotelState } from '../../utils/queries';
-import { formatPrice } from '../../utils/currency';
-import { currentMonth, formatMonthLabel, shiftMonth } from '../../utils/month';
-import MetricCard from './MetricCard';
-import MonthlyChart from './MonthlyChart';
+import { useAuth } from '../../../hooks/useAuth';
+import { useLocale } from '../../../context/LocaleContext';
+import { fetchPartnerHotelState } from '../../../utils/queries';
+import { formatPrice } from '../../../utils/currency';
+import { currentMonth, formatMonthLabel, shiftMonth } from '../../../utils/month';
+import MetricCard from '../components/MetricCard';
+import MonthlyChart from '../components/MonthlyChart';
 
 const PAGE_SIZE = 10;
 const ROOM_TYPE_OPTIONS = ['', 'Doble Superior', 'Suite', 'Sencilla', 'Familiar'];
@@ -46,7 +46,7 @@ export default function MiHotelPage() {
   const [reservationFilter, setReservationFilter] = useState<string>('');
   const [page, setPage] = useState<number>(1);
 
-  const partnerId = user?.id ?? '';
+  const partnerId = user?.partnerId ?? '';
   const enabled = !!token && !!partnerId;
 
   const { data, isLoading, isError } = useQuery({

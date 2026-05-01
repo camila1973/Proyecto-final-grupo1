@@ -288,6 +288,15 @@ export default function RegisterPage() {
             {t('register.submit')}
           </Button>
         </form>
+
+        <div className="mt-6 pt-6 border-t border-gray-100 text-center">
+          <p className="text-sm text-gray-500">
+            {t('register.partner_cta')}{' '}
+            <Link href="#/register/partner" underline="hover" className="font-medium">
+              {t('register.partner_link')}
+            </Link>
+          </p>
+        </div>
       </div>
     </main>
   );

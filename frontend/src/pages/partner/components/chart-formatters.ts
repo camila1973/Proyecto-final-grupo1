@@ -1,5 +1,5 @@
-import type { Currency } from '../../context/LocaleContext';
-import { formatPrice } from '../../utils/currency';
+import type { Currency } from '../../../context/LocaleContext';
+import { formatPrice } from '../../../utils/currency';
 
 type Translate = (key: string) => string;
 

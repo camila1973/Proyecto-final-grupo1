@@ -10,6 +10,7 @@ export type AuthUsersTable = {
   first_name: string | null;
   last_name: string | null;
   phone: string | null;
+  partner_id: string | null;
 };
 
 export type AuthLoginChallengesTable = {

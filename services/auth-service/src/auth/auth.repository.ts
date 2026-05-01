@@ -17,6 +17,7 @@ export class AuthRepository {
     firstName?: string;
     lastName?: string;
     phone?: string;
+    partnerId?: string;
   }): Promise<void> {
     await this.db
       .insertInto("auth_users")
@@ -29,6 +30,7 @@ export class AuthRepository {
         first_name: params.firstName ?? null,
         last_name: params.lastName ?? null,
         phone: params.phone ?? null,
+        partner_id: params.partnerId ?? null,
       })
       .executeTakeFirstOrThrow();
   }
