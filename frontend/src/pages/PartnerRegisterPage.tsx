@@ -10,7 +10,7 @@ import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import BusinessIcon from '@mui/icons-material/Business';
 import PersonIcon from '@mui/icons-material/Person';
-import { API_BASE } from '../env';
+import { registerPartner } from '../utils/queries';
 import LabeledField from '../components/LabeledField';
 
 interface FormFields {
@@ -130,39 +130,27 @@ export default function PartnerRegisterPage() {
 
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE}/api/partners/partners/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          orgName: fields.orgName.trim(),
-          slug: fields.slug.trim(),
-          firstName: fields.firstName.trim(),
-          lastName: fields.lastName.trim(),
-          ownerEmail: fields.ownerEmail.trim().toLowerCase(),
-          ownerPassword: fields.ownerPassword,
-        }),
+      const data = await registerPartner({
+        orgName: fields.orgName.trim(),
+        slug: fields.slug.trim(),
+        firstName: fields.firstName.trim(),
+        lastName: fields.lastName.trim(),
+        ownerEmail: fields.ownerEmail.trim().toLowerCase(),
+        ownerPassword: fields.ownerPassword,
       });
-
-      if (response.status === 409) {
-        const data = await response.json() as { message?: string };
-        const msg = data.message ?? '';
-        if (msg.toLowerCase().includes('email')) {
+      navigate({ to: '/login/mfa', search: { challengeId: data.challengeId } });
+    } catch (err: unknown) {
+      const e = err as { status?: number; body?: { message?: string } };
+      if (e.status === 409) {
+        const msg = (e.body?.message ?? '').toLowerCase();
+        if (msg.includes('email')) {
           setErrors((prev) => ({ ...prev, ownerEmail: t('partner_register.errors.email_taken') }));
         } else {
           setErrors((prev) => ({ ...prev, slug: t('partner_register.errors.slug_taken') }));
         }
-        return;
-      }
-
-      if (!response.ok) {
+      } else {
         setApiError(t('partner_register.errors.generic'));
-        return;
       }
-
-      const data = await response.json() as { challengeId: string };
-      navigate({ to: '/login/mfa', search: { challengeId: data.challengeId } });
-    } catch {
-      setApiError(t('partner_register.errors.generic'));
     } finally {
       setLoading(false);
     }

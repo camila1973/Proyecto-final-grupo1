@@ -336,3 +336,39 @@ export async function fetchPartnerPayments(
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json() as Promise<PartnerPayments>;
 }
+
+// ─── Partner Registration ─────────────────────────────────────────────────────
+
+export interface RegisterPartnerParams {
+  orgName: string;
+  slug: string;
+  firstName: string;
+  lastName: string;
+  ownerEmail: string;
+  ownerPassword: string;
+}
+
+export interface RegisterPartnerResponse {
+  partner: { id: string; name: string; slug: string };
+  challengeId: string;
+}
+
+export async function registerPartner(
+  params: RegisterPartnerParams,
+): Promise<RegisterPartnerResponse> {
+  const res = await fetch(`${API_BASE}/api/partners/partners/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({})) as { message?: string };
+    const err = new Error(body.message ?? `HTTP ${res.status}`) as Error & { status: number; body: typeof body };
+    err.status = res.status;
+    err.body = body;
+    throw err;
+  }
+
+  return res.json() as Promise<RegisterPartnerResponse>;
+}
