@@ -4,6 +4,7 @@ Each service with a database has `migrate` and `seed` nx targets. The local DB p
 
 | Service | Local port | DB name |
 |---|---|---|
+| `auth-service` | 5432 | `travelhub` |
 | `search-service` | 5433 | `search_service` |
 | `inventory-service` | 5434 | `travelhub` |
 | `integration-service` | 5435 | `integration_service` |
@@ -11,6 +12,10 @@ Each service with a database has `migrate` and `seed` nx targets. The local DB p
 | `partners-service` | 5438 | `partners_service` |
 
 ```bash
+# Auth service
+DATABASE_URL=postgres://postgres:postgres@localhost:5432/travelhub pnpm exec nx run auth-service:migrate
+DATABASE_URL=postgres://postgres:postgres@localhost:5432/travelhub pnpm exec nx run auth-service:seed
+
 # Search service
 DATABASE_URL=postgres://postgres:postgres@localhost:5433/search_service pnpm exec nx run search-service:migrate
 DATABASE_URL=postgres://postgres:postgres@localhost:5433/search_service pnpm exec nx run search-service:seed

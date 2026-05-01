@@ -1,13 +1,16 @@
 import { Injectable } from "@nestjs/common";
 import { BookingClientService } from "../clients/booking-client.service.js";
 import { PaymentClientService } from "../clients/payment-client.service.js";
+import { InventoryClientService } from "../clients/inventory-client.service.js";
 import type {
   HotelStateResponse,
   MetricCard,
   MonthlySeriesPoint,
+  PartnerPropertiesResponse,
   PartnerReservation,
   PaymentRow,
   PaymentsResponse,
+  PropertySummary,
   ReservationDto,
 } from "./dashboard.types.js";
 
@@ -21,23 +24,29 @@ export class DashboardService {
   constructor(
     private readonly bookingClient: BookingClientService,
     private readonly paymentClient: PaymentClientService,
+    private readonly inventoryClient: InventoryClientService,
   ) {}
 
   async getHotelState(
     partnerId: string,
     month: string,
     roomType: string | null,
+    propertyId: string | null,
   ): Promise<HotelStateResponse> {
     const all = await this.bookingClient.listReservations();
     const partnerScoped = all.filter((r) => r.partnerId === partnerId);
-    const filtered = filterReservations(partnerScoped, month, roomType);
+    const propertyScoped = propertyId
+      ? partnerScoped.filter((r) => r.propertyId === propertyId)
+      : partnerScoped;
+    const filtered = filterReservations(propertyScoped, month, roomType);
 
     return {
       partnerId,
+      propertyId,
       month,
       roomType,
       metrics: computeMetrics(filtered),
-      monthlySeries: buildMonthlySeries(partnerScoped, month, roomType),
+      monthlySeries: buildMonthlySeries(propertyScoped, month, roomType),
       reservations: filtered.map(toPartnerReservation),
     };
   }
@@ -47,12 +56,16 @@ export class DashboardService {
     month: string | null,
     page: number,
     pageSize: number,
+    propertyId: string | null,
   ): Promise<PaymentsResponse> {
     const all = await this.bookingClient.listReservations();
     const partnerScoped = all.filter((r) => r.partnerId === partnerId);
-    const monthFiltered = month
-      ? partnerScoped.filter((r) => isInMonth(r.checkIn, month))
+    const propertyScoped = propertyId
+      ? partnerScoped.filter((r) => r.propertyId === propertyId)
       : partnerScoped;
+    const monthFiltered = month
+      ? propertyScoped.filter((r) => isInMonth(r.checkIn, month))
+      : propertyScoped;
     const eligible = monthFiltered.filter((r) =>
       ["confirmed", "submitted", "failed"].includes(r.status),
     );
@@ -73,6 +86,25 @@ export class DashboardService {
       pageSize,
       rows,
     };
+  }
+
+  async getProperties(partnerId: string): Promise<PartnerPropertiesResponse> {
+    const inventoryProperties =
+      await this.inventoryClient.listPropertiesByPartner(partnerId);
+
+    const properties: PropertySummary[] = inventoryProperties.map((p) => ({
+      propertyId: p.id,
+      propertyName: p.name,
+      propertyCity: p.city,
+      propertyNeighborhood: p.neighborhood,
+      propertyCountryCode: p.countryCode,
+      propertyThumbnailUrl: p.thumbnailUrl || null,
+      createdAt: p.createdAt,
+      roomCount: 0,
+      reservationCount: 0,
+    }));
+
+    return { partnerId, properties };
   }
 }
 

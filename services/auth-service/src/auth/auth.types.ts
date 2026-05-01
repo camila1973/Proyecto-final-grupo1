@@ -1,4 +1,4 @@
-export type UserRole = "guest" | "admin" | "partner";
+export type UserRole = "guest" | "admin" | "partner" | "manager";
 
 export type RegisterBody = {
   email: string;
@@ -8,6 +8,7 @@ export type RegisterBody = {
   lastName?: string;
   phone?: string;
   partnerId?: string;
+  propertyId?: string;
 };
 
 export type LoginBody = {
@@ -28,6 +29,7 @@ export type PublicUser = {
   lastName?: string;
   phone?: string;
   partnerId?: string;
+  propertyId?: string;
 };
 
 export type RegisterResponse = PublicUser & {
@@ -49,7 +51,9 @@ export type LoginMfaResponse = {
   user: PublicUser;
 };
 
-export type UserListResponse = Array<PublicUser & { createdAt: string }>;
+export type UserListResponse = Array<
+  PublicUser & { createdAt: string; lastLoginAt: string | null }
+>;
 
 export type DbUser = {
   id: string;
@@ -61,6 +65,8 @@ export type DbUser = {
   last_name: string | null;
   phone: string | null;
   partner_id: string | null;
+  property_id: string | null;
+  last_login_at: string | null;
 };
 
 export type DbChallenge = {

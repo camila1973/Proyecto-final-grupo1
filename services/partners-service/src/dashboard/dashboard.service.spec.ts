@@ -1,6 +1,7 @@
 import { DashboardService } from "./dashboard.service.js";
 import { BookingClientService } from "../clients/booking-client.service.js";
 import { PaymentClientService } from "../clients/payment-client.service.js";
+import { InventoryClientService } from "../clients/inventory-client.service.js";
 import type { ReservationDto } from "./dashboard.types.js";
 
 function makeReservation(
@@ -58,6 +59,28 @@ function makePaymentClient(): PaymentClientService {
   } as unknown as PaymentClientService;
 }
 
+const INVENTORY_PROP_A = {
+  id: "prop-A",
+  name: "Hotel Central Park",
+  type: "hotel",
+  city: "Bogotá",
+  countryCode: "CO",
+  neighborhood: null,
+  stars: 4,
+  status: "active",
+  partnerId: "partner-1",
+  thumbnailUrl: "",
+  createdAt: "2026-01-01T00:00:00Z",
+};
+
+function makeInventoryClient(
+  properties = [INVENTORY_PROP_A],
+): InventoryClientService {
+  return {
+    listPropertiesByPartner: jest.fn().mockResolvedValue(properties),
+  } as unknown as InventoryClientService;
+}
+
 describe("DashboardService", () => {
   describe("getHotelState", () => {
     it("filters by partnerId and month, computes confirmed/cancelled metrics", async () => {
@@ -85,8 +108,14 @@ describe("DashboardService", () => {
       const svc = new DashboardService(
         makeBookingClient(data),
         makePaymentClient(),
+        makeInventoryClient(),
       );
-      const result = await svc.getHotelState("partner-1", "2026-03", null);
+      const result = await svc.getHotelState(
+        "partner-1",
+        "2026-03",
+        null,
+        null,
+      );
 
       expect(result.metrics.confirmed).toBe(1);
       expect(result.metrics.cancelled).toBe(1);
@@ -110,11 +139,13 @@ describe("DashboardService", () => {
       const svc = new DashboardService(
         makeBookingClient(data),
         makePaymentClient(),
+        makeInventoryClient(),
       );
       const result = await svc.getHotelState(
         "partner-1",
         "2026-03",
         "doble superior",
+        null,
       );
       expect(result.reservations).toHaveLength(1);
       expect(result.reservations[0].id).toBe("r1");
@@ -124,8 +155,14 @@ describe("DashboardService", () => {
       const svc = new DashboardService(
         makeBookingClient([]),
         makePaymentClient(),
+        makeInventoryClient(),
       );
-      const result = await svc.getHotelState("partner-1", "2026-06", null);
+      const result = await svc.getHotelState(
+        "partner-1",
+        "2026-06",
+        null,
+        null,
+      );
       expect(result.monthlySeries).toHaveLength(6);
       expect(result.monthlySeries[5].month).toBe("2026-06");
       expect(result.monthlySeries[0].month).toBe("2026-01");
@@ -143,8 +180,14 @@ describe("DashboardService", () => {
       const svc = new DashboardService(
         makeBookingClient(data),
         makePaymentClient(),
+        makeInventoryClient(),
       );
-      const result = await svc.getHotelState("partner-1", "2026-03", null);
+      const result = await svc.getHotelState(
+        "partner-1",
+        "2026-03",
+        null,
+        null,
+      );
       const march = result.monthlySeries.find((m) => m.month === "2026-03")!;
       expect(march.occupancyRate).toBeGreaterThan(0);
       expect(march.occupancyRate).toBeLessThanOrEqual(1);
@@ -154,8 +197,14 @@ describe("DashboardService", () => {
       const svc = new DashboardService(
         makeBookingClient([]),
         makePaymentClient(),
+        makeInventoryClient(),
       );
-      const result = await svc.getHotelState("partner-1", "2026-03", null);
+      const result = await svc.getHotelState(
+        "partner-1",
+        "2026-03",
+        null,
+        null,
+      );
       expect(result.monthlySeries.every((p) => p.occupancyRate === 0)).toBe(
         true,
       );
@@ -166,8 +215,14 @@ describe("DashboardService", () => {
       const svc = new DashboardService(
         makeBookingClient(data),
         makePaymentClient(),
+        makeInventoryClient(),
       );
-      const result = await svc.getHotelState("partner-1", "2026-03", null);
+      const result = await svc.getHotelState(
+        "partner-1",
+        "2026-03",
+        null,
+        null,
+      );
       expect(result.reservations[0].guestName).toBe("—");
       expect(result.reservations[0].guestEmail).toBe("—");
       expect(result.reservations[0].roomType).toBe("Doble Superior");
@@ -195,8 +250,9 @@ describe("DashboardService", () => {
       const svc = new DashboardService(
         makeBookingClient(data),
         makePaymentClient(),
+        makeInventoryClient(),
       );
-      const result = await svc.getPayments("partner-1", "2026-03", 1, 10);
+      const result = await svc.getPayments("partner-1", "2026-03", 1, 10, null);
 
       expect(result.total).toBe(2);
       expect(result.rows).toHaveLength(2);
@@ -220,10 +276,11 @@ describe("DashboardService", () => {
       const svc = new DashboardService(
         makeBookingClient(data),
         makePaymentClient(),
+        makeInventoryClient(),
       );
-      const page1 = await svc.getPayments("partner-1", "2026-03", 1, 2);
-      const page2 = await svc.getPayments("partner-1", "2026-03", 2, 2);
-      const page3 = await svc.getPayments("partner-1", "2026-03", 3, 2);
+      const page1 = await svc.getPayments("partner-1", "2026-03", 1, 2, null);
+      const page2 = await svc.getPayments("partner-1", "2026-03", 2, 2, null);
+      const page3 = await svc.getPayments("partner-1", "2026-03", 3, 2, null);
 
       expect(page1.rows).toHaveLength(2);
       expect(page2.rows).toHaveLength(2);
@@ -240,8 +297,9 @@ describe("DashboardService", () => {
       const svc = new DashboardService(
         makeBookingClient(data),
         makePaymentClient(),
+        makeInventoryClient(),
       );
-      const result = await svc.getPayments("partner-1", "2026-03", 1, 10);
+      const result = await svc.getPayments("partner-1", "2026-03", 1, 10, null);
       expect(result.total).toBe(1);
       expect(result.rows[0].reservationId).toBe("r3");
     });
@@ -264,8 +322,9 @@ describe("DashboardService", () => {
       const svc = new DashboardService(
         makeBookingClient(data),
         makePaymentClient(),
+        makeInventoryClient(),
       );
-      const result = await svc.getPayments("partner-1", null, 1, 10);
+      const result = await svc.getPayments("partner-1", null, 1, 10, null);
       expect(result.total).toBe(2);
     });
 
@@ -276,10 +335,123 @@ describe("DashboardService", () => {
       const svc = new DashboardService(
         makeBookingClient([makeReservation({ id: "r1", status: "confirmed" })]),
         paymentClient,
+        makeInventoryClient(),
       );
-      const result = await svc.getPayments("partner-1", "2026-03", 1, 10);
+      const result = await svc.getPayments("partner-1", "2026-03", 1, 10, null);
       expect(result.rows[0].paymentMethod).toBe("—");
       expect(result.rows[0].reference).toBe("—");
+    });
+
+    it("scopes results to propertyId when provided", async () => {
+      const data: ReservationDto[] = [
+        makeReservation({
+          id: "r1",
+          propertyId: "prop-A",
+          status: "confirmed",
+        }),
+        makeReservation({
+          id: "r2",
+          propertyId: "prop-B",
+          status: "confirmed",
+        }),
+      ];
+      const svc = new DashboardService(
+        makeBookingClient(data),
+        makePaymentClient(),
+        makeInventoryClient(),
+      );
+      const result = await svc.getPayments(
+        "partner-1",
+        "2026-03",
+        1,
+        10,
+        "prop-A",
+      );
+      expect(result.total).toBe(1);
+      expect(result.rows[0].reservationId).toBe("r1");
+    });
+  });
+
+  describe("getProperties", () => {
+    it("returns properties from inventory-service mapped to PropertySummary", async () => {
+      const svc = new DashboardService(
+        makeBookingClient([]),
+        makePaymentClient(),
+        makeInventoryClient([INVENTORY_PROP_A]),
+      );
+      const result = await svc.getProperties("partner-1");
+
+      expect(result.partnerId).toBe("partner-1");
+      expect(result.properties).toHaveLength(1);
+      const prop = result.properties[0];
+      expect(prop.propertyId).toBe("prop-A");
+      expect(prop.propertyName).toBe("Hotel Central Park");
+      expect(prop.propertyCity).toBe("Bogotá");
+      expect(prop.propertyCountryCode).toBe("CO");
+    });
+
+    it("returns empty array when inventory-service has no properties for partner", async () => {
+      const svc = new DashboardService(
+        makeBookingClient([]),
+        makePaymentClient(),
+        makeInventoryClient([]),
+      );
+      const result = await svc.getProperties("partner-1");
+      expect(result.properties).toHaveLength(0);
+    });
+
+    it("maps multiple properties", async () => {
+      const propB = {
+        ...INVENTORY_PROP_A,
+        id: "prop-B",
+        name: "Hotel Plaza",
+        city: "Medellín",
+      };
+      const svc = new DashboardService(
+        makeBookingClient([]),
+        makePaymentClient(),
+        makeInventoryClient([INVENTORY_PROP_A, propB]),
+      );
+      const result = await svc.getProperties("partner-1");
+      expect(result.properties).toHaveLength(2);
+      const ids = result.properties.map((p) => p.propertyId);
+      expect(ids).toContain("prop-A");
+      expect(ids).toContain("prop-B");
+    });
+
+    it("initializes roomCount and reservationCount to 0", async () => {
+      const svc = new DashboardService(
+        makeBookingClient([]),
+        makePaymentClient(),
+        makeInventoryClient([INVENTORY_PROP_A]),
+      );
+      const result = await svc.getProperties("partner-1");
+      expect(result.properties[0].roomCount).toBe(0);
+      expect(result.properties[0].reservationCount).toBe(0);
+    });
+  });
+
+  describe("getHotelState with propertyId", () => {
+    it("scopes metrics to a single property when propertyId is provided", async () => {
+      const data: ReservationDto[] = [
+        makeReservation({ id: "r1", propertyId: "prop-A", grandTotalUsd: 400 }),
+        makeReservation({ id: "r2", propertyId: "prop-B", grandTotalUsd: 600 }),
+      ];
+      const svc = new DashboardService(
+        makeBookingClient(data),
+        makePaymentClient(),
+        makeInventoryClient(),
+      );
+      const result = await svc.getHotelState(
+        "partner-1",
+        "2026-03",
+        null,
+        "prop-A",
+      );
+      expect(result.propertyId).toBe("prop-A");
+      expect(result.metrics.revenueUsd).toBe(400);
+      expect(result.reservations).toHaveLength(1);
+      expect(result.reservations[0].id).toBe("r1");
     });
   });
 });

@@ -369,11 +369,17 @@ services:
       PORT: 3007
       DATABASE_URL: postgres://postgres:postgres@partners-db:5432/partners_service?sslmode=disable
       BOOKING_SERVICE_URL: http://booking-service:3004
+      PAYMENT_SERVICE_URL: http://payment-service:3005
+      INVENTORY_SERVICE_URL: http://inventory-service:3003
       AUTH_SERVICE_URL: http://auth-service:3001
     depends_on:
       partners-db:
         condition: service_healthy
       booking-service:
+        condition: service_started
+      payment-service:
+        condition: service_started
+      inventory-service:
         condition: service_started
       auth-service:
         condition: service_started

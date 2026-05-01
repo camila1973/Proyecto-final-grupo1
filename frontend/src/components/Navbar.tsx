@@ -25,7 +25,11 @@ export default function Navbar() {
           {user ? (
             <>
               <Link to="/profile" className="hover:text-gray-900">{t('nav.profile')}</Link>
-              <Link to="/trips" className="hover:text-gray-900">{t('nav.myBookings')}</Link>
+              {user.role === 'partner' ? (
+                <Link to="/mi-hotel" className="hover:text-gray-900">{t('nav.myHotels')}</Link>
+              ) : (
+                <Link to="/trips" className="hover:text-gray-900">{t('nav.myBookings')}</Link>
+              )}
               <button onClick={logout} className="bg-transparent border-0 p-0 text-sm text-gray-700 hover:text-gray-900 cursor-pointer">
                 {t('nav.logout')}
               </button>

@@ -3,6 +3,7 @@ import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useLocale } from '../../context/LocaleContext';
 import SearchBarForm from '../../components/SearchBarForm';
+import PageHero from '../../components/PageHero';
 import ResultCard from './ResultCard';
 import FilterSidebar from './FilterSidebar';
 import { getNights, buildLabelMap } from './utils';
@@ -122,18 +123,16 @@ export default function SearchPage() {
   return (
     <>
       {/* Hero Search Bar — key resets form state when URL params change */}
-      <section className="bg-[#4a6fa5] py-8 px-6">
-        <div className="max-w-[1152px] mx-auto">
-          <SearchBarForm
-            key={`${urlCity}-${urlCheckIn}-${urlCheckOut}-${urlGuests}`}
-            defaultCity={urlCity}
-            defaultCountryCode={urlCountryCode}
-            defaultCheckIn={urlCheckIn}
-            defaultCheckOut={urlCheckOut}
-            defaultGuests={urlGuests}
-          />
-        </div>
-      </section>
+      <PageHero>
+        <SearchBarForm
+          key={`${urlCity}-${urlCheckIn}-${urlCheckOut}-${urlGuests}`}
+          defaultCity={urlCity}
+          defaultCountryCode={urlCountryCode}
+          defaultCheckIn={urlCheckIn}
+          defaultCheckOut={urlCheckOut}
+          defaultGuests={urlGuests}
+        />
+      </PageHero>
 
       {/* Main Content */}
       <main className="max-w-[1152px] mx-auto w-full px-6 py-8 flex gap-8 flex-1">

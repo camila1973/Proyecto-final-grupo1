@@ -18,6 +18,7 @@ export class AuthRepository {
     lastName?: string;
     phone?: string;
     partnerId?: string;
+    propertyId?: string;
   }): Promise<void> {
     await this.db
       .insertInto("auth_users")
@@ -31,6 +32,7 @@ export class AuthRepository {
         last_name: params.lastName ?? null,
         phone: params.phone ?? null,
         partner_id: params.partnerId ?? null,
+        property_id: params.propertyId ?? null,
       })
       .executeTakeFirstOrThrow();
   }
@@ -58,6 +60,23 @@ export class AuthRepository {
       .selectFrom("auth_users")
       .selectAll()
       .orderBy("created_at", "desc")
+      .execute();
+  }
+
+  async updateLastLoginAt(userId: string, ts: string): Promise<void> {
+    await this.db
+      .updateTable("auth_users")
+      .set({ last_login_at: ts })
+      .where("id", "=", userId)
+      .execute();
+  }
+
+  async listByIds(ids: string[]): Promise<DbUser[]> {
+    if (!ids.length) return [];
+    return this.db
+      .selectFrom("auth_users")
+      .selectAll()
+      .where("id", "in", ids)
       .execute();
   }
 

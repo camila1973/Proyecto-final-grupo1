@@ -32,6 +32,7 @@ function makeRepo(): jest.Mocked<
     | "deleteChallengeById"
     | "incrementChallengeAttempts"
     | "purgeExpiredChallenges"
+    | "updateLastLoginAt"
   >
 > {
   return {
@@ -44,6 +45,7 @@ function makeRepo(): jest.Mocked<
     deleteChallengeById: jest.fn(),
     incrementChallengeAttempts: jest.fn(),
     purgeExpiredChallenges: jest.fn(),
+    updateLastLoginAt: jest.fn(),
   };
 }
 
@@ -57,6 +59,8 @@ const DB_USER = (overrides: Partial<DbUser> = {}): DbUser => ({
   last_name: null,
   phone: null,
   partner_id: null,
+  property_id: null,
+  last_login_at: null,
   ...overrides,
 });
 

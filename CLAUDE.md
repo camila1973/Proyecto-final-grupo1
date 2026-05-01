@@ -279,3 +279,35 @@ Topics and subscriptions are created by Pulumi before the services start — ser
 | `services/search-service/src/events/handlers/room-upserted.handler.ts` | Maps camelCase snapshot → snake_case `RoomIndexRecord` |
 | `services/search-service/src/events/handlers/availability-updated.handler.ts` | Replaces `room_price_periods` for a room |
 | `services/search-service/src/events/handlers/room-deleted.handler.ts` | Sets room inactive; invalidates city Redis cache |
+
+## Partners — Data Model & Navigation
+
+```
+Partner (partners_service.partners)
+└── User/Owner  (auth_service.users, role = "partner", partnerId = partner.id)
+└── Property[]  (inventory_service.properties, partnerId = property.partnerId)
+    ├── Manager[]  (auth_service.users, role = "manager", propertyId = user.propertyId) [deferred]
+    └── Reservation[]  (booking_service.reservations, propertyId = reservation.propertyId)
+```
+
+### Navigation (frontend)
+
+| Route | Page | Shows |
+|---|---|---|
+| `/mi-hotel` | `MiHotelPage` | All properties for the logged-in partner (derived from reservations) |
+| `/mi-hotel/:propertyId` | `PropertyDashboardPage` | Metrics + reservations for one property |
+| `/mi-hotel/:propertyId/pagos` | `PagosPropertyPage` | Payments for one property |
+
+### Key identifiers
+- `user.partnerId` — set in JWT for `role = "partner"` users; used as the scope for all partner API calls
+- `propertyId` — UUID from inventory-service; present in `reservation.propertyId` and `reservation.snapshot`
+- Manager assignment (auth → property) is **not yet implemented**; the properties table shows `—` for that column
+- Properties with zero reservations won't appear in the partner overview until an inventory-service integration is added
+
+### partners-service endpoints
+
+| Method | Path | Returns |
+|---|---|---|
+| `GET` | `/partners/:id/properties` | Property list derived from booking reservations |
+| `GET` | `/partners/:id/hotel-state?month=&roomType=&propertyId=` | Metrics + reservations (property-scoped when `propertyId` given) |
+| `GET` | `/partners/:id/payments?month=&page=&pageSize=&propertyId=` | Paginated payment rows (property-scoped when `propertyId` given) |

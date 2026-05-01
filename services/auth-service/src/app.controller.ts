@@ -5,6 +5,7 @@ import {
   HttpCode,
   HttpStatus,
   Post,
+  Query,
 } from "@nestjs/common";
 import { AuthService } from "./auth/auth.service";
 import type {
@@ -49,6 +50,14 @@ export class AppController {
   @Get("users")
   async getUsers(): Promise<UserListResponse> {
     return this.authService.getUsers();
+  }
+
+  @Get("internal/users")
+  async getInternalUsers(
+    @Query("ids") ids?: string,
+  ): Promise<UserListResponse> {
+    const idList = ids ? ids.split(",").filter(Boolean) : [];
+    return this.authService.getUsersByIds(idList);
   }
 
   @Post("internal/users")

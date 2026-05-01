@@ -14,6 +14,7 @@ import {
   timingSafeEqual,
 } from "crypto";
 import type {
+  DbUser,
   LoginBody,
   LoginMfaResponse,
   LoginResponse,
@@ -58,6 +59,7 @@ export class AuthService {
       lastName: body.lastName?.trim() || undefined,
       phone: body.phone?.trim() || undefined,
       partnerId: body.partnerId || undefined,
+      propertyId: body.propertyId || undefined,
     });
 
     return {
@@ -68,11 +70,14 @@ export class AuthService {
       lastName: body.lastName?.trim() || undefined,
       phone: body.phone?.trim() || undefined,
       partnerId: body.partnerId || undefined,
+      propertyId: body.propertyId || undefined,
       createdAt,
     };
   }
 
-  async registerInternal(body: RegisterBody): Promise<{ challengeId: string }> {
+  async registerInternal(
+    body: RegisterBody,
+  ): Promise<{ challengeId: string; userId: string }> {
     this.validateEmailAndPassword(body.email, body.password);
 
     const normalizedEmail = body.email.trim().toLowerCase();
@@ -95,6 +100,7 @@ export class AuthService {
       lastName: body.lastName?.trim() || undefined,
       phone: body.phone?.trim() || undefined,
       partnerId: body.partnerId || undefined,
+      propertyId: body.propertyId || undefined,
     });
 
     await this.authRepository.purgeExpiredChallenges();
@@ -112,7 +118,7 @@ export class AuthService {
 
     await this.sendOtpEmail(normalizedEmail, userId, otp);
 
-    return { challengeId };
+    return { challengeId, userId };
   }
 
   async login(body: LoginBody): Promise<LoginResponse> {
@@ -204,6 +210,10 @@ export class AuthService {
     }
 
     await this.authRepository.deleteChallengeById(challenge.id);
+    await this.authRepository.updateLastLoginAt(
+      user.id,
+      new Date().toISOString(),
+    );
 
     const publicUser: PublicUser = {
       id: user.id,
@@ -213,6 +223,7 @@ export class AuthService {
       lastName: user.last_name ?? undefined,
       phone: user.phone ?? undefined,
       partnerId: user.partner_id ?? undefined,
+      propertyId: user.property_id ?? undefined,
     };
 
     return {
@@ -225,7 +236,16 @@ export class AuthService {
 
   async getUsers(): Promise<UserListResponse> {
     const users = await this.authRepository.listUsers();
-    return users.map((user) => ({
+    return users.map(this.mapDbUser);
+  }
+
+  async getUsersByIds(ids: string[]): Promise<UserListResponse> {
+    const users = await this.authRepository.listByIds(ids);
+    return users.map(this.mapDbUser);
+  }
+
+  private mapDbUser = (user: DbUser): UserListResponse[number] => {
+    return {
       id: user.id,
       email: user.email,
       role: user.role,
@@ -233,9 +253,11 @@ export class AuthService {
       lastName: user.last_name ?? undefined,
       phone: user.phone ?? undefined,
       partnerId: user.partner_id ?? undefined,
+      propertyId: user.property_id ?? undefined,
       createdAt: user.created_at,
-    }));
-  }
+      lastLoginAt: user.last_login_at,
+    };
+  };
 
   private generateOtp(): string {
     return randomInt(0, 1_000_000).toString().padStart(6, "0");
@@ -280,6 +302,7 @@ export class AuthService {
       exp: now + 3600,
     };
     if (user.partnerId) payload.partnerId = user.partnerId;
+    if (user.propertyId) payload.propertyId = user.propertyId;
     return this.signJwt(payload);
   }
 

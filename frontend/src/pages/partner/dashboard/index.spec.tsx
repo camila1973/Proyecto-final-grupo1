@@ -19,7 +19,9 @@ jest.mock('recharts', () => {
   return {
     ResponsiveContainer: Stub,
     BarChart: Stub,
+    LineChart: Stub,
     Bar: () => null,
+    Line: () => null,
     XAxis: () => null,
     YAxis: () => null,
     CartesianGrid: () => null,
@@ -28,34 +30,55 @@ jest.mock('recharts', () => {
   };
 });
 
-const HOTEL_STATE = {
-  partnerId: 'p1',
-  month: '2026-03',
-  roomType: null,
-  metrics: {
-    confirmed: 1,
-    cancelled: 1,
-    revenueUsd: 1180,
-    lossesUsd: 590,
-    netUsd: 590,
-  },
-  monthlySeries: [
-    { month: '2026-03', revenueUsd: 1180, lossesUsd: 590, occupancyRate: 0.5 },
-  ],
-  reservations: [
+const PROPERTIES_RESPONSE = {
+  partnerId: 'partner-1',
+  properties: [
     {
-      id: '12345abcdef',
-      status: 'pendiente',
-      guestName: 'Carlos Garcia',
-      guestEmail: 'user@example.com',
-      guestPhone: '+50768050496',
-      guestCount: 2,
-      checkIn: '2026-03-01',
-      checkOut: '2026-03-09',
-      roomType: 'Doble Superior',
-      grandTotalUsd: 1440,
+      propertyId: 'prop-abc',
+      propertyName: 'Hotel Central Park',
+      propertyCity: 'Bogotá',
+      propertyNeighborhood: 'Chapinero',
+      propertyCountryCode: 'CO',
+      propertyThumbnailUrl: null,
+      roomCount: 3,
+      reservationCount: 12,
+    },
+    {
+      propertyId: 'prop-def',
+      propertyName: 'Suite Zen',
+      propertyCity: 'Medellín',
+      propertyNeighborhood: null,
+      propertyCountryCode: 'CO',
+      propertyThumbnailUrl: null,
+      roomCount: 1,
+      reservationCount: 5,
     },
   ],
+};
+
+const HOTEL_STATE_RESPONSE = {
+  partnerId: 'partner-1',
+  month: '2026-05',
+  roomType: null,
+  metrics: { confirmed: 3, cancelled: 1, revenueUsd: 1000, lossesUsd: 100, netUsd: 900 },
+  monthlySeries: [
+    { month: '2025-12', revenueUsd: 200, lossesUsd: 10, occupancyRate: 0.5 },
+    { month: '2026-01', revenueUsd: 300, lossesUsd: 20, occupancyRate: 0.55 },
+    { month: '2026-02', revenueUsd: 400, lossesUsd: 15, occupancyRate: 0.6 },
+    { month: '2026-03', revenueUsd: 600, lossesUsd: 30, occupancyRate: 0.65 },
+    { month: '2026-04', revenueUsd: 800, lossesUsd: 40, occupancyRate: 0.7 },
+    { month: '2026-05', revenueUsd: 1000, lossesUsd: 50, occupancyRate: 0.68 },
+  ],
+  reservations: [],
+};
+
+const PAYMENTS_RESPONSE = {
+  partnerId: 'partner-1',
+  month: '2026-05',
+  total: 0,
+  page: 1,
+  pageSize: 20,
+  rows: [],
 };
 
 const MOCK_AUTH = {
@@ -64,6 +87,33 @@ const MOCK_AUTH = {
   login: jest.fn(),
   logout: jest.fn(),
 };
+
+const PARTNER_DETAILS_RESPONSE = {
+  id: 'partner-1',
+  name: 'Test Partner Org',
+  slug: 'test-partner',
+  identifier: 'PAR-0001',
+  status: 'active',
+};
+
+function mockFetch(overrides: { propertiesOk?: boolean } = {}) {
+  global.fetch = jest.fn().mockImplementation((url: string) => {
+    const { propertiesOk = true } = overrides;
+    if ((url as string).includes('/properties')) {
+      if (!propertiesOk) return Promise.resolve({ ok: false, status: 500 });
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(PROPERTIES_RESPONSE) });
+    }
+    if ((url as string).includes('/hotel-state')) {
+      if (!propertiesOk) return Promise.resolve({ ok: false, status: 500 });
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(HOTEL_STATE_RESPONSE) });
+    }
+    if ((url as string).includes('/payments')) {
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(PAYMENTS_RESPONSE) });
+    }
+    // Partner details: GET /partners/:id
+    return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(PARTNER_DETAILS_RESPONSE) });
+  }) as never;
+}
 
 function renderPage(authValue: typeof MOCK_AUTH | null = MOCK_AUTH) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -78,161 +128,105 @@ function renderPage(authValue: typeof MOCK_AUTH | null = MOCK_AUTH) {
   );
 }
 
-describe('MiHotelPage', () => {
+describe('MiHotelPage (org dashboard)', () => {
   beforeEach(() => {
-    global.fetch = jest.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: () => Promise.resolve(HOTEL_STATE),
-    }) as never;
+    mockFetch();
   });
 
   afterEach(() => {
     jest.resetAllMocks();
   });
 
-  it('renders hotel header and metrics after data loads', async () => {
+  it('shows property names after data loads', async () => {
     renderPage();
-    expect(screen.getByText('Hotel Central Park')).toBeInTheDocument();
     await waitFor(() => {
-      expect(screen.getByTestId('metric-confirmed')).toHaveTextContent('1');
-      expect(screen.getByTestId('metric-cancelled')).toHaveTextContent('1');
+      expect(screen.getAllByText('Hotel Central Park').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText('Suite Zen').length).toBeGreaterThanOrEqual(1);
     });
   });
 
-  it('shows reservation row from API', async () => {
+  it('shows metric cards section', async () => {
     renderPage();
     await waitFor(() => {
-      expect(screen.getByText('Carlos Garcia')).toBeInTheDocument();
-      expect(screen.getByText('user@example.com')).toBeInTheDocument();
-      expect(screen.getByText('Doble Superior')).toBeInTheDocument();
+      expect(screen.getAllByText('Hotel Central Park').length).toBeGreaterThanOrEqual(1);
+    });
+    expect(screen.getAllByText('Propiedades').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Ocupación').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Reservas activas').length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('shows properties table section header', async () => {
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getAllByText('Hotel Central Park').length).toBeGreaterThanOrEqual(1);
+    });
+    const sectionHeaders = screen.getAllByText('Propiedades');
+    expect(sectionHeaders.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('navigates to property dashboard on action button click', async () => {
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getAllByText('Hotel Central Park').length).toBeGreaterThanOrEqual(1);
+    });
+    const buttons = screen.getAllByRole('button', { name: 'Ir' });
+    fireEvent.click(buttons[0]);
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: '/mi-hotel/$propertyId',
+      params: { propertyId: 'prop-abc' },
     });
   });
 
-  it('filters reservations by reservation id', async () => {
+  it('shows the empty state when there are no properties', async () => {
+    (global.fetch as jest.Mock).mockImplementation((url: string) => {
+      if ((url as string).includes('/properties')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve({ partnerId: 'partner-1', properties: [] }),
+        });
+      }
+      if ((url as string).includes('/hotel-state')) {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(HOTEL_STATE_RESPONSE) });
+      }
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(PAYMENTS_RESPONSE) });
+    });
     renderPage();
     await waitFor(() => {
-      expect(screen.getByText('Carlos Garcia')).toBeInTheDocument();
+      expect(screen.getAllByText('No hay propiedades registradas.').length).toBeGreaterThanOrEqual(1);
     });
-    const input = screen.getByPlaceholderText('# Reserva');
-    fireEvent.change(input, { target: { value: 'no-match' } });
-    expect(screen.queryByText('Carlos Garcia')).not.toBeInTheDocument();
   });
 
-  it('navigates back/forward in months by re-fetching', async () => {
+  it('shows error alert when fetch fails', async () => {
+    mockFetch({ propertiesOk: false });
     renderPage();
     await waitFor(() => {
-      expect(screen.getByText('Carlos Garcia')).toBeInTheDocument();
-    });
-    const callsBefore = (global.fetch as jest.Mock).mock.calls.length;
-    fireEvent.click(screen.getByLabelText('Mes siguiente'));
-    await waitFor(() => {
-      expect((global.fetch as jest.Mock).mock.calls.length).toBeGreaterThan(callsBefore);
+      expect(
+        screen.getByText('No se pudieron cargar los datos. Inténtalo más tarde.'),
+      ).toBeInTheDocument();
     });
   });
 
-  it('shows the login required alert when unauthenticated', () => {
-    renderPage({
-      token: null,
-      user: null,
-      login: jest.fn(),
-      logout: jest.fn(),
-    } as never);
+  it('shows login required alert when unauthenticated', () => {
+    renderPage({ token: null, user: null, login: jest.fn(), logout: jest.fn() } as never);
     expect(
       screen.getByText('Inicia sesión como socio para ver el panel.'),
     ).toBeInTheDocument();
   });
 
-  it('shows error alert when fetch fails', async () => {
-    (global.fetch as jest.Mock).mockResolvedValue({ ok: false, status: 500 });
+  it('shows managers section with stub cards', async () => {
     renderPage();
     await waitFor(() => {
-      expect(
-        screen.getByText('No se pudieron cargar las métricas. Inténtalo más tarde.'),
-      ).toBeInTheDocument();
+      expect(screen.getAllByText('Hotel Central Park').length).toBeGreaterThanOrEqual(1);
     });
+    expect(screen.getByText('Gestión de gerentes')).toBeInTheDocument();
   });
 
-  it('clicks the previous-month button to refetch', async () => {
+  it('shows disbursements section', async () => {
     renderPage();
     await waitFor(() => {
-      expect(screen.getByText('Carlos Garcia')).toBeInTheDocument();
+      expect(screen.getAllByText('Hotel Central Park').length).toBeGreaterThanOrEqual(1);
     });
-    const callsBefore = (global.fetch as jest.Mock).mock.calls.length;
-    fireEvent.click(screen.getByLabelText('Mes anterior'));
-    await waitFor(() => {
-      expect((global.fetch as jest.Mock).mock.calls.length).toBeGreaterThan(callsBefore);
-    });
-  });
-
-  it('navigates to payments page when "see all payments" is clicked', async () => {
-    renderPage();
-    await waitFor(() => {
-      expect(screen.getByText('Carlos Garcia')).toBeInTheDocument();
-    });
-    fireEvent.click(screen.getByText('Ver todos los pagos'));
-    expect(mockNavigate).toHaveBeenCalledWith({ to: '/mi-hotel/pagos' });
-  });
-
-  it('disables prev/next pagination at boundaries', async () => {
-    renderPage();
-    await waitFor(() => {
-      expect(screen.getByText('Carlos Garcia')).toBeInTheDocument();
-    });
-    expect(screen.getByLabelText('Página anterior')).toBeDisabled();
-    expect(screen.getByLabelText('Página siguiente')).toBeDisabled();
-  });
-
-  it('paginates the reservations table when more than PAGE_SIZE rows', async () => {
-    const manyRows = Array.from({ length: 12 }).map((_, i) => ({
-      ...HOTEL_STATE.reservations[0],
-      id: `${i}-id-zzzzz`,
-      guestName: `Guest ${i}`,
-    }));
-    (global.fetch as jest.Mock).mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: () => Promise.resolve({ ...HOTEL_STATE, reservations: manyRows }),
-    });
-    renderPage();
-    await waitFor(() => {
-      expect(screen.getByText('Guest 0')).toBeInTheDocument();
-    });
-    expect(screen.queryByText('Guest 11')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByLabelText('Página siguiente'));
-    await waitFor(() => {
-      expect(screen.getByText('Guest 11')).toBeInTheDocument();
-    });
-    fireEvent.click(screen.getByLabelText('Página anterior'));
-    await waitFor(() => {
-      expect(screen.getByText('Guest 0')).toBeInTheDocument();
-    });
-  });
-
-  it('changes the room type filter and refetches', async () => {
-    renderPage();
-    await waitFor(() => {
-      expect(screen.getByText('Carlos Garcia')).toBeInTheDocument();
-    });
-    const select = screen.getByRole('combobox', { name: /tipo de habitación/i });
-    fireEvent.mouseDown(select);
-    const callsBefore = (global.fetch as jest.Mock).mock.calls.length;
-    const option = await screen.findByRole('option', { name: 'Suite' });
-    fireEvent.click(option);
-    await waitFor(() => {
-      expect((global.fetch as jest.Mock).mock.calls.length).toBeGreaterThan(callsBefore);
-    });
-  });
-
-  it('shows the empty state when there are no reservations', async () => {
-    (global.fetch as jest.Mock).mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: () => Promise.resolve({ ...HOTEL_STATE, reservations: [] }),
-    });
-    renderPage();
-    await waitFor(() => {
-      expect(screen.getByText('No hay reservaciones para este mes.')).toBeInTheDocument();
-    });
+    expect(screen.getByText('Próximas dispersiones')).toBeInTheDocument();
   });
 });
