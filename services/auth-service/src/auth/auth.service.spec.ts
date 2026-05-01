@@ -419,6 +419,141 @@ describe("AuthService", () => {
     });
   });
 
+  // ─── registerInternal ────────────────────────────────────────────────────────
+
+  describe("registerInternal", () => {
+    it("returns a challengeId on success", async () => {
+      const result = await service.registerInternal({
+        email: "partner@example.com",
+        password: "password123",
+        role: "partner",
+        partnerId: "partner-uuid-1",
+      });
+
+      expect(result.challengeId).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+      );
+    });
+
+    it("creates the user with the given partnerId", async () => {
+      await service.registerInternal({
+        email: "partner@example.com",
+        password: "password123",
+        role: "partner",
+        partnerId: "partner-uuid-1",
+      });
+
+      expect(repo.createUser).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email: "partner@example.com",
+          role: "partner",
+          partnerId: "partner-uuid-1",
+        }),
+      );
+    });
+
+    it("creates a challenge after creating the user", async () => {
+      await service.registerInternal({
+        email: "partner@example.com",
+        password: "password123",
+      });
+
+      expect(repo.createChallenge).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: expect.any(String),
+          otpCodeHash: expect.stringMatching(/^[a-f0-9]{64}$/),
+        }),
+      );
+    });
+
+    it("throws ConflictException when email is already registered", async () => {
+      repo.findUserByEmail.mockResolvedValue(DB_USER());
+
+      await expect(
+        service.registerInternal({
+          email: "user@example.com",
+          password: "password123",
+        }),
+      ).rejects.toThrow(ConflictException);
+      expect(repo.createUser).not.toHaveBeenCalled();
+    });
+
+    it("throws BadRequestException for invalid email", async () => {
+      await expect(
+        service.registerInternal({
+          email: "not-email",
+          password: "password123",
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it("throws BadRequestException for short password", async () => {
+      await expect(
+        service.registerInternal({ email: "p@example.com", password: "short" }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it("does not throw when sendOtpEmail (fetch) fails", async () => {
+      jest.spyOn(global, "fetch").mockRejectedValue(new Error("network error"));
+
+      await expect(
+        service.registerInternal({
+          email: "partner@example.com",
+          password: "password123",
+        }),
+      ).resolves.not.toThrow();
+    });
+  });
+
+  // ─── partnerId in JWT ─────────────────────────────────────────────────────────
+
+  describe("verifyMfaLogin — partnerId in JWT", () => {
+    const OTP = "123456";
+
+    it("includes partnerId in the access token when user has a partner_id", async () => {
+      repo.findChallengeById.mockResolvedValue(
+        DB_CHALLENGE({ otp_code_hash: makeOtpHash(OTP) }),
+      );
+      repo.findUserById.mockResolvedValue(
+        DB_USER({ partner_id: "partner-uuid-1" }),
+      );
+
+      const result = await service.verifyMfaLogin({
+        challengeId: "mfa_challenge1",
+        code: OTP,
+      });
+
+      expect(result.user.partnerId).toBe("partner-uuid-1");
+
+      // Decode JWT payload to confirm claim is present
+      const payloadB64 = result.accessToken.split(".")[1];
+      const payload = JSON.parse(
+        Buffer.from(payloadB64, "base64url").toString("utf8"),
+      ) as Record<string, unknown>;
+      expect(payload.partnerId).toBe("partner-uuid-1");
+    });
+
+    it("omits partnerId from JWT when user has no partner_id", async () => {
+      repo.findChallengeById.mockResolvedValue(
+        DB_CHALLENGE({ otp_code_hash: makeOtpHash(OTP) }),
+      );
+      repo.findUserById.mockResolvedValue(DB_USER({ partner_id: null }));
+
+      const result = await service.verifyMfaLogin({
+        challengeId: "mfa_challenge1",
+        code: OTP,
+      });
+
+      expect(result.user.partnerId).toBeUndefined();
+
+      const payloadB64 = result.accessToken.split(".")[1];
+      const payload = JSON.parse(
+        Buffer.from(payloadB64, "base64url").toString("utf8"),
+      ) as Record<string, unknown>;
+      expect(payload.partnerId).toBeUndefined();
+    });
+  });
+
   // ─── getUsers ────────────────────────────────────────────────────────────────
 
   describe("getUsers", () => {
