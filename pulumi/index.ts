@@ -450,6 +450,10 @@ for (const svc of MICROSERVICES) {
     }
   }
 
+  if (svc.name === "partners-service") {
+    plainEnv["AUTH_SERVICE_URL"] = pulumi.interpolate`${runners["auth-service"]!.uri}`;
+  }
+
   if (svc.name === "integration-service") {
     plainEnv["REDIS_HOST"]            = redisInstance.host;
     plainEnv["REDIS_PORT"]            = "6379";
