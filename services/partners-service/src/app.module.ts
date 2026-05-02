@@ -4,7 +4,7 @@ import { AppService } from "./app.service.js";
 import { DatabaseModule } from "./database/database.module.js";
 import { PartnersModule } from "./partners/partners.module.js";
 import { FeesModule } from "./fees/fees.module.js";
-import { DashboardModule } from "./dashboard/dashboard.module.js";
+import { PropertyModule } from "./property/property.module.js";
 import { PropertyCheckinKeyModule } from "./property-checkin-key/property-checkin-key.module.js";
 import { MembersModule } from "./members/members.module.js";
 
@@ -13,7 +13,7 @@ import { MembersModule } from "./members/members.module.js";
     DatabaseModule,
     PartnersModule,
     FeesModule,
-    DashboardModule,
+    PropertyModule,
     PropertyCheckinKeyModule,
     MembersModule,
   ],

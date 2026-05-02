@@ -12,29 +12,31 @@ import {
 import { MembersService } from "./members.service.js";
 import { InviteMemberDto } from "./dto/invite-member.dto.js";
 
-@Controller("members")
+@Controller("partners")
 export class MembersController {
   constructor(private readonly membersService: MembersService) {}
 
-  @Get()
+  @Get(":partnerId/members")
   findAll(
-    @Query("partnerId") partnerId?: string,
+    @Param("partnerId") partnerId: string,
     @Query("propertyId") propertyId?: string,
   ) {
     if (propertyId) return this.membersService.findByProperty(propertyId);
-    if (partnerId) return this.membersService.findByPartnerEnriched(partnerId);
-    return [];
+    return this.membersService.findByPartnerEnriched(partnerId);
   }
 
-  @Post("invite")
+  @Post(":partnerId/members/invite")
   @HttpCode(HttpStatus.CREATED)
-  invite(@Body() dto: InviteMemberDto) {
-    return this.membersService.invite(dto);
+  invite(@Param("partnerId") partnerId: string, @Body() dto: InviteMemberDto) {
+    return this.membersService.invite(partnerId, dto);
   }
 
-  @Delete(":id")
+  @Delete(":partnerId/members/:memberId")
   @HttpCode(HttpStatus.NO_CONTENT)
-  remove(@Param("id") id: string) {
-    return this.membersService.remove(id);
+  remove(
+    @Param("partnerId") _partnerId: string,
+    @Param("memberId") memberId: string,
+  ) {
+    return this.membersService.remove(memberId);
   }
 }

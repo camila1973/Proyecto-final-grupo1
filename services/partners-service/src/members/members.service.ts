@@ -59,6 +59,7 @@ export class MembersService {
   }
 
   async invite(
+    partnerId: string,
     dto: InviteMemberDto,
   ): Promise<{ manager: PartnerMemberRow; challengeId: string }> {
     const existing = await this.repo.findByPropertyId(dto.propertyId);
@@ -73,12 +74,12 @@ export class MembersService {
       password: dto.password,
       firstName: dto.firstName,
       lastName: dto.lastName,
-      partnerId: dto.partnerId,
+      partnerId,
       propertyId: dto.propertyId,
     });
 
     const manager = await this.repo.insert({
-      partnerId: dto.partnerId,
+      partnerId,
       propertyId: dto.propertyId,
       userId,
       role: "manager",

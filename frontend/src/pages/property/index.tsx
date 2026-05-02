@@ -21,6 +21,7 @@ import PropertyReviewsSection from './PropertyReviewsSection';
 import LabeledField from '../../components/LabeledField';
 import GuestSelector from '../../components/GuestSelector';
 import ArrowBackIosNew from '@mui/icons-material/ArrowBackIosNew';
+import PageHero from '../../components/PageHero';
 
 const DESCRIPTION_PREVIEW_CHARS = 260;
 
@@ -104,22 +105,18 @@ export default function PropertyDetailPage() {
         : [];
 
   return (
-    <>
-      {/* Hero — same SearchBarForm as SearchPage */}
-      <section className="bg-[#4a6fa5] py-8 px-6">
-        <div className="max-w-[1152px] mx-auto">
-          <SearchBarForm
-            defaultCity={property.city}
-            defaultCountryCode={property.countryCode}
-            defaultCheckIn={qCheckIn}
-            defaultCheckOut={qCheckOut}
-            defaultGuests={qGuests > 0 ? qGuests : 2}
-          />
-        </div>
-      </section>
+    <div className="bg-[#F5F7FA] min-h-screen">
+      <PageHero>
+        <SearchBarForm
+          defaultCity={property.city}
+          defaultCountryCode={property.countryCode}
+          defaultCheckIn={qCheckIn}
+          defaultCheckOut={qCheckOut}
+          defaultGuests={qGuests > 0 ? qGuests : 2}
+        />
+      </PageHero>
 
-      {/* Main content */}
-      <main className="max-w-[1152px] mx-auto w-full px-6 py-8 flex-1">
+      <main className="max-w-[1152px] mx-auto px-6 py-6">
         {/* Back button */}
         <Button
           startIcon={<ArrowBackIosNew />}
@@ -290,6 +287,6 @@ export default function PropertyDetailPage() {
           fallbackCount={property.reviewCount}
         />
       </main>
-    </>
+    </div>
   );
 }

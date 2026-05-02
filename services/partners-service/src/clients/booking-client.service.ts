@@ -1,5 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
-import type { ReservationDto } from "../dashboard/dashboard.types.js";
+import type { ReservationDto } from "../partners/dashboard.types.js";
 
 interface FeeData {
   id?: string;

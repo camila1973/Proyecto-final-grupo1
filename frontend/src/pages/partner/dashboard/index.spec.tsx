@@ -56,7 +56,7 @@ const PROPERTIES_RESPONSE = {
   ],
 };
 
-const HOTEL_STATE_RESPONSE = {
+const METRICS_RESPONSE = {
   partnerId: 'partner-1',
   month: '2026-05',
   roomType: null,
@@ -69,7 +69,6 @@ const HOTEL_STATE_RESPONSE = {
     { month: '2026-04', revenueUsd: 800, lossesUsd: 40, occupancyRate: 0.7 },
     { month: '2026-05', revenueUsd: 1000, lossesUsd: 50, occupancyRate: 0.68 },
   ],
-  reservations: [],
 };
 
 const PAYMENTS_RESPONSE = {
@@ -99,13 +98,20 @@ const PARTNER_DETAILS_RESPONSE = {
 function mockFetch(overrides: { propertiesOk?: boolean } = {}) {
   global.fetch = jest.fn().mockImplementation((url: string) => {
     const { propertiesOk = true } = overrides;
+    // Property-level metrics: /properties/:id/metrics
+    if ((url as string).includes('/properties/') && (url as string).includes('/metrics')) {
+      if (!propertiesOk) return Promise.resolve({ ok: false, status: 500 });
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(METRICS_RESPONSE) });
+    }
+    // Properties list: /properties
     if ((url as string).includes('/properties')) {
       if (!propertiesOk) return Promise.resolve({ ok: false, status: 500 });
       return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(PROPERTIES_RESPONSE) });
     }
-    if ((url as string).includes('/hotel-state')) {
+    // Partner aggregate metrics: /metrics
+    if ((url as string).includes('/metrics')) {
       if (!propertiesOk) return Promise.resolve({ ok: false, status: 500 });
-      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(HOTEL_STATE_RESPONSE) });
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(METRICS_RESPONSE) });
     }
     if ((url as string).includes('/payments')) {
       return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(PAYMENTS_RESPONSE) });
@@ -188,8 +194,8 @@ describe('MiHotelPage (org dashboard)', () => {
           json: () => Promise.resolve({ partnerId: 'partner-1', properties: [] }),
         });
       }
-      if ((url as string).includes('/hotel-state')) {
-        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(HOTEL_STATE_RESPONSE) });
+      if ((url as string).includes('/metrics')) {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(METRICS_RESPONSE) });
       }
       return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(PAYMENTS_RESPONSE) });
     });

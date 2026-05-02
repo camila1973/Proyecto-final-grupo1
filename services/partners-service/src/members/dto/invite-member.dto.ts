@@ -9,9 +9,6 @@ import {
 
 export class InviteMemberDto {
   @IsUUID()
-  partnerId!: string;
-
-  @IsUUID()
   propertyId!: string;
 
   @IsString()

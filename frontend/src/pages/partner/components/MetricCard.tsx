@@ -1,31 +1,49 @@
-import { Box, Card, Typography } from '@mui/material';
+import { Card, Skeleton, Typography } from '@mui/material';
 
 export interface MetricCardProps {
   label: string;
   value: string;
+  subLabel?: string;
+  subColor?: string;
   variant?: 'default' | 'positive' | 'negative';
   testId?: string;
+  loading?: boolean;
 }
 
 const VARIANT_COLORS: Record<NonNullable<MetricCardProps['variant']>, string> = {
-  default: '#000',
+  default: '#1a1a1a',
   positive: '#27ae60',
   negative: '#e74c3c',
 };
 
-export default function MetricCard({ label, value, variant = 'default', testId }: MetricCardProps) {
+export default function MetricCard({
+  label,
+  value,
+  subLabel,
+  subColor = '#4a5568',
+  variant = 'default',
+  testId,
+  loading = false,
+}: MetricCardProps) {
   return (
-    <Card data-testid={testId} sx={{ p: 2, minWidth: 180, textAlign: 'center', boxShadow: 1 }}>
-      <Typography
-        variant="h4"
-        component="div"
-        sx={{ fontWeight: 700, color: VARIANT_COLORS[variant], mb: 0.5 }}
-      >
-        {value}
+    <Card
+      data-testid={testId}
+      variant="outlined"
+      sx={{ p: '16px 18px', borderRadius: 2, borderColor: '#e2e8f0' }}
+    >
+      <Typography sx={{ fontSize: 10, color: '#4a5568', textTransform: 'uppercase', letterSpacing: 0.5, mb: 0.75 }}>
+        {label}
       </Typography>
-      <Box sx={{ fontSize: 12, fontWeight: 700, color: '#374151', letterSpacing: 0.5 }}>
-        {label.toUpperCase()}
-      </Box>
+      {loading ? (
+        <Skeleton variant="text" width={72} height={28} />
+      ) : (
+        <Typography sx={{ fontSize: 20, fontWeight: 500, color: VARIANT_COLORS[variant], lineHeight: 1.2 }}>
+          {value}
+        </Typography>
+      )}
+      {!loading && subLabel && (
+        <Typography sx={{ fontSize: 11, color: subColor, mt: 0.5 }}>{subLabel}</Typography>
+      )}
     </Card>
   );
 }

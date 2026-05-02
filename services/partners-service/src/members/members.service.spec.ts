@@ -44,8 +44,8 @@ const MEMBER_ROW = (
   ...overrides,
 });
 
+const PARTNER_ID = "a1000000-0000-0000-0000-000000000001";
 const INVITE_DTO = {
-  partnerId: "a1000000-0000-0000-0000-000000000001",
   propertyId: "b1000000-0000-0000-0000-000000000001",
   firstName: "Carlos",
   lastName: "Lopez",
@@ -171,18 +171,18 @@ describe("MembersService", () => {
 
   describe("invite", () => {
     it("calls auth and inserts member with returned userId", async () => {
-      const result = await service.invite(INVITE_DTO);
+      const result = await service.invite(PARTNER_ID, INVITE_DTO);
 
       expect(authClient.createManagerUser).toHaveBeenCalledWith({
         email: INVITE_DTO.email,
         password: INVITE_DTO.password,
         firstName: INVITE_DTO.firstName,
         lastName: INVITE_DTO.lastName,
-        partnerId: INVITE_DTO.partnerId,
+        partnerId: PARTNER_ID,
         propertyId: INVITE_DTO.propertyId,
       });
       expect(repo.insert).toHaveBeenCalledWith({
-        partnerId: INVITE_DTO.partnerId,
+        partnerId: PARTNER_ID,
         propertyId: INVITE_DTO.propertyId,
         userId: "user-uuid-1",
         role: "manager",
@@ -193,7 +193,7 @@ describe("MembersService", () => {
 
     it("throws ConflictException when property already has a manager", async () => {
       repo.findByPropertyId.mockResolvedValue([MEMBER_ROW()]);
-      await expect(service.invite(INVITE_DTO)).rejects.toThrow(
+      await expect(service.invite(PARTNER_ID, INVITE_DTO)).rejects.toThrow(
         ConflictException,
       );
       expect(authClient.createManagerUser).not.toHaveBeenCalled();
@@ -203,7 +203,7 @@ describe("MembersService", () => {
       authClient.createManagerUser.mockRejectedValue(
         new ConflictException("Email is already registered"),
       );
-      await expect(service.invite(INVITE_DTO)).rejects.toThrow(
+      await expect(service.invite(PARTNER_ID, INVITE_DTO)).rejects.toThrow(
         ConflictException,
       );
       expect(repo.insert).not.toHaveBeenCalled();

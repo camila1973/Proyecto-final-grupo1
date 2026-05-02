@@ -85,6 +85,8 @@ describe("PartnersService", () => {
       repo as unknown as PartnersRepository,
       authClient as unknown as AuthClientService,
       partnerUsersRepo as unknown as MembersRepository,
+      null as any,
+      null as any,
     );
   });
 

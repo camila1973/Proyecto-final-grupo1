@@ -1,5 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
-import type { PaymentDto } from "../dashboard/dashboard.types.js";
+import type { PaymentDto } from "../partners/dashboard.types.js";
 
 @Injectable()
 export class PaymentClientService {

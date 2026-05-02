@@ -51,16 +51,6 @@ export interface MonthlySeriesPoint {
   occupancyRate: number;
 }
 
-export interface HotelStateResponse {
-  partnerId: string;
-  propertyId: string | null;
-  month: string;
-  roomType: string | null;
-  metrics: MetricCard;
-  monthlySeries: MonthlySeriesPoint[];
-  reservations: PartnerReservation[];
-}
-
 export interface PartnerReservation {
   id: string;
   status: string;
@@ -113,4 +103,29 @@ export interface PropertySummary {
 export interface PartnerPropertiesResponse {
   partnerId: string;
   properties: PropertySummary[];
+}
+
+export interface PartnerMetricsResponse {
+  partnerId: string;
+  month: string;
+  roomType: string | null;
+  metrics: MetricCard;
+  monthlySeries: MonthlySeriesPoint[];
+}
+
+export interface PropertyMetricsResponse {
+  partnerId: string;
+  propertyId: string;
+  month: string;
+  roomType: string | null;
+  metrics: MetricCard;
+  monthlySeries: MonthlySeriesPoint[];
+}
+
+export interface PropertyReservationsResponse {
+  partnerId: string;
+  propertyId: string;
+  month: string;
+  roomType: string | null;
+  reservations: PartnerReservation[];
 }
