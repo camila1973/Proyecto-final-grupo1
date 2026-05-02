@@ -61,11 +61,29 @@ const MOCK_AUTH = {
   logout: jest.fn(),
 };
 
-function mockFetch(ok = true, hotelState = HOTEL_STATE_RESPONSE) {
-  global.fetch = jest.fn().mockResolvedValue({
-    ok,
-    status: ok ? 200 : 500,
-    json: () => Promise.resolve(hotelState),
+function mockFetch(ok = true) {
+  global.fetch = jest.fn().mockImplementation((url: string) => {
+    const body = (url as string).includes('/reservations')
+      ? {
+          partnerId: 'partner-1',
+          propertyId: 'prop-abc',
+          month: '2026-05',
+          roomType: null,
+          reservations: HOTEL_STATE_RESPONSE.reservations,
+        }
+      : {
+          partnerId: 'partner-1',
+          propertyId: 'prop-abc',
+          month: '2026-05',
+          roomType: null,
+          metrics: HOTEL_STATE_RESPONSE.metrics,
+          monthlySeries: HOTEL_STATE_RESPONSE.monthlySeries,
+        };
+    return Promise.resolve({
+      ok,
+      status: ok ? 200 : 500,
+      json: () => Promise.resolve(body),
+    });
   }) as never;
 }
 
@@ -119,7 +137,25 @@ describe('PropertyDashboardPage', () => {
   });
 
   it('shows empty state when no reservations', async () => {
-    mockFetch(true, { ...HOTEL_STATE_RESPONSE, reservations: [] });
+    global.fetch = jest.fn().mockImplementation((url: string) => {
+      const body = (url as string).includes('/reservations')
+        ? {
+            partnerId: 'partner-1',
+            propertyId: 'prop-abc',
+            month: '2026-05',
+            roomType: null,
+            reservations: [],
+          }
+        : {
+            partnerId: 'partner-1',
+            propertyId: 'prop-abc',
+            month: '2026-05',
+            roomType: null,
+            metrics: HOTEL_STATE_RESPONSE.metrics,
+            monthlySeries: HOTEL_STATE_RESPONSE.monthlySeries,
+          };
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(body) });
+    }) as never;
     renderPage();
     await waitFor(() => {
       expect(screen.getByText('No hay reservaciones para este mes.')).toBeInTheDocument();
