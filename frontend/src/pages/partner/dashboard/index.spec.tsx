@@ -159,9 +159,9 @@ describe('MiHotelPage (org dashboard)', () => {
     await waitFor(() => {
       expect(screen.getAllByText('Hotel Central Park').length).toBeGreaterThanOrEqual(1);
     });
-    expect(screen.getAllByText('Propiedades').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText('Ocupación').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText('Reservas activas').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('PROPIEDADES').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('OCUPACIÓN').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('RESERVAS ACTIVAS').length).toBeGreaterThanOrEqual(1);
   });
 
   it('shows properties table section header', async () => {

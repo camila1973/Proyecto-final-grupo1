@@ -1,5 +1,6 @@
-import { Box, Button, Typography } from '@mui/material';
-import SettingsIcon from '@mui/icons-material/Settings';
+import { Box, Button, IconButton, Tooltip, Typography } from '@mui/material';
+import QrCode2Icon from '@mui/icons-material/QrCode2';
+import EditIcon from '@mui/icons-material/Edit';
 import { useTranslation } from 'react-i18next';
 import PageHero from '../../../components/PageHero';
 
@@ -24,9 +25,16 @@ export default function HeroBanner({ propertyName, propertyId, address }: HeroBa
               </Box>
             )}
           </Typography>
-          <Typography variant="h4" sx={{ fontWeight: 600, color: 'white', mt: 0.5, mb: 0.25 }}>
-            {propertyName}
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5, mb: 0.25 }}>
+            <Typography variant="h4" sx={{ fontWeight: 600, color: 'white' }}>
+              {propertyName}
+            </Typography>
+            <Tooltip title={t('partner.properties.generate_qr')} placement="right">
+              <IconButton color="inherit">
+                <QrCode2Icon />
+              </IconButton>
+            </Tooltip>
+          </Box>
           {address && (
             <Typography sx={{ fontSize: 12, color: 'white', opacity: 0.85 }}>
               {address}
@@ -36,9 +44,7 @@ export default function HeroBanner({ propertyName, propertyId, address }: HeroBa
         <Button
           variant="contained"
           color="warning"
-          size="large"
-          startIcon={<SettingsIcon sx={{ fontSize: 16 }} />}
-          sx={{ fontSize: 13, fontWeight: 500, px: 2 }}
+          startIcon={<EditIcon />}
         >
           {t('partner.properties.edit_property')}
         </Button>

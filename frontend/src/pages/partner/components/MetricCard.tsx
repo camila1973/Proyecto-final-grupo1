@@ -31,8 +31,8 @@ export default function MetricCard({
       variant="outlined"
       sx={{ p: '16px 18px', borderRadius: 2, borderColor: '#e2e8f0' }}
     >
-      <Typography sx={{ fontSize: 10, color: '#4a5568', textTransform: 'uppercase', letterSpacing: 0.5, mb: 0.75 }}>
-        {label}
+      <Typography sx={{ fontSize: 10, color: '#4a5568', letterSpacing: 0.5, mb: 0.75 }}>
+        {label.toUpperCase()}
       </Typography>
       {loading ? (
         <Skeleton variant="text" width={72} height={28} />

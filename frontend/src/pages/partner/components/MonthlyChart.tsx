@@ -1,5 +1,5 @@
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { Box, Skeleton } from '@mui/material';
+import { Box, Skeleton, Typography } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 import { useLocale } from '../../../context/LocaleContext';
 import { shortMonthLabel } from '../../../utils/month';
@@ -32,7 +32,11 @@ export default function MonthlyChart({ data, loading = false }: MonthlyChartProp
   }
 
   return (
-    <Box sx={{ width: '100%', height: 252 }}>
+    <Box sx={{ width: '100%' }}>
+      <Typography sx={{ fontSize: 13, fontWeight: 500, color: '#1a1a1a', mb: 1 }}>
+        {t('partner.dashboard.chart_title')}
+      </Typography>
+      <Box sx={{ height: 252 }}>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
@@ -45,6 +49,7 @@ export default function MonthlyChart({ data, loading = false }: MonthlyChartProp
           <Bar dataKey="occupancy" fill="#3b5998" />
         </BarChart>
       </ResponsiveContainer>
+      </Box>
     </Box>
   );
 }
