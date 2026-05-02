@@ -8,6 +8,7 @@ export type AuthUser = {
   lastName?: string;
   phone?: string;
   partnerId?: string;
+  propertyId?: string;
 };
 
 export type AuthContextValue = {

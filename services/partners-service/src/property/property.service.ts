@@ -1,90 +1,43 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, NotFoundException } from "@nestjs/common";
 import { BookingClientService } from "../clients/booking-client.service.js";
-import { PaymentClientService } from "../clients/payment-client.service.js";
 import { InventoryClientService } from "../clients/inventory-client.service.js";
 import type {
-  HotelStateResponse,
   MetricCard,
   MonthlySeriesPoint,
   PartnerPropertiesResponse,
   PartnerReservation,
-  PaymentRow,
-  PaymentsResponse,
+  PropertyMetricsResponse,
+  PropertyReservationsResponse,
   PropertySummary,
   ReservationDto,
-} from "./dashboard.types.js";
+} from "../partners/dashboard.types.js";
 
-const COMMISSION_RATE = 0.2;
-const TAX_RATE = 0.19;
 const REVENUE_STATUSES = new Set(["confirmed", "submitted"]);
 const LOSS_STATUSES = new Set(["cancelled", "failed", "expired"]);
 
 @Injectable()
-export class DashboardService {
+export class PropertyService {
   constructor(
     private readonly bookingClient: BookingClientService,
-    private readonly paymentClient: PaymentClientService,
     private readonly inventoryClient: InventoryClientService,
   ) {}
 
-  async getHotelState(
+  async getPropertySummary(
     partnerId: string,
-    month: string,
-    roomType: string | null,
-    propertyId: string | null,
-  ): Promise<HotelStateResponse> {
-    const all = await this.bookingClient.listReservations();
-    const partnerScoped = all.filter((r) => r.partnerId === partnerId);
-    const propertyScoped = propertyId
-      ? partnerScoped.filter((r) => r.propertyId === propertyId)
-      : partnerScoped;
-    const filtered = filterReservations(propertyScoped, month, roomType);
-
+    propertyId: string,
+  ): Promise<PropertySummary> {
+    const p = await this.inventoryClient.getPropertyById(propertyId);
+    if (!p) throw new NotFoundException(`Property ${propertyId} not found`);
     return {
-      partnerId,
-      propertyId,
-      month,
-      roomType,
-      metrics: computeMetrics(filtered),
-      monthlySeries: buildMonthlySeries(propertyScoped, month, roomType),
-      reservations: filtered.map(toPartnerReservation),
-    };
-  }
-
-  async getPayments(
-    partnerId: string,
-    month: string | null,
-    page: number,
-    pageSize: number,
-    propertyId: string | null,
-  ): Promise<PaymentsResponse> {
-    const all = await this.bookingClient.listReservations();
-    const partnerScoped = all.filter((r) => r.partnerId === partnerId);
-    const propertyScoped = propertyId
-      ? partnerScoped.filter((r) => r.propertyId === propertyId)
-      : partnerScoped;
-    const monthFiltered = month
-      ? propertyScoped.filter((r) => isInMonth(r.checkIn, month))
-      : propertyScoped;
-    const eligible = monthFiltered.filter((r) =>
-      ["confirmed", "submitted", "failed"].includes(r.status),
-    );
-
-    const total = eligible.length;
-    const start = Math.max(0, (page - 1) * pageSize);
-    const slice = eligible.slice(start, start + pageSize);
-
-    const rows: PaymentRow[] = await Promise.all(
-      slice.map(async (r) => buildPaymentRow(r, this.paymentClient)),
-    );
-
-    return {
-      partnerId,
-      month,
-      total,
-      page,
-      pageSize,
-      rows,
+      propertyId: p.id,
+      propertyName: p.name,
+      propertyCity: p.city,
+      propertyNeighborhood: p.neighborhood,
+      propertyCountryCode: p.countryCode,
+      propertyThumbnailUrl: p.thumbnailUrl || null,
+      createdAt: p.createdAt,
+      roomCount: 0,
+      reservationCount: 0,
     };
   }
 
@@ -106,9 +59,52 @@ export class DashboardService {
 
     return { partnerId, properties };
   }
+
+  async getPropertyMetrics(
+    partnerId: string,
+    propertyId: string,
+    month: string,
+    roomType: string | null,
+  ): Promise<PropertyMetricsResponse> {
+    const all = await this.bookingClient.listReservations();
+    const scoped = all
+      .filter((r) => r.partnerId === partnerId)
+      .filter((r) => r.propertyId === propertyId);
+    const filtered = filterReservations(scoped, month, roomType);
+    return {
+      partnerId,
+      propertyId,
+      month,
+      roomType,
+      metrics: computeMetrics(filtered),
+      monthlySeries: buildMonthlySeries(scoped, month, roomType),
+    };
+  }
+
+  async getPropertyReservations(
+    partnerId: string,
+    propertyId: string,
+    month: string,
+    roomType: string | null,
+  ): Promise<PropertyReservationsResponse> {
+    const all = await this.bookingClient.listReservations();
+    const scoped = all
+      .filter((r) => r.partnerId === partnerId)
+      .filter((r) => r.propertyId === propertyId);
+    const filtered = filterReservations(scoped, month, roomType);
+    return {
+      partnerId,
+      propertyId,
+      month,
+      roomType,
+      reservations: filtered.map(toPartnerReservation),
+    };
+  }
 }
 
-function filterReservations(
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+export function filterReservations(
   rows: ReservationDto[],
   month: string,
   roomType: string | null,
@@ -128,7 +124,7 @@ export function isInMonth(date: string, month: string): boolean {
   return typeof date === "string" && date.startsWith(month);
 }
 
-function computeMetrics(rows: ReservationDto[]): MetricCard {
+export function computeMetrics(rows: ReservationDto[]): MetricCard {
   let confirmed = 0;
   let cancelled = 0;
   let revenueUsd = 0;
@@ -154,7 +150,7 @@ function computeMetrics(rows: ReservationDto[]): MetricCard {
   };
 }
 
-function buildMonthlySeries(
+export function buildMonthlySeries(
   rows: ReservationDto[],
   centerMonth: string,
   roomType: string | null,
@@ -224,7 +220,7 @@ export function trailingMonths(month: string, count: number): string[] {
   return out;
 }
 
-function toPartnerReservation(r: ReservationDto): PartnerReservation {
+export function toPartnerReservation(r: ReservationDto): PartnerReservation {
   const guest = r.guestInfo ?? {};
   const guestName = [guest.firstName, guest.lastName]
     .filter((s) => !!s && String(s).trim())
@@ -242,42 +238,6 @@ function toPartnerReservation(r: ReservationDto): PartnerReservation {
     roomType: r.snapshot?.roomType ?? "—",
     grandTotalUsd: r.grandTotalUsd,
   };
-}
-
-async function buildPaymentRow(
-  r: ReservationDto,
-  paymentClient: PaymentClientService,
-): Promise<PaymentRow> {
-  const payment = await paymentClient.getStatus(r.id);
-  const nights = countNights(r.checkIn, r.checkOut);
-  const total = r.grandTotalUsd ?? payment?.amountUsd ?? 0;
-  const subtotal = nights > 0 ? total / (1 + TAX_RATE) : total;
-  const taxes = total - subtotal;
-  const ratePerNight = nights > 0 ? subtotal / nights : 0;
-  const commission = round(total * COMMISSION_RATE);
-  const earnings = round(total - commission);
-
-  return {
-    reservationId: r.id,
-    status: payment?.status ?? r.status,
-    paymentMethod: payment?.stripePaymentIntentId ? "STRIPE" : "—",
-    reference: payment?.stripePaymentIntentId ?? "—",
-    nights,
-    ratePerNightUsd: round(ratePerNight),
-    subtotalUsd: round(subtotal),
-    taxesUsd: round(taxes),
-    totalPaidUsd: round(total),
-    commissionUsd: -commission,
-    earningsUsd: earnings,
-    createdAt: payment?.createdAt ?? r.createdAt,
-  };
-}
-
-export function countNights(checkIn: string, checkOut: string): number {
-  const start = new Date(`${checkIn}T00:00:00Z`).getTime();
-  const end = new Date(`${checkOut}T00:00:00Z`).getTime();
-  if (Number.isNaN(start) || Number.isNaN(end) || end <= start) return 0;
-  return Math.round((end - start) / 86_400_000);
 }
 
 function round(n: number, decimals = 2): number {

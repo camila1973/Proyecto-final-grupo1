@@ -1,33 +1,5 @@
-import { Box, Chip, Paper, TableCell, Typography } from '@mui/material';
+import { Box, Chip, TableCell, Typography } from '@mui/material';
 import { useTranslation } from 'react-i18next';
-
-// ─── OrgMetricCard ────────────────────────────────────────────────────────────
-
-export interface OrgMetricCardProps {
-  label: string;
-  value: string;
-  subLabel?: string;
-  subColor?: string;
-}
-
-export function OrgMetricCard({ label, value, subLabel, subColor = '#4a5568' }: OrgMetricCardProps) {
-  return (
-    <Paper
-      variant="outlined"
-      sx={{ p: '16px 18px', borderRadius: 2, borderColor: '#e2e8f0', bgcolor: 'white' }}
-    >
-      <Typography sx={{ fontSize: 10, color: '#4a5568', textTransform: 'uppercase', letterSpacing: 0.5, mb: 0.75 }}>
-        {label}
-      </Typography>
-      <Typography sx={{ fontSize: 20, fontWeight: 500, color: '#1a1a1a', lineHeight: 1.2 }}>
-        {value}
-      </Typography>
-      {subLabel && (
-        <Typography sx={{ fontSize: 11, color: subColor, mt: 0.5 }}>{subLabel}</Typography>
-      )}
-    </Paper>
-  );
-}
 
 // ─── StatusPill ───────────────────────────────────────────────────────────────
 

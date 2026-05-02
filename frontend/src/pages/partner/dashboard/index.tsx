@@ -7,13 +7,14 @@ import { useLocale } from '../../../context/LocaleContext';
 import {
   fetchPartner,
   fetchPartnerProperties,
-  fetchPartnerHotelState,
+  fetchPartnerMetrics,
+  fetchPropertyMetrics,
   fetchPartnerPayments,
 } from '../../../utils/queries';
 import { formatPrice } from '../../../utils/currency';
 import { currentMonth, shiftMonth, formatMonthLabel } from '../../../utils/month';
 import { PROPERTY_COLORS } from '../components/RevenueTrendChart';
-import { OrgMetricCard } from './ui';
+import MetricCard from '../components/MetricCard';
 import HeroBanner from './HeroBanner';
 import ChartsSection from './ChartsSection';
 import PropertiesSection, { type PropertyRow } from './PropertiesSection';
@@ -44,15 +45,15 @@ export default function MiHotelPage() {
   });
 
   const aggregateQuery = useQuery({
-    queryKey: ['partner-hotel-state', partnerId, month],
-    queryFn: () => fetchPartnerHotelState(partnerId, month, null, token!),
+    queryKey: ['partner-metrics', partnerId, month],
+    queryFn: () => fetchPartnerMetrics(partnerId, month, null, token!),
     enabled,
   });
 
   const propertyQueries = useQueries({
     queries: (propertiesQuery.data?.properties ?? []).map((p) => ({
-      queryKey: ['partner-hotel-state', partnerId, month, p.propertyId],
-      queryFn: () => fetchPartnerHotelState(partnerId, month, null, token!, p.propertyId),
+      queryKey: ['property-metrics', partnerId, p.propertyId, month],
+      queryFn: () => fetchPropertyMetrics(partnerId, p.propertyId, month, null, token!),
       enabled: enabled && !!propertiesQuery.data,
     })),
   });
@@ -142,7 +143,7 @@ export default function MiHotelPage() {
   const monthLabel = formatMonthLabel(month, language);
 
   return (
-    <div className="bg-[#F5F7FA] min-h-screen">
+    <div className="min-h-screen">
 
       <HeroBanner
         orgName={partnerQuery.data?.name ?? ''}
@@ -155,7 +156,7 @@ export default function MiHotelPage() {
 
         {/* Metric row */}
         <div className="grid grid-cols-6 gap-5">
-          <OrgMetricCard
+          <MetricCard
             label={t('partner.org_dashboard.metric_properties')}
             value={String(properties.length)}
             subLabel={
@@ -165,24 +166,24 @@ export default function MiHotelPage() {
             }
             subColor="#854F0B"
           />
-          <OrgMetricCard
+          <MetricCard
             label={t('partner.org_dashboard.metric_occupancy')}
             value={`${Math.round(currentOccupancy)}%`}
           />
-          <OrgMetricCard
+          <MetricCard
             label={t('partner.org_dashboard.metric_active_reservations')}
             value={String(metrics.confirmed)}
           />
-          <OrgMetricCard
+          <MetricCard
             label={`${t('partner.org_dashboard.metric_gross')} · ${monthLabel}`}
             value={formatPrice(grossRevenue, currency)}
           />
-          <OrgMetricCard
+          <MetricCard
             label={t('partner.org_dashboard.metric_commission')}
             value={formatPrice(-commissionAmount, currency)}
             subLabel={t('partner.org_dashboard.commission_pct', { pct: 20 })}
           />
-          <OrgMetricCard
+          <MetricCard
             label={`${t('partner.org_dashboard.metric_net')} · ${monthLabel}`}
             value={formatPrice(netPayout, currency)}
             subLabel={`dispersión: ${disbursementLabel}`}
@@ -228,15 +229,6 @@ export default function MiHotelPage() {
           totalNetPayout={totalNetPayout}
           onViewHistory={() => navigate({ to: '/mi-hotel/pagos' })}
         />
-
-        <hr className="border-[#e2e8f0] mt-1" />
-        <div className="flex justify-between text-[11px] text-gray-500 pb-1">
-          <span>© 2026 TravelHub</span>
-          <div className="flex gap-4">
-            <a href="#" className="text-gray-500 no-underline text-[11px]">{t('footer.privacy')}</a>
-            <a href="#" className="text-gray-500 no-underline text-[11px]">{t('footer.terms')}</a>
-          </div>
-        </div>
 
       </div>
     </div>

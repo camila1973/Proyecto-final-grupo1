@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import {
   Alert,
   Box,
@@ -23,17 +23,18 @@ import {
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import SearchIcon from '@mui/icons-material/Search';
-import PageHero from '../../../components/PageHero';
 import { useAuth } from '../../../hooks/useAuth';
 import { useLocale } from '../../../context/LocaleContext';
+import HeroBanner from './HeroBanner';
 import {
-  fetchPartnerHotelState,
-  type PartnerPropertiesResponse,
+  fetchPartnerProperty,
+  fetchPropertyMetrics,
+  fetchPropertyReservations,
 } from '../../../utils/queries';
 import { formatPrice } from '../../../utils/currency';
 import { currentMonth, formatMonthLabel, shiftMonth } from '../../../utils/month';
 import MetricCard from '../components/MetricCard';
-import MonthlyChart from '../components/MonthlyChart';
+import ChartsSection from './ChartsSection';
 import { TH, TD } from '../dashboard/ui';
 
 const PAGE_SIZE = 10;
@@ -47,7 +48,6 @@ export default function PropertyDashboardPage() {
   const { language, currency } = useLocale();
   const navigate = useNavigate();
   const { propertyId } = useParams({ from: '/mi-hotel/$propertyId' });
-  const queryClient = useQueryClient();
 
   const [month, setMonth] = useState(currentMonth());
   const [roomType, setRoomType] = useState('');
@@ -57,25 +57,40 @@ export default function PropertyDashboardPage() {
   const partnerId = user?.partnerId ?? '';
   const enabled = !!token && !!partnerId;
 
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ['partner-hotel-state', partnerId, month, roomType, propertyId],
-    queryFn: () => fetchPartnerHotelState(partnerId, month, roomType || null, token!, propertyId),
+  const metricsQuery = useQuery({
+    queryKey: ['property-metrics', partnerId, propertyId, month, roomType],
+    queryFn: () => fetchPropertyMetrics(partnerId, propertyId, month, roomType || null, token!),
     enabled,
   });
 
-  const cachedProperties = queryClient.getQueryData<PartnerPropertiesResponse>([
-    'partner-properties',
-    partnerId,
-  ]);
-  const propertyName =
-    cachedProperties?.properties.find((p) => p.propertyId === propertyId)?.propertyName ?? propertyId;
+  const reservationsQuery = useQuery({
+    queryKey: ['property-reservations', partnerId, propertyId, month, roomType],
+    queryFn: () => fetchPropertyReservations(partnerId, propertyId, month, roomType || null, token!),
+    enabled,
+  });
+
+  const propertyQuery = useQuery({
+    queryKey: ['partner-property', partnerId, propertyId],
+    queryFn: () => fetchPartnerProperty(partnerId, propertyId, token!),
+    enabled,
+  });
+
+  const isLoading = metricsQuery.isLoading || reservationsQuery.isLoading;
+  const isError = metricsQuery.isError || reservationsQuery.isError;
+
+  const propertyName = propertyQuery.data?.propertyName ?? propertyId;
+  const propertyAddress = [
+    propertyQuery.data?.propertyNeighborhood,
+    propertyQuery.data?.propertyCity,
+    propertyQuery.data?.propertyCountryCode,
+  ].filter(Boolean).join(', ');
 
   const filteredReservations = useMemo(() => {
-    if (!data?.reservations) return [];
+    if (!reservationsQuery.data?.reservations) return [];
     const q = reservationFilter.trim().toLowerCase();
-    if (!q) return data.reservations;
-    return data.reservations.filter((r) => r.id.toLowerCase().includes(q));
-  }, [data, reservationFilter]);
+    if (!q) return reservationsQuery.data.reservations;
+    return reservationsQuery.data.reservations.filter((r) => r.id.toLowerCase().includes(q));
+  }, [reservationsQuery.data, reservationFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filteredReservations.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
@@ -89,33 +104,42 @@ export default function PropertyDashboardPage() {
     );
   }
 
+  if (isError) {
+    return (
+      <Box sx={{ maxWidth: 1152, mx: 'auto', p: 4 }}>
+        <Alert severity="error">{t('partner.dashboard.load_error')}</Alert>
+      </Box>
+    );
+  }
+
   return (
-    <Box className="bg-[#F5F7FA] min-h-screen">
-      <PageHero>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <Box>
-            <Button
-              variant="text"
-              sx={{ color: 'rgba(255,255,255,0.8)', mb: 0.5, p: 0, minWidth: 0, fontSize: 12 }}
-              onClick={() => navigate({ to: '/mi-hotel' })}
-            >
-              {t('partner.properties.back')}
-            </Button>
-            <Typography variant="h5" sx={{ fontWeight: 700 }}>
-              {propertyName}
-            </Typography>
-          </Box>
-        </Box>
-      </PageHero>
+    <div className="min-h-screen">
+      <HeroBanner
+        propertyName={propertyName}
+        propertyId={propertyId}
+        address={propertyAddress}
+      />
 
-      <Box sx={{ maxWidth: 1152, mx: 'auto', px: 3, py: 4, display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <div className="max-w-[1152px] mx-auto px-6 py-6 flex flex-col gap-6">
 
-        {/* Month navigator */}
+        {/* Filter bar */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography sx={{ fontSize: 14, fontWeight: 500, color: '#1a1a1a' }}>
-            {t('partner.dashboard.state_title')}
-          </Typography>
-          <Stack direction="row" spacing={0.5} alignItems="center">
+          <TextField
+            select
+            size="small"
+            label={t('partner.dashboard.room_type_filter')}
+            value={roomType}
+            onChange={(e) => setRoomType(e.target.value)}
+            sx={{ width: 220 }}
+          >
+            {ROOM_TYPE_OPTIONS.map((opt) => (
+              <MenuItem key={opt || 'all'} value={opt} sx={{ fontSize: 12 }}>
+                {opt || t('partner.dashboard.all_room_types')}
+              </MenuItem>
+            ))}
+          </TextField>
+
+          <Stack direction="row" spacing={1} alignItems="center">
             <Typography sx={{ fontSize: 12, color: '#4a5568', minWidth: 110, textAlign: 'right' }}>
               {formatMonthLabel(month, language)}
             </Typography>
@@ -128,37 +152,24 @@ export default function PropertyDashboardPage() {
           </Stack>
         </Box>
 
-        {/* Room type filter */}
-        <TextField
-          select
-          size="small"
-          label={t('partner.dashboard.room_type_filter')}
-          value={roomType}
-          onChange={(e) => setRoomType(e.target.value)}
-          sx={{ maxWidth: 220, '& .MuiOutlinedInput-root': { fontSize: 12, borderRadius: 1.5 } }}
-        >
-          {ROOM_TYPE_OPTIONS.map((opt) => (
-            <MenuItem key={opt || 'all'} value={opt} sx={{ fontSize: 12 }}>
-              {opt || t('partner.dashboard.all_room_types')}
-            </MenuItem>
-          ))}
-        </TextField>
+        <div className="grid grid-cols-5 gap-4">
+          <MetricCard loading={isLoading} testId="metric-confirmed" label={t('partner.dashboard.metric_confirmed')} value={String(metricsQuery.data?.metrics.confirmed ?? 0)} />
+          <MetricCard loading={isLoading} testId="metric-cancelled" label={t('partner.dashboard.metric_cancelled')} value={String(metricsQuery.data?.metrics.cancelled ?? 0)} />
+          <MetricCard loading={isLoading} testId="metric-revenue" label={t('partner.dashboard.metric_revenue', { currency })} value={formatPrice(metricsQuery.data?.metrics.revenueUsd ?? 0, currency)} variant="positive" />
+          <MetricCard loading={isLoading} testId="metric-losses" label={t('partner.dashboard.metric_losses', { currency })} value={formatPrice(metricsQuery.data?.metrics.lossesUsd ?? 0, currency)} variant="negative" />
+          <MetricCard loading={isLoading} testId="metric-net" label={t('partner.dashboard.metric_net', { currency })} value={formatPrice(metricsQuery.data?.metrics.netUsd ?? 0, currency)} variant="positive" />
+        </div>
 
-        {isLoading && <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress size={24} /></Box>}
-        {isError && <Alert severity="error">{t('partner.dashboard.load_error')}</Alert>}
+        <ChartsSection
+          propertyName={propertyName}
+          monthlySeries={metricsQuery.data?.monthlySeries ?? []}
+          grossRevenue={metricsQuery.data?.metrics.revenueUsd ?? 0}
+          loading={isLoading}
+          monthLabel={formatMonthLabel(month, language)}
+        />
 
-        {data && (
+        {(metricsQuery.data || reservationsQuery.data) && (
           <>
-            <MonthlyChart data={data.monthlySeries} />
-
-            <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap>
-              <MetricCard testId="metric-confirmed" label={t('partner.dashboard.metric_confirmed')} value={String(data.metrics.confirmed)} />
-              <MetricCard testId="metric-cancelled" label={t('partner.dashboard.metric_cancelled')} value={String(data.metrics.cancelled)} />
-              <MetricCard testId="metric-revenue" label={t('partner.dashboard.metric_revenue', { currency })} value={formatPrice(data.metrics.revenueUsd, currency)} variant="positive" />
-              <MetricCard testId="metric-losses" label={t('partner.dashboard.metric_losses', { currency })} value={formatPrice(data.metrics.lossesUsd, currency)} variant="negative" />
-              <MetricCard testId="metric-net" label={t('partner.dashboard.metric_net', { currency })} value={formatPrice(data.metrics.netUsd, currency)} variant="positive" />
-            </Stack>
-
             <Box>
               <Button
                 variant="text"
@@ -171,6 +182,11 @@ export default function PropertyDashboardPage() {
 
             {/* Reservations table */}
             <Box>
+              {isLoading && (
+                <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                  <CircularProgress size={24} />
+                </Box>
+              )}
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
                 <Typography sx={{ fontSize: 14, fontWeight: 500, color: '#1a1a1a' }}>
                   {t('partner.dashboard.reservations_title')}
@@ -236,7 +252,7 @@ export default function PropertyDashboardPage() {
             </Box>
           </>
         )}
-      </Box>
-    </Box>
+      </div>
+    </div>
   );
 }

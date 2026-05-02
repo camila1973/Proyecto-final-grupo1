@@ -61,11 +61,45 @@ const MOCK_AUTH = {
   logout: jest.fn(),
 };
 
-function mockFetch(ok = true, hotelState = HOTEL_STATE_RESPONSE) {
-  global.fetch = jest.fn().mockResolvedValue({
-    ok,
-    status: ok ? 200 : 500,
-    json: () => Promise.resolve(hotelState),
+const PROPERTY_RESPONSE = {
+  propertyId: 'prop-abc',
+  propertyName: 'Hotel Test',
+  propertyCity: 'Bogotá',
+  propertyNeighborhood: null,
+  propertyCountryCode: 'CO',
+  propertyThumbnailUrl: null,
+  roomCount: 0,
+  reservationCount: 0,
+};
+
+function mockFetch(ok = true) {
+  global.fetch = jest.fn().mockImplementation((url: string) => {
+    let body: unknown;
+    if ((url as string).includes('/reservations')) {
+      body = {
+        partnerId: 'partner-1',
+        propertyId: 'prop-abc',
+        month: '2026-05',
+        roomType: null,
+        reservations: HOTEL_STATE_RESPONSE.reservations,
+      };
+    } else if ((url as string).match(/\/properties\/[^/]+$/)) {
+      body = PROPERTY_RESPONSE;
+    } else {
+      body = {
+        partnerId: 'partner-1',
+        propertyId: 'prop-abc',
+        month: '2026-05',
+        roomType: null,
+        metrics: HOTEL_STATE_RESPONSE.metrics,
+        monthlySeries: HOTEL_STATE_RESPONSE.monthlySeries,
+      };
+    }
+    return Promise.resolve({
+      ok,
+      status: ok ? 200 : 500,
+      json: () => Promise.resolve(body),
+    });
   }) as never;
 }
 
@@ -119,7 +153,25 @@ describe('PropertyDashboardPage', () => {
   });
 
   it('shows empty state when no reservations', async () => {
-    mockFetch(true, { ...HOTEL_STATE_RESPONSE, reservations: [] });
+    global.fetch = jest.fn().mockImplementation((url: string) => {
+      const body = (url as string).includes('/reservations')
+        ? {
+            partnerId: 'partner-1',
+            propertyId: 'prop-abc',
+            month: '2026-05',
+            roomType: null,
+            reservations: [],
+          }
+        : {
+            partnerId: 'partner-1',
+            propertyId: 'prop-abc',
+            month: '2026-05',
+            roomType: null,
+            metrics: HOTEL_STATE_RESPONSE.metrics,
+            monthlySeries: HOTEL_STATE_RESPONSE.monthlySeries,
+          };
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(body) });
+    }) as never;
     renderPage();
     await waitFor(() => {
       expect(screen.getByText('No hay reservaciones para este mes.')).toBeInTheDocument();
@@ -132,15 +184,6 @@ describe('PropertyDashboardPage', () => {
     await waitFor(() => {
       expect(screen.getByText('No se pudieron cargar las métricas. Inténtalo más tarde.')).toBeInTheDocument();
     });
-  });
-
-  it('navigates back to /mi-hotel on back button click', async () => {
-    renderPage();
-    await waitFor(() => {
-      expect(screen.getByTestId('metric-confirmed')).toBeInTheDocument();
-    });
-    fireEvent.click(screen.getByText('← Mis hoteles'));
-    expect(mockNavigate).toHaveBeenCalledWith({ to: '/mi-hotel' });
   });
 
   it('navigates to pagos page on link click', async () => {

@@ -27,7 +27,6 @@ const MEMBER_ROW = (): PartnerMemberRow => ({
 });
 
 const INVITE_DTO = {
-  partnerId: "a1000000-0000-0000-0000-000000000001",
   propertyId: "b1000000-0000-0000-0000-000000000001",
   firstName: "Carlos",
   lastName: "Lopez",
@@ -49,13 +48,16 @@ describe("MembersController", () => {
   describe("findAll", () => {
     it("calls findByProperty when propertyId is provided", async () => {
       service.findByProperty.mockResolvedValue([MEMBER_ROW()]);
-      const result = await controller.findAll(undefined, "property-uuid-1");
+      const result = await controller.findAll(
+        "partner-uuid-1",
+        "property-uuid-1",
+      );
       expect(service.findByProperty).toHaveBeenCalledWith("property-uuid-1");
       expect(service.findByPartnerEnriched).not.toHaveBeenCalled();
       expect(result).toHaveLength(1);
     });
 
-    it("calls findByPartnerEnriched when only partnerId is provided", async () => {
+    it("calls findByPartnerEnriched when no propertyId is provided", async () => {
       service.findByPartnerEnriched.mockResolvedValue([]);
       const result = await controller.findAll("partner-uuid-1", undefined);
       expect(service.findByPartnerEnriched).toHaveBeenCalledWith(
@@ -71,44 +73,41 @@ describe("MembersController", () => {
       expect(service.findByProperty).toHaveBeenCalledWith("property-uuid-1");
       expect(service.findByPartnerEnriched).not.toHaveBeenCalled();
     });
-
-    it("returns empty array when neither param is provided", async () => {
-      const result = await controller.findAll(undefined, undefined);
-      expect(result).toEqual([]);
-      expect(service.findByProperty).not.toHaveBeenCalled();
-      expect(service.findByPartnerEnriched).not.toHaveBeenCalled();
-    });
   });
 
   // ─── invite ──────────────────────────────────────────────────────────────────
 
   describe("invite", () => {
-    it("delegates to membersService.invite and returns result", async () => {
+    it("delegates to membersService.invite with partnerId from path", async () => {
       const payload = { manager: MEMBER_ROW(), challengeId: "chal-1" };
       service.invite.mockResolvedValue(payload);
-      const result = await controller.invite(INVITE_DTO);
-      expect(service.invite).toHaveBeenCalledWith(INVITE_DTO);
+      const result = await controller.invite("partner-uuid-1", INVITE_DTO);
+      expect(service.invite).toHaveBeenCalledWith("partner-uuid-1", INVITE_DTO);
       expect(result).toBe(payload);
     });
 
     it("propagates errors from service", async () => {
       service.invite.mockRejectedValue(new Error("Conflict"));
-      await expect(controller.invite(INVITE_DTO)).rejects.toThrow("Conflict");
+      await expect(
+        controller.invite("partner-uuid-1", INVITE_DTO),
+      ).rejects.toThrow("Conflict");
     });
   });
 
   // ─── remove ──────────────────────────────────────────────────────────────────
 
   describe("remove", () => {
-    it("delegates to membersService.remove", async () => {
+    it("delegates to membersService.remove with memberId from path", async () => {
       service.remove.mockResolvedValue(undefined);
-      await controller.remove("member-uuid-1");
+      await controller.remove("partner-uuid-1", "member-uuid-1");
       expect(service.remove).toHaveBeenCalledWith("member-uuid-1");
     });
 
     it("propagates errors from service", async () => {
       service.remove.mockRejectedValue(new Error("Not Found"));
-      await expect(controller.remove("bad-id")).rejects.toThrow("Not Found");
+      await expect(
+        controller.remove("partner-uuid-1", "bad-id"),
+      ).rejects.toThrow("Not Found");
     });
   });
 });

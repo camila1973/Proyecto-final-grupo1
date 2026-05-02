@@ -470,6 +470,9 @@
       "view_detail": "Ver detalle",
       "no_properties": "No hay propiedades registradas.",
       "back": "← Mis hoteles",
+      "label": "Propiedad",
+      "edit_property": "Editar propiedad",
+      "generate_qr": "Generar QR",
       "load_error": "No se pudieron cargar las propiedades. Inténtalo más tarde.",
       "login_required": "Inicia sesión como socio para ver tus propiedades."
     },

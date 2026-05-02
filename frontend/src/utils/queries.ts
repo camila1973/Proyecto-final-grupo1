@@ -268,12 +268,28 @@ export interface PartnerReservationRow {
   grandTotalUsd: number | null;
 }
 
-export interface PartnerHotelState {
+export interface PartnerMetrics {
   partnerId: string;
   month: string;
   roomType: string | null;
   metrics: PartnerMetricCard;
   monthlySeries: PartnerMonthlyPoint[];
+}
+
+export interface PropertyMetrics {
+  partnerId: string;
+  propertyId: string;
+  month: string;
+  roomType: string | null;
+  metrics: PartnerMetricCard;
+  monthlySeries: PartnerMonthlyPoint[];
+}
+
+export interface PropertyReservations {
+  partnerId: string;
+  propertyId: string;
+  month: string;
+  roomType: string | null;
   reservations: PartnerReservationRow[];
 }
 
@@ -301,22 +317,54 @@ export interface PartnerPayments {
   rows: PartnerPaymentRow[];
 }
 
-export async function fetchPartnerHotelState(
+export async function fetchPartnerMetrics(
   partnerId: string,
   month: string,
   roomType: string | null,
   token: string,
-  propertyId?: string | null,
-): Promise<PartnerHotelState> {
+): Promise<PartnerMetrics> {
   const params = new URLSearchParams({ month });
   if (roomType) params.set('roomType', roomType);
-  if (propertyId) params.set('propertyId', propertyId);
   const res = await fetch(
-    `${API_BASE}/api/partners/partners/${encodeURIComponent(partnerId)}/hotel-state?${params}`,
+    `${API_BASE}/api/partners/partners/${encodeURIComponent(partnerId)}/metrics?${params}`,
     { headers: { Authorization: `Bearer ${token}` } },
   );
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json() as Promise<PartnerHotelState>;
+  return res.json() as Promise<PartnerMetrics>;
+}
+
+export async function fetchPropertyMetrics(
+  partnerId: string,
+  propertyId: string,
+  month: string,
+  roomType: string | null,
+  token: string,
+): Promise<PropertyMetrics> {
+  const params = new URLSearchParams({ month });
+  if (roomType) params.set('roomType', roomType);
+  const res = await fetch(
+    `${API_BASE}/api/partners/partners/${encodeURIComponent(partnerId)}/properties/${encodeURIComponent(propertyId)}/metrics?${params}`,
+    { headers: { Authorization: `Bearer ${token}` } },
+  );
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json() as Promise<PropertyMetrics>;
+}
+
+export async function fetchPropertyReservations(
+  partnerId: string,
+  propertyId: string,
+  month: string,
+  roomType: string | null,
+  token: string,
+): Promise<PropertyReservations> {
+  const params = new URLSearchParams({ month });
+  if (roomType) params.set('roomType', roomType);
+  const res = await fetch(
+    `${API_BASE}/api/partners/partners/${encodeURIComponent(partnerId)}/properties/${encodeURIComponent(propertyId)}/reservations?${params}`,
+    { headers: { Authorization: `Bearer ${token}` } },
+  );
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json() as Promise<PropertyReservations>;
 }
 
 export async function fetchPartnerPayments(
@@ -375,7 +423,7 @@ export async function fetchPartnerMembers(
   token: string,
 ): Promise<PartnerMember[]> {
   const res = await fetch(
-    `${API_BASE}/api/partners/members?partnerId=${encodeURIComponent(partnerId)}`,
+    `${API_BASE}/api/partners/partners/${encodeURIComponent(partnerId)}/members`,
     { headers: { Authorization: `Bearer ${token}` } },
   );
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -392,6 +440,19 @@ export async function fetchPartnerProperties(
   );
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json() as Promise<PartnerPropertiesResponse>;
+}
+
+export async function fetchPartnerProperty(
+  partnerId: string,
+  propertyId: string,
+  token: string,
+): Promise<PartnerPropertySummary> {
+  const res = await fetch(
+    `${API_BASE}/api/partners/partners/${encodeURIComponent(partnerId)}/properties/${encodeURIComponent(propertyId)}`,
+    { headers: { Authorization: `Bearer ${token}` } },
+  );
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json() as Promise<PartnerPropertySummary>;
 }
 
 // ─── Partner Registration ─────────────────────────────────────────────────────

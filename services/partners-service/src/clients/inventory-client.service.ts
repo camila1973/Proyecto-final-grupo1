@@ -37,4 +37,18 @@ export class InventoryClientService {
       | { properties?: InventoryProperty[] };
     return Array.isArray(data) ? data : (data.properties ?? []);
   }
+
+  async getPropertyById(propertyId: string): Promise<InventoryProperty | null> {
+    const res = await fetch(
+      `${this.baseUrl}/properties/${encodeURIComponent(propertyId)}`,
+    );
+    if (res.status === 404) return null;
+    if (!res.ok) {
+      this.logger.warn(
+        `inventory-service get property ${propertyId} failed [${res.status}]`,
+      );
+      return null;
+    }
+    return res.json() as Promise<InventoryProperty>;
+  }
 }

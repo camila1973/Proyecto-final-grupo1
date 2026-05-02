@@ -1,5 +1,5 @@
 import { Box, Button, Typography } from '@mui/material';
-import SettingsIcon from '@mui/icons-material/Settings';
+import EditIcon from '@mui/icons-material/Edit';
 import { useTranslation } from 'react-i18next';
 import PageHero from '../../../components/PageHero';
 
@@ -35,13 +35,7 @@ export default function HeroBanner({ orgName, identifier, userName, role }: Hero
         <Button
           variant="contained"
           color="warning"
-          size="large"
-          startIcon={<SettingsIcon sx={{ fontSize: 16 }} />}
-          sx={{
-            fontSize: 13,
-            fontWeight: 500,
-            px: 2,
-          }}
+          startIcon={<EditIcon />}
         >
           {t('partner.org_dashboard.edit_org')}
         </Button>

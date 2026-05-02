@@ -1,5 +1,5 @@
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { Box, Typography } from '@mui/material';
+import { Box, Skeleton, Typography } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 import { useLocale } from '../../../context/LocaleContext';
 import { shortMonthLabel } from '../../../utils/month';
@@ -8,9 +8,10 @@ import { buildLegendFormatter, buildTooltipFormatter } from './chart-formatters'
 
 export interface MonthlyChartProps {
   data: PartnerMonthlyPoint[];
+  loading?: boolean;
 }
 
-export default function MonthlyChart({ data }: MonthlyChartProps) {
+export default function MonthlyChart({ data, loading = false }: MonthlyChartProps) {
   const { t } = useTranslation();
   const { language, currency } = useLocale();
 
@@ -21,12 +22,22 @@ export default function MonthlyChart({ data }: MonthlyChartProps) {
     occupancy: Math.round(p.occupancyRate * 100),
   }));
 
+  if (loading) {
+    return (
+      <Box sx={{ width: '100%' }}>
+        <Skeleton variant="text" width={200} height={28} sx={{ mb: 1 }} />
+        <Skeleton variant="rectangular" width="100%" height={252} sx={{ borderRadius: 1 }} />
+      </Box>
+    );
+  }
+
   return (
-    <Box sx={{ width: '100%', height: 280, mb: 4 }}>
-      <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
+    <Box sx={{ width: '100%' }}>
+      <Typography sx={{ fontSize: 13, fontWeight: 500, color: '#1a1a1a', mb: 1 }}>
         {t('partner.dashboard.chart_title')}
       </Typography>
-      <ResponsiveContainer width="100%" height="90%">
+      <Box sx={{ height: 252 }}>
+      <ResponsiveContainer width="100%" height="100%">
         <BarChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
           <XAxis dataKey="monthLabel" />
@@ -38,6 +49,7 @@ export default function MonthlyChart({ data }: MonthlyChartProps) {
           <Bar dataKey="occupancy" fill="#3b5998" />
         </BarChart>
       </ResponsiveContainer>
+      </Box>
     </Box>
   );
 }
