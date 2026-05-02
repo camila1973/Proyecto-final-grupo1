@@ -451,7 +451,10 @@ for (const svc of MICROSERVICES) {
   }
 
   if (svc.name === "partners-service") {
-    plainEnv["AUTH_SERVICE_URL"] = pulumi.interpolate`${runners["auth-service"]!.uri}`;
+    plainEnv["AUTH_SERVICE_URL"]      = pulumi.interpolate`${runners["auth-service"]!.uri}`;
+    plainEnv["BOOKING_SERVICE_URL"]   = pulumi.interpolate`${runners["booking-service"]!.uri}`;
+    plainEnv["INVENTORY_SERVICE_URL"] = pulumi.interpolate`${runners["inventory-service"]!.uri}`;
+    plainEnv["PAYMENT_SERVICE_URL"]   = pulumi.interpolate`${runners["payment-service"]!.uri}`;
   }
 
   if (svc.name === "integration-service") {
