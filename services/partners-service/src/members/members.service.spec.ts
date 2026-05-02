@@ -26,9 +26,9 @@ function makeRepo(): jest.Mocked<
 }
 
 function makeAuthClient(): jest.Mocked<
-  Pick<AuthClientService, "createManagerUser">
+  Pick<AuthClientService, "createManagerUser" | "listUsersByIds">
 > {
-  return { createManagerUser: jest.fn() };
+  return { createManagerUser: jest.fn(), listUsersByIds: jest.fn() };
 }
 
 const MEMBER_ROW = (
@@ -94,6 +94,76 @@ describe("MembersService", () => {
       const result = await service.findByProperty("property-uuid-1");
       expect(result).toHaveLength(1);
       expect(repo.findByPropertyId).toHaveBeenCalledWith("property-uuid-1");
+    });
+  });
+
+  // ─── findByPartnerEnriched ───────────────────────────────────────────────────
+
+  describe("findByPartnerEnriched", () => {
+    it("returns empty array when partner has no members", async () => {
+      repo.findByPartnerId.mockResolvedValue([]);
+      const result = await service.findByPartnerEnriched("partner-uuid-1");
+      expect(result).toEqual([]);
+      expect(authClient.listUsersByIds).not.toHaveBeenCalled();
+    });
+
+    it("enriches members with user data from auth service", async () => {
+      const row = MEMBER_ROW();
+      repo.findByPartnerId.mockResolvedValue([row]);
+      authClient.listUsersByIds.mockResolvedValue([
+        {
+          id: "user-uuid-1",
+          email: "carlos@hotel.com",
+          role: "manager",
+          firstName: "Carlos",
+          lastName: "Lopez",
+          createdAt: "2026-01-01",
+          lastLoginAt: "2026-04-01T10:00:00Z",
+        },
+      ]);
+      const result = await service.findByPartnerEnriched("partner-uuid-1");
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({
+        id: row.id,
+        userId: row.userId,
+        email: "carlos@hotel.com",
+        firstName: "Carlos",
+        lastName: "Lopez",
+        role: row.role,
+        propertyId: row.propertyId,
+        status: row.status,
+        createdAt: row.createdAt.toISOString(),
+        lastLoginAt: "2026-04-01T10:00:00Z",
+      });
+    });
+
+    it("uses empty string for email and null for names when user not found in auth service", async () => {
+      repo.findByPartnerId.mockResolvedValue([MEMBER_ROW()]);
+      authClient.listUsersByIds.mockResolvedValue([]);
+      const result = await service.findByPartnerEnriched("partner-uuid-1");
+      expect(result[0].email).toBe("");
+      expect(result[0].firstName).toBeNull();
+      expect(result[0].lastName).toBeNull();
+      expect(result[0].lastLoginAt).toBeNull();
+    });
+
+    it("passes all member userIds to auth service", async () => {
+      const rows = [
+        MEMBER_ROW({ id: "m1", userId: "u1" }),
+        MEMBER_ROW({ id: "m2", userId: "u2" }),
+      ];
+      repo.findByPartnerId.mockResolvedValue(rows);
+      authClient.listUsersByIds.mockResolvedValue([]);
+      await service.findByPartnerEnriched("partner-uuid-1");
+      expect(authClient.listUsersByIds).toHaveBeenCalledWith(["u1", "u2"]);
+    });
+
+    it("serializes createdAt as ISO string", async () => {
+      const date = new Date("2026-03-15T08:30:00Z");
+      repo.findByPartnerId.mockResolvedValue([MEMBER_ROW({ createdAt: date })]);
+      authClient.listUsersByIds.mockResolvedValue([]);
+      const result = await service.findByPartnerEnriched("partner-uuid-1");
+      expect(result[0].createdAt).toBe(date.toISOString());
     });
   });
 
