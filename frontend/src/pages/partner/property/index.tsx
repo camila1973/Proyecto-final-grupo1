@@ -122,7 +122,6 @@ export default function PropertyDashboardPage() {
 
       <div className="max-w-[1152px] mx-auto px-6 py-6 flex flex-col gap-6">
 
-
         {/* Filter bar */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <TextField
