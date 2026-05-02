@@ -1,6 +1,7 @@
 import { ConflictException, Injectable, Logger } from "@nestjs/common";
 import { PartnersRepository } from "./partners.repository.js";
 import { AuthClientService } from "../clients/auth-client.service.js";
+import { MembersRepository } from "../members/members.repository.js";
 import {
   CreatePartnerDto,
   RegisterPartnerDto,
@@ -14,6 +15,7 @@ export class PartnersService {
   constructor(
     private readonly repo: PartnersRepository,
     private readonly authClient: AuthClientService,
+    private readonly membersRepo: MembersRepository,
   ) {}
 
   async findAll() {
@@ -47,14 +49,22 @@ export class PartnersService {
 
     let challengeId: string;
     try {
-      const result = await this.authClient.createOwnerUser({
-        email: dto.ownerEmail,
-        password: dto.ownerPassword,
-        firstName: dto.firstName,
-        lastName: dto.lastName,
+      const { challengeId: cid, userId } =
+        await this.authClient.createOwnerUser({
+          email: dto.ownerEmail,
+          password: dto.ownerPassword,
+          firstName: dto.firstName,
+          lastName: dto.lastName,
+          partnerId: partner.id,
+        });
+      challengeId = cid;
+
+      await this.membersRepo.insert({
         partnerId: partner.id,
+        userId,
+        role: "owner",
+        propertyId: null,
       });
-      challengeId = result.challengeId;
     } catch (err) {
       this.logger.error(
         `Failed to create owner user for partner ${partner.id}, compensating: ${err}`,

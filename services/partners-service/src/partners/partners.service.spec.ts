@@ -4,8 +4,12 @@ import {
 } from "@nestjs/common";
 import { PartnersService } from "./partners.service.js";
 import type { PartnersRepository } from "./partners.repository.js";
+import type { MembersRepository } from "../members/members.repository.js";
 import type { AuthClientService } from "../clients/auth-client.service.js";
-import type { PartnerRow } from "../database/database.types.js";
+import type {
+  PartnerRow,
+  PartnerMemberRow,
+} from "../database/database.types.js";
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -31,10 +35,17 @@ function makeAuthClient(): jest.Mocked<
   return { createOwnerUser: jest.fn() };
 }
 
+function makePartnerUsersRepo(): jest.Mocked<
+  Pick<MembersRepository, "insert">
+> {
+  return { insert: jest.fn() };
+}
+
 const PARTNER_ROW = (overrides: Partial<PartnerRow> = {}): PartnerRow => ({
   id: "partner-uuid-1",
   name: "Acme Hotels",
   slug: "acme-hotels",
+  identifier: "PAR-0001",
   status: "active",
   createdAt: new Date("2026-01-01"),
   updatedAt: new Date("2026-01-01"),
@@ -56,19 +67,24 @@ describe("PartnersService", () => {
   let service: PartnersService;
   let repo: ReturnType<typeof makeRepo>;
   let authClient: ReturnType<typeof makeAuthClient>;
+  let partnerUsersRepo: ReturnType<typeof makePartnerUsersRepo>;
 
   beforeEach(() => {
     repo = makeRepo();
     authClient = makeAuthClient();
+    partnerUsersRepo = makePartnerUsersRepo();
     repo.findBySlug.mockResolvedValue(null);
     repo.insert.mockResolvedValue(PARTNER_ROW());
     repo.delete.mockResolvedValue(undefined);
     authClient.createOwnerUser.mockResolvedValue({
       challengeId: "chal-uuid-1",
+      userId: "user-uuid-1",
     });
+    partnerUsersRepo.insert.mockResolvedValue({} as PartnerMemberRow);
     service = new PartnersService(
       repo as unknown as PartnersRepository,
       authClient as unknown as AuthClientService,
+      partnerUsersRepo as unknown as MembersRepository,
     );
   });
 
@@ -141,7 +157,7 @@ describe("PartnersService", () => {
       expect(result.challengeId).toBe("chal-uuid-1");
     });
 
-    it("creates partner then calls authClient with correct payload", async () => {
+    it("creates partner then calls authClient with correct payload and inserts owner row", async () => {
       await service.register(REGISTER_DTO);
 
       expect(repo.insert).toHaveBeenCalledWith({
@@ -154,6 +170,12 @@ describe("PartnersService", () => {
         firstName: "Jane",
         lastName: "Doe",
         partnerId: "partner-uuid-1",
+      });
+      expect(partnerUsersRepo.insert).toHaveBeenCalledWith({
+        partnerId: "partner-uuid-1",
+        userId: "user-uuid-1",
+        role: "owner",
+        propertyId: null,
       });
     });
 

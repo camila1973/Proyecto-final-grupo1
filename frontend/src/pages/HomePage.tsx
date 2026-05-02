@@ -8,6 +8,7 @@ import BookmarkIcon from '@mui/icons-material/Bookmark';
 import { useLocale } from '../context/LocaleContext';
 import { formatPrice } from '../utils/currency';
 import SearchBarForm from '../components/SearchBarForm';
+import PageHero from '../components/PageHero';
 import { formatAddress } from '../utils/address';
 import { todayISO, offsetDateISO } from './search/utils';
 import { fetchFeatured } from '../utils/queries';
@@ -24,13 +25,11 @@ export default function HomePage() {
 
   return (
     <>
-      <section className="bg-[#3a608f] py-12 px-6">
-        <div className="max-w-[1152px] mx-auto">
-          <h1 className="text-white text-3xl font-bold mb-1">{t('hero.title')}</h1>
-          <p className="text-blue-200 text-base mb-8">{t('hero.subtitle')}</p>
-          <SearchBarForm />
-        </div>
-      </section>
+      <PageHero>
+        <h1 className="text-white text-3xl font-bold mb-1">{t('hero.title')}</h1>
+        <p className="text-blue-200 text-base mb-8">{t('hero.subtitle')}</p>
+        <SearchBarForm />
+      </PageHero>
 
       <main className="flex-1 max-w-[1152px] mx-auto w-full px-6 py-10">
         <h2 className="text-xl font-bold text-gray-900 mb-6">{t('recommendations.title')}</h2>

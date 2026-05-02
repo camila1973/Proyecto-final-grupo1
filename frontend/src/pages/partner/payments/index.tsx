@@ -24,16 +24,19 @@ import { useAuth } from '../../../hooks/useAuth';
 import { useLocale } from '../../../context/LocaleContext';
 import { fetchPartnerPayments } from '../../../utils/queries';
 import { formatPrice } from '../../../utils/currency';
+import { TH, TD } from '../dashboard/ui';
 
 const PAGE_SIZE = 20;
+
+const NAV_BTN = { bgcolor: '#1B4F8C', color: '#fff', '&:hover': { bgcolor: '#163d6e' } } as const;
 
 export default function PagosPage() {
   const { t } = useTranslation();
   const { token, user } = useAuth();
   const { currency } = useLocale();
 
-  const [filter, setFilter] = useState<string>('');
-  const [page, setPage] = useState<number>(1);
+  const [filter, setFilter] = useState('');
+  const [page, setPage] = useState(1);
 
   const partnerId = user?.partnerId ?? '';
   const enabled = !!token && !!partnerId;
@@ -49,9 +52,7 @@ export default function PagosPage() {
     const q = filter.trim().toLowerCase();
     if (!q) return data.rows;
     return data.rows.filter(
-      (r) =>
-        r.reservationId.toLowerCase().includes(q) ||
-        r.reference.toLowerCase().includes(q),
+      (r) => r.reservationId.toLowerCase().includes(q) || r.reference.toLowerCase().includes(q),
     );
   }, [data, filter]);
 
@@ -59,100 +60,86 @@ export default function PagosPage() {
 
   if (!enabled) {
     return (
-      <Box sx={{ maxWidth: 1200, mx: 'auto', p: 4 }}>
+      <Box sx={{ maxWidth: 1152, mx: 'auto', p: 4 }}>
         <Alert severity="info">{t('partner.dashboard.login_required')}</Alert>
       </Box>
     );
   }
 
   return (
-    <Box sx={{ pb: 6 }}>
-      <Box sx={{ maxWidth: 1200, mx: 'auto', p: 4 }}>
-        <Typography variant="h4" sx={{ fontWeight: 800, mb: 3 }}>
+    <Box className="bg-[#F5F7FA] min-h-screen">
+      <Box sx={{ maxWidth: 1152, mx: 'auto', px: 3, py: 4 }}>
+        <Typography sx={{ fontSize: 18, fontWeight: 600, color: '#1a1a1a', mb: 3 }}>
           {t('partner.payments.title')}
         </Typography>
 
-        <Stack direction="row" spacing={1} justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
           <TextField
             size="small"
             placeholder={t('partner.payments.search_placeholder')}
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            slotProps={{ input: { endAdornment: <SearchIcon fontSize="small" /> } }}
-            sx={{ width: 280 }}
+            slotProps={{ input: { endAdornment: <SearchIcon fontSize="small" sx={{ color: '#9ca3af' }} /> } }}
+            sx={{ width: 260, '& .MuiOutlinedInput-root': { fontSize: 12, borderRadius: 1.5 } }}
           />
-          <Stack direction="row" spacing={1}>
-            <IconButton
-              aria-label={t('partner.dashboard.prev_page')}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page <= 1}
-              sx={{ bgcolor: '#3b5998', color: '#fff', '&:hover': { bgcolor: '#2d4373' } }}
-            >
-              <ArrowBackIcon />
+          <Stack direction="row" spacing={0.5}>
+            <IconButton size="small" aria-label={t('partner.dashboard.prev_page')} onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1} sx={NAV_BTN}>
+              <ArrowBackIcon fontSize="small" />
             </IconButton>
-            <IconButton
-              aria-label={t('partner.dashboard.next_page')}
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page >= totalPages}
-              sx={{ bgcolor: '#3b5998', color: '#fff', '&:hover': { bgcolor: '#2d4373' } }}
-            >
-              <ArrowForwardIcon />
+            <IconButton size="small" aria-label={t('partner.dashboard.next_page')} onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages} sx={NAV_BTN}>
+              <ArrowForwardIcon fontSize="small" />
             </IconButton>
           </Stack>
         </Stack>
 
-        {isLoading && (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-            <CircularProgress />
-          </Box>
-        )}
+        {isLoading && <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress size={24} /></Box>}
         {isError && <Alert severity="error">{t('partner.dashboard.load_error')}</Alert>}
 
         {data && (
-          <TableContainer component={Paper}>
-            <Table size="small">
-              <TableHead sx={{ bgcolor: '#dde6f8' }}>
-                <TableRow>
-                  <TableCell sx={{ fontWeight: 700 }}>{t('partner.payments.col_reservation')}</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>{t('partner.payments.col_status')}</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>{t('partner.payments.col_method')}</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>{t('partner.payments.col_reference')}</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>{t('partner.payments.col_nights')}</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>{t('partner.payments.col_rate')}</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>{t('partner.payments.col_subtotal')}</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>{t('partner.payments.col_taxes')}</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>{t('partner.payments.col_total')}</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>{t('partner.payments.col_commission')}</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>{t('partner.payments.col_earnings')}</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {filteredRows.length === 0 ? (
+          <Paper variant="outlined" sx={{ borderRadius: 2, borderColor: '#e2e8f0', overflow: 'hidden' }}>
+            <TableContainer>
+              <Table size="small">
+                <TableHead>
                   <TableRow>
-                    <TableCell colSpan={11} align="center" sx={{ py: 3, color: '#6b7280' }}>
-                      {t('partner.payments.no_payments')}
-                    </TableCell>
+                    <TH>{t('partner.payments.col_reservation')}</TH>
+                    <TH>{t('partner.payments.col_status')}</TH>
+                    <TH>{t('partner.payments.col_method')}</TH>
+                    <TH>{t('partner.payments.col_reference')}</TH>
+                    <TH>{t('partner.payments.col_nights')}</TH>
+                    <TH align="right">{t('partner.payments.col_rate')}</TH>
+                    <TH align="right">{t('partner.payments.col_subtotal')}</TH>
+                    <TH align="right">{t('partner.payments.col_taxes')}</TH>
+                    <TH align="right">{t('partner.payments.col_total')}</TH>
+                    <TH align="right">{t('partner.payments.col_commission')}</TH>
+                    <TH align="right">{t('partner.payments.col_earnings')}</TH>
                   </TableRow>
-                ) : filteredRows.map((r) => (
-                  <TableRow key={r.reservationId}>
-                    <TableCell>{r.reservationId.slice(0, 8)}</TableCell>
-                    <TableCell sx={{ fontWeight: 700 }}>{r.status.toUpperCase()}</TableCell>
-                    <TableCell>{r.paymentMethod}</TableCell>
-                    <TableCell>{r.reference}</TableCell>
-                    <TableCell>{r.nights}</TableCell>
-                    <TableCell>{formatPrice(r.ratePerNightUsd, currency)}</TableCell>
-                    <TableCell>{formatPrice(r.subtotalUsd, currency)}</TableCell>
-                    <TableCell>{formatPrice(r.taxesUsd, currency)}</TableCell>
-                    <TableCell>{formatPrice(r.totalPaidUsd, currency)}</TableCell>
-                    <TableCell sx={{ color: '#e74c3c' }}>{formatPrice(r.commissionUsd, currency)}</TableCell>
-                    <TableCell sx={{ color: '#27ae60', fontWeight: 700 }}>
-                      {formatPrice(r.earningsUsd, currency)}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+                </TableHead>
+                <TableBody>
+                  {filteredRows.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={11} align="center" sx={{ py: 3, fontSize: 12, color: '#6b7280' }}>
+                        {t('partner.payments.no_payments')}
+                      </TableCell>
+                    </TableRow>
+                  ) : filteredRows.map((r) => (
+                    <TableRow key={r.reservationId} sx={{ '&:hover': { bgcolor: '#F9FAFB' } }}>
+                      <TD sx={{ fontFamily: 'monospace', color: '#4a5568' }}>{r.reservationId.slice(0, 8)}</TD>
+                      <TD>{r.status.toUpperCase()}</TD>
+                      <TD>{r.paymentMethod}</TD>
+                      <TD>{r.reference}</TD>
+                      <TD>{r.nights}</TD>
+                      <TD align="right">{formatPrice(r.ratePerNightUsd, currency)}</TD>
+                      <TD align="right">{formatPrice(r.subtotalUsd, currency)}</TD>
+                      <TD align="right">{formatPrice(r.taxesUsd, currency)}</TD>
+                      <TD align="right">{formatPrice(r.totalPaidUsd, currency)}</TD>
+                      <TD align="right" sx={{ color: '#A32D2D' }}>{formatPrice(r.commissionUsd, currency)}</TD>
+                      <TD align="right" sx={{ color: '#3B6D11', fontWeight: 500 }}>{formatPrice(r.earningsUsd, currency)}</TD>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Paper>
         )}
       </Box>
     </Box>

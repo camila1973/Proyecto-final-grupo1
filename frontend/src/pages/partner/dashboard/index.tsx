@@ -1,274 +1,244 @@
-import { useMemo, useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
-import { useQuery } from '@tanstack/react-query';
-import {
-  Alert,
-  Box,
-  Button,
-  CircularProgress,
-  IconButton,
-  MenuItem,
-  Paper,
-  Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  TextField,
-  Typography,
-} from '@mui/material';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
-import SettingsIcon from '@mui/icons-material/Settings';
-import SearchIcon from '@mui/icons-material/Search';
+import { useQuery, useQueries } from '@tanstack/react-query';
+import { Alert, CircularProgress } from '@mui/material';
 import { useAuth } from '../../../hooks/useAuth';
 import { useLocale } from '../../../context/LocaleContext';
-import { fetchPartnerHotelState } from '../../../utils/queries';
+import {
+  fetchPartner,
+  fetchPartnerProperties,
+  fetchPartnerHotelState,
+  fetchPartnerPayments,
+} from '../../../utils/queries';
 import { formatPrice } from '../../../utils/currency';
-import { currentMonth, formatMonthLabel, shiftMonth } from '../../../utils/month';
-import MetricCard from '../components/MetricCard';
-import MonthlyChart from '../components/MonthlyChart';
-
-const PAGE_SIZE = 10;
-const ROOM_TYPE_OPTIONS = ['', 'Doble Superior', 'Suite', 'Sencilla', 'Familiar'];
+import { currentMonth, shiftMonth, formatMonthLabel } from '../../../utils/month';
+import { PROPERTY_COLORS } from '../components/RevenueTrendChart';
+import { OrgMetricCard } from './ui';
+import HeroBanner from './HeroBanner';
+import ChartsSection from './ChartsSection';
+import PropertiesSection, { type PropertyRow } from './PropertiesSection';
+import MembersSection from './MembersSection';
+import DisbursementsSection from './DisbursementsSection';
+import type { PropertyRevenueDataPoint } from '../components/PropertyRevenueChart';
 
 export default function MiHotelPage() {
   const { t } = useTranslation();
   const { token, user } = useAuth();
-  const { language, currency } = useLocale();
   const navigate = useNavigate();
-
-  const [month, setMonth] = useState<string>(currentMonth());
-  const [roomType, setRoomType] = useState<string>('');
-  const [reservationFilter, setReservationFilter] = useState<string>('');
-  const [page, setPage] = useState<number>(1);
+  const { language, currency } = useLocale();
 
   const partnerId = user?.partnerId ?? '';
   const enabled = !!token && !!partnerId;
+  const month = currentMonth();
 
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ['partner-hotel-state', partnerId, month, roomType],
-    queryFn: () => fetchPartnerHotelState(partnerId, month, roomType || null, token!),
+  const partnerQuery = useQuery({
+    queryKey: ['partner', partnerId],
+    queryFn: () => fetchPartner(partnerId, token!),
     enabled,
   });
 
-  const filteredReservations = useMemo(() => {
-    if (!data?.reservations) return [];
-    const q = reservationFilter.trim().toLowerCase();
-    if (!q) return data.reservations;
-    return data.reservations.filter((r) => r.id.toLowerCase().includes(q));
-  }, [data, reservationFilter]);
+  const propertiesQuery = useQuery({
+    queryKey: ['partner-properties', partnerId],
+    queryFn: () => fetchPartnerProperties(partnerId, token!),
+    enabled,
+  });
 
-  const totalPages = Math.max(1, Math.ceil(filteredReservations.length / PAGE_SIZE));
-  const safePage = Math.min(page, totalPages);
-  const pageRows = filteredReservations.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const aggregateQuery = useQuery({
+    queryKey: ['partner-hotel-state', partnerId, month],
+    queryFn: () => fetchPartnerHotelState(partnerId, month, null, token!),
+    enabled,
+  });
+
+  const propertyQueries = useQueries({
+    queries: (propertiesQuery.data?.properties ?? []).map((p) => ({
+      queryKey: ['partner-hotel-state', partnerId, month, p.propertyId],
+      queryFn: () => fetchPartnerHotelState(partnerId, month, null, token!, p.propertyId),
+      enabled: enabled && !!propertiesQuery.data,
+    })),
+  });
+
+  const paymentsQuery = useQuery({
+    queryKey: ['partner-payments', partnerId, month],
+    queryFn: () => fetchPartnerPayments(partnerId, month, 1, 20, token!),
+    enabled,
+  });
 
   if (!enabled) {
     return (
-      <Box sx={{ maxWidth: 1200, mx: 'auto', p: 4 }}>
-        <Alert severity="info">{t('partner.dashboard.login_required')}</Alert>
-      </Box>
+      <div className="max-w-[1152px] mx-auto p-8">
+        <Alert severity="info">{t('partner.org_dashboard.login_required')}</Alert>
+      </div>
     );
   }
 
+  if (propertiesQuery.isLoading || aggregateQuery.isLoading) {
+    return (
+      <div className="flex justify-center pt-16">
+        <CircularProgress />
+      </div>
+    );
+  }
+
+  if (propertiesQuery.isError || aggregateQuery.isError) {
+    return (
+      <div className="max-w-[1152px] mx-auto p-8">
+        <Alert severity="error">{t('partner.org_dashboard.load_error')}</Alert>
+      </div>
+    );
+  }
+
+  const properties = propertiesQuery.data?.properties ?? [];
+  const aggregate = aggregateQuery.data;
+  const metrics = aggregate?.metrics ?? { confirmed: 0, cancelled: 0, revenueUsd: 0, lossesUsd: 0, netUsd: 0 };
+  const series = aggregate?.monthlySeries ?? [];
+  const payments = paymentsQuery.data;
+
+  const currentOccupancy = (series[series.length - 1]?.occupancyRate ?? 0) * 100;
+  const grossRevenue = metrics.revenueUsd;
+  const commissionAmount = grossRevenue * 0.2;
+  const netPayout = grossRevenue * 0.8;
+
+  const anyPropertyLoading = propertyQueries.some((q) => q.isLoading);
+
+  const incompleteCount = propertyQueries.filter(
+    (q) => !q.isLoading && (q.data?.metrics.confirmed ?? 0) === 0,
+  ).length;
+
+  const propertyRows: PropertyRow[] = properties.map((p, i) => {
+    const propData = propertyQueries[i]?.data;
+    const loading = propertyQueries[i]?.isLoading ?? false;
+    const propSeries = propData?.monthlySeries;
+    return {
+      propertyId: p.propertyId,
+      propertyName: p.propertyName,
+      loading,
+      confirmed: propData?.metrics.confirmed ?? 0,
+      gross: propData?.metrics.revenueUsd ?? 0,
+      lastOccupancy: propSeries
+        ? (propSeries[propSeries.length - 1]?.occupancyRate ?? 0) * 100
+        : null,
+    };
+  });
+
+  const barData: PropertyRevenueDataPoint[] = propertyRows.map((r) => ({
+    name: r.propertyName,
+    gross: Math.round(r.gross),
+    commission: Math.round(r.gross * 0.2),
+    net: Math.round(r.gross * 0.8),
+  }));
+
+  const trendSeries = properties
+    .map((p, i) => ({
+      name: p.propertyName,
+      color: PROPERTY_COLORS[i % PROPERTY_COLORS.length],
+      points: propertyQueries[i]?.data?.monthlySeries ?? [],
+    }))
+    .filter((s) => s.points.length > 0);
+
+  const nextMonthStr = shiftMonth(month, 1);
+  const disbursementLabel = formatMonthLabel(nextMonthStr, language) + ' 1';
+  const totalNetPayout = payments?.rows.reduce((sum, r) => sum + r.earningsUsd, 0) ?? 0;
+
+  const monthLabel = formatMonthLabel(month, language);
+
   return (
-    <Box sx={{ pb: 6 }}>
-      <Box sx={{ bgcolor: '#3b5998', color: '#fff', px: 4, py: 5 }}>
-        <Box sx={{ maxWidth: 1200, mx: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Box>
-            <Typography variant="h4" sx={{ fontWeight: 800 }}>
-              {t('partner.dashboard.hotel_name')}
-            </Typography>
-            <Typography sx={{ opacity: 0.9, mt: 0.5 }}>
-              {t('partner.dashboard.hotel_address')}
-            </Typography>
-          </Box>
-          <Button
-            variant="contained"
-            startIcon={<SettingsIcon />}
-            sx={{ bgcolor: '#f6d669', color: '#000', '&:hover': { bgcolor: '#e8c84d' } }}
-          >
-            {t('partner.dashboard.edit')}
-          </Button>
-        </Box>
-      </Box>
+    <div className="bg-[#F5F7FA] min-h-screen">
 
-      <Box sx={{ maxWidth: 1200, mx: 'auto', p: 4 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Typography variant="h5" sx={{ fontWeight: 800 }}>
-            {t('partner.dashboard.state_title')}
-          </Typography>
-          <Stack direction="row" spacing={1} alignItems="center">
-            <Typography sx={{ minWidth: 110, textAlign: 'right' }}>
-              {formatMonthLabel(month, language)}
-            </Typography>
-            <IconButton
-              aria-label={t('partner.dashboard.prev_month')}
-              onClick={() => setMonth((m) => shiftMonth(m, -1))}
-              sx={{ bgcolor: '#3b5998', color: '#fff', '&:hover': { bgcolor: '#2d4373' } }}
-            >
-              <ArrowBackIcon />
-            </IconButton>
-            <IconButton
-              aria-label={t('partner.dashboard.next_month')}
-              onClick={() => setMonth((m) => shiftMonth(m, 1))}
-              sx={{ bgcolor: '#3b5998', color: '#fff', '&:hover': { bgcolor: '#2d4373' } }}
-            >
-              <ArrowForwardIcon />
-            </IconButton>
-          </Stack>
-        </Box>
+      <HeroBanner
+        orgName={partnerQuery.data?.name ?? ''}
+        identifier={partnerQuery.data?.identifier ?? ''}
+        userName={[user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.email || ''}
+        role={user?.role ?? ''}
+      />
 
-        <Stack direction="row" spacing={2} sx={{ mb: 3 }}>
-          <TextField
-            select
-            size="small"
-            label={t('partner.dashboard.room_type_filter')}
-            value={roomType}
-            onChange={(e) => setRoomType(e.target.value)}
-            sx={{ minWidth: 220 }}
-          >
-            {ROOM_TYPE_OPTIONS.map((opt) => (
-              <MenuItem key={opt || 'all'} value={opt}>
-                {opt || t('partner.dashboard.all_room_types')}
-              </MenuItem>
-            ))}
-          </TextField>
-        </Stack>
+      <div className="max-w-[1152px] mx-auto px-6 py-6 flex flex-col gap-6">
 
-        {isLoading && (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-            <CircularProgress />
-          </Box>
+        {/* Metric row */}
+        <div className="grid grid-cols-6 gap-5">
+          <OrgMetricCard
+            label={t('partner.org_dashboard.metric_properties')}
+            value={String(properties.length)}
+            subLabel={
+              incompleteCount > 0
+                ? t('partner.org_dashboard.metric_incomplete_count', { count: incompleteCount })
+                : undefined
+            }
+            subColor="#854F0B"
+          />
+          <OrgMetricCard
+            label={t('partner.org_dashboard.metric_occupancy')}
+            value={`${Math.round(currentOccupancy)}%`}
+          />
+          <OrgMetricCard
+            label={t('partner.org_dashboard.metric_active_reservations')}
+            value={String(metrics.confirmed)}
+          />
+          <OrgMetricCard
+            label={`${t('partner.org_dashboard.metric_gross')} · ${monthLabel}`}
+            value={formatPrice(grossRevenue, currency)}
+          />
+          <OrgMetricCard
+            label={t('partner.org_dashboard.metric_commission')}
+            value={formatPrice(-commissionAmount, currency)}
+            subLabel={t('partner.org_dashboard.commission_pct', { pct: 20 })}
+          />
+          <OrgMetricCard
+            label={`${t('partner.org_dashboard.metric_net')} · ${monthLabel}`}
+            value={formatPrice(netPayout, currency)}
+            subLabel={`dispersión: ${disbursementLabel}`}
+          />
+        </div>
+
+        {/* Disbursement alert */}
+        {payments && payments.rows.length > 0 && (
+          <div className="bg-[#E8EFF7] border border-[#85B7EB] rounded-lg px-4 py-2.5 flex items-center gap-3 text-[#0C447C]">
+            <span className="shrink-0">ℹ</span>
+            <span className="text-xs">
+              {t('partner.org_dashboard.alert_disbursement', {
+                amount: formatPrice(totalNetPayout, currency),
+                date: disbursementLabel,
+              })}{' '}
+              <a href="#disbursements" className="font-medium cursor-pointer text-[#0C447C]">
+                {t('partner.org_dashboard.alert_see_detail')}
+              </a>
+            </span>
+          </div>
         )}
-        {isError && <Alert severity="error">{t('partner.dashboard.load_error')}</Alert>}
 
-        {data && (
-          <>
-            <MonthlyChart data={data.monthlySeries} />
+        <ChartsSection
+          barData={barData}
+          trendSeries={trendSeries}
+          anyPropertyLoading={anyPropertyLoading}
+          monthLabel={monthLabel}
+        />
 
-            <Stack direction="row" spacing={2} sx={{ mb: 3, flexWrap: 'wrap' }} useFlexGap>
-              <MetricCard
-                testId="metric-confirmed"
-                label={t('partner.dashboard.metric_confirmed')}
-                value={String(data.metrics.confirmed)}
-              />
-              <MetricCard
-                testId="metric-cancelled"
-                label={t('partner.dashboard.metric_cancelled')}
-                value={String(data.metrics.cancelled)}
-              />
-              <MetricCard
-                testId="metric-revenue"
-                label={t('partner.dashboard.metric_revenue', { currency })}
-                value={formatPrice(data.metrics.revenueUsd, currency)}
-                variant="positive"
-              />
-              <MetricCard
-                testId="metric-losses"
-                label={t('partner.dashboard.metric_losses', { currency })}
-                value={formatPrice(data.metrics.lossesUsd, currency)}
-                variant="negative"
-              />
-              <MetricCard
-                testId="metric-net"
-                label={t('partner.dashboard.metric_net', { currency })}
-                value={formatPrice(data.metrics.netUsd, currency)}
-                variant="positive"
-              />
-            </Stack>
+        <PropertiesSection
+          rows={propertyRows}
+          currency={currency}
+          onView={(propertyId) => navigate({ to: '/mi-hotel/$propertyId', params: { propertyId } })}
+        />
 
-            <Box sx={{ mb: 3 }}>
-              <Button
-                variant="text"
-                onClick={() => navigate({ to: '/mi-hotel/pagos' })}
-                sx={{ textDecoration: 'underline', fontWeight: 700 }}
-              >
-                {t('partner.dashboard.see_all_payments')}
-              </Button>
-            </Box>
+        <MembersSection partnerId={partnerId} token={token!} />
 
-            <Typography variant="h5" sx={{ fontWeight: 800, mb: 2 }}>
-              {t('partner.dashboard.reservations_title')}
-            </Typography>
+        <DisbursementsSection
+          payments={payments}
+          month={month}
+          currency={currency}
+          disbursementLabel={disbursementLabel}
+          totalNetPayout={totalNetPayout}
+          onViewHistory={() => navigate({ to: '/mi-hotel/pagos' })}
+        />
 
-            <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
-              <TextField
-                size="small"
-                placeholder={t('partner.dashboard.reservation_search_placeholder')}
-                value={reservationFilter}
-                onChange={(e) => {
-                  setReservationFilter(e.target.value);
-                  setPage(1);
-                }}
-                slotProps={{ input: { endAdornment: <SearchIcon fontSize="small" /> } }}
-                sx={{ width: 280 }}
-              />
-            </Stack>
+        <hr className="border-[#e2e8f0] mt-1" />
+        <div className="flex justify-between text-[11px] text-gray-500 pb-1">
+          <span>© 2026 TravelHub</span>
+          <div className="flex gap-4">
+            <a href="#" className="text-gray-500 no-underline text-[11px]">{t('footer.privacy')}</a>
+            <a href="#" className="text-gray-500 no-underline text-[11px]">{t('footer.terms')}</a>
+          </div>
+        </div>
 
-            <TableContainer component={Paper} sx={{ mb: 2 }}>
-              <Table size="small">
-                <TableHead sx={{ bgcolor: '#dde6f8' }}>
-                  <TableRow>
-                    <TableCell sx={{ fontWeight: 700 }}>{t('partner.dashboard.col_reservation')}</TableCell>
-                    <TableCell sx={{ fontWeight: 700 }}>{t('partner.dashboard.col_status')}</TableCell>
-                    <TableCell sx={{ fontWeight: 700 }}>{t('partner.dashboard.col_name')}</TableCell>
-                    <TableCell sx={{ fontWeight: 700 }}>{t('partner.dashboard.col_email')}</TableCell>
-                    <TableCell sx={{ fontWeight: 700 }}>{t('partner.dashboard.col_phone')}</TableCell>
-                    <TableCell sx={{ fontWeight: 700 }}>{t('partner.dashboard.col_guests')}</TableCell>
-                    <TableCell sx={{ fontWeight: 700 }}>{t('partner.dashboard.col_check_in')}</TableCell>
-                    <TableCell sx={{ fontWeight: 700 }}>{t('partner.dashboard.col_check_out')}</TableCell>
-                    <TableCell sx={{ fontWeight: 700 }}>{t('partner.dashboard.col_room')}</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {pageRows.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={9} align="center" sx={{ py: 3, color: '#6b7280' }}>
-                        {t('partner.dashboard.no_reservations')}
-                      </TableCell>
-                    </TableRow>
-                  ) : pageRows.map((r) => (
-                    <TableRow key={r.id}>
-                      <TableCell>{r.id.slice(0, 8)}</TableCell>
-                      <TableCell sx={{ fontWeight: 700 }}>{r.status.toUpperCase()}</TableCell>
-                      <TableCell>{r.guestName}</TableCell>
-                      <TableCell>{r.guestEmail}</TableCell>
-                      <TableCell>{r.guestPhone}</TableCell>
-                      <TableCell>{r.guestCount}</TableCell>
-                      <TableCell>{r.checkIn}</TableCell>
-                      <TableCell>{r.checkOut}</TableCell>
-                      <TableCell>{r.roomType}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-
-            <Stack direction="row" spacing={1} justifyContent="flex-end">
-              <IconButton
-                aria-label={t('partner.dashboard.prev_page')}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={safePage <= 1}
-                sx={{ bgcolor: '#3b5998', color: '#fff', '&:hover': { bgcolor: '#2d4373' } }}
-              >
-                <ArrowBackIcon />
-              </IconButton>
-              <IconButton
-                aria-label={t('partner.dashboard.next_page')}
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={safePage >= totalPages}
-                sx={{ bgcolor: '#3b5998', color: '#fff', '&:hover': { bgcolor: '#2d4373' } }}
-              >
-                <ArrowForwardIcon />
-              </IconButton>
-            </Stack>
-          </>
-        )}
-      </Box>
-    </Box>
+      </div>
+    </div>
   );
 }

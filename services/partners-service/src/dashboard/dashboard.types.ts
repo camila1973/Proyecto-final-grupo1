@@ -53,6 +53,7 @@ export interface MonthlySeriesPoint {
 
 export interface HotelStateResponse {
   partnerId: string;
+  propertyId: string | null;
   month: string;
   roomType: string | null;
   metrics: MetricCard;
@@ -95,4 +96,21 @@ export interface PaymentsResponse {
   page: number;
   pageSize: number;
   rows: PaymentRow[];
+}
+
+export interface PropertySummary {
+  propertyId: string;
+  propertyName: string;
+  propertyCity: string;
+  propertyNeighborhood: string | null;
+  propertyCountryCode: string;
+  propertyThumbnailUrl: string | null;
+  createdAt: string;
+  roomCount: number;
+  reservationCount: number;
+}
+
+export interface PartnerPropertiesResponse {
+  partnerId: string;
+  properties: PropertySummary[];
 }

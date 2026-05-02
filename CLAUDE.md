@@ -23,6 +23,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `partners-service` | 3007 | Hotel/agency portal: dashboards, revenue reports, rate management |
 | `integration-service` | 3008 | Single entry point for external partner data: PMS webhooks (generic + Hotelbeds/TravelClick/RoomRaccoon), CSV bulk import, external↔internal ID mapping |
 
+## Git Practices
+
+### Branches
+- Always create branches from `main` (`git checkout main && git pull && git checkout -b <branch>`).
+- Never push directly to `main`.
+- Branch naming: `feature/<slug>`, `fix/<slug>`, `chore/<slug>`.
+
+### Pull Requests
+- Title and description must be written **in Spanish**.
+- Before opening a PR, ask: **"¿Este PR cierra un issue o es parte de uno?"**
+  - If it closes one → add `Closes #<número>` in the description.
+  - If it is part of one → add `Parte de #<número>` instead.
+  - If unrelated to any issue → omit the tag.
+- Use the template defined in `.github/PULL_REQUEST_TEMPLATE.md` for every PR body.
+
 ## Commands
 
 Always run tasks through `nx` commands, not underlying tools directly. Prefix with `pnpm exec nx` or use `nx` directly.
@@ -71,111 +86,15 @@ nx lint auth-service           # Single service
 
 ### Database (Migrations & Seed)
 
-Each service with a database has `migrate` and `seed` nx targets. The local DB ports differ from the in-container defaults, so always pass `DATABASE_URL` explicitly.
+> Use `/db` for per-service migration and seed commands, port map, and full reset instructions.
 
-| Service | Local port | DB name |
-|---|---|---|
-| `search-service` | 5433 | `search_service` |
-| `inventory-service` | 5434 | `travelhub` |
-| `integration-service` | 5435 | `integration_service` |
-| `booking-service` | 5436 | `travelhub` |
-| `partners-service` | 5438 | `partners_service` |
+### Docker — Rebuilding Images
 
-```bash
-# Search service
-DATABASE_URL=postgres://postgres:postgres@localhost:5433/search_service pnpm exec nx run search-service:migrate
-DATABASE_URL=postgres://postgres:postgres@localhost:5433/search_service pnpm exec nx run search-service:seed
-
-# Inventory service
-DATABASE_URL=postgres://postgres:postgres@localhost:5434/travelhub pnpm exec nx run inventory-service:migrate
-DATABASE_URL=postgres://postgres:postgres@localhost:5434/travelhub pnpm exec nx run inventory-service:seed
-
-# Integration service
-pnpm exec nx run integration-service:migrate
-pnpm exec nx run integration-service:seed
-
-# Booking service
-DATABASE_URL=postgres://postgres:postgres@localhost:5436/travelhub pnpm exec nx run booking-service:migrate
-DATABASE_URL=postgres://postgres:postgres@localhost:5436/travelhub pnpm exec nx run booking-service:seed
-
-# Partners service
-DATABASE_URL=postgres://postgres:postgres@localhost:5438/partners_service pnpm exec nx run partners-service:migrate
-DATABASE_URL=postgres://postgres:postgres@localhost:5438/partners_service pnpm exec nx run partners-service:seed
-```
-
-To fully reset and reseed from scratch:
-```bash
-docker compose down -v          # stop containers and delete volumes
-docker compose up -d            # recreate containers (DBs will be empty)
-# then run migrate + seed for each service above
-```
-
-### Docker — rebuilding images
-
-Service images are built on top of `travelhub-base` (`docker/Dockerfile.base`), which runs `pnpm install` from the root `package.json` + `pnpm-lock.yaml`. **Whenever a new root dependency is added** (e.g. `@nestjs/schedule`), the base image must be rebuilt first or `docker compose build` will fail with `Cannot find module`:
-
-```bash
-# 1. Rebuild base image (picks up new root dependencies)
-docker build --no-cache -t travelhub-base -f docker/Dockerfile.base .
-
-# 2. Rebuild all service images
-docker compose build --parallel
-
-# 3. Start
-docker compose up -d
-```
-
-If only application code changed (no new dependencies), skip step 1 — `docker compose build --parallel` is enough.
-
+> Use `/docker-rebuild` for instructions on rebuilding the base image after adding new root dependencies.
 
 ### Integration Service — Webhook Testing
 
-The integration-service ships a helper script to generate HMAC-SHA256 signatures for manual webhook testing. Run it from the service directory or via `pnpm`:
-
-```bash
-# From workspace root
-pnpm generate-hmac --secret <signing-secret> --body '<json>'
-
-# Example
-pnpm generate-hmac \
-  --secret secret-partner-1 \
-  --body '{"eventId":"evt-001","eventType":"room.availability.updated","occurredAt":"2026-04-01T10:00:00Z","data":{"externalRoomId":"gran-caribe-deluxe-king-ocean","date":"2027-08-01","available":false}}'
-
-# Pipe JSON via stdin (secret from env var)
-echo '<json>' | WEBHOOK_SECRET=secret-partner-1 pnpm generate-hmac
-
-# Read body from file
-pnpm generate-hmac --secret secret-partner-1 --file /tmp/payload.json
-```
-
-Output: raw hex signature + a ready-to-paste `curl` snippet with the `X-TravelHub-Signature` header.
-
-To send a webhook event, use the signature with the partner endpoint:
-
-```bash
-# Local
-curl -X POST http://localhost:3008/webhooks/<partnerId>/events \
-  -H 'X-TravelHub-Signature: <signature>' \
-  -H 'Content-Type: application/json' \
-  -d '<json>'
-
-# Production
-curl -X POST https://travelhub-integration-service-317344419928.us-central1.run.app/webhooks/<partnerId>/events \
-  -H 'X-TravelHub-Signature: <signature>' \
-  -H 'Content-Type: application/json' \
-  -d '<json>'
-```
-
-Seeded signing secrets (set by `integration-service:seed`):
-
-| Partner | `partner_id` | Signing secret |
-|---|---|---|
-| Partner 1 (Cancún) | `a1000000-0000-0000-0000-000000000001` | `secret-partner-1` |
-| Partner 2 (CDMX + Cancún hostel) | `a1000000-0000-0000-0000-000000000002` | `secret-partner-2` |
-
-Sample CSV fixtures for bulk import testing are in `services/integration-service/scripts/`:
-- `sample-properties.csv` — 3 properties (Guadalajara, Partner 1)
-- `sample-rooms.csv` — 8 rooms for those properties (import properties first)
+> Use `/webhook-test` for HMAC generation, curl examples, seeded signing secrets, and CSV fixture info.
 
 ### Nx Utilities
 ```bash
@@ -238,126 +157,11 @@ Prettier settings: single quotes, trailing commas.
 
 ## Performance Testing
 
-k6 scenarios are organized under `performance-tests/scenarios/smoke/` and `performance-tests/scenarios/load/`. Each scenario reads `GATEWAY_URL` from the environment and can run locally or via GitHub Actions.
-
-### Scenario layout
-
-```
-performance-tests/scenarios/
-├── smoke/
-│   ├── search.js    # 3 VUs × 2 min — quick sanity check after deploy
-│   └── booking.js   # 1 VU × 5 iterations — provisional cart functional coverage
-└── load/
-    └── search.js    # ramp 0→30 VUs, 4 min hold, ramp down — SLA gate (p95 ≤ 800ms)
-```
-
-### Running locally
-
-```bash
-cd performance-tests
-
-# Smoke tests
-GATEWAY_URL=http://localhost:3000 k6 run scenarios/smoke/search.js
-GATEWAY_URL=http://localhost:3000 k6 run scenarios/smoke/booking.js
-
-# Load tests
-GATEWAY_URL=http://localhost:3000 k6 run scenarios/load/search.js
-
-# npm shortcuts (source .env for GATEWAY_URL automatically)
-npm run test:smoke:search    # search smoke
-npm run test:smoke:booking   # booking smoke
-npm run test:load:search     # search load
-```
-
-HTML report is written to `performance-tests/results/summary*.html` after each run. JSON raw output goes to `performance-tests/results/results*.json`.
-
-### Running via GitHub Actions
-
-`.github/workflows/performance-testing.yml` — manually triggered (Actions → Performance Testing → Run workflow).
-
-**Inputs:**
-
-| Input | Default | Description |
-|---|---|---|
-| `profile` | `smoke` | `smoke` or `load` — selects which search scenario to run |
-| `gateway_url` | _(blank)_ | API Gateway URL; falls back to the `GATEWAY_URL` repository variable if blank |
-
-**Notes:**
-- Runs `scenarios/<profile>/search.js`. To add the booking scenario, duplicate the "Run k6" step with `scenarios/smoke/booking.js`.
-- Results are uploaded as a GitHub Actions artifact (`k6-results-<profile>-<run_id>`, retained 7 days) even when thresholds fail.
-- `concurrency.group: load-testing` ensures only one load test runs at a time; a new dispatch cancels any in-flight run.
+> Use `/perf-test` for k6 scenario layout, local run commands, and GitHub Actions workflow details.
 
 ## Deployment (Pulumi)
 
-Infrastructure is managed with Pulumi (TypeScript) in `pulumi/`. State is stored in GCS (`gs://travelhub-pulumi-state`). The backend URL is declared in `pulumi/Pulumi.yaml` so no `pulumi login` is needed.
-
-### Prerequisites
-- [Pulumi CLI](https://www.pulumi.com/docs/install/) installed
-- [gcloud CLI](https://cloud.google.com/sdk/docs/install) installed and authenticated (`gcloud auth application-default login`)
-- A GCP project with billing enabled
-- A GCS bucket for Pulumi state: `gcloud storage buckets create gs://travelhub-pulumi-state --location=us-central1`
-- Edit `pulumi/Pulumi.yaml` — replace `YOUR_GCP_PROJECT_ID` with your actual project ID
-- `cd pulumi && npm install`
-
-### First-time GCP setup
-
-Enable the required APIs once per project:
-
-```bash
-gcloud services enable \
-  run.googleapis.com \
-  sql-component.googleapis.com \
-  sqladmin.googleapis.com \
-  redis.googleapis.com \
-  pubsub.googleapis.com \
-  artifactregistry.googleapis.com \
-  vpcaccess.googleapis.com \
-  servicenetworking.googleapis.com
-```
-
-### Running Pulumi locally
-
-```bash
-# Preview changes
-PULUMI_CONFIG_PASSPHRASE="" pulumi preview --stack prod --cwd pulumi
-
-# Deploy
-PULUMI_CONFIG_PASSPHRASE="" pulumi up --stack prod --cwd pulumi
-
-# Read stack outputs
-PULUMI_CONFIG_PASSPHRASE="" pulumi stack output --stack prod --cwd pulumi
-```
-
-### What `pulumi up` does
-
-1. Builds all Docker images (base + 9 service images) and pushes to Artifact Registry
-2. Creates/updates all Cloud Run services
-3. Provisions shared infrastructure (Cloud SQL PostgreSQL, Memorystore Redis, Pub/Sub topics + subscriptions, VPC + Serverless VPC Access connector)
-
-The frontend is **not** deployed by Pulumi — it requires a separate step after `pulumi up`:
-
-```bash
-# Convenience script (runs build + gcloud storage rsync):
-pnpm run deploy:frontend
-
-# Manual steps:
-VITE_API_URL=$(PULUMI_CONFIG_PASSPHRASE="" pulumi stack output gatewayUrl --stack prod --cwd pulumi) \
-  pnpm run build:frontend
-BUCKET=$(PULUMI_CONFIG_PASSPHRASE="" pulumi stack output frontendBucket --stack prod --cwd pulumi)
-gcloud storage rsync -r dist/frontend/ "gs://${BUCKET}/" --delete-unmatched-destination-objects
-```
-
-### GitHub Actions deploy
-
-`.github/workflows/deploy.yml` — manually triggered via Actions → Deploy → Run workflow.
-
-Required secrets (repository or `production` GitHub Environment):
-
-| Secret | Value |
-|---|---|
-| `GCP_SA_KEY` | JSON key of a GCP service account with Pulumi deploy permissions |
-| `GCP_PROJECT_ID` | Your GCP project ID |
-| `PULUMI_CONFIG_PASSPHRASE` | Empty string `""` |
+> Use `/deploy` for Pulumi prerequisites, first-time GCP setup, local deploy commands, and GitHub Actions secrets.
 
 ## Booking — Reservation State Machine
 
@@ -475,3 +279,35 @@ Topics and subscriptions are created by Pulumi before the services start — ser
 | `services/search-service/src/events/handlers/room-upserted.handler.ts` | Maps camelCase snapshot → snake_case `RoomIndexRecord` |
 | `services/search-service/src/events/handlers/availability-updated.handler.ts` | Replaces `room_price_periods` for a room |
 | `services/search-service/src/events/handlers/room-deleted.handler.ts` | Sets room inactive; invalidates city Redis cache |
+
+## Partners — Data Model & Navigation
+
+```
+Partner (partners_service.partners)
+└── User/Owner  (auth_service.users, role = "partner", partnerId = partner.id)
+└── Property[]  (inventory_service.properties, partnerId = property.partnerId)
+    ├── Manager[]  (auth_service.users, role = "manager", propertyId = user.propertyId) [deferred]
+    └── Reservation[]  (booking_service.reservations, propertyId = reservation.propertyId)
+```
+
+### Navigation (frontend)
+
+| Route | Page | Shows |
+|---|---|---|
+| `/mi-hotel` | `MiHotelPage` | All properties for the logged-in partner (derived from reservations) |
+| `/mi-hotel/:propertyId` | `PropertyDashboardPage` | Metrics + reservations for one property |
+| `/mi-hotel/:propertyId/pagos` | `PagosPropertyPage` | Payments for one property |
+
+### Key identifiers
+- `user.partnerId` — set in JWT for `role = "partner"` users; used as the scope for all partner API calls
+- `propertyId` — UUID from inventory-service; present in `reservation.propertyId` and `reservation.snapshot`
+- Manager assignment (auth → property) is **not yet implemented**; the properties table shows `—` for that column
+- Properties with zero reservations won't appear in the partner overview until an inventory-service integration is added
+
+### partners-service endpoints
+
+| Method | Path | Returns |
+|---|---|---|
+| `GET` | `/partners/:id/properties` | Property list derived from booking reservations |
+| `GET` | `/partners/:id/hotel-state?month=&roomType=&propertyId=` | Metrics + reservations (property-scoped when `propertyId` given) |
+| `GET` | `/partners/:id/payments?month=&page=&pageSize=&propertyId=` | Paginated payment rows (property-scoped when `propertyId` given) |

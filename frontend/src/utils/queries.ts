@@ -306,9 +306,11 @@ export async function fetchPartnerHotelState(
   month: string,
   roomType: string | null,
   token: string,
+  propertyId?: string | null,
 ): Promise<PartnerHotelState> {
   const params = new URLSearchParams({ month });
   if (roomType) params.set('roomType', roomType);
+  if (propertyId) params.set('propertyId', propertyId);
   const res = await fetch(
     `${API_BASE}/api/partners/partners/${encodeURIComponent(partnerId)}/hotel-state?${params}`,
     { headers: { Authorization: `Bearer ${token}` } },
@@ -323,18 +325,73 @@ export async function fetchPartnerPayments(
   page: number,
   pageSize: number,
   token: string,
+  propertyId?: string | null,
 ): Promise<PartnerPayments> {
   const params = new URLSearchParams({
     page: String(page),
     pageSize: String(pageSize),
   });
   if (month) params.set('month', month);
+  if (propertyId) params.set('propertyId', propertyId);
   const res = await fetch(
     `${API_BASE}/api/partners/partners/${encodeURIComponent(partnerId)}/payments?${params}`,
     { headers: { Authorization: `Bearer ${token}` } },
   );
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json() as Promise<PartnerPayments>;
+}
+
+export interface PartnerPropertySummary {
+  propertyId: string;
+  propertyName: string;
+  propertyCity: string;
+  propertyNeighborhood: string | null;
+  propertyCountryCode: string;
+  propertyThumbnailUrl: string | null;
+  roomCount: number;
+  reservationCount: number;
+}
+
+export interface PartnerPropertiesResponse {
+  partnerId: string;
+  properties: PartnerPropertySummary[];
+}
+
+export interface PartnerMember {
+  id: string;
+  userId: string;
+  email: string;
+  firstName: string | null;
+  lastName: string | null;
+  role: 'partner' | 'manager';
+  propertyId: string | null;
+  status: string;
+  createdAt: string;
+  lastLoginAt: string | null;
+}
+
+export async function fetchPartnerMembers(
+  partnerId: string,
+  token: string,
+): Promise<PartnerMember[]> {
+  const res = await fetch(
+    `${API_BASE}/api/partners/members?partnerId=${encodeURIComponent(partnerId)}`,
+    { headers: { Authorization: `Bearer ${token}` } },
+  );
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json() as Promise<PartnerMember[]>;
+}
+
+export async function fetchPartnerProperties(
+  partnerId: string,
+  token: string,
+): Promise<PartnerPropertiesResponse> {
+  const res = await fetch(
+    `${API_BASE}/api/partners/partners/${encodeURIComponent(partnerId)}/properties`,
+    { headers: { Authorization: `Bearer ${token}` } },
+  );
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json() as Promise<PartnerPropertiesResponse>;
 }
 
 // ─── Partner Registration ─────────────────────────────────────────────────────
@@ -348,8 +405,28 @@ export interface RegisterPartnerParams {
   ownerPassword: string;
 }
 
+export interface PartnerDetails {
+  id: string;
+  name: string;
+  slug: string;
+  identifier: string;
+  status: string;
+}
+
+export async function fetchPartner(
+  partnerId: string,
+  token: string,
+): Promise<PartnerDetails> {
+  const res = await fetch(
+    `${API_BASE}/api/partners/partners/${encodeURIComponent(partnerId)}`,
+    { headers: { Authorization: `Bearer ${token}` } },
+  );
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json() as Promise<PartnerDetails>;
+}
+
 export interface RegisterPartnerResponse {
-  partner: { id: string; name: string; slug: string };
+  partner: { id: string; name: string; slug: string; identifier: string };
   challengeId: string;
 }
 

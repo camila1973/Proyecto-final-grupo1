@@ -11,6 +11,8 @@ export type AuthUsersTable = {
   last_name: string | null;
   phone: string | null;
   partner_id: string | null;
+  property_id: string | null;
+  last_login_at: string | null;
 };
 
 export type AuthLoginChallengesTable = {
