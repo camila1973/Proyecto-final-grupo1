@@ -46,6 +46,7 @@ export default function RootLayout() {
           <Stack.Screen name="property/[id]" options={{ headerShown: false }} />
           <Stack.Screen name="booking/checkout" options={{ headerShown: false }} />
           <Stack.Screen name="booking/confirmation" options={{ headerShown: false }} />
+          <Stack.Screen name="checkin/[reservationId]" options={{ headerBackTitle: '' }} />
         </Stack>
         <StatusBar style="auto" />
       </ThemeProvider>
