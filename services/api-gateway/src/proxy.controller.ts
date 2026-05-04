@@ -42,7 +42,15 @@ export class ProxyController {
       : "";
     const targetUrl = `${baseUrl}${subpath || "/"}${query}`;
 
-    const { status, body } = await this.proxyService.forward(targetUrl, req);
-    res.status(status).json(body);
+    const result = await this.proxyService.forward(targetUrl, req);
+    if (result.binary) {
+      res
+        .status(result.status)
+        .setHeader("Content-Type", result.contentType)
+        .setHeader("Content-Disposition", result.disposition)
+        .send(result.buffer);
+    } else {
+      res.status(result.status).json(result.body);
+    }
   }
 }

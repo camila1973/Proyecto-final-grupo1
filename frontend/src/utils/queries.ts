@@ -510,3 +510,56 @@ export async function registerPartner(
 
   return res.json() as Promise<RegisterPartnerResponse>;
 }
+
+// ─── Check-in QR ─────────────────────────────────────────────────────────────
+
+export interface CheckinQrResponse {
+  partnerId: string;
+  propertyId: string;
+  checkInKey: string;
+}
+
+export async function fetchCheckinQr(
+  partnerId: string,
+  propertyId: string,
+  token: string,
+): Promise<CheckinQrResponse> {
+  const res = await fetch(
+    `${API_BASE}/api/partners/partners/${encodeURIComponent(partnerId)}/properties/${encodeURIComponent(propertyId)}/checkin-publickey`,
+    { headers: { Authorization: `Bearer ${token}` } },
+  );
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json() as Promise<CheckinQrResponse>;
+}
+
+export async function regenerateCheckinQr(
+  partnerId: string,
+  propertyId: string,
+  token: string,
+): Promise<CheckinQrResponse> {
+  const res = await fetch(
+    `${API_BASE}/api/partners/partners/${encodeURIComponent(partnerId)}/properties/${encodeURIComponent(propertyId)}/checkin-publickey/regenerate`,
+    { method: 'PATCH', headers: { Authorization: `Bearer ${token}` } },
+  );
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json() as Promise<CheckinQrResponse>;
+}
+
+export async function downloadCheckinPdf(
+  partnerId: string,
+  propertyId: string,
+  token: string,
+): Promise<void> {
+  const res = await fetch(
+    `${API_BASE}/api/partners/partners/${encodeURIComponent(partnerId)}/properties/${encodeURIComponent(propertyId)}/checkin-publickey/download`,
+    { headers: { Authorization: `Bearer ${token}` } },
+  );
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `qr-checkin-${propertyId}.pdf`;
+  a.click();
+  URL.revokeObjectURL(url);
+}

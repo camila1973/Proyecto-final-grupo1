@@ -11,6 +11,9 @@ import {
   fetchReservationById,
   fetchMyReservations,
   cancelReservation,
+  fetchCheckinQr,
+  regenerateCheckinQr,
+  downloadCheckinPdf,
 } from './queries';
 
 function mockOk(data: unknown) {
@@ -322,6 +325,117 @@ describe('queries', () => {
     it('throws when response is not ok', async () => {
       (global.fetch as jest.Mock).mockResolvedValue(mockFail(400));
       await expect(cancelReservation('r1', 'tok', 'user_requested')).rejects.toThrow('HTTP 400');
+    });
+  });
+
+  // ─── fetchCheckinQr ─────────────────────────────────────────────────────────
+
+  describe('fetchCheckinQr', () => {
+    const PARTNER_ID = 'a1000000-0000-0000-0000-000000000001';
+    const PROPERTY_ID = 'b1000000-0000-0000-0000-000000000001';
+    const QR_DATA = { partnerId: PARTNER_ID, propertyId: PROPERTY_ID, checkInKey: 'abc123' };
+
+    it('returns checkin QR data on success', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockOk(QR_DATA));
+
+      const result = await fetchCheckinQr(PARTNER_ID, PROPERTY_ID, 'tok');
+
+      expect(result).toEqual(QR_DATA);
+    });
+
+    it('calls the correct endpoint', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockOk(QR_DATA));
+
+      await fetchCheckinQr(PARTNER_ID, PROPERTY_ID, 'tok');
+
+      const url = (global.fetch as jest.Mock).mock.calls[0][0] as string;
+      expect(url).toContain(`/partners/${PARTNER_ID}/properties/${PROPERTY_ID}/checkin-publickey`);
+    });
+
+    it('sends Authorization header', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockOk(QR_DATA));
+
+      await fetchCheckinQr(PARTNER_ID, PROPERTY_ID, 'my-token');
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ headers: { Authorization: 'Bearer my-token' } }),
+      );
+    });
+
+    it('throws when response is not ok', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockFail(404));
+      await expect(fetchCheckinQr(PARTNER_ID, PROPERTY_ID, 'tok')).rejects.toThrow('HTTP 404');
+    });
+  });
+
+  // ─── regenerateCheckinQr ────────────────────────────────────────────────────
+
+  describe('regenerateCheckinQr', () => {
+    const PARTNER_ID = 'a1000000-0000-0000-0000-000000000001';
+    const PROPERTY_ID = 'b1000000-0000-0000-0000-000000000001';
+    const NEW_QR = { partnerId: PARTNER_ID, propertyId: PROPERTY_ID, checkInKey: 'newkey' };
+
+    it('returns new QR data on success', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockOk(NEW_QR));
+
+      const result = await regenerateCheckinQr(PARTNER_ID, PROPERTY_ID, 'tok');
+
+      expect(result).toEqual(NEW_QR);
+    });
+
+    it('sends a PATCH request to the regenerate endpoint', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockOk(NEW_QR));
+
+      await regenerateCheckinQr(PARTNER_ID, PROPERTY_ID, 'tok');
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('checkin-publickey/regenerate'),
+        expect.objectContaining({ method: 'PATCH' }),
+      );
+    });
+
+    it('throws when response is not ok', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockFail(404));
+      await expect(regenerateCheckinQr(PARTNER_ID, PROPERTY_ID, 'tok')).rejects.toThrow('HTTP 404');
+    });
+  });
+
+  // ─── downloadCheckinPdf ─────────────────────────────────────────────────────
+
+  describe('downloadCheckinPdf', () => {
+    const PARTNER_ID = 'a1000000-0000-0000-0000-000000000001';
+    const PROPERTY_ID = 'b1000000-0000-0000-0000-000000000001';
+
+    beforeEach(() => {
+      // jsdom doesn't implement URL.createObjectURL
+      global.URL.createObjectURL = jest.fn().mockReturnValue('blob:fake');
+      global.URL.revokeObjectURL = jest.fn();
+      // Stub anchor click
+      jest.spyOn(document, 'createElement').mockReturnValue({
+        href: '',
+        download: '',
+        click: jest.fn(),
+      } as unknown as HTMLElement);
+    });
+
+    it('calls the checkin-publickey/download endpoint', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        blob: jest.fn().mockResolvedValue(new Blob(['%PDF'], { type: 'application/pdf' })),
+      });
+
+      await downloadCheckinPdf(PARTNER_ID, PROPERTY_ID, 'tok');
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('checkin-publickey/download'),
+        expect.objectContaining({ headers: { Authorization: 'Bearer tok' } }),
+      );
+    });
+
+    it('throws when response is not ok', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockFail(500));
+      await expect(downloadCheckinPdf(PARTNER_ID, PROPERTY_ID, 'tok')).rejects.toThrow('HTTP 500');
     });
   });
 });

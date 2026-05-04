@@ -11,6 +11,8 @@ const mockResponse = () => {
   const res: any = {};
   res.status = jest.fn().mockReturnValue(res);
   res.json = jest.fn().mockReturnValue(res);
+  res.setHeader = jest.fn().mockReturnValue(res);
+  res.send = jest.fn().mockReturnValue(res);
   return res;
 };
 
@@ -167,6 +169,37 @@ describe("ProxyController", () => {
 
       expect(res.status).toHaveBeenCalledWith(502);
       expect(res.json).toHaveBeenCalledWith({ error: "Bad Gateway" });
+    });
+
+    it("streams binary PDF response with correct headers", async () => {
+      const pdfBuffer = Buffer.from("%PDF-fake");
+      mockProxyService.forward.mockResolvedValue({
+        binary: true,
+        status: 200,
+        contentType: "application/pdf",
+        disposition: 'attachment; filename="qr-checkin.pdf"',
+        buffer: pdfBuffer,
+      });
+
+      const req = mockRequest(
+        "/api/partners/partners/p1/properties/prop1/checkin-publickey/download",
+        "/api/partners/partners/p1/properties/prop1/checkin-publickey/download",
+      ) as any;
+      const res = mockResponse();
+
+      await controller.proxy(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.setHeader).toHaveBeenCalledWith(
+        "Content-Type",
+        "application/pdf",
+      );
+      expect(res.setHeader).toHaveBeenCalledWith(
+        "Content-Disposition",
+        'attachment; filename="qr-checkin.pdf"',
+      );
+      expect(res.send).toHaveBeenCalledWith(pdfBuffer);
+      expect(res.json).not.toHaveBeenCalled();
     });
 
     it("passes the request object to ProxyService.forward", async () => {

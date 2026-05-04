@@ -474,7 +474,22 @@
       "edit_property": "Edit property",
       "generate_qr": "Generate QR",
       "load_error": "Failed to load properties. Please try again later.",
-      "login_required": "Sign in as a partner to view your properties."
+      "login_required": "Sign in as a partner to view your properties.",
+      "qr": {
+        "page_title": "Check-in QR Code",
+        "back": "← Back to dashboard",
+        "card_subtitle": "Scan to check in",
+        "instructions_title": "Manager instructions",
+        "instructions_body": "Download and print this QR code and place it visibly at the front desk. Guests can scan it with the TravelHub app to unlock the check-in button on their mobile device.",
+        "print_btn": "Print",
+        "download_btn": "Download",
+        "regenerate_btn": "Regenerate QR",
+        "regenerate_dialog_title": "Regenerate the QR code?",
+        "regenerate_dialog_body": "A new key will be generated. The previous QR will stop working. This action cannot be undone.",
+        "regenerate_cancel": "Cancel",
+        "regenerate_confirm": "Yes, regenerate",
+        "load_error": "Failed to load QR code. Please try again later."
+      }
     },
     "org_dashboard": {
       "org_label": "Organization",

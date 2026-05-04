@@ -1,14 +1,21 @@
 import { Injectable, Logger } from "@nestjs/common";
 import type { Request } from "express";
 
+export type ProxyResult =
+  | { binary: false; status: number; body: unknown }
+  | {
+      binary: true;
+      status: number;
+      contentType: string;
+      disposition: string;
+      buffer: Buffer;
+    };
+
 @Injectable()
 export class ProxyService {
   private readonly logger = new Logger(ProxyService.name);
 
-  async forward(
-    targetUrl: string,
-    req: Request,
-  ): Promise<{ status: number; body: unknown }> {
+  async forward(targetUrl: string, req: Request): Promise<ProxyResult> {
     const method = req.method.toUpperCase();
     const isBodyless = ["GET", "HEAD", "DELETE"].includes(method);
     const headers: Record<string, string> = {
@@ -33,8 +40,24 @@ export class ProxyService {
         `Upstream unreachable: ${targetUrl} — ${(err as Error).message}`,
       );
       return {
+        binary: false,
         status: 502,
         body: { error: "Bad Gateway", upstream: targetUrl },
+      };
+    }
+
+    const contentType = response.headers.get("content-type") ?? "";
+    if (contentType.includes("application/pdf")) {
+      const buffer = Buffer.from(await response.arrayBuffer());
+      const disposition =
+        response.headers.get("content-disposition") ??
+        "attachment; filename=download.pdf";
+      return {
+        binary: true,
+        status: response.status,
+        contentType,
+        disposition,
+        buffer,
       };
     }
 
@@ -45,6 +68,6 @@ export class ProxyService {
       body = {};
     }
 
-    return { status: response.status, body };
+    return { binary: false, status: response.status, body };
   }
 }

@@ -20,4 +20,20 @@ export class PropertyCheckinKeyRepository {
       .executeTakeFirst();
     return row?.checkInKey ?? null;
   }
+
+  async rotateKey(
+    partnerId: string,
+    propertyId: string,
+    newKey: string,
+  ): Promise<string | null> {
+    const row = await this.db
+      .updateTable("propertyCheckInKeys")
+      .set({ checkInKey: newKey })
+      .where("partnerId", "=", partnerId)
+      .where("propertyId", "=", propertyId)
+      .where("enabled", "=", true)
+      .returning("checkInKey")
+      .executeTakeFirst();
+    return row?.checkInKey ?? null;
+  }
 }
