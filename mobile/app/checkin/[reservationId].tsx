@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Button, Text, useTheme } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
@@ -95,15 +95,19 @@ export default function CheckinScanScreen() {
 
   if (!permission) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator animating />
-      </View>
+      <>
+        <Stack.Screen options={{ title: t('checkin.title') }} />
+        <View style={styles.centered}>
+          <ActivityIndicator animating />
+        </View>
+      </>
     );
   }
 
   if (!permission.granted) {
     return (
       <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
+        <Stack.Screen options={{ title: t('checkin.title') }} />
         <View style={styles.centered}>
           <MaterialIcons name="no-photography" size={48} color={theme.colors.onSurfaceVariant} />
           <Text variant="bodyMedium" style={[styles.permissionText, { color: theme.colors.onSurface }]}>
@@ -120,6 +124,7 @@ export default function CheckinScanScreen() {
   if (scanState === 'success') {
     return (
       <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
+        <Stack.Screen options={{ title: t('checkin.title') }} />
         <View style={styles.centered}>
           <MaterialIcons name="check-circle" size={72} color="#16a34a" />
           <Text variant="headlineSmall" style={[styles.resultTitle, { color: theme.colors.onSurface }]}>
@@ -143,6 +148,7 @@ export default function CheckinScanScreen() {
   if (scanState === 'error') {
     return (
       <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
+        <Stack.Screen options={{ title: t('checkin.title') }} />
         <View style={styles.centered}>
           <MaterialIcons name="error-outline" size={72} color={theme.colors.error} />
           <Text variant="headlineSmall" style={[styles.resultTitle, { color: theme.colors.onSurface }]}>
@@ -161,6 +167,7 @@ export default function CheckinScanScreen() {
 
   return (
     <View style={styles.flex}>
+      <Stack.Screen options={{ headerShown: false }} />
       <CameraView
         style={StyleSheet.absoluteFillObject}
         facing="back"
