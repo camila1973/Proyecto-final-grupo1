@@ -62,17 +62,23 @@ describe("PropertyController", () => {
   });
 
   describe("propertyReservations", () => {
-    it("delegates with path params and null roomType when omitted", async () => {
+    it("delegates with path params and all filters null when omitted", async () => {
       await controller.propertyReservations(
         "p1",
         "prop-abc",
         "2026-03",
+        undefined,
+        undefined,
+        undefined,
         undefined,
       );
       expect(getPropertyReservations).toHaveBeenCalledWith(
         "p1",
         "prop-abc",
         "2026-03",
+        null,
+        null,
+        null,
         null,
       );
     });
@@ -84,6 +90,30 @@ describe("PropertyController", () => {
         "prop-abc",
         "2026-03",
         null,
+        null,
+        null,
+        null,
+      );
+    });
+
+    it("passes trimmed status, reservationId and guestName filters", async () => {
+      await controller.propertyReservations(
+        "p1",
+        "prop-abc",
+        "2026-03",
+        undefined,
+        " confirmed ",
+        " ABC123 ",
+        " carlos ",
+      );
+      expect(getPropertyReservations).toHaveBeenCalledWith(
+        "p1",
+        "prop-abc",
+        "2026-03",
+        null,
+        "confirmed",
+        "ABC123",
+        "carlos",
       );
     });
   });

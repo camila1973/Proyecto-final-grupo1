@@ -86,17 +86,30 @@ export class PropertyService {
     propertyId: string,
     month: string,
     roomType: string | null,
+    status: string | null = null,
+    reservationId: string | null = null,
+    guestName: string | null = null,
   ): Promise<PropertyReservationsResponse> {
     const all = await this.bookingClient.listReservations();
     const scoped = all
       .filter((r) => r.partnerId === partnerId)
       .filter((r) => r.propertyId === propertyId);
-    const filtered = filterReservations(scoped, month, roomType);
+    const filtered = filterReservations(
+      scoped,
+      month,
+      roomType,
+      status,
+      reservationId,
+      guestName,
+    );
     return {
       partnerId,
       propertyId,
       month,
       roomType,
+      status,
+      reservationId,
+      guestName,
       reservations: filtered.map(toPartnerReservation),
     };
   }
@@ -108,12 +121,28 @@ export function filterReservations(
   rows: ReservationDto[],
   month: string,
   roomType: string | null,
+  status: string | null = null,
+  reservationId: string | null = null,
+  guestName: string | null = null,
 ): ReservationDto[] {
+  const guestNameLower = guestName?.toLowerCase() ?? null;
   return rows.filter((r) => {
     if (!isInMonth(r.checkIn, month)) return false;
     if (roomType) {
       const rt = r.snapshot?.roomType ?? "";
       if (rt.toLowerCase() !== roomType.toLowerCase()) return false;
+    }
+    if (status && r.status !== status) return false;
+    if (
+      reservationId &&
+      !r.id.toLowerCase().includes(reservationId.toLowerCase())
+    )
+      return false;
+    if (guestNameLower) {
+      const guest = r.guestInfo;
+      const fullName =
+        `${guest?.firstName ?? ""} ${guest?.lastName ?? ""}`.toLowerCase();
+      if (!fullName.includes(guestNameLower)) return false;
     }
     return true;
   });

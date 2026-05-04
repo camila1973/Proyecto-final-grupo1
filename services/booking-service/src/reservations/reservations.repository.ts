@@ -1,4 +1,9 @@
-import { Injectable, Inject, NotFoundException } from "@nestjs/common";
+import {
+  Injectable,
+  Inject,
+  NotFoundException,
+  BadRequestException,
+} from "@nestjs/common";
 import { Kysely } from "kysely";
 import { KYSELY } from "../database/database.provider.js";
 import {
@@ -239,6 +244,100 @@ export class ReservationsRepository {
       .where("status", "=", "held")
       .returningAll()
       .executeTakeFirst();
+  }
+
+  async checkIn(id: string): Promise<ReservationRow> {
+    const row = await this.db
+      .updateTable("reservations")
+      .set({ status: "checked_in", updated_at: new Date() })
+      .where("id", "=", id)
+      .where("status", "=", "confirmed")
+      .returningAll()
+      .executeTakeFirst();
+
+    if (!row) {
+      throw new NotFoundException(
+        `Reservation ${id} not found or not confirmed`,
+      );
+    }
+
+    return row;
+  }
+
+  async checkOut(id: string): Promise<ReservationRow> {
+    const row = await this.db
+      .updateTable("reservations")
+      .set({ status: "checked_out", updated_at: new Date() })
+      .where("id", "=", id)
+      .where("status", "=", "checked_in")
+      .returningAll()
+      .executeTakeFirst();
+
+    if (!row) {
+      throw new NotFoundException(
+        `Reservation ${id} not found or not checked_in`,
+      );
+    }
+
+    return row;
+  }
+
+  async partnerConfirm(id: string): Promise<ReservationRow> {
+    const row = await this.db
+      .updateTable("reservations")
+      .set({ status: "confirmed", updated_at: new Date() })
+      .where("id", "=", id)
+      .where("status", "=", "submitted")
+      .returningAll()
+      .executeTakeFirst();
+
+    if (!row) {
+      throw new NotFoundException(
+        `Reservation ${id} not found or not submitted`,
+      );
+    }
+
+    return row;
+  }
+
+  async partnerCancel(
+    id: string,
+    reason: string,
+  ): Promise<{ row: ReservationRow; priorStatus: string }> {
+    return this.db.transaction().execute(async (trx) => {
+      const current = await trx
+        .selectFrom("reservations")
+        .where("id", "=", id)
+        .select("status")
+        .forUpdate()
+        .executeTakeFirst();
+
+      if (!current) {
+        throw new NotFoundException(`Reservation ${id} not found`);
+      }
+
+      const blocked = new Set([
+        "held",
+        "failed",
+        "expired",
+        "cancelled",
+        "checked_out",
+      ]);
+      if (blocked.has(current.status)) {
+        throw new BadRequestException(
+          `Cannot partner-cancel a reservation with status "${current.status}"`,
+        );
+      }
+
+      const row = await trx
+        .updateTable("reservations")
+        .set({ status: "cancelled", reason, updated_at: new Date() })
+        .where("id", "=", id)
+        .returningAll()
+        .executeTakeFirstOrThrow();
+
+      return { row, priorStatus: current.status };
+    });
   }
 
   toResponse(row: ReservationRow): ReservationResponse {

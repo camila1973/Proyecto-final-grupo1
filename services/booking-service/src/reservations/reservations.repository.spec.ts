@@ -527,4 +527,171 @@ describe("ReservationsRepository", () => {
       );
     });
   });
+
+  // ─── checkIn ────────────────────────────────────────────────────────────────
+
+  describe("checkIn", () => {
+    it("updates status to checked_in and returns the row", async () => {
+      const checkedIn = makeRow({ status: "checked_in" });
+      const db = makeDb({ single: checkedIn });
+      const repo = new ReservationsRepository(db);
+
+      const result = await repo.checkIn("res-uuid");
+
+      expect(db.updateTable).toHaveBeenCalledWith("reservations");
+      expect(db.where).toHaveBeenCalledWith("status", "=", "confirmed");
+      expect(result).toEqual(checkedIn);
+    });
+
+    it("throws NotFoundException when reservation is not confirmed", async () => {
+      const db = makeDb({ single: undefined });
+      const repo = new ReservationsRepository(db);
+
+      await expect(repo.checkIn("res-uuid")).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  // ─── checkOut ───────────────────────────────────────────────────────────────
+
+  describe("checkOut", () => {
+    it("updates status to checked_out and returns the row", async () => {
+      const checkedOut = makeRow({ status: "checked_out" });
+      const db = makeDb({ single: checkedOut });
+      const repo = new ReservationsRepository(db);
+
+      const result = await repo.checkOut("res-uuid");
+
+      expect(db.updateTable).toHaveBeenCalledWith("reservations");
+      expect(db.where).toHaveBeenCalledWith("status", "=", "checked_in");
+      expect(result).toEqual(checkedOut);
+    });
+
+    it("throws NotFoundException when reservation is not checked_in", async () => {
+      const db = makeDb({ single: undefined });
+      const repo = new ReservationsRepository(db);
+
+      await expect(repo.checkOut("res-uuid")).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  // ─── partnerConfirm ─────────────────────────────────────────────────────────
+
+  describe("partnerConfirm", () => {
+    it("updates status to confirmed from submitted and returns the row", async () => {
+      const confirmed = makeRow({ status: "confirmed" });
+      const db = makeDb({ single: confirmed });
+      const repo = new ReservationsRepository(db);
+
+      const result = await repo.partnerConfirm("res-uuid");
+
+      expect(db.updateTable).toHaveBeenCalledWith("reservations");
+      expect(db.where).toHaveBeenCalledWith("status", "=", "submitted");
+      expect(result).toEqual(confirmed);
+    });
+
+    it("throws NotFoundException when reservation is not submitted", async () => {
+      const db = makeDb({ single: undefined });
+      const repo = new ReservationsRepository(db);
+
+      await expect(repo.partnerConfirm("res-uuid")).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  // ─── partnerCancel ──────────────────────────────────────────────────────────
+
+  describe("partnerCancel", () => {
+    function makeDbForPartnerCancel(
+      opts: {
+        currentStatus?: string | null;
+        cancelledRow?: Record<string, unknown>;
+      } = {},
+    ) {
+      const trx: Record<string, jest.Mock> = {};
+      const chain = [
+        "selectFrom",
+        "updateTable",
+        "set",
+        "where",
+        "select",
+        "selectAll",
+        "returningAll",
+        "forUpdate",
+      ];
+      chain.forEach((m) => {
+        trx[m] = jest.fn().mockReturnValue(trx);
+      });
+      trx.executeTakeFirst = jest
+        .fn()
+        .mockResolvedValue(
+          opts.currentStatus != null
+            ? { status: opts.currentStatus }
+            : undefined,
+        );
+      trx.executeTakeFirstOrThrow = jest
+        .fn()
+        .mockResolvedValue(
+          opts.cancelledRow ?? makeRow({ status: "cancelled" }),
+        );
+
+      return {
+        transaction: jest.fn().mockReturnValue({
+          execute: jest
+            .fn()
+            .mockImplementation((fn: (trx: unknown) => unknown) => fn(trx)),
+        }),
+      } as any;
+    }
+
+    it("returns the cancelled row and prior status for a confirmed reservation", async () => {
+      const cancelled = makeRow({ status: "cancelled", reason: "overbooking" });
+      const db = makeDbForPartnerCancel({
+        currentStatus: "confirmed",
+        cancelledRow: cancelled,
+      });
+      const repo = new ReservationsRepository(db);
+
+      const result = await repo.partnerCancel("res-uuid", "overbooking");
+
+      expect(result.row).toBe(cancelled);
+      expect(result.priorStatus).toBe("confirmed");
+    });
+
+    it("throws NotFoundException when reservation does not exist", async () => {
+      const db = makeDbForPartnerCancel({ currentStatus: null });
+      const repo = new ReservationsRepository(db);
+
+      await expect(
+        repo.partnerCancel("res-uuid", "overbooking"),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it.each(["held", "failed", "expired", "cancelled", "checked_out"])(
+      "throws BadRequestException when status is %s",
+      async (status) => {
+        const { BadRequestException } = await import("@nestjs/common");
+        const db = makeDbForPartnerCancel({ currentStatus: status });
+        const repo = new ReservationsRepository(db);
+
+        await expect(repo.partnerCancel("res-uuid", "reason")).rejects.toThrow(
+          BadRequestException,
+        );
+      },
+    );
+
+    it.each(["submitted", "checked_in"])(
+      "succeeds when status is %s",
+      async (status) => {
+        const db = makeDbForPartnerCancel({ currentStatus: status });
+        const repo = new ReservationsRepository(db);
+
+        await expect(
+          repo.partnerCancel("res-uuid", "reason"),
+        ).resolves.not.toThrow();
+      },
+    );
+  });
 });
