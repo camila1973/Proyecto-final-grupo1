@@ -13,6 +13,7 @@ import {
 import type { Response } from "express";
 import { ReservationsService } from "./reservations.service.js";
 import {
+  CheckinDto,
   CreateReservationDto,
   GuestInfoDto,
   PreviewReservationDto,
@@ -83,8 +84,8 @@ export class ReservationsController {
 
   @Patch(":id/check-in")
   @HttpCode(HttpStatus.OK)
-  checkIn(@Param("id") id: string) {
-    return this.reservationsService.checkIn(id);
+  checkin(@Param("id") id: string, @Body() dto: CheckinDto) {
+    return this.reservationsService.checkin(id, dto.checkInKey, dto.bookerId);
   }
 
   @Patch(":id/check-out")

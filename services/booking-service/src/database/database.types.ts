@@ -103,6 +103,11 @@ export interface ReservationsTable {
     ReservationSnapshot | null | undefined,
     ReservationSnapshot | null | undefined
   >;
+  checked_in_at: ColumnType<
+    Date | null,
+    Date | null | undefined,
+    Date | null | undefined
+  >;
   created_at: Generated<Date>;
   updated_at: Generated<Date>;
 }

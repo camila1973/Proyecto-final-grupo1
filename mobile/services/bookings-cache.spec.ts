@@ -59,6 +59,7 @@ const RESERVATION: Reservation = {
   grandTotalUsd: 180,
   snapshot: SNAPSHOT,
   holdExpiresAt: null,
+  checkedInAt: null,
   createdAt: '2026-03-01T10:00:00.000Z',
 };
 

@@ -528,15 +528,15 @@ describe("ReservationsRepository", () => {
     });
   });
 
-  // ─── checkIn ────────────────────────────────────────────────────────────────
+  // ─── checkin ────────────────────────────────────────────────────────────────
 
-  describe("checkIn", () => {
-    it("updates status to checked_in and returns the row", async () => {
+  describe("checkin", () => {
+    it("updates status to checked_in with timestamp and returns the row", async () => {
       const checkedIn = makeRow({ status: "checked_in" });
       const db = makeDb({ single: checkedIn });
       const repo = new ReservationsRepository(db);
 
-      const result = await repo.checkIn("res-uuid");
+      const result = await repo.checkin("res-uuid");
 
       expect(db.updateTable).toHaveBeenCalledWith("reservations");
       expect(db.where).toHaveBeenCalledWith("status", "=", "confirmed");
@@ -547,7 +547,7 @@ describe("ReservationsRepository", () => {
       const db = makeDb({ single: undefined });
       const repo = new ReservationsRepository(db);
 
-      await expect(repo.checkIn("res-uuid")).rejects.toThrow(NotFoundException);
+      await expect(repo.checkin("res-uuid")).rejects.toThrow(NotFoundException);
     });
   });
 

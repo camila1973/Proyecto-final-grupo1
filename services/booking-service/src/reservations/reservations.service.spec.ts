@@ -1,4 +1,9 @@
-import { NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+  UnauthorizedException,
+} from "@nestjs/common";
 import { ReservationsService } from "./reservations.service.js";
 import { FareBreakdown } from "../fare/fare-calculator.service.js";
 
@@ -82,12 +87,13 @@ describe("ReservationsService", () => {
     cancel: jest.Mock;
     expire: jest.Mock;
     rehold: jest.Mock;
-    checkIn: jest.Mock;
+    checkin: jest.Mock;
     checkOut: jest.Mock;
     partnerConfirm: jest.Mock;
     partnerCancel: jest.Mock;
   };
   let notificationClient: { send: jest.Mock };
+  let partnersClient: { getCheckinKey: jest.Mock };
   let inventoryClient: {
     getRoomLocation: jest.Mock;
     getRoomDetails: jest.Mock;
@@ -129,6 +135,7 @@ describe("ReservationsService", () => {
       release: jest.fn().mockResolvedValue(undefined),
     };
     notificationClient = { send: jest.fn().mockResolvedValue(undefined) };
+    partnersClient = { getCheckinKey: jest.fn().mockResolvedValue("test-key") };
     reservationsRepo = {
       insert: jest.fn().mockResolvedValue(row),
       findAll: jest.fn().mockResolvedValue([row, row]),
@@ -144,7 +151,7 @@ describe("ReservationsService", () => {
       cancel: jest.fn(),
       expire: jest.fn().mockResolvedValue(makeRow({ status: "expired" })),
       rehold: jest.fn().mockResolvedValue(row),
-      checkIn: jest.fn().mockResolvedValue(makeRow({ status: "checked_in" })),
+      checkin: jest.fn().mockResolvedValue(makeRow({ status: "checked_in" })),
       checkOut: jest.fn().mockResolvedValue(makeRow({ status: "checked_out" })),
       partnerConfirm: jest
         .fn()
@@ -161,6 +168,7 @@ describe("ReservationsService", () => {
       notificationClient as any,
       holdsService as any,
       { publish: jest.fn() } as any,
+      partnersClient as any,
     );
   });
 
@@ -698,6 +706,7 @@ describe("ReservationsService", () => {
         notificationClient as any,
         holdsService as any,
         publisher as any,
+        partnersClient as any,
       );
 
       await service.confirm("res-uuid");
@@ -730,6 +739,7 @@ describe("ReservationsService", () => {
         notificationClient as any,
         holdsService as any,
         publisher as any,
+        partnersClient as any,
       );
 
       await service.confirm("res-uuid");
@@ -804,45 +814,69 @@ describe("ReservationsService", () => {
     });
   });
 
-  // ─── checkIn ────────────────────────────────────────────────────────────────
+  // ─── checkin ────────────────────────────────────────────────────────────────
 
-  describe("checkIn", () => {
-    it("calls repo.checkIn and returns mapped response", async () => {
-      const checkedInRow = makeRow({ status: "checked_in" });
-      reservationsRepo.checkIn = jest.fn().mockResolvedValue(checkedInRow);
-
-      const result = await service.checkIn("res-uuid");
-
-      expect(reservationsRepo.checkIn).toHaveBeenCalledWith("res-uuid");
-      expect(reservationsRepo.toResponse).toHaveBeenCalledWith(checkedInRow);
-      expect(result).toEqual({ id: checkedInRow.id });
+  describe("checkin", () => {
+    const TODAY = new Date().toISOString().slice(0, 10);
+    const TOMORROW = new Date(Date.now() + 86_400_000)
+      .toISOString()
+      .slice(0, 10);
+    const CONFIRMED_ROW = makeRow({
+      status: "confirmed",
+      booker_id: "booker-uuid",
+      check_in: TODAY,
+      check_out: TOMORROW,
     });
 
-    it("sends a notification to the guest after check-in", async () => {
-      const checkedInRow = makeRow({ status: "checked_in" });
-      reservationsRepo.checkIn = jest.fn().mockResolvedValue(checkedInRow);
-
-      await service.checkIn("res-uuid");
-
-      expect(notificationClient.send).toHaveBeenCalledWith(
-        expect.objectContaining({
-          userId: checkedInRow.booker_id,
-          to: checkedInRow.guest_info.email,
-          channel: "email",
-          subject: "Check-in registrado",
-        }),
-      );
-    });
-
-    it("does not rethrow when notification send fails", async () => {
-      reservationsRepo.checkIn = jest
+    beforeEach(() => {
+      reservationsRepo.findById = jest.fn().mockResolvedValue(CONFIRMED_ROW);
+      reservationsRepo.checkin = jest
         .fn()
         .mockResolvedValue(makeRow({ status: "checked_in" }));
-      notificationClient.send = jest
-        .fn()
-        .mockRejectedValue(new Error("smtp down"));
+      partnersClient.getCheckinKey = jest.fn().mockResolvedValue("test-key-64");
+    });
 
-      await expect(service.checkIn("res-uuid")).resolves.not.toThrow();
+    it("validates key and returns mapped response", async () => {
+      const result = await service.checkin(
+        "res-uuid",
+        "test-key-64",
+        "booker-uuid",
+      );
+
+      expect(reservationsRepo.checkin).toHaveBeenCalledWith("res-uuid");
+      expect(result).toEqual({ id: "res-uuid" });
+    });
+
+    it("throws ForbiddenException when bookerId does not match", async () => {
+      await expect(
+        service.checkin("res-uuid", "test-key-64", "wrong-booker"),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it("throws BadRequestException when reservation is not confirmed", async () => {
+      reservationsRepo.findById = jest
+        .fn()
+        .mockResolvedValue(
+          makeRow({ status: "held", check_in: TODAY, check_out: TOMORROW }),
+        );
+
+      await expect(
+        service.checkin("res-uuid", "test-key-64", "booker-uuid"),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it("throws UnauthorizedException when key does not match", async () => {
+      await expect(
+        service.checkin("res-uuid", "wrong-key", "booker-uuid"),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it("throws NotFoundException when no active key exists for the property", async () => {
+      partnersClient.getCheckinKey = jest.fn().mockResolvedValue(null);
+
+      await expect(
+        service.checkin("res-uuid", "test-key-64", "booker-uuid"),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 

@@ -44,6 +44,14 @@
       ],
       "expo-localization",
       [
+        "expo-camera",
+        {
+          "cameraPermission": "TravelHub necesita acceso a la cámara para escanear el código QR del hotel.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false
+        }
+      ],
+      [
         "@stripe/stripe-react-native",
         {
           "merchantIdentifier": "merchant.com.travelhub",

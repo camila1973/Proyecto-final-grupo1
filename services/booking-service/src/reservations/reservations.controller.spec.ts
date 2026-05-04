@@ -55,6 +55,10 @@ describe("ReservationsController", () => {
             fail: jest.fn(),
             cancel: jest.fn(),
             rehold: jest.fn(),
+            checkin: jest.fn(),
+            checkOut: jest.fn(),
+            partnerConfirm: jest.fn(),
+            partnerCancel: jest.fn(),
             updateGuestInfo: jest.fn(),
           },
         },
@@ -223,6 +227,25 @@ describe("ReservationsController", () => {
       const result = await controller.rehold("res-1");
 
       expect(service.rehold).toHaveBeenCalledWith("res-1");
+      expect(result).toBe(reservation);
+    });
+  });
+
+  describe("checkin", () => {
+    it("delegates to service with id, checkInKey, and bookerId", async () => {
+      const reservation = { id: "res-1", status: "checked_in" } as any;
+      (service.checkin as jest.Mock).mockResolvedValue(reservation);
+
+      const result = await controller.checkin("res-1", {
+        checkInKey: "abc123",
+        bookerId: "booker-1",
+      });
+
+      expect(service.checkin).toHaveBeenCalledWith(
+        "res-1",
+        "abc123",
+        "booker-1",
+      );
       expect(result).toBe(reservation);
     });
   });
