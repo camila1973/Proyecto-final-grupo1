@@ -158,7 +158,7 @@ function ReservationCard({ item, onCancel, onCompletePayment, onCheckin, isOnlin
   const canCancel = isOnline && (item.status === 'confirmed' || item.status === 'held');
   const isHeld = item.status === 'held';
   const today = new Date().toISOString().slice(0, 10);
-  const canCheckin = isOnline && item.status === 'confirmed' && today >= item.checkIn && today < item.checkOut;
+  const canCheckin = isOnline && item.status === 'confirmed' && today >= item.checkIn.slice(0, 10) && today < item.checkOut.slice(0, 10);
 
   return (
     <View style={[styles.card, { backgroundColor: theme.colors.surface }]}>
