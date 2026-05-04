@@ -81,30 +81,6 @@ export class ReservationsController {
     return this.reservationsService.confirm(id);
   }
 
-  @Patch(":id/check-in")
-  @HttpCode(HttpStatus.OK)
-  checkIn(@Param("id") id: string) {
-    return this.reservationsService.checkIn(id);
-  }
-
-  @Patch(":id/check-out")
-  @HttpCode(HttpStatus.OK)
-  checkOut(@Param("id") id: string) {
-    return this.reservationsService.checkOut(id);
-  }
-
-  @Patch(":id/partner-confirm")
-  @HttpCode(HttpStatus.OK)
-  partnerConfirm(@Param("id") id: string) {
-    return this.reservationsService.partnerConfirm(id);
-  }
-
-  @Patch(":id/partner-cancel")
-  @HttpCode(HttpStatus.OK)
-  partnerCancel(@Param("id") id: string, @Body() body: { reason: string }) {
-    return this.reservationsService.partnerCancel(id, body.reason);
-  }
-
   @Patch(":id/guest-info")
   @HttpCode(HttpStatus.OK)
   updateGuestInfo(@Param("id") id: string, @Body() dto: GuestInfoDto) {

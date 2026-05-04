@@ -41,25 +41,14 @@ export class PropertyController {
     @Param("propertyId") propertyId: string,
     @Query("month") month?: string,
     @Query("roomType") roomType?: string,
-    @Query("status") status?: string,
-    @Query("reservationId") reservationId?: string,
-    @Query("guestName") guestName?: string,
   ) {
     const safeMonth = isMonth(month) ? month! : currentMonth();
     const safeRoomType = roomType?.trim() ? roomType.trim() : null;
-    const safeStatus = status?.trim() ? status.trim() : null;
-    const safeReservationId = reservationId?.trim()
-      ? reservationId.trim()
-      : null;
-    const safeGuestName = guestName?.trim() ? guestName.trim() : null;
     return this.propertyService.getPropertyReservations(
       partnerId,
       propertyId,
       safeMonth,
       safeRoomType,
-      safeStatus,
-      safeReservationId,
-      safeGuestName,
     );
   }
 }

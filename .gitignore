@@ -64,9 +64,6 @@ Thumbs.db
 .cache
 .nx/polygraph
 
-# Local AI context artifacts
-.ai/
-
 # Performance test results
 performance-tests/results/*.json
 performance-tests/results/*.html
