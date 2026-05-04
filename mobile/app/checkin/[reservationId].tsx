@@ -96,7 +96,7 @@ export default function CheckinScanScreen() {
   if (!permission) {
     return (
       <>
-        <Stack.Screen options={{ title: t('checkin.title') }} />
+        <Stack.Screen options={{ title: t('checkin.title'), headerBackTitle: '' }} />
         <View style={styles.centered}>
           <ActivityIndicator animating />
         </View>
@@ -107,7 +107,7 @@ export default function CheckinScanScreen() {
   if (!permission.granted) {
     return (
       <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
-        <Stack.Screen options={{ title: t('checkin.title') }} />
+        <Stack.Screen options={{ title: t('checkin.title'), headerBackTitle: '' }} />
         <View style={styles.centered}>
           <MaterialIcons name="no-photography" size={48} color={theme.colors.onSurfaceVariant} />
           <Text variant="bodyMedium" style={[styles.permissionText, { color: theme.colors.onSurface }]}>
@@ -124,7 +124,7 @@ export default function CheckinScanScreen() {
   if (scanState === 'success') {
     return (
       <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
-        <Stack.Screen options={{ title: t('checkin.title') }} />
+        <Stack.Screen options={{ title: t('checkin.title'), headerBackTitle: '' }} />
         <View style={styles.centered}>
           <MaterialIcons name="check-circle" size={72} color="#16a34a" />
           <Text variant="headlineSmall" style={[styles.resultTitle, { color: theme.colors.onSurface }]}>
@@ -148,7 +148,7 @@ export default function CheckinScanScreen() {
   if (scanState === 'error') {
     return (
       <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
-        <Stack.Screen options={{ title: t('checkin.title') }} />
+        <Stack.Screen options={{ title: t('checkin.title'), headerBackTitle: '' }} />
         <View style={styles.centered}>
           <MaterialIcons name="error-outline" size={72} color={theme.colors.error} />
           <Text variant="headlineSmall" style={[styles.resultTitle, { color: theme.colors.onSurface }]}>
