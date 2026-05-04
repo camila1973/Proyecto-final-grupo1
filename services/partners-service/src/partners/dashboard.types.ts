@@ -127,5 +127,8 @@ export interface PropertyReservationsResponse {
   propertyId: string;
   month: string;
   roomType: string | null;
+  status: string | null;
+  reservationId: string | null;
+  guestName: string | null;
   reservations: PartnerReservation[];
 }

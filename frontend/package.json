@@ -1,5 +1,8 @@
 {
   "name": "frontend",
   "private": true,
-  "version": "0.0.0"
+  "version": "0.0.0",
+  "dependencies": {
+    "recharts": "^3.8.1"
+  }
 }
