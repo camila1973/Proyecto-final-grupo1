@@ -24,6 +24,7 @@ export interface ReservationResponse {
   feeTotalUsd: number | null;
   grandTotalUsd: number | null;
   holdExpiresAt: string | null;
+  checkedInAt: string | null;
   snapshot: ReservationSnapshot | null;
   createdAt: string;
 }
@@ -241,6 +242,28 @@ export class ReservationsRepository {
       .executeTakeFirst();
   }
 
+  async checkin(id: string): Promise<ReservationRow> {
+    const row = await this.db
+      .updateTable("reservations")
+      .set({
+        status: "checked_in",
+        checked_in_at: new Date(),
+        updated_at: new Date(),
+      })
+      .where("id", "=", id)
+      .where("status", "=", "confirmed")
+      .returningAll()
+      .executeTakeFirst();
+
+    if (!row) {
+      throw new NotFoundException(
+        `Reservation ${id} not found or not confirmed`,
+      );
+    }
+
+    return row;
+  }
+
   toResponse(row: ReservationRow): ReservationResponse {
     return {
       id: row.id,
@@ -262,6 +285,11 @@ export class ReservationsRepository {
         ? row.hold_expires_at instanceof Date
           ? row.hold_expires_at.toISOString()
           : String(row.hold_expires_at)
+        : null,
+      checkedInAt: row.checked_in_at
+        ? row.checked_in_at instanceof Date
+          ? row.checked_in_at.toISOString()
+          : String(row.checked_in_at)
         : null,
       snapshot: row.snapshot ?? null,
       createdAt:

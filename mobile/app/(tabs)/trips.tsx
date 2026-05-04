@@ -39,6 +39,7 @@ const STATUS_COLOR: Record<ReservationStatus, string> = {
   confirmed:  '#16a34a',
   held:       '#d97706',
   submitted:  '#2563eb',
+  checked_in: '#0369a1',
   cancelled:  '#6b7280',
   expired:    '#6b7280',
   failed:     '#dc2626',
@@ -145,16 +146,19 @@ interface CardProps {
   item: Reservation;
   onCancel: (id: string) => void;
   onCompletePayment: (item: Reservation) => void;
+  onCheckin: (id: string) => void;
   isOnline: boolean;
 }
 
-function ReservationCard({ item, onCancel, onCompletePayment, isOnline }: CardProps) {
+function ReservationCard({ item, onCancel, onCompletePayment, onCheckin, isOnline }: CardProps) {
   const theme = useTheme();
   const { t } = useTranslation();
   const snap = item.snapshot;
   const nights = nightsBetween(item.checkIn, item.checkOut);
   const canCancel = isOnline && (item.status === 'confirmed' || item.status === 'held');
   const isHeld = item.status === 'held';
+  const today = new Date().toISOString().slice(0, 10);
+  const canCheckin = isOnline && item.status === 'confirmed' && today >= item.checkIn && today < item.checkOut;
 
   return (
     <View style={[styles.card, { backgroundColor: theme.colors.surface }]}>
@@ -225,6 +229,17 @@ function ReservationCard({ item, onCancel, onCompletePayment, isOnline }: CardPr
               labelStyle={{ fontSize: 12 }}
             >
               {t('bookings.completePayment')}
+            </Button>
+          ) : canCheckin ? (
+            <Button
+              mode="contained"
+              compact
+              onPress={() => onCheckin(item.id)}
+              buttonColor="#0369a1"
+              style={styles.completeBtn}
+              labelStyle={{ fontSize: 12 }}
+            >
+              {t('bookings.checkinBtn')}
             </Button>
           ) : canCancel ? (
             <Button
@@ -333,6 +348,13 @@ export default function TripsScreen() {
     [t, token, loadData],
   );
 
+  const handleCheckin = useCallback(
+    (id: string) => {
+      router.push(`/checkin/${id}`);
+    },
+    [router],
+  );
+
   /**
    * Permite al usuario retomar el flujo de checkout para completar el pago
    * de una reserva "held" o reintentar una reserva "failed".
@@ -437,11 +459,12 @@ export default function TripsScreen() {
           </View>
         )}
         renderItem={({ item }) => (
-          <ReservationCard 
-            item={item} 
-            onCancel={handleCancel} 
+          <ReservationCard
+            item={item}
+            onCancel={handleCancel}
             onCompletePayment={handleCompletePayment}
-            isOnline={isConnected} 
+            onCheckin={handleCheckin}
+            isOnline={isConnected}
           />
         )}
         contentContainerStyle={styles.list}

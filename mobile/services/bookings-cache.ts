@@ -16,6 +16,7 @@ export type ReservationStatus =
   | 'held'
   | 'submitted'
   | 'confirmed'
+  | 'checked_in'
   | 'expired'
   | 'failed'
   | 'cancelled';
@@ -33,6 +34,7 @@ export interface Reservation {
   grandTotalUsd: number | null;
   snapshot: ReservationSnapshot | null;
   holdExpiresAt: string | null;
+  checkedInAt: string | null;
   createdAt: string;
 }
 

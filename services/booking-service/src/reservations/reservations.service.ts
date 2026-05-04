@@ -1,9 +1,18 @@
-import { Injectable, Logger } from "@nestjs/common";
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  Logger,
+  NotFoundException,
+  UnauthorizedException,
+} from "@nestjs/common";
+import { timingSafeEqual } from "crypto";
 import {
   FareCalculatorService,
   FareBreakdown,
 } from "../fare/fare-calculator.service.js";
 import { InventoryClient } from "../clients/inventory.client.js";
+import { PartnersClient } from "../clients/partners.client.js";
 import { ReservationsRepository } from "./reservations.repository.js";
 import { HoldsService } from "./holds.service.js";
 import { EventsPublisher } from "../events/events.publisher.js";
@@ -23,6 +32,7 @@ export class ReservationsService {
     private readonly inventoryClient: InventoryClient,
     private readonly holdsService: HoldsService,
     private readonly publisher: EventsPublisher,
+    private readonly partnersClient: PartnersClient,
   ) {}
 
   async preview(dto: PreviewReservationDto): Promise<FareBreakdown> {
@@ -289,6 +299,54 @@ export class ReservationsService {
         throw err;
       });
 
+    return this.reservationsRepo.toResponse(updated);
+  }
+
+  async checkin(id: string, checkInKey: string, bookerId: string) {
+    const row = await this.reservationsRepo.findById(id);
+
+    if (row.booker_id !== bookerId) {
+      throw new ForbiddenException(
+        "You are not authorized to check in for this reservation",
+      );
+    }
+
+    if (row.status !== "confirmed") {
+      throw new BadRequestException(
+        `Reservation must be confirmed to check in (current status: ${row.status})`,
+      );
+    }
+
+    const today = new Date().toISOString().slice(0, 10);
+    const checkIn = String(row.check_in).slice(0, 10);
+    const checkOut = String(row.check_out).slice(0, 10);
+
+    if (today < checkIn || today >= checkOut) {
+      throw new BadRequestException(
+        "Check-in is only allowed between check-in date and check-out date",
+      );
+    }
+
+    const storedKey = await this.partnersClient.getCheckinKey(
+      row.partner_id,
+      row.property_id,
+    );
+    if (!storedKey) {
+      throw new NotFoundException(
+        "No active check-in key found for this property",
+      );
+    }
+
+    const storedBuf = Buffer.from(storedKey);
+    const providedBuf = Buffer.from(checkInKey);
+    if (
+      storedBuf.length !== providedBuf.length ||
+      !timingSafeEqual(storedBuf, providedBuf)
+    ) {
+      throw new UnauthorizedException("Invalid check-in key");
+    }
+
+    const updated = await this.reservationsRepo.checkin(id);
     return this.reservationsRepo.toResponse(updated);
   }
 

@@ -22,3 +22,8 @@ export class PreviewReservationDto {
   checkIn: string; // YYYY-MM-DD
   checkOut: string; // YYYY-MM-DD
 }
+
+export class CheckinDto {
+  checkInKey: string;
+  bookerId: string;
+}
