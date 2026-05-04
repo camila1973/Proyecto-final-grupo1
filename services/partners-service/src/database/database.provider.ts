@@ -22,7 +22,7 @@ export class DatabaseProvider implements OnModuleInit, OnModuleDestroy {
       "postgres://postgres:postgres@localhost:5437/partners_service";
     this.pool = new Pool({
       connectionString,
-      ssl: connectionString.includes("sslmode=disable")
+      ssl: connectionString.includes("localhost")
         ? false
         : { rejectUnauthorized: false },
     });
