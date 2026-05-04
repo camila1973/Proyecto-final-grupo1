@@ -210,6 +210,12 @@ const PARTNER_FEES = [
 
 const HOLD_TTL_MS = 900_000; // 900 s — matches holds.service.ts HOLD_TTL_SECONDS
 
+// Dynamic dates so the check-in test window stays valid whenever seed is run
+const TODAY = new Date().toISOString().slice(0, 10);
+const IN_3_DAYS = new Date(Date.now() + 3 * 86_400_000)
+  .toISOString()
+  .slice(0, 10);
+
 const SNAPSHOTS = {
   gran_caribe_deluxe: {
     propertyName: "Gran Caribe Resort",
@@ -338,6 +344,39 @@ const RESERVATIONS = [
     fee_total_usd: 15,
     grand_total_usd: 978.9,
     hold_expires_at: new Date("2026-04-10T09:00:00.000Z"),
+  },
+  // ── confirmed TODAY — Gran Caribe, Deluxe King (room 1), 3 nights @ $310 ──────
+  // check_in = today so the mobile check-in button is visible and testable.
+  // booker_id = BOOKER(3) = guest@travelhub.com (Guest1234!)
+  // check-in key for this property: travelhub://checkin?key=checkin-key-prop-cancun-1
+  {
+    id: RES(5),
+    property_id: PROP_CANCUN_1,
+    room_id: ROOM(1),
+    partner_id: PARTNER_1,
+    booker_id: BOOKER(3),
+    guest_info: GUEST_INFO[2],
+    check_in: TODAY,
+    check_out: IN_3_DAYS,
+    status: "confirmed",
+    snapshot: SNAPSHOTS.gran_caribe_deluxe,
+    fare_breakdown: {
+      nights: 3,
+      roomRateUsd: 310,
+      subtotalUsd: 930,
+      taxes: [
+        { name: "IVA", type: "PERCENTAGE", rate: 16, amountUsd: 148.8 },
+        { name: "ISH", type: "PERCENTAGE", rate: 3, amountUsd: 27.9 },
+      ],
+      fees: [{ name: "Resort Fee", type: "FLAT_PER_NIGHT", amountUsd: 75 }],
+      taxTotalUsd: 176.7,
+      feeTotalUsd: 75,
+      totalUsd: 1181.7,
+    },
+    tax_total_usd: 176.7,
+    fee_total_usd: 75,
+    grand_total_usd: 1181.7,
+    hold_expires_at: new Date("2026-04-28T09:00:00.000Z"),
   },
   // ── submitted — Hostal Sol Cancún, Standard Double (room 6), 3 nights @ $60 ──
   // Hold placed just now via POST /holds; reservation submitted immediately after.
