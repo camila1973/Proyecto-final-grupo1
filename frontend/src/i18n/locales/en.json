@@ -480,7 +480,7 @@
         "back": "← Back to dashboard",
         "card_subtitle": "Scan to check in",
         "instructions_title": "Manager instructions",
-        "instructions_body": "Download or print this QR code and place it visibly at the front desk. Guests can scan it with the TravelHub app to unlock the check-in button on their mobile device.",
+        "instructions_body": "Download and print this QR code and place it visibly at the front desk. Guests can scan it with the TravelHub app to unlock the check-in button on their mobile device.",
         "print_btn": "Print",
         "download_btn": "Download",
         "regenerate_btn": "Regenerate QR",

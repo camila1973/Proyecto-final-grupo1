@@ -480,7 +480,7 @@
         "back": "← Volver al dashboard",
         "card_subtitle": "Escanea para hacer check-in",
         "instructions_title": "Instrucciones para el gerente",
-        "instructions_body": "Descarga o imprime este código QR y colócalo en un lugar visible en la recepción. Los huéspedes podrán escanearlo con la app de TravelHub para desbloquear el botón de check-in en su dispositivo móvil.",
+        "instructions_body": "Descarga e imprime este código QR y colócalo en un lugar visible en la recepción. Los huéspedes podrán escanearlo con la app de TravelHub para desbloquear el botón de check-in en su dispositivo móvil.",
         "print_btn": "Imprimir",
         "download_btn": "Descargar",
         "regenerate_btn": "Regenerar QR",
