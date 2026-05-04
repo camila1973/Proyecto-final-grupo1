@@ -199,12 +199,18 @@ function ReservationCard({ item, onCancel, onCompletePayment, onCheckin, isOnlin
             <Text variant="bodySmall" style={{ color: theme.colors.onSurface, fontWeight: '600' }}>
               {formatDate(item.checkIn)}
             </Text>
+            <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>
+              {t('bookings.checkInTime')}
+            </Text>
           </View>
           <Text style={{ color: theme.colors.outline }}>→</Text>
           <View style={styles.dateBlock}>
             <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>{t('bookings.checkOut')}</Text>
             <Text variant="bodySmall" style={{ color: theme.colors.onSurface, fontWeight: '600' }}>
               {formatDate(item.checkOut)}
+            </Text>
+            <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>
+              {t('bookings.checkOutTime')}
             </Text>
           </View>
           <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant, marginLeft: 'auto' }}>
