@@ -695,6 +695,7 @@ describe("ReservationsService", () => {
         fareCalculator as any,
         reservationsRepo as any,
         inventoryClient as any,
+        notificationClient as any,
         holdsService as any,
         publisher as any,
       );
@@ -726,6 +727,7 @@ describe("ReservationsService", () => {
         fareCalculator as any,
         reservationsRepo as any,
         inventoryClient as any,
+        notificationClient as any,
         holdsService as any,
         publisher as any,
       );
