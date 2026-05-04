@@ -1,4 +1,4 @@
-import { render, waitFor } from '@testing-library/react';
+import { act, render, waitFor } from '@testing-library/react';
 import { RouterProvider } from '@tanstack/react-router';
 import { createAppRouter } from './router';
 
@@ -34,7 +34,9 @@ describe('router', () => {
     const router = createAppRouter();
     render(<RouterProvider router={router} />);
 
-    await router.navigate({ to: '/search', search: {} as never });
+    await act(async () => {
+      await router.navigate({ to: '/search', search: {} as never });
+    });
 
     expect(router.state.location.search).toEqual({
       city: '',
@@ -49,10 +51,12 @@ describe('router', () => {
     const router = createAppRouter();
     render(<RouterProvider router={router} />);
 
-    await router.navigate({
-      to: '/properties/$propertyId',
-      params: { propertyId: 'prop_1' },
-      search: {} as never,
+    await act(async () => {
+      await router.navigate({
+        to: '/properties/$propertyId',
+        params: { propertyId: 'prop_1' },
+        search: {} as never,
+      });
     });
 
     expect(router.state.location.search).toEqual({
@@ -66,7 +70,9 @@ describe('router', () => {
     const router = createAppRouter();
     render(<RouterProvider router={router} />);
 
-    await router.navigate({ to: '/booking/confirmation', search: { reservationId: '' } });
+    await act(async () => {
+      await router.navigate({ to: '/booking/confirmation', search: { reservationId: '' } });
+    });
     expect(router.state.location.search).toEqual({
       reservationId: '',
     });

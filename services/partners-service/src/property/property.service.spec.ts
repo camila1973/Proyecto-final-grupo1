@@ -187,6 +187,130 @@ describe("PropertyService", () => {
       expect(result.reservations[0].guestName).toBe("—");
       expect(result.reservations[0].guestEmail).toBe("—");
     });
+
+    it("filters by status when provided", async () => {
+      const data: ReservationDto[] = [
+        makeReservation({
+          id: "r1",
+          propertyId: "prop-A",
+          status: "confirmed",
+        }),
+        makeReservation({
+          id: "r2",
+          propertyId: "prop-A",
+          status: "checked_in",
+        }),
+        makeReservation({
+          id: "r3",
+          propertyId: "prop-A",
+          status: "cancelled",
+        }),
+      ];
+      const svc = makeSvc(makeBookingClient(data), makeInventoryClient());
+      const result = await svc.getPropertyReservations(
+        "partner-1",
+        "prop-A",
+        "2026-03",
+        null,
+        "confirmed",
+        null,
+        null,
+      );
+      expect(result.reservations).toHaveLength(1);
+      expect(result.reservations[0].id).toBe("r1");
+    });
+
+    it("filters by reservationId (partial, case-insensitive) when provided", async () => {
+      const data: ReservationDto[] = [
+        makeReservation({ id: "ABC123", propertyId: "prop-A" }),
+        makeReservation({ id: "XYZ999", propertyId: "prop-A" }),
+      ];
+      const svc = makeSvc(makeBookingClient(data), makeInventoryClient());
+      const result = await svc.getPropertyReservations(
+        "partner-1",
+        "prop-A",
+        "2026-03",
+        null,
+        null,
+        "abc",
+        null,
+      );
+      expect(result.reservations).toHaveLength(1);
+      expect(result.reservations[0].id).toBe("ABC123");
+    });
+
+    it("filters by guestName (partial, case-insensitive) when provided", async () => {
+      const data: ReservationDto[] = [
+        makeReservation({
+          id: "r1",
+          propertyId: "prop-A",
+          guestInfo: {
+            firstName: "Carlos",
+            lastName: "Garcia",
+            email: "c@e.com",
+          },
+        }),
+        makeReservation({
+          id: "r2",
+          propertyId: "prop-A",
+          guestInfo: { firstName: "Ana", lastName: "López", email: "a@e.com" },
+        }),
+      ];
+      const svc = makeSvc(makeBookingClient(data), makeInventoryClient());
+      const result = await svc.getPropertyReservations(
+        "partner-1",
+        "prop-A",
+        "2026-03",
+        null,
+        null,
+        null,
+        "carlos",
+      );
+      expect(result.reservations).toHaveLength(1);
+      expect(result.reservations[0].id).toBe("r1");
+    });
+
+    it("returns all reservations when all filters are null", async () => {
+      const data: ReservationDto[] = [
+        makeReservation({
+          id: "r1",
+          propertyId: "prop-A",
+          status: "confirmed",
+        }),
+        makeReservation({
+          id: "r2",
+          propertyId: "prop-A",
+          status: "checked_in",
+        }),
+      ];
+      const svc = makeSvc(makeBookingClient(data), makeInventoryClient());
+      const result = await svc.getPropertyReservations(
+        "partner-1",
+        "prop-A",
+        "2026-03",
+        null,
+        null,
+        null,
+        null,
+      );
+      expect(result.reservations).toHaveLength(2);
+    });
+
+    it("includes filter values in the response envelope", async () => {
+      const svc = makeSvc(makeBookingClient([]), makeInventoryClient());
+      const result = await svc.getPropertyReservations(
+        "partner-1",
+        "prop-A",
+        "2026-03",
+        null,
+        "confirmed",
+        "ABC",
+        "carlos",
+      );
+      expect(result.status).toBe("confirmed");
+      expect(result.reservationId).toBe("ABC");
+      expect(result.guestName).toBe("carlos");
+    });
   });
 
   describe("getPropertySummary", () => {

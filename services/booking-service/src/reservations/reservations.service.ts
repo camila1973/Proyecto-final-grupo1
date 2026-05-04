@@ -12,6 +12,7 @@ import {
   FareBreakdown,
 } from "../fare/fare-calculator.service.js";
 import { InventoryClient } from "../clients/inventory.client.js";
+import { NotificationClient } from "../clients/notification.client.js";
 import { PartnersClient } from "../clients/partners.client.js";
 import { ReservationsRepository } from "./reservations.repository.js";
 import { HoldsService } from "./holds.service.js";
@@ -21,6 +22,11 @@ import {
   GuestInfoDto,
   PreviewReservationDto,
 } from "./dto/create-reservation.dto.js";
+import type { GuestInfo } from "../database/database.types.js";
+
+function guestFirstName(guestInfo: GuestInfo | null): string {
+  return guestInfo?.firstName?.trim() || "huésped";
+}
 
 @Injectable()
 export class ReservationsService {
@@ -30,6 +36,7 @@ export class ReservationsService {
     private readonly fareCalculator: FareCalculatorService,
     private readonly reservationsRepo: ReservationsRepository,
     private readonly inventoryClient: InventoryClient,
+    private readonly notificationClient: NotificationClient,
     private readonly holdsService: HoldsService,
     private readonly publisher: EventsPublisher,
     private readonly partnersClient: PartnersClient,
@@ -347,7 +354,96 @@ export class ReservationsService {
     }
 
     const updated = await this.reservationsRepo.checkin(id);
+    this.publisher.publish("booking.checked_in", {
+      routingKey: "booking.checked_in",
+      reservationId: updated.id,
+      partnerId: updated.partner_id,
+      propertyId: updated.property_id,
+      bookerId: updated.booker_id,
+      guestInfo: updated.guest_info,
+      checkIn: updated.check_in,
+      checkedInAt: updated.checked_in_at,
+      timestamp: new Date().toISOString(),
+    });
     return this.reservationsRepo.toResponse(updated);
+  }
+
+  async checkOut(id: string) {
+    const row = await this.reservationsRepo.checkOut(id);
+    this.notifyGuest(row.guest_info, row.booker_id, {
+      subject: "Check-out completado",
+      message: `Hola ${guestFirstName(row.guest_info)}, tu check-out ha sido completado. ¡Gracias por tu estadía!`,
+    });
+    return this.reservationsRepo.toResponse(row);
+  }
+
+  async partnerConfirm(id: string) {
+    const row = await this.reservationsRepo.partnerConfirm(id);
+    try {
+      await this.inventoryClient.confirmHold(
+        row.room_id,
+        row.check_in,
+        row.check_out,
+      );
+    } catch (err) {
+      this.logger.warn(
+        `Failed to confirm hold in inventory for reservation ${id}: ${err}`,
+      );
+    }
+    this.notifyGuest(row.guest_info, row.booker_id, {
+      subject: "Reserva confirmada",
+      message: `Hola ${guestFirstName(row.guest_info)}, tu reserva ha sido confirmada por el hotel.`,
+    });
+    return this.reservationsRepo.toResponse(row);
+  }
+
+  async partnerCancel(id: string, reason: string) {
+    const { row, priorStatus } = await this.reservationsRepo.partnerCancel(
+      id,
+      reason,
+    );
+
+    try {
+      if (priorStatus === "confirmed" || priorStatus === "checked_in") {
+        await this.inventoryClient.release(
+          row.room_id,
+          row.check_in,
+          row.check_out,
+        );
+      } else if (priorStatus === "submitted") {
+        await this.inventoryClient.unhold(
+          row.room_id,
+          row.check_in,
+          row.check_out,
+        );
+      }
+    } catch (err) {
+      this.logger.warn(
+        `Failed to update inventory after partner-cancel for reservation ${id}: ${err}`,
+      );
+    }
+
+    this.notifyGuest(row.guest_info, row.booker_id, {
+      subject: "Reserva cancelada",
+      message: `Hola ${guestFirstName(row.guest_info)}, tu reserva ha sido cancelada por el hotel. Motivo: ${reason}.`,
+    });
+    return this.reservationsRepo.toResponse(row);
+  }
+
+  private notifyGuest(
+    guestInfo: GuestInfo | null,
+    userId: string,
+    { subject, message }: { subject: string; message: string },
+  ): void {
+    const to = guestInfo?.email ?? "";
+    if (!to) return;
+    this.notificationClient
+      .send({ userId, to, channel: "email", subject, message })
+      .catch((err) => {
+        this.logger.warn(
+          `Failed to send notification to userId=${userId}: ${err}`,
+        );
+      });
   }
 
   async confirm(id: string) {

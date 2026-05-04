@@ -1,4 +1,9 @@
-import { NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+  UnauthorizedException,
+} from "@nestjs/common";
 import { ReservationsService } from "./reservations.service.js";
 import { FareBreakdown } from "../fare/fare-calculator.service.js";
 
@@ -82,7 +87,13 @@ describe("ReservationsService", () => {
     cancel: jest.Mock;
     expire: jest.Mock;
     rehold: jest.Mock;
+    checkin: jest.Mock;
+    checkOut: jest.Mock;
+    partnerConfirm: jest.Mock;
+    partnerCancel: jest.Mock;
   };
+  let notificationClient: { send: jest.Mock };
+  let partnersClient: { getCheckinKey: jest.Mock };
   let inventoryClient: {
     getRoomLocation: jest.Mock;
     getRoomDetails: jest.Mock;
@@ -123,6 +134,8 @@ describe("ReservationsService", () => {
         .mockResolvedValue({ holdId: HOLD_ID, expiresAt: HOLD_EXPIRES_AT }),
       release: jest.fn().mockResolvedValue(undefined),
     };
+    notificationClient = { send: jest.fn().mockResolvedValue(undefined) };
+    partnersClient = { getCheckinKey: jest.fn().mockResolvedValue("test-key") };
     reservationsRepo = {
       insert: jest.fn().mockResolvedValue(row),
       findAll: jest.fn().mockResolvedValue([row, row]),
@@ -138,13 +151,24 @@ describe("ReservationsService", () => {
       cancel: jest.fn(),
       expire: jest.fn().mockResolvedValue(makeRow({ status: "expired" })),
       rehold: jest.fn().mockResolvedValue(row),
+      checkin: jest.fn().mockResolvedValue(makeRow({ status: "checked_in" })),
+      checkOut: jest.fn().mockResolvedValue(makeRow({ status: "checked_out" })),
+      partnerConfirm: jest
+        .fn()
+        .mockResolvedValue(makeRow({ status: "confirmed" })),
+      partnerCancel: jest.fn().mockResolvedValue({
+        row: makeRow({ status: "cancelled" }),
+        priorStatus: "confirmed",
+      }),
     };
     service = new ReservationsService(
       fareCalculator as any,
       reservationsRepo as any,
       inventoryClient as any,
+      notificationClient as any,
       holdsService as any,
       { publish: jest.fn() } as any,
+      partnersClient as any,
     );
   });
 
@@ -679,6 +703,7 @@ describe("ReservationsService", () => {
         fareCalculator as any,
         reservationsRepo as any,
         inventoryClient as any,
+        notificationClient as any,
         holdsService as any,
         publisher as any,
       );
@@ -710,6 +735,7 @@ describe("ReservationsService", () => {
         fareCalculator as any,
         reservationsRepo as any,
         inventoryClient as any,
+        notificationClient as any,
         holdsService as any,
         publisher as any,
       );
@@ -782,6 +808,260 @@ describe("ReservationsService", () => {
 
       await expect(service.rehold("res-uuid")).rejects.toThrow(
         NotFoundException,
+      );
+    });
+  });
+
+  // ─── checkin ────────────────────────────────────────────────────────────────
+
+  describe("checkin", () => {
+    const TODAY = new Date().toISOString().slice(0, 10);
+    const TOMORROW = new Date(Date.now() + 86_400_000)
+      .toISOString()
+      .slice(0, 10);
+    const CONFIRMED_ROW = makeRow({
+      status: "confirmed",
+      booker_id: "booker-uuid",
+      check_in: TODAY,
+      check_out: TOMORROW,
+    });
+
+    beforeEach(() => {
+      reservationsRepo.findById = jest.fn().mockResolvedValue(CONFIRMED_ROW);
+      reservationsRepo.checkin = jest
+        .fn()
+        .mockResolvedValue(makeRow({ status: "checked_in" }));
+      partnersClient.getCheckinKey = jest.fn().mockResolvedValue("test-key-64");
+    });
+
+    it("validates key and returns mapped response", async () => {
+      const result = await service.checkin(
+        "res-uuid",
+        "test-key-64",
+        "booker-uuid",
+      );
+
+      expect(reservationsRepo.checkin).toHaveBeenCalledWith("res-uuid");
+      expect(result).toEqual({ id: "res-uuid" });
+    });
+
+    it("throws ForbiddenException when bookerId does not match", async () => {
+      await expect(
+        service.checkin("res-uuid", "test-key-64", "wrong-booker"),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it("throws BadRequestException when reservation is not confirmed", async () => {
+      reservationsRepo.findById = jest
+        .fn()
+        .mockResolvedValue(
+          makeRow({ status: "held", check_in: TODAY, check_out: TOMORROW }),
+        );
+
+      await expect(
+        service.checkin("res-uuid", "test-key-64", "booker-uuid"),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it("throws UnauthorizedException when key does not match", async () => {
+      await expect(
+        service.checkin("res-uuid", "wrong-key", "booker-uuid"),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it("throws NotFoundException when no active key exists for the property", async () => {
+      partnersClient.getCheckinKey = jest.fn().mockResolvedValue(null);
+
+      await expect(
+        service.checkin("res-uuid", "test-key-64", "booker-uuid"),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  // ─── checkOut ───────────────────────────────────────────────────────────────
+
+  describe("checkOut", () => {
+    it("calls repo.checkOut and returns mapped response", async () => {
+      const checkedOutRow = makeRow({ status: "checked_out" });
+      reservationsRepo.checkOut = jest.fn().mockResolvedValue(checkedOutRow);
+
+      const result = await service.checkOut("res-uuid");
+
+      expect(reservationsRepo.checkOut).toHaveBeenCalledWith("res-uuid");
+      expect(reservationsRepo.toResponse).toHaveBeenCalledWith(checkedOutRow);
+      expect(result).toEqual({ id: checkedOutRow.id });
+    });
+
+    it("sends a notification to the guest after check-out", async () => {
+      const checkedOutRow = makeRow({ status: "checked_out" });
+      reservationsRepo.checkOut = jest.fn().mockResolvedValue(checkedOutRow);
+
+      await service.checkOut("res-uuid");
+
+      expect(notificationClient.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: checkedOutRow.booker_id,
+          to: checkedOutRow.guest_info.email,
+          channel: "email",
+          subject: "Check-out completado",
+        }),
+      );
+    });
+  });
+
+  // ─── partnerConfirm ─────────────────────────────────────────────────────────
+
+  describe("partnerConfirm", () => {
+    it("confirms the reservation and returns mapped response", async () => {
+      const confirmedRow = makeRow({ status: "confirmed" });
+      reservationsRepo.partnerConfirm = jest
+        .fn()
+        .mockResolvedValue(confirmedRow);
+
+      const result = await service.partnerConfirm("res-uuid");
+
+      expect(reservationsRepo.partnerConfirm).toHaveBeenCalledWith("res-uuid");
+      expect(reservationsRepo.toResponse).toHaveBeenCalledWith(confirmedRow);
+      expect(result).toEqual({ id: confirmedRow.id });
+    });
+
+    it("confirms the inventory hold after updating the DB", async () => {
+      const confirmedRow = makeRow({ status: "confirmed" });
+      reservationsRepo.partnerConfirm = jest
+        .fn()
+        .mockResolvedValue(confirmedRow);
+
+      await service.partnerConfirm("res-uuid");
+
+      expect(inventoryClient.confirmHold).toHaveBeenCalledWith(
+        confirmedRow.room_id,
+        confirmedRow.check_in,
+        confirmedRow.check_out,
+      );
+    });
+
+    it("does not rethrow when inventory confirmHold fails", async () => {
+      reservationsRepo.partnerConfirm = jest
+        .fn()
+        .mockResolvedValue(makeRow({ status: "confirmed" }));
+      inventoryClient.confirmHold.mockRejectedValue(
+        new Error("inventory down"),
+      );
+
+      await expect(service.partnerConfirm("res-uuid")).resolves.not.toThrow();
+    });
+
+    it("sends a confirmation notification to the guest", async () => {
+      const confirmedRow = makeRow({ status: "confirmed" });
+      reservationsRepo.partnerConfirm = jest
+        .fn()
+        .mockResolvedValue(confirmedRow);
+
+      await service.partnerConfirm("res-uuid");
+
+      expect(notificationClient.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: confirmedRow.booker_id,
+          channel: "email",
+          subject: "Reserva confirmada",
+        }),
+      );
+    });
+  });
+
+  // ─── partnerCancel ──────────────────────────────────────────────────────────
+
+  describe("partnerCancel", () => {
+    it("cancels the reservation and returns mapped response", async () => {
+      const cancelledRow = makeRow({ status: "cancelled" });
+      reservationsRepo.partnerCancel = jest
+        .fn()
+        .mockResolvedValue({ row: cancelledRow, priorStatus: "confirmed" });
+
+      const result = await service.partnerCancel("res-uuid", "overbooking");
+
+      expect(reservationsRepo.partnerCancel).toHaveBeenCalledWith(
+        "res-uuid",
+        "overbooking",
+      );
+      expect(reservationsRepo.toResponse).toHaveBeenCalledWith(cancelledRow);
+      expect(result).toEqual({ id: cancelledRow.id });
+    });
+
+    it("releases inventory when prior status was confirmed", async () => {
+      const cancelledRow = makeRow({ status: "cancelled" });
+      reservationsRepo.partnerCancel = jest
+        .fn()
+        .mockResolvedValue({ row: cancelledRow, priorStatus: "confirmed" });
+
+      await service.partnerCancel("res-uuid", "overbooking");
+
+      expect(inventoryClient.release).toHaveBeenCalledWith(
+        cancelledRow.room_id,
+        cancelledRow.check_in,
+        cancelledRow.check_out,
+      );
+      expect(inventoryClient.unhold).not.toHaveBeenCalled();
+    });
+
+    it("releases inventory when prior status was checked_in", async () => {
+      const cancelledRow = makeRow({ status: "cancelled" });
+      reservationsRepo.partnerCancel = jest
+        .fn()
+        .mockResolvedValue({ row: cancelledRow, priorStatus: "checked_in" });
+
+      await service.partnerCancel("res-uuid", "emergency");
+
+      expect(inventoryClient.release).toHaveBeenCalledWith(
+        cancelledRow.room_id,
+        cancelledRow.check_in,
+        cancelledRow.check_out,
+      );
+    });
+
+    it("unholds inventory when prior status was submitted", async () => {
+      const cancelledRow = makeRow({ status: "cancelled" });
+      reservationsRepo.partnerCancel = jest
+        .fn()
+        .mockResolvedValue({ row: cancelledRow, priorStatus: "submitted" });
+
+      await service.partnerCancel("res-uuid", "overbooking");
+
+      expect(inventoryClient.unhold).toHaveBeenCalledWith(
+        cancelledRow.room_id,
+        cancelledRow.check_in,
+        cancelledRow.check_out,
+      );
+      expect(inventoryClient.release).not.toHaveBeenCalled();
+    });
+
+    it("does not rethrow when inventory update fails", async () => {
+      reservationsRepo.partnerCancel = jest.fn().mockResolvedValue({
+        row: makeRow({ status: "cancelled" }),
+        priorStatus: "confirmed",
+      });
+      inventoryClient.release.mockRejectedValue(new Error("inventory down"));
+
+      await expect(
+        service.partnerCancel("res-uuid", "overbooking"),
+      ).resolves.not.toThrow();
+    });
+
+    it("sends a cancellation notification to the guest with the reason", async () => {
+      const cancelledRow = makeRow({ status: "cancelled" });
+      reservationsRepo.partnerCancel = jest
+        .fn()
+        .mockResolvedValue({ row: cancelledRow, priorStatus: "confirmed" });
+
+      await service.partnerCancel("res-uuid", "overbooking");
+
+      expect(notificationClient.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: cancelledRow.booker_id,
+          channel: "email",
+          subject: "Reserva cancelada",
+          message: expect.stringContaining("overbooking"),
+        }),
       );
     });
   });
