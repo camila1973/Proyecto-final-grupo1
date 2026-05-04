@@ -706,6 +706,7 @@ describe("ReservationsService", () => {
         notificationClient as any,
         holdsService as any,
         publisher as any,
+        partnersClient as any,
       );
 
       await service.confirm("res-uuid");
@@ -738,6 +739,7 @@ describe("ReservationsService", () => {
         notificationClient as any,
         holdsService as any,
         publisher as any,
+        partnersClient as any,
       );
 
       await service.confirm("res-uuid");
