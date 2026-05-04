@@ -143,6 +143,7 @@ describe("ReservationsService", () => {
       fareCalculator as any,
       reservationsRepo as any,
       inventoryClient as any,
+      { send: jest.fn().mockResolvedValue(undefined) } as any,
       holdsService as any,
       { publish: jest.fn() } as any,
     );
@@ -679,6 +680,7 @@ describe("ReservationsService", () => {
         fareCalculator as any,
         reservationsRepo as any,
         inventoryClient as any,
+        { send: jest.fn().mockResolvedValue(undefined) } as any,
         holdsService as any,
         publisher as any,
       );
@@ -710,6 +712,7 @@ describe("ReservationsService", () => {
         fareCalculator as any,
         reservationsRepo as any,
         inventoryClient as any,
+        { send: jest.fn().mockResolvedValue(undefined) } as any,
         holdsService as any,
         publisher as any,
       );
