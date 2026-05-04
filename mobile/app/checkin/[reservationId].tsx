@@ -54,7 +54,7 @@ export default function CheckinScanScreen() {
 
     try {
       const res = await fetch(
-        `${API_BASE}/api/booking/reservations/${reservationId}/checkin`,
+        `${API_BASE}/api/booking/reservations/${reservationId}/check-in`,
         {
           method: 'PATCH',
           headers: {

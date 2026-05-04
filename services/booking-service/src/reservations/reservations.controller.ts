@@ -82,7 +82,7 @@ export class ReservationsController {
     return this.reservationsService.confirm(id);
   }
 
-  @Patch(":id/checkin")
+  @Patch(":id/check-in")
   @HttpCode(HttpStatus.OK)
   checkin(@Param("id") id: string, @Body() dto: CheckinDto) {
     return this.reservationsService.checkin(id, dto.checkInKey, dto.bookerId);
