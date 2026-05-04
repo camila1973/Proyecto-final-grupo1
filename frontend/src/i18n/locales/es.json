@@ -474,7 +474,22 @@
       "edit_property": "Editar propiedad",
       "generate_qr": "Generar QR",
       "load_error": "No se pudieron cargar las propiedades. Inténtalo más tarde.",
-      "login_required": "Inicia sesión como socio para ver tus propiedades."
+      "login_required": "Inicia sesión como socio para ver tus propiedades.",
+      "qr": {
+        "page_title": "Código QR de check-in",
+        "back": "← Volver al dashboard",
+        "card_subtitle": "Escanea para hacer check-in",
+        "instructions_title": "Instrucciones para el gerente",
+        "instructions_body": "Descarga o imprime este código QR y colócalo en un lugar visible en la recepción. Los huéspedes podrán escanearlo con la app de TravelHub para desbloquear el botón de check-in en su dispositivo móvil.",
+        "print_btn": "Imprimir",
+        "download_btn": "Descargar",
+        "regenerate_btn": "Regenerar QR",
+        "regenerate_dialog_title": "¿Regenerar el código QR?",
+        "regenerate_dialog_body": "Se generará una nueva llave. El QR anterior dejará de funcionar. Esta acción no se puede deshacer.",
+        "regenerate_cancel": "Cancelar",
+        "regenerate_confirm": "Sí, regenerar",
+        "load_error": "No se pudo cargar el código QR. Inténtalo más tarde."
+      }
     },
     "org_dashboard": {
       "org_label": "Organización",

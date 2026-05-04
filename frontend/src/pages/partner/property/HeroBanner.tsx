@@ -2,6 +2,7 @@ import { Box, Button, IconButton, Tooltip, Typography } from '@mui/material';
 import QrCode2Icon from '@mui/icons-material/QrCode2';
 import EditIcon from '@mui/icons-material/Edit';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from '@tanstack/react-router';
 import PageHero from '../../../components/PageHero';
 
 interface HeroBannerProps {
@@ -12,6 +13,7 @@ interface HeroBannerProps {
 
 export default function HeroBanner({ propertyName, propertyId, address }: HeroBannerProps) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
 
   return (
     <PageHero>
@@ -30,7 +32,10 @@ export default function HeroBanner({ propertyName, propertyId, address }: HeroBa
               {propertyName}
             </Typography>
             <Tooltip title={t('partner.properties.generate_qr')} placement="right">
-              <IconButton color="inherit">
+              <IconButton
+                color="inherit"
+                onClick={() => navigate({ to: '/mi-hotel/$propertyId/qr', params: { propertyId } })}
+              >
                 <QrCode2Icon />
               </IconButton>
             </Tooltip>
