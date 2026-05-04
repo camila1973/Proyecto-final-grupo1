@@ -168,9 +168,6 @@ describe("PropertyService", () => {
         "prop-A",
         "2026-03",
         null,
-        null,
-        null,
-        null,
       );
       expect(result.reservations).toHaveLength(1);
       expect(result.reservations[0].id).toBe("r1");
@@ -185,9 +182,6 @@ describe("PropertyService", () => {
         "partner-1",
         "prop-A",
         "2026-03",
-        null,
-        null,
-        null,
         null,
       );
       expect(result.reservations[0].guestName).toBe("—");
