@@ -245,7 +245,7 @@ export default function SearchResultsScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#f8f9ff',
+    backgroundColor: '#fff',
   },
   resultsBar: {
     flexDirection: 'row',
@@ -322,6 +322,8 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 16,
     paddingBottom: Platform.OS === 'ios' ? 32 : 16,
+    backgroundColor: '#f8f9ff',
+    flexGrow: 1,
   },
 });
 
