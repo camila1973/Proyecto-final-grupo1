@@ -1,8 +1,8 @@
 import { FlatList, View, StyleSheet } from 'react-native';
-import { Appbar, Text, List, Divider , useTheme } from 'react-native-paper';
+import { Text, List, Divider , useTheme } from 'react-native-paper';
 import { AppCard } from '@/components/ui/app-card';
+import { AppHeader } from '@/components/ui/app-header';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 
 const MOCK_NOTIFICATIONS = [
@@ -13,15 +13,11 @@ const MOCK_NOTIFICATIONS = [
 
 export default function NotificationsScreen() {
   const theme = useTheme();
-  const router = useRouter();
   const { t } = useTranslation();
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: '#f8f9ff' }]} edges={['bottom']}>
-      <Appbar.Header style={{ backgroundColor: theme.colors.surface, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
-        <Appbar.BackAction onPress={() => router.back()} />
-        <Appbar.Content title={t('notifications.title')} style={{ alignItems: 'center' }} />
-      </Appbar.Header>
+      <AppHeader title={t('notifications.title')} showBack />
 
       <AppCard style={styles.card}>
         {MOCK_NOTIFICATIONS.length === 0 ? (

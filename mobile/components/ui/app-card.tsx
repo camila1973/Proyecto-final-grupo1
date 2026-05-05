@@ -1,9 +1,11 @@
 import { View, StyleSheet } from 'react-native';
 import type { ViewProps } from 'react-native';
+import { useTheme } from 'react-native-paper';
 
 export function AppCard({ style, children, ...props }: ViewProps) {
+  const theme = useTheme();
   return (
-    <View style={[styles.card, style]} {...props}>
+    <View style={[styles.card, { backgroundColor: theme.colors.surface }, style]} {...props}>
       {children}
     </View>
   );
@@ -11,8 +13,7 @@ export function AppCard({ style, children, ...props }: ViewProps) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: '#e5e7eb',
   },

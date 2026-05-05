@@ -7,13 +7,14 @@ import {
   View,
 } from 'react-native';
 import {
-  Appbar,
   ActivityIndicator,
   Button,
   Chip,
   Text,
   useTheme,
 } from 'react-native-paper';
+import { AppHeader } from '@/components/ui/app-header';
+import { AppCard } from '@/components/ui/app-card';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -61,7 +62,7 @@ function StatusChip({ status, t }: { status: ReservationStatus; t: (k: string) =
 // ─── Date helpers ──────────────────────────────────────────────────────────────
 
 function formatDate(iso: string): string {
-  const [y, m, d] = iso.split('-');
+  const [y, m, d] = iso.slice(0, 10).split('-');
   return `${d}/${m}/${y}`;
 }
 
@@ -158,10 +159,10 @@ function ReservationCard({ item, onCancel, onCompletePayment, onCheckin, isOnlin
   const canCancel = isOnline && (item.status === 'confirmed' || item.status === 'held');
   const isHeld = item.status === 'held';
   const today = new Date().toISOString().slice(0, 10);
-  const canCheckin = isOnline && item.status === 'confirmed' && today >= item.checkIn && today < item.checkOut;
+  const canCheckin = isOnline && item.status === 'confirmed' && today >= item.checkIn.slice(0, 10) && today < item.checkOut.slice(0, 10);
 
   return (
-    <View style={[styles.card, { backgroundColor: theme.colors.surface }]}>
+    <AppCard style={{ overflow: 'hidden' }}>
       {/* Thumbnail */}
       {snap?.propertyThumbnailUrl ? (
         <Image
@@ -199,12 +200,18 @@ function ReservationCard({ item, onCancel, onCompletePayment, onCheckin, isOnlin
             <Text variant="bodySmall" style={{ color: theme.colors.onSurface, fontWeight: '600' }}>
               {formatDate(item.checkIn)}
             </Text>
+            <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>
+              {t('bookings.checkInTime')}
+            </Text>
           </View>
           <Text style={{ color: theme.colors.outline }}>→</Text>
           <View style={styles.dateBlock}>
             <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>{t('bookings.checkOut')}</Text>
             <Text variant="bodySmall" style={{ color: theme.colors.onSurface, fontWeight: '600' }}>
               {formatDate(item.checkOut)}
+            </Text>
+            <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>
+              {t('bookings.checkOutTime')}
             </Text>
           </View>
           <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant, marginLeft: 'auto' }}>
@@ -235,7 +242,6 @@ function ReservationCard({ item, onCancel, onCompletePayment, onCheckin, isOnlin
               mode="contained"
               compact
               onPress={() => onCheckin(item.id)}
-              buttonColor="#0369a1"
               style={styles.completeBtn}
               labelStyle={{ fontSize: 12 }}
             >
@@ -255,7 +261,7 @@ function ReservationCard({ item, onCancel, onCompletePayment, onCheckin, isOnlin
           ) : null}
         </View>
       </View>
-    </View>
+    </AppCard>
   );
 }
 
@@ -350,7 +356,7 @@ export default function TripsScreen() {
 
   const handleCheckin = useCallback(
     (id: string) => {
-      router.push(`/checkin/${id}`);
+      router.push(`/booking/${id}/check-in`);
     },
     [router],
   );
@@ -485,9 +491,7 @@ export default function TripsScreen() {
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]} edges={[]}>
-      <Appbar.Header style={{ backgroundColor: theme.colors.surface, borderBottomWidth: 1, borderBottomColor: theme.colors.outline }}>
-        <Appbar.Content title={t('bookings.title')} titleStyle={styles.appbarTitle} />
-      </Appbar.Header>
+      <AppHeader title={t('bookings.title')} />
 
       <View style={styles.flex}>
         {renderContent()}
@@ -504,7 +508,6 @@ export default function TripsScreen() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1 },
   flex: { flex: 1 },
-  appbarTitle: { fontWeight: '700', fontSize: 18 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   loadingText: { marginTop: 12 },
   emptyDesc: { marginTop: 8, textAlign: 'center' },
@@ -516,15 +519,6 @@ const styles = StyleSheet.create({
   },
 
   // Card
-  card: {
-    borderRadius: 14,
-    overflow: 'hidden',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-  },
   thumbnail: { width: '100%', height: 140 },
   thumbnailPlaceholder: {},
   cardBody: { padding: 14 },

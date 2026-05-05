@@ -3,6 +3,8 @@ import {
   cacheReservations,
   getCachedReservations,
   syncReservations,
+  checkIn,
+  CheckInError,
   ACTIVE_STATUSES,
   type Reservation,
 } from './bookings-cache';
@@ -176,6 +178,69 @@ describe('syncReservations', () => {
     mockFetchError(503);
     await expect(syncReservations('tok', 'user-001')).rejects.toThrow();
     expect(mockAsyncStorage.setItem).not.toHaveBeenCalled();
+  });
+});
+
+// ─── checkIn ──────────────────────────────────────────────────────────────────
+
+describe('checkIn', () => {
+  it('calls PATCH /api/booking/reservations/:id/check-in', async () => {
+    mockFetchOk({});
+    await checkIn('res-001', 'token-abc', 'key-xyz', 'user-001');
+    const [url, init] = (global.fetch as jest.Mock).mock.calls[0] as [string, RequestInit];
+    expect(url).toContain('/api/booking/reservations/res-001/check-in');
+    expect(init.method).toBe('PATCH');
+  });
+
+  it('sends Authorization header with Bearer token', async () => {
+    mockFetchOk({});
+    await checkIn('res-001', 'token-abc', 'key-xyz', 'user-001');
+    const [, init] = (global.fetch as jest.Mock).mock.calls[0] as [string, RequestInit];
+    expect((init.headers as Record<string, string>)['Authorization']).toBe('Bearer token-abc');
+  });
+
+  it('sends checkInKey and bookerId in the request body', async () => {
+    mockFetchOk({});
+    await checkIn('res-001', 'token-abc', 'key-xyz', 'user-001');
+    const [, init] = (global.fetch as jest.Mock).mock.calls[0] as [string, RequestInit];
+    expect(JSON.parse(init.body as string)).toEqual({ checkInKey: 'key-xyz', bookerId: 'user-001' });
+  });
+
+  it('resolves without a value on success', async () => {
+    mockFetchOk({});
+    await expect(checkIn('res-001', 'token-abc', 'key-xyz', 'user-001')).resolves.toBeUndefined();
+  });
+
+  it('throws CheckInError with status 401 when the key is invalid', async () => {
+    mockFetchError(401);
+    await expect(checkIn('res-001', 'token-abc', 'bad-key', 'user-001')).rejects.toThrow(CheckInError);
+    await expect(checkIn('res-001', 'token-abc', 'bad-key', 'user-001')).rejects.toMatchObject({ status: 401 });
+  });
+
+  it('throws CheckInError with status 400 when outside the check-in window', async () => {
+    mockFetchError(400);
+    await expect(checkIn('res-001', 'token-abc', 'key-xyz', 'user-001')).rejects.toMatchObject({ status: 400 });
+  });
+
+  it('throws CheckInError with status 500 on server error', async () => {
+    mockFetchError(500);
+    await expect(checkIn('res-001', 'token-abc', 'key-xyz', 'user-001')).rejects.toMatchObject({ status: 500 });
+  });
+});
+
+// ─── CheckInError ─────────────────────────────────────────────────────────────
+
+describe('CheckInError', () => {
+  it('is an instance of Error', () => {
+    expect(new CheckInError(401)).toBeInstanceOf(Error);
+  });
+
+  it('exposes the HTTP status code', () => {
+    expect(new CheckInError(400).status).toBe(400);
+  });
+
+  it('has name CheckInError', () => {
+    expect(new CheckInError(500).name).toBe('CheckInError');
   });
 });
 

@@ -6,9 +6,8 @@ import {
   FlatList,
   StyleSheet,
   ActivityIndicator,
-  Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { searchProperties } from '@/services/search-api';
@@ -113,6 +112,7 @@ function EmptyState({ city }: { city: string }) {
 
 export default function SearchResultsScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{
     city: string;
     checkIn?: string;
@@ -173,7 +173,7 @@ export default function SearchResultsScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
       {/* Results bar with back + city info */}
       <View style={styles.resultsBar}>
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} testID="btn-back">
@@ -227,7 +227,7 @@ export default function SearchResultsScreen() {
               }
             />
           )}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 24 }]}
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.3}
           ListFooterComponent={
@@ -245,7 +245,7 @@ export default function SearchResultsScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#f8f9ff',
+    backgroundColor: '#fff',
   },
   resultsBar: {
     flexDirection: 'row',
@@ -321,7 +321,8 @@ const styles = StyleSheet.create({
   list: {
     padding: 16,
     gap: 16,
-    paddingBottom: Platform.OS === 'ios' ? 32 : 16,
+    backgroundColor: '#f8f9ff',
+    flexGrow: 1,
   },
 });
 

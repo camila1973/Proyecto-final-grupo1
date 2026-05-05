@@ -1,7 +1,7 @@
 import { StyleSheet, View } from 'react-native';
-import { Appbar, List, Divider, Portal, Modal, Text, TouchableRipple , useTheme } from 'react-native-paper';
+import { List, Divider, Portal, Modal, Text, TouchableRipple , useTheme } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { AppHeader } from '@/components/ui/app-header';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import i18n, { saveLanguage } from '@/i18n';
@@ -36,7 +36,6 @@ type PickerConfig = {
 
 export default function SettingsScreen() {
   const theme = useTheme();
-  const router = useRouter();
   const { t } = useTranslation();
 
   const [language, setLanguage] = useState(i18n.language.split('-')[0] ?? 'es');
@@ -64,10 +63,7 @@ export default function SettingsScreen() {
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: '#f8f9ff' }]} edges={['bottom']}>
-      <Appbar.Header style={{ backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
-        <Appbar.BackAction onPress={() => router.back()} />
-        <Appbar.Content title={t('settings.title')} style={{ alignItems: 'center' }} />
-      </Appbar.Header>
+      <AppHeader title={t('settings.title')} showBack />
 
       <AppCard style={styles.card}>
       <List.Section style={{ marginBottom: 0 }}>

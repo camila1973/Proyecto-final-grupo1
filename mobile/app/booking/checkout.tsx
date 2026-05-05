@@ -8,7 +8,6 @@ import {
   View,
 } from 'react-native';
 import {
-  Appbar,
   ActivityIndicator,
   Button,
   Surface,
@@ -16,6 +15,7 @@ import {
   TextInput,
   useTheme,
 } from 'react-native-paper';
+import { AppHeader } from '@/components/ui/app-header';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -370,10 +370,7 @@ export default function CheckoutScreen() {
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]} edges={['top']}>
-      <Appbar.Header style={{ backgroundColor: theme.colors.surface }}>
-        <Appbar.BackAction onPress={() => router.back()} />
-        <Appbar.Content title={t('checkout.title')} titleStyle={{ fontWeight: '700' }} />
-      </Appbar.Header>
+      <AppHeader title={t('checkout.title')} showBack />
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}

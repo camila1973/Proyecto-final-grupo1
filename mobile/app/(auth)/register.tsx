@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
-import { Text, Appbar, TextInput, Button, HelperText, Checkbox , useTheme } from 'react-native-paper';
+import { Text, TextInput, Button, HelperText, Checkbox , useTheme } from 'react-native-paper';
+import { AppHeader } from '@/components/ui/app-header';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -75,10 +76,7 @@ export default function RegisterScreen() {
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: '#f8f9ff' }]} edges={['bottom']}>
-      <Appbar.Header style={{ backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
-        <Appbar.BackAction onPress={() => router.back()} />
-        <Appbar.Content title={t('register.title')} style={{ alignItems: 'center' }} />
-      </Appbar.Header>
+      <AppHeader title={t('register.title')} showBack />
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
