@@ -14,6 +14,7 @@ import {
   useTheme,
 } from 'react-native-paper';
 import { AppHeader } from '@/components/ui/app-header';
+import { AppCard } from '@/components/ui/app-card';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -161,7 +162,7 @@ function ReservationCard({ item, onCancel, onCompletePayment, onCheckin, isOnlin
   const canCheckin = isOnline && item.status === 'confirmed' && today >= item.checkIn.slice(0, 10) && today < item.checkOut.slice(0, 10);
 
   return (
-    <View style={[styles.card, { backgroundColor: theme.colors.surface }]}>
+    <AppCard style={{ overflow: 'hidden' }}>
       {/* Thumbnail */}
       {snap?.propertyThumbnailUrl ? (
         <Image
@@ -260,7 +261,7 @@ function ReservationCard({ item, onCancel, onCompletePayment, onCheckin, isOnlin
           ) : null}
         </View>
       </View>
-    </View>
+    </AppCard>
   );
 }
 
@@ -518,15 +519,6 @@ const styles = StyleSheet.create({
   },
 
   // Card
-  card: {
-    borderRadius: 14,
-    overflow: 'hidden',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-  },
   thumbnail: { width: '100%', height: 140 },
   thumbnailPlaceholder: {},
   cardBody: { padding: 14 },
