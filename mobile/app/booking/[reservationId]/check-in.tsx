@@ -8,10 +8,8 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 
 import { useAuth } from '@/hooks/useAuth';
-import { syncReservations } from '@/services/bookings-cache';
+import { checkIn, CheckInError, syncReservations } from '@/services/bookings-cache';
 import { AppHeader } from '@/components/ui/app-header';
-
-const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
 
 type ScanState = 'scanning' | 'processing' | 'success' | 'error';
 
@@ -55,36 +53,21 @@ export default function CheckinScanScreen() {
     setScanState('processing');
 
     try {
-      const res = await fetch(
-        `${API_BASE}/api/booking/reservations/${reservationId}/check-in`,
-        {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ checkInKey, bookerId: user?.id }),
-        },
-      );
-
-      if (res.ok) {
-        if (token && user) {
-          await syncReservations(token, user.id).catch(() => undefined);
-        }
-        setScanState('success');
-      } else {
-        const status = res.status;
-        if (status === 401) {
+      await checkIn(reservationId, token!, checkInKey, user?.id ?? '');
+      await syncReservations(token!, user!.id).catch(() => undefined);
+      setScanState('success');
+    } catch (err) {
+      if (err instanceof CheckInError) {
+        if (err.status === 401) {
           setErrorMessage(t('checkin.errorInvalidKey'));
-        } else if (status === 400) {
+        } else if (err.status === 400) {
           setErrorMessage(t('checkin.errorWindow'));
         } else {
           setErrorMessage(t('checkin.errorGeneric'));
         }
-        setScanState('error');
+      } else {
+        setErrorMessage(t('checkin.errorGeneric'));
       }
-    } catch {
-      setErrorMessage(t('checkin.errorGeneric'));
       setScanState('error');
     }
   }

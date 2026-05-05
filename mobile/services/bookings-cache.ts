@@ -69,3 +69,30 @@ export async function syncReservations(token: string, userId: string): Promise<R
   await cacheReservations(reservations);
   return reservations;
 }
+
+export class CheckInError extends Error {
+  constructor(public readonly status: number) {
+    super(`Check-in failed: ${status}`);
+    this.name = 'CheckInError';
+  }
+}
+
+export async function checkIn(
+  reservationId: string,
+  token: string,
+  checkInKey: string,
+  bookerId: string,
+): Promise<void> {
+  const res = await fetch(
+    `${API_BASE}/api/booking/reservations/${reservationId}/check-in`,
+    {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ checkInKey, bookerId }),
+    },
+  );
+  if (!res.ok) throw new CheckInError(res.status);
+}
