@@ -241,7 +241,6 @@ function ReservationCard({ item, onCancel, onCompletePayment, onCheckin, isOnlin
               mode="contained"
               compact
               onPress={() => onCheckin(item.id)}
-              buttonColor="#0369a1"
               style={styles.completeBtn}
               labelStyle={{ fontSize: 12 }}
             >
