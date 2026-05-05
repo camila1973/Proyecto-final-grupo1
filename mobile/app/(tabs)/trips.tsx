@@ -7,13 +7,13 @@ import {
   View,
 } from 'react-native';
 import {
-  Appbar,
   ActivityIndicator,
   Button,
   Chip,
   Text,
   useTheme,
 } from 'react-native-paper';
+import { AppHeader } from '@/components/ui/app-header';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -356,7 +356,7 @@ export default function TripsScreen() {
 
   const handleCheckin = useCallback(
     (id: string) => {
-      router.push(`/checkin/${id}`);
+      router.push(`/booking/${id}/check-in`);
     },
     [router],
   );
@@ -491,9 +491,7 @@ export default function TripsScreen() {
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]} edges={[]}>
-      <Appbar.Header style={{ backgroundColor: theme.colors.surface, borderBottomWidth: 1, borderBottomColor: theme.colors.outline }}>
-        <Appbar.Content title={t('bookings.title')} titleStyle={styles.appbarTitle} />
-      </Appbar.Header>
+      <AppHeader title={t('bookings.title')} />
 
       <View style={styles.flex}>
         {renderContent()}
@@ -510,7 +508,6 @@ export default function TripsScreen() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1 },
   flex: { flex: 1 },
-  appbarTitle: { fontWeight: '700', fontSize: 18 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   loadingText: { marginTop: 12 },
   emptyDesc: { marginTop: 8, textAlign: 'center' },

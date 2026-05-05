@@ -1,14 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Button, Text, useTheme } from 'react-native-paper';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 
 import { useAuth } from '@/hooks/useAuth';
 import { syncReservations } from '@/services/bookings-cache';
+import { AppHeader } from '@/components/ui/app-header';
 
 const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
 
@@ -20,6 +21,7 @@ export default function CheckinScanScreen() {
   const theme = useTheme();
   const router = useRouter();
   const { token, user } = useAuth();
+  const insets = useSafeAreaInsets();
 
   const [permission, requestPermission] = useCameraPermissions();
   const [scanState, setScanState] = useState<ScanState>('scanning');
@@ -95,19 +97,19 @@ export default function CheckinScanScreen() {
 
   if (!permission) {
     return (
-      <>
-        <Stack.Screen options={{ title: t('checkin.title'), headerBackTitle: '' }} />
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]} edges={['bottom']}>
+        <AppHeader title={t('checkin.title')} showBack />
         <View style={styles.centered}>
           <ActivityIndicator animating />
         </View>
-      </>
+      </SafeAreaView>
     );
   }
 
   if (!permission.granted) {
     return (
-      <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
-        <Stack.Screen options={{ title: t('checkin.title'), headerBackTitle: '' }} />
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]} edges={['bottom']}>
+        <AppHeader title={t('checkin.title')} showBack />
         <View style={styles.centered}>
           <MaterialIcons name="no-photography" size={48} color={theme.colors.onSurfaceVariant} />
           <Text variant="bodyMedium" style={[styles.permissionText, { color: theme.colors.onSurface }]}>
@@ -123,8 +125,8 @@ export default function CheckinScanScreen() {
 
   if (scanState === 'success') {
     return (
-      <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
-        <Stack.Screen options={{ title: t('checkin.title'), headerBackTitle: '' }} />
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]} edges={['bottom']}>
+        <AppHeader title={t('checkin.title')} showBack />
         <View style={styles.centered}>
           <MaterialIcons name="check-circle" size={72} color="#16a34a" />
           <Text variant="headlineSmall" style={[styles.resultTitle, { color: theme.colors.onSurface }]}>
@@ -147,8 +149,8 @@ export default function CheckinScanScreen() {
 
   if (scanState === 'error') {
     return (
-      <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
-        <Stack.Screen options={{ title: t('checkin.title'), headerBackTitle: '' }} />
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]} edges={['bottom']}>
+        <AppHeader title={t('checkin.title')} showBack />
         <View style={styles.centered}>
           <MaterialIcons name="error-outline" size={72} color={theme.colors.error} />
           <Text variant="headlineSmall" style={[styles.resultTitle, { color: theme.colors.onSurface }]}>
@@ -167,7 +169,6 @@ export default function CheckinScanScreen() {
 
   return (
     <View style={styles.flex}>
-      <Stack.Screen options={{ headerShown: false }} />
       <CameraView
         style={StyleSheet.absoluteFillObject}
         facing="back"
@@ -176,7 +177,7 @@ export default function CheckinScanScreen() {
       />
 
       {/* Overlay */}
-      <SafeAreaView style={styles.overlay} edges={['top', 'bottom']}>
+      <SafeAreaView style={styles.overlay} edges={['top']}>
         <View style={styles.topBar}>
           <Button
             textColor="#fff"
@@ -198,7 +199,7 @@ export default function CheckinScanScreen() {
           <View style={[styles.corner, styles.cornerBR]} />
         </View>
 
-        <View style={styles.bottomHint}>
+        <View style={[styles.bottomHint, { paddingBottom: insets.bottom + 16 }]}>
           {scanState === 'processing' ? (
             <ActivityIndicator animating color="#fff" />
           ) : (
@@ -257,12 +258,11 @@ const styles = StyleSheet.create({
   cornerBR: { bottom: 0, right: 0, borderBottomWidth: CORNER_THICKNESS, borderRightWidth: CORNER_THICKNESS },
 
   bottomHint: {
-    paddingBottom: 40,
+    paddingTop: 16,
     paddingHorizontal: 24,
     backgroundColor: 'rgba(0,0,0,0.45)',
     width: '100%',
     alignItems: 'center',
-    paddingTop: 16,
   },
   hintText: { color: '#fff', textAlign: 'center' },
 });

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
-import { Text, Appbar, TextInput, Button, HelperText, useTheme } from 'react-native-paper';
+import { Text, TextInput, Button, HelperText, useTheme } from 'react-native-paper';
+import { AppHeader } from '@/components/ui/app-header';
 import { AppCard } from '@/components/ui/app-card';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -38,10 +39,7 @@ export default function LoginMfaScreen() {
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: '#f8f9ff' }]} edges={['bottom']}>
-      <Appbar.Header style={{ backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
-        <Appbar.BackAction onPress={() => router.back()} />
-        <Appbar.Content title={t('loginMfa.title')} style={{ alignItems: 'center' }} />
-      </Appbar.Header>
+      <AppHeader title={t('loginMfa.title')} showBack />
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">

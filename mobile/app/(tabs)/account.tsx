@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { StyleSheet, KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
-import { Text, Appbar, TextInput, Button, HelperText, TouchableRipple, Icon , useTheme } from 'react-native-paper';
+import { Text, TextInput, Button, HelperText, TouchableRipple, Icon , useTheme } from 'react-native-paper';
+import { AppHeader } from '@/components/ui/app-header';
 import { AppCard } from '@/components/ui/app-card';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -47,9 +48,7 @@ export default function AccountScreen() {
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: '#f8f9ff' }]} edges={[]}>
-      <Appbar.Header style={{ backgroundColor: theme.colors.surface, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
-        <Appbar.Content title={t('account.title')} style={{ alignItems: 'center' }} />
-      </Appbar.Header>
+      <AppHeader title={t('account.title')} />
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
