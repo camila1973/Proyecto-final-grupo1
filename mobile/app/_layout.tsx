@@ -1,4 +1,4 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -9,7 +9,6 @@ import { StripeProvider } from '@/services/stripe-wrapper';
 import '@/i18n';
 
 import { AnimatedSplash } from '@/components/animated-splash';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { paperTheme } from '@/constants/paper-theme';
 import { AuthProvider } from '@/context/AuthContext';
 
@@ -22,7 +21,6 @@ export const unstable_settings = {
 };
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
   const [appReady, setAppReady] = useState(false);
   const [splashDone, setSplashDone] = useState(false);
 
@@ -36,7 +34,7 @@ export default function RootLayout() {
     <StripeProvider publishableKey={STRIPE_PK} merchantIdentifier="merchant.com.travelhub">
     <AuthProvider>
     <PaperProvider theme={paperTheme}>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+      <ThemeProvider value={DefaultTheme}>
         <Stack>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="(auth)" options={{ headerShown: false }} />
