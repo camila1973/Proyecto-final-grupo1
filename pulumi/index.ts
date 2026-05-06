@@ -421,8 +421,12 @@ for (const svc of MICROSERVICES) {
   }
 
   if (svc.name === "booking-service") {
-    plainEnv["REDIS_URL"]             = pulumi.interpolate`redis://${redisInstance.host}:6379`;
-    plainEnv["INVENTORY_SERVICE_URL"] = pulumi.interpolate`${runners["inventory-service"]!.uri}`;
+    plainEnv["REDIS_URL"]                 = pulumi.interpolate`redis://${redisInstance.host}:6379`;
+    plainEnv["INVENTORY_SERVICE_URL"]     = pulumi.interpolate`${runners["inventory-service"]!.uri}`;
+    plainEnv["NOTIFICATION_SERVICE_URL"]  = pulumi.interpolate`${runners["notification-service"]!.uri}`;
+    plainEnv["PARTNERS_SERVICE_URL"]      = pulumi.interpolate`${runners["partners-service"]!.uri}`;
+    plainEnv["MESSAGE_BROKER_TYPE"]       = "pubsub";
+    plainEnv["PUBSUB_PROJECT_ID"]         = PROJECT;
   }
 
   if (svc.name === "payment-service") {
