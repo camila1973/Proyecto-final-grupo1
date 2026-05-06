@@ -1,0 +1,50 @@
+# E2E scenario: New user registration happy path.
+# Launches app cold, navigates to Register, fills all fields,
+# accepts terms, submits, asserts the success screen.
+---
+appId: com.travelhub.mobile
+env:
+  FIRST_NAME: "Test"
+  LAST_NAME: "User"
+  TEST_PASSWORD: "Test1234!"
+---
+- runScript: "../utils/generate-test-email.js"
+
+- launchApp:
+    clearState: true
+
+- assertVisible:
+    id: "input-city"
+
+- runFlow: "../utils/navigate-to-register.yaml"
+
+- tapOn:
+    id: "input-firstName"
+- inputText: ${FIRST_NAME}
+
+- tapOn:
+    id: "input-lastName"
+- inputText: ${LAST_NAME}
+
+- tapOn:
+    id: "input-email"
+- inputText: ${output.TEST_EMAIL}
+
+- tapOn:
+    id: "input-password"
+- inputText: ${TEST_PASSWORD}
+
+- tapOn:
+    id: "input-confirmPassword"
+- inputText: ${TEST_PASSWORD}
+- tapOn:
+    id: "register-title"
+
+- tapOn:
+    id: "checkbox-terms"
+
+- tapOn:
+    id: "btn-submit"
+
+- assertVisible:
+    id: "btn-explore"

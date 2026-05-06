@@ -155,6 +155,10 @@ Prettier settings: single quotes, trailing commas.
 
 `.github/workflows/ci.yml` runs on push to `main` and on pull requests. It uses `nx affected` for lint/build/test so only changed projects run in CI. Node is provided via `.nvmrc` (Node 24). `NX_DAEMON=false` and `NX_TUI=false` are set for CI stability. Uses `pnpm install --frozen-lockfile` for clean installs.
 
+## E2E Testing (Mobile — Maestro)
+
+> Use `/e2e` for Maestro prerequisites, flow layout, run commands, and key design decisions (deep-link navigation, unique email generation, iOS keyboard quirks).
+
 ## Performance Testing
 
 > Use `/perf-test` for k6 scenario layout, local run commands, and GitHub Actions workflow details.

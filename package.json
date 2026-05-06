@@ -42,7 +42,10 @@
     "infra:up": "cd pulumi && pulumi up",
     "infra:down": "cd pulumi && pulumi destroy",
     "deploy:frontend": "node scripts/deploy-frontend.mjs",
-    "prepare": "husky"
+    "prepare": "husky",
+    "e2e:mobile": "maestro test e2e/mobile/flows/ --config e2e/mobile/config.yaml",
+    "e2e:mobile:register": "maestro test e2e/mobile/flows/register.yaml --config e2e/mobile/config.yaml",
+    "e2e:mobile:record": "maestro record e2e/mobile/flows/register.yaml --config e2e/mobile/config.yaml"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
