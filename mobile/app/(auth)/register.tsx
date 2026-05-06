@@ -82,7 +82,7 @@ export default function RegisterScreen() {
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <AppCard style={styles.card}>
 
-          <Text variant="headlineSmall" style={[styles.heading, { color: theme.colors.onBackground }]}>
+          <Text variant="headlineSmall" style={[styles.heading, { color: theme.colors.onBackground }]} testID="register-title">
             {t('register.heading')}
           </Text>
 
@@ -97,6 +97,7 @@ export default function RegisterScreen() {
               onChangeText={update('firstName')}
               mode="outlined"
               autoCapitalize="words"
+              autoCorrect={false}
               left={<TextInput.Icon icon="account-outline" />}
               style={styles.input}
               error={!!errors.firstName}
@@ -112,6 +113,7 @@ export default function RegisterScreen() {
               onChangeText={update('lastName')}
               mode="outlined"
               autoCapitalize="words"
+              autoCorrect={false}
               left={<TextInput.Icon icon="account-outline" />}
               style={styles.input}
               error={!!errors.lastName}
@@ -144,6 +146,7 @@ export default function RegisterScreen() {
               onChangeText={update('password')}
               mode="outlined"
               secureTextEntry={!showPassword}
+              textContentType="oneTimeCode"
               autoCapitalize="none"
               autoCorrect={false}
               left={<TextInput.Icon icon="lock-outline" />}
@@ -151,6 +154,7 @@ export default function RegisterScreen() {
                 <TextInput.Icon
                   icon={showPassword ? 'eye-off-outline' : 'eye-outline'}
                   onPress={() => setShowPassword(v => !v)}
+                  testID="btn-toggle-password"
                 />
               }
               style={styles.input}
@@ -167,6 +171,7 @@ export default function RegisterScreen() {
               onChangeText={update('confirmPassword')}
               mode="outlined"
               secureTextEntry={!showConfirm}
+              textContentType="oneTimeCode"
               autoCapitalize="none"
               autoCorrect={false}
               left={<TextInput.Icon icon="lock-check-outline" />}
@@ -174,6 +179,7 @@ export default function RegisterScreen() {
                 <TextInput.Icon
                   icon={showConfirm ? 'eye-off-outline' : 'eye-outline'}
                   onPress={() => setShowConfirm(v => !v)}
+                  testID="btn-toggle-confirm"
                 />
               }
               style={styles.input}
@@ -189,6 +195,7 @@ export default function RegisterScreen() {
               onPress={() => setAccepted(v => !v)}
               color={theme.colors.primary}
               uncheckedColor="#9ca3af"
+              testID="checkbox-terms"
             />
             <Text variant="bodySmall" style={[styles.checkboxLabel, { color: theme.colors.onSurfaceVariant }]}>
               {t('register.acceptTerms')}

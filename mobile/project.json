@@ -57,6 +57,13 @@
         "jestConfig": "mobile/jest.config.js",
         "passWithNoTests": true
       }
+    },
+    "e2e": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "maestro test e2e/mobile/flows/ --config e2e/mobile/config.yaml",
+        "cwd": "{workspaceRoot}"
+      }
     }
   }
 }

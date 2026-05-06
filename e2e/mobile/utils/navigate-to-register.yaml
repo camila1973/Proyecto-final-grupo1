@@ -1,0 +1,12 @@
+# Precondition: app is open on the tabs layout (Search/Home screen visible).
+# Postcondition: Register screen is visible (input-firstName present).
+appId: com.travelhub.mobile
+---
+- openLink: travelhub:///account
+- assertVisible:
+    id: "btn-signup"
+- tapOn:
+    id: "btn-signup"
+- assertVisible:
+    id: "input-firstName"
+- waitForAnimationToEnd
