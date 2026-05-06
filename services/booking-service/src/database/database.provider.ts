@@ -5,8 +5,11 @@ import {
   OnModuleInit,
 } from "@nestjs/common";
 import { Kysely, PostgresDialect, sql } from "kysely";
-import { Pool } from "pg";
+import { Pool, types } from "pg";
 import { Database } from "./database.types.js";
+
+// Return date columns as ISO strings instead of JS Date objects
+types.setTypeParser(1082, (v) => v);
 
 export const KYSELY = "KYSELY";
 
