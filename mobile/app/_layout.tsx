@@ -46,7 +46,7 @@ export default function RootLayout() {
           <Stack.Screen name="booking/confirmation" options={{ headerShown: false }} />
           <Stack.Screen name="booking/[reservationId]/check-in" options={{ headerShown: false }} />
         </Stack>
-        <StatusBar style="auto" />
+        <StatusBar style="dark" />
       </ThemeProvider>
       {!splashDone && (
         <AnimatedSplash appReady={appReady} onAnimationEnd={handleSplashEnd} />
