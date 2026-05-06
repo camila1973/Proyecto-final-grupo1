@@ -14,7 +14,6 @@ import {
   Text,
   TouchableOpacity,
   View,
-  useColorScheme,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from 'react-native';
@@ -315,9 +314,6 @@ export default function PropertyDetailScreen() {
       checkOut?: string;
       guests?: string;
     }>();
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
-
   const [checkIn, setCheckIn] = useState<string>(qIn ?? '');
   const [checkOut, setCheckOut] = useState<string>(qOut ?? '');
   const [guests] = useState<number>(qGuests ? Math.max(1, Number(qGuests)) : 2);
@@ -495,7 +491,7 @@ export default function PropertyDetailScreen() {
 
   if (error || !property) {
     return (
-      <View style={[styles.center, isDark && styles.darkBg]}>
+      <View style={styles.center}>
         <Ionicons name="alert-circle-outline" size={48} color="#dc2626" />
         <Text style={[styles.errorText]}>
           No se pudieron cargar los detalles del hospedaje.
@@ -537,7 +533,7 @@ export default function PropertyDetailScreen() {
   return (
     <View style={{ flex: 1 }}>
       <ScrollView
-        style={[styles.container, isDark && styles.darkBg]}
+        style={styles.container}
         contentContainerStyle={styles.scrollContent}
         refreshControl={
           <RefreshControl
@@ -551,10 +547,10 @@ export default function PropertyDetailScreen() {
         <ImageCarousel images={images} />
 
         <View style={styles.body}>
-          <Text style={[styles.title, isDark && styles.textLight]}>
+          <Text style={styles.title}>
             {property.name.toUpperCase()}
           </Text>
-          <Text style={[styles.address, isDark && styles.textLight]}>
+          <Text style={styles.address}>
             {[property.neighborhood, property.city, property.countryCode]
               .filter(Boolean)
               .join(', ')}{' '}
@@ -563,11 +559,11 @@ export default function PropertyDetailScreen() {
             </Text>
           </Text>
 
-          <Text style={[styles.sectionTitle, isDark && styles.textLight]}>
+          <Text style={styles.sectionTitle}>
             Acerca del hotel
           </Text>
           {description ? (
-            <Text style={[styles.paragraph, isDark && styles.textLight]}>
+            <Text style={styles.paragraph}>
               {displayedDescription}
               {description.length > DESCRIPTION_PREVIEW && (
                 <Text
@@ -583,7 +579,7 @@ export default function PropertyDetailScreen() {
             <Text style={styles.mutedText}>Descripción no disponible.</Text>
           )}
 
-          <Text style={[styles.roomsHeadline, isDark && styles.textLight]}>
+          <Text style={styles.roomsHeadline}>
             <Text style={styles.bold}>
               {rooms.length} {rooms.length === 1 ? 'habitación' : 'habitaciones'}
             </Text>{' '}
@@ -862,11 +858,9 @@ function ReviewsBlock({
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
-  darkBg: { backgroundColor: '#111' },
   scrollContent: { paddingBottom: 32 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12, padding: 24 },
   mutedText: { color: '#6b7280', fontSize: 14 },
-  textLight: { color: '#f3f4f6' },
   errorText: { color: '#dc2626', fontSize: 14, textAlign: 'center' },
   retryBtn: {
     backgroundColor: BRAND,

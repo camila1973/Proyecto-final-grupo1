@@ -250,6 +250,8 @@ services:
       MESSAGE_BROKER_TYPE: rabbitmq
       REDIS_URL: redis://redis:6379
       INVENTORY_SERVICE_URL: http://inventory-service:3003
+      NOTIFICATION_SERVICE_URL: http://notification-service:3006
+      PARTNERS_SERVICE_URL: http://partners-service:3007
     depends_on:
       booking-db:
         condition: service_healthy

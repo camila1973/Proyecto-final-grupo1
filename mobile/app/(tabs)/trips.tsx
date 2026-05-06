@@ -432,7 +432,7 @@ export default function TripsScreen() {
     const heldReservation = reservations.find(r => r.status === 'held');
 
     // Separar reservas en activas y pasadas
-    const ACTIVE_STATUSES: ReservationStatus[] = ['held', 'submitted', 'confirmed'];
+    const ACTIVE_STATUSES: ReservationStatus[] = ['held', 'submitted', 'confirmed', 'checked_in'];
     const PAST_STATUSES: ReservationStatus[] = ['cancelled', 'expired', 'failed'];
     
     const activeReservations = reservations.filter(r => ACTIVE_STATUSES.includes(r.status));
