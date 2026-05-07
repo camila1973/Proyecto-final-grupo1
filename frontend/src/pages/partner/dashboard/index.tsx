@@ -9,7 +9,7 @@ import {
   fetchPartnerProperties,
   fetchPartnerMetrics,
   fetchPropertyMetrics,
-  fetchPartnerPayments,
+  fetchPartnerDisbursement,
 } from '../../../utils/queries';
 import { formatPrice } from '../../../utils/currency';
 import { currentMonth, shiftMonth, formatMonthLabel } from '../../../utils/month';
@@ -19,7 +19,7 @@ import HeroBanner from './HeroBanner';
 import ChartsSection from './ChartsSection';
 import PropertiesSection, { type PropertyRow } from './PropertiesSection';
 import MembersSection from './MembersSection';
-import DisbursementsSection, { type PropertyDisbursementRow } from './DisbursementsSection';
+import DisbursementsSection from './DisbursementsSection';
 import type { PropertyRevenueDataPoint } from '../components/PropertyRevenueChart';
 
 export default function MiHotelPage() {
@@ -58,9 +58,9 @@ export default function MiHotelPage() {
     })),
   });
 
-  const paymentsQuery = useQuery({
-    queryKey: ['partner-payments', partnerId, month],
-    queryFn: () => fetchPartnerPayments(partnerId, month, 1, 500, token!),
+  const disbursementQuery = useQuery({
+    queryKey: ['partner-disbursement', partnerId, month],
+    queryFn: () => fetchPartnerDisbursement(partnerId, month, token!),
     enabled,
   });
 
@@ -92,7 +92,7 @@ export default function MiHotelPage() {
   const aggregate = aggregateQuery.data;
   const metrics = aggregate?.metrics ?? { confirmed: 0, cancelled: 0, revenueUsd: 0, lossesUsd: 0, netUsd: 0 };
   const series = aggregate?.monthlySeries ?? [];
-  const paymentRows = paymentsQuery.data?.rows ?? [];
+  const disbursement = disbursementQuery.data;
 
   const currentOccupancy = (series[series.length - 1]?.occupancyRate ?? 0) * 100;
   const grossRevenue = metrics.revenueUsd;
@@ -137,31 +137,18 @@ export default function MiHotelPage() {
   const nextMonthStr = shiftMonth(month, 1);
   const disbursementLabel = formatMonthLabel(nextMonthStr, language) + ' 1';
 
-  const disbursementByProperty = new Map<string, PropertyDisbursementRow>();
-  for (const r of paymentRows) {
-    const existing = disbursementByProperty.get(r.propertyId);
-    if (existing) {
-      existing.gross += r.totalPaidUsd;
-      existing.commission += -r.commissionUsd;
-      existing.taxes += r.taxesUsd;
-      existing.net += r.earningsUsd;
-    } else {
-      disbursementByProperty.set(r.propertyId, {
-        propertyId: r.propertyId,
-        propertyName: r.propertyName,
-        gross: r.totalPaidUsd,
-        commission: -r.commissionUsd,
-        taxes: r.taxesUsd,
-        net: r.earningsUsd,
-      });
-    }
-  }
-  const disbursementRows = Array.from(disbursementByProperty.values()).sort(
-    (a, b) => b.net - a.net,
-  );
-  const totalNetPayout = disbursementRows.reduce((sum, r) => sum + r.net, 0);
-  const totalCommission = disbursementRows.reduce((sum, r) => sum + r.commission, 0);
+  const disbursementRows = (disbursement?.byProperty ?? []).map((r) => ({
+    propertyId: r.propertyId,
+    propertyName: r.propertyName,
+    gross: r.gross,
+    commission: r.commission,
+    taxes: r.tax,
+    net: r.net,
+  }));
+  const totalNetPayout = disbursement?.totals.net ?? 0;
+  const totalCommission = disbursement?.totals.commission ?? 0;
   const topProperty = disbursementRows[0];
+  const disbursementStatus = disbursement?.status ?? 'projected';
 
   const monthLabel = formatMonthLabel(month, language);
 
@@ -257,6 +244,7 @@ export default function MiHotelPage() {
           currency={currency}
           disbursementLabel={disbursementLabel}
           totalNetPayout={totalNetPayout}
+          status={disbursementStatus}
           onViewHistory={() => navigate({ to: '/mi-hotel/pagos' })}
         />
 

@@ -52,6 +52,50 @@ describe("PaymentClientService", () => {
       stripePaymentIntentId: "pi_123",
       guestEmail: "g@example.com",
       createdAt: "2026-03-01T00:00:00Z",
+      partnerId: null,
+      propertyId: null,
+      propertyName: null,
+      grossAmountUsd: null,
+      taxAmountUsd: null,
+      partnerFeeUsd: null,
+      commissionRate: null,
+      commissionAmountUsd: null,
+      netPayoutUsd: null,
+      capturedAt: null,
+    });
+  });
+
+  it("passes through breakdown fields when present", async () => {
+    global.fetch = mockFetch(true, {
+      id: "pay-2",
+      status: "captured",
+      amountUsd: 100,
+      currency: "USD",
+      stripePaymentIntentId: "pi_xyz",
+      guestEmail: "g@example.com",
+      createdAt: "2026-03-01T00:00:00Z",
+      partnerId: "p-1",
+      propertyId: "prop-A",
+      propertyName: "Hotel A",
+      grossAmountUsd: 100,
+      taxAmountUsd: 19,
+      partnerFeeUsd: 5,
+      commissionRate: 0.2,
+      commissionAmountUsd: 20,
+      netPayoutUsd: 80,
+      capturedAt: "2026-03-02T00:00:00Z",
+    }) as typeof fetch;
+    const svc = new PaymentClientService();
+    const result = await svc.getStatus("r2");
+    expect(result).toMatchObject({
+      partnerId: "p-1",
+      propertyId: "prop-A",
+      propertyName: "Hotel A",
+      grossAmountUsd: 100,
+      taxAmountUsd: 19,
+      commissionAmountUsd: 20,
+      netPayoutUsd: 80,
+      capturedAt: "2026-03-02T00:00:00Z",
     });
   });
 

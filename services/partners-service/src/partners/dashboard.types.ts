@@ -34,6 +34,18 @@ export interface PaymentDto {
   guestEmail: string | null;
   stripePaymentIntentId: string | null;
   createdAt: string;
+  // Snapshot fields (populated from payment-service when available; null on
+  // payments created before the breakdown migration).
+  partnerId?: string | null;
+  propertyId?: string | null;
+  propertyName?: string | null;
+  grossAmountUsd?: number | null;
+  taxAmountUsd?: number | null;
+  partnerFeeUsd?: number | null;
+  commissionRate?: number | null;
+  commissionAmountUsd?: number | null;
+  netPayoutUsd?: number | null;
+  capturedAt?: string | null;
 }
 
 export interface MetricCard {
@@ -79,6 +91,37 @@ export interface PaymentRow {
   commissionUsd: number;
   earningsUsd: number;
   createdAt: string;
+}
+
+export interface DisbursementPropertyRollup {
+  propertyId: string;
+  propertyName: string;
+  gross: number;
+  tax: number;
+  partnerFee: number;
+  commission: number;
+  net: number;
+  paymentCount: number;
+}
+
+export interface DisbursementDto {
+  partnerId: string;
+  periodStart: string;
+  periodEnd: string;
+  scheduledFor: string;
+  currency: string;
+  status: "pending" | "paid" | "failed" | "projected";
+  paidAt: string | null;
+  externalTransferRef: string | null;
+  totals: {
+    gross: number;
+    tax: number;
+    partnerFee: number;
+    commission: number;
+    net: number;
+  };
+  byProperty: DisbursementPropertyRollup[];
+  paymentCount: number;
 }
 
 export interface PaymentsResponse {

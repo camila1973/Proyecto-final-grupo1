@@ -10,6 +10,7 @@ import { BookingClient } from "../clients/booking.client.js";
 import { NotificationClient } from "../clients/notification.client.js";
 import { UpstreamServiceError } from "../clients/upstream-service.error.js";
 import { InitiatePaymentDto } from "./dto/initiate-payment.dto.js";
+import { CommissionRulesService } from "../commission-rules/commission-rules.service.js";
 
 // Minimal shapes extracted from the Stripe SDK objects we actually use.
 // Avoids namespace access issues under nodenext module resolution.
@@ -30,6 +31,7 @@ export class PaymentsService {
     private readonly repo: PaymentsRepository,
     private readonly booking: BookingClient,
     private readonly notifications: NotificationClient,
+    private readonly commissionRules: CommissionRulesService,
   ) {
     const secretKey = process.env.STRIPE_SECRET_KEY ?? "";
     this.stripe = new Stripe(secretKey);
@@ -46,6 +48,27 @@ export class PaymentsService {
     if (isRetry) {
       await this.booking.reholdReservation(dto.reservationId);
     }
+
+    // Snapshot the fare breakdown from booking-service so each payment row
+    // is self-contained for audit. We use this data to compute commission
+    // here rather than recomputing from totals at read time.
+    const reservation = await this.booking.getReservation(dto.reservationId);
+    if (
+      Math.round(reservation.grandTotalUsd * 100) !==
+      Math.round(dto.amountUsd * 100)
+    ) {
+      throw new BadRequestException(
+        `Amount ${dto.amountUsd} does not match reservation total ${reservation.grandTotalUsd}`,
+      );
+    }
+
+    const checkInDate = new Date().toISOString().slice(0, 10);
+    const commissionRate = await this.commissionRules.resolveRate(
+      reservation.partnerId,
+      checkInDate,
+    );
+    const commissionAmount = round2(reservation.grandTotalUsd * commissionRate);
+    const netPayout = round2(reservation.grandTotalUsd - commissionAmount);
 
     const intent = await this.stripe.paymentIntents.create({
       amount: amountCents,
@@ -69,6 +92,16 @@ export class PaymentsService {
       status: "pending",
       failure_reason: null,
       guest_email: dto.guestEmail,
+      partner_id: reservation.partnerId,
+      property_id: reservation.propertyId,
+      property_name: reservation.snapshot?.propertyName ?? "",
+      gross_amount_usd: dto.amountUsd,
+      tax_amount_usd: reservation.taxTotalUsd,
+      partner_fee_usd: reservation.feeTotalUsd,
+      commission_rate: commissionRate,
+      commission_amount_usd: commissionAmount,
+      net_payout_usd: netPayout,
+      fare_snapshot: reservation.fareBreakdown ?? undefined,
     });
 
     return {
@@ -109,8 +142,43 @@ export class PaymentsService {
       );
     }
     return {
+      id: payment.id,
+      reservationId: payment.reservation_id,
       status: payment.status,
       failureReason: payment.failure_reason ?? undefined,
+      amountUsd: payment.amount_usd ? parseFloat(payment.amount_usd) : 0,
+      currency: payment.currency,
+      stripePaymentIntentId: payment.stripe_payment_intent_id,
+      guestEmail: payment.guest_email,
+      partnerId: payment.partner_id,
+      propertyId: payment.property_id,
+      propertyName: payment.property_name,
+      grossAmountUsd: payment.gross_amount_usd
+        ? parseFloat(payment.gross_amount_usd)
+        : null,
+      taxAmountUsd: payment.tax_amount_usd
+        ? parseFloat(payment.tax_amount_usd)
+        : null,
+      partnerFeeUsd: payment.partner_fee_usd
+        ? parseFloat(payment.partner_fee_usd)
+        : null,
+      commissionRate: payment.commission_rate
+        ? parseFloat(payment.commission_rate)
+        : null,
+      commissionAmountUsd: payment.commission_amount_usd
+        ? parseFloat(payment.commission_amount_usd)
+        : null,
+      netPayoutUsd: payment.net_payout_usd
+        ? parseFloat(payment.net_payout_usd)
+        : null,
+      capturedAt:
+        payment.captured_at instanceof Date
+          ? payment.captured_at.toISOString()
+          : (payment.captured_at ?? null),
+      createdAt:
+        payment.created_at instanceof Date
+          ? payment.created_at.toISOString()
+          : String(payment.created_at),
     };
   }
 
@@ -125,6 +193,7 @@ export class PaymentsService {
     await this.repo.updateByIntentId(intent.id, {
       status: "captured",
       stripe_payment_method_id: paymentMethodId,
+      captured_at: new Date(),
     });
 
     await this.booking
@@ -172,4 +241,8 @@ export class PaymentsService {
         this.logger.error(`Failed to send failure email: ${err}`),
       );
   }
+}
+
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
 }

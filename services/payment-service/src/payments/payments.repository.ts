@@ -45,6 +45,7 @@ export class PaymentsRepository {
       status: string;
       stripe_payment_method_id?: string | null;
       failure_reason?: string | null;
+      captured_at?: Date | null;
     },
   ): Promise<void> {
     await this.db

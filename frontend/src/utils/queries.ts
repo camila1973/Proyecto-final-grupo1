@@ -391,6 +391,51 @@ export async function fetchPartnerPayments(
   return res.json() as Promise<PartnerPayments>;
 }
 
+export interface DisbursementPropertyRollup {
+  propertyId: string;
+  propertyName: string;
+  gross: number;
+  tax: number;
+  partnerFee: number;
+  commission: number;
+  net: number;
+  paymentCount: number;
+}
+
+export interface PartnerDisbursement {
+  partnerId: string;
+  periodStart: string;
+  periodEnd: string;
+  scheduledFor: string;
+  currency: string;
+  status: 'pending' | 'paid' | 'failed' | 'projected';
+  paidAt: string | null;
+  externalTransferRef: string | null;
+  totals: {
+    gross: number;
+    tax: number;
+    partnerFee: number;
+    commission: number;
+    net: number;
+  };
+  byProperty: DisbursementPropertyRollup[];
+  paymentCount: number;
+}
+
+export async function fetchPartnerDisbursement(
+  partnerId: string,
+  month: string,
+  token: string,
+): Promise<PartnerDisbursement> {
+  const params = new URLSearchParams({ month });
+  const res = await fetch(
+    `${API_BASE}/api/partners/partners/${encodeURIComponent(partnerId)}/disbursements?${params}`,
+    { headers: { Authorization: `Bearer ${token}` } },
+  );
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json() as Promise<PartnerDisbursement>;
+}
+
 export interface PartnerPropertySummary {
   propertyId: string;
   propertyName: string;

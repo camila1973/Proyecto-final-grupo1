@@ -24,14 +24,24 @@ export interface PropertyDisbursementRow {
   net: number;
 }
 
+type DisbursementStatus = 'pending' | 'paid' | 'failed' | 'projected';
+
 interface DisbursementsSectionProps {
   rows: PropertyDisbursementRow[];
   month: string;
   currency: Currency;
   disbursementLabel: string;
   totalNetPayout: number;
+  status: DisbursementStatus;
   onViewHistory: () => void;
 }
+
+const STATUS_STYLES: Record<DisbursementStatus, { bg: string; color: string; border: string }> = {
+  projected: { bg: '#FFF8E5', color: '#633806', border: '#F5C842' },
+  pending: { bg: '#FFF8E5', color: '#633806', border: '#F5C842' },
+  paid: { bg: '#E6F4EA', color: '#1F5E32', border: '#7CC793' },
+  failed: { bg: '#FCEBEB', color: '#A32D2D', border: '#E89494' },
+};
 
 export default function DisbursementsSection({
   rows,
@@ -39,9 +49,12 @@ export default function DisbursementsSection({
   currency,
   disbursementLabel,
   totalNetPayout,
+  status,
   onViewHistory,
 }: DisbursementsSectionProps) {
   const { t } = useTranslation();
+  const statusStyle = STATUS_STYLES[status];
+  const statusLabel = t(`partner.org_dashboard.status_${status}`);
   return (
     <Box id="disbursements">
       <SectionHeader
@@ -99,12 +112,12 @@ export default function DisbursementsSection({
                       <TD>
                         <Chip
                           size="small"
-                          label={t('partner.org_dashboard.status_pending')}
+                          label={statusLabel}
                           sx={{
                             fontSize: 11,
-                            bgcolor: '#FFF8E5',
-                            color: '#633806',
-                            border: '1px solid #F5C842',
+                            bgcolor: statusStyle.bg,
+                            color: statusStyle.color,
+                            border: `1px solid ${statusStyle.border}`,
                             height: 22,
                           }}
                         />

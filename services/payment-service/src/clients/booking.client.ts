@@ -1,11 +1,36 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { UpstreamServiceError } from "./upstream-service.error.js";
 
+export interface ReservationDetails {
+  id: string;
+  partnerId: string;
+  propertyId: string;
+  status: string;
+  grandTotalUsd: number;
+  taxTotalUsd: number;
+  feeTotalUsd: number;
+  fareBreakdown: Record<string, unknown> | null;
+  snapshot: { propertyName?: string } | null;
+}
+
 @Injectable()
 export class BookingClient {
   private readonly logger = new Logger(BookingClient.name);
   private readonly baseUrl =
     process.env.BOOKING_SERVICE_URL ?? "http://localhost:3004";
+
+  async getReservation(reservationId: string): Promise<ReservationDetails> {
+    try {
+      const res = await fetch(`${this.baseUrl}/reservations/${reservationId}`);
+      if (!res.ok) {
+        throw new UpstreamServiceError("booking-service", `HTTP ${res.status}`);
+      }
+      return (await res.json()) as ReservationDetails;
+    } catch (err) {
+      if (err instanceof UpstreamServiceError) throw err;
+      throw new UpstreamServiceError("booking-service", err);
+    }
+  }
 
   async submitReservation(reservationId: string): Promise<void> {
     try {
