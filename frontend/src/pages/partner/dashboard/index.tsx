@@ -19,7 +19,7 @@ import HeroBanner from './HeroBanner';
 import ChartsSection from './ChartsSection';
 import PropertiesSection, { type PropertyRow } from './PropertiesSection';
 import MembersSection from './MembersSection';
-import DisbursementsSection from './DisbursementsSection';
+import DisbursementsSection, { type PropertyDisbursementRow } from './DisbursementsSection';
 import type { PropertyRevenueDataPoint } from '../components/PropertyRevenueChart';
 
 export default function MiHotelPage() {
@@ -60,7 +60,7 @@ export default function MiHotelPage() {
 
   const paymentsQuery = useQuery({
     queryKey: ['partner-payments', partnerId, month],
-    queryFn: () => fetchPartnerPayments(partnerId, month, 1, 20, token!),
+    queryFn: () => fetchPartnerPayments(partnerId, month, 1, 500, token!),
     enabled,
   });
 
@@ -92,12 +92,10 @@ export default function MiHotelPage() {
   const aggregate = aggregateQuery.data;
   const metrics = aggregate?.metrics ?? { confirmed: 0, cancelled: 0, revenueUsd: 0, lossesUsd: 0, netUsd: 0 };
   const series = aggregate?.monthlySeries ?? [];
-  const payments = paymentsQuery.data;
+  const paymentRows = paymentsQuery.data?.rows ?? [];
 
   const currentOccupancy = (series[series.length - 1]?.occupancyRate ?? 0) * 100;
   const grossRevenue = metrics.revenueUsd;
-  const commissionAmount = grossRevenue * 0.2;
-  const netPayout = grossRevenue * 0.8;
 
   const anyPropertyLoading = propertyQueries.some((q) => q.isLoading);
 
@@ -138,7 +136,32 @@ export default function MiHotelPage() {
 
   const nextMonthStr = shiftMonth(month, 1);
   const disbursementLabel = formatMonthLabel(nextMonthStr, language) + ' 1';
-  const totalNetPayout = payments?.rows.reduce((sum, r) => sum + r.earningsUsd, 0) ?? 0;
+
+  const disbursementByProperty = new Map<string, PropertyDisbursementRow>();
+  for (const r of paymentRows) {
+    const existing = disbursementByProperty.get(r.propertyId);
+    if (existing) {
+      existing.gross += r.totalPaidUsd;
+      existing.commission += -r.commissionUsd;
+      existing.taxes += r.taxesUsd;
+      existing.net += r.earningsUsd;
+    } else {
+      disbursementByProperty.set(r.propertyId, {
+        propertyId: r.propertyId,
+        propertyName: r.propertyName,
+        gross: r.totalPaidUsd,
+        commission: -r.commissionUsd,
+        taxes: r.taxesUsd,
+        net: r.earningsUsd,
+      });
+    }
+  }
+  const disbursementRows = Array.from(disbursementByProperty.values()).sort(
+    (a, b) => b.net - a.net,
+  );
+  const totalNetPayout = disbursementRows.reduce((sum, r) => sum + r.net, 0);
+  const totalCommission = disbursementRows.reduce((sum, r) => sum + r.commission, 0);
+  const topProperty = disbursementRows[0];
 
   const monthLabel = formatMonthLabel(month, language);
 
@@ -179,19 +202,26 @@ export default function MiHotelPage() {
             value={formatPrice(grossRevenue, currency)}
           />
           <MetricCard
-            label={t('partner.org_dashboard.metric_commission')}
-            value={formatPrice(-commissionAmount, currency)}
-            subLabel={t('partner.org_dashboard.commission_pct', { pct: 20 })}
+            label={t('partner.org_dashboard.metric_top_property')}
+            value={topProperty?.propertyName || '—'}
+            subLabel={
+              topProperty
+                ? formatPrice(topProperty.net, currency)
+                : t('partner.org_dashboard.metric_top_property_empty')
+            }
           />
           <MetricCard
             label={`${t('partner.org_dashboard.metric_net')} · ${monthLabel}`}
-            value={formatPrice(netPayout, currency)}
-            subLabel={`desembolso: ${disbursementLabel}`}
+            value={formatPrice(totalNetPayout, currency)}
+            subLabel={t('partner.org_dashboard.metric_net_sublabel', {
+              commission: formatPrice(-totalCommission, currency),
+              date: disbursementLabel,
+            })}
           />
         </div>
 
         {/* Disbursement alert */}
-        {payments && payments.rows.length > 0 && (
+        {disbursementRows.length > 0 && (
           <div className="bg-[#E8EFF7] border border-[#85B7EB] rounded-lg px-4 py-2.5 flex items-center gap-3 text-[#0C447C]">
             <span className="shrink-0">ℹ</span>
             <span className="text-xs">
@@ -222,7 +252,7 @@ export default function MiHotelPage() {
         <MembersSection partnerId={partnerId} token={token!} />
 
         <DisbursementsSection
-          payments={payments}
+          rows={disbursementRows}
           month={month}
           currency={currency}
           disbursementLabel={disbursementLabel}

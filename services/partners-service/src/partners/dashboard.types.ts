@@ -66,6 +66,8 @@ export interface PartnerReservation {
 
 export interface PaymentRow {
   reservationId: string;
+  propertyId: string;
+  propertyName: string;
   status: string;
   paymentMethod: string;
   reference: string;

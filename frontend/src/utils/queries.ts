@@ -295,6 +295,8 @@ export interface PropertyReservations {
 
 export interface PartnerPaymentRow {
   reservationId: string;
+  propertyId: string;
+  propertyName: string;
   status: string;
   paymentMethod: string;
   reference: string;

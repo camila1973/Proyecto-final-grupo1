@@ -282,6 +282,8 @@ async function buildPaymentRow(
 
   return {
     reservationId: r.id,
+    propertyId: r.propertyId,
+    propertyName: r.snapshot?.propertyName ?? "",
     status: payment?.status ?? r.status,
     paymentMethod: payment?.stripePaymentIntentId ? "STRIPE" : "—",
     reference: payment?.stripePaymentIntentId ?? "—",

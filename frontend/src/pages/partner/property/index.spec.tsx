@@ -83,6 +83,13 @@ function mockFetch(ok = true) {
         roomType: null,
         reservations: HOTEL_STATE_RESPONSE.reservations,
       };
+    } else if ((url as string).match(/\/properties\/[^/]+\/rooms$/)) {
+      body = {
+        partnerId: 'partner-1',
+        propertyId: 'prop-abc',
+        month: '2026-05',
+        rooms: [],
+      };
     } else if ((url as string).match(/\/properties\/[^/]+$/)) {
       body = PROPERTY_RESPONSE;
     } else {
@@ -154,22 +161,27 @@ describe('PropertyDashboardPage', () => {
 
   it('shows empty state when no reservations', async () => {
     global.fetch = jest.fn().mockImplementation((url: string) => {
-      const body = (url as string).includes('/reservations')
-        ? {
-            partnerId: 'partner-1',
-            propertyId: 'prop-abc',
-            month: '2026-05',
-            roomType: null,
-            reservations: [],
-          }
-        : {
-            partnerId: 'partner-1',
-            propertyId: 'prop-abc',
-            month: '2026-05',
-            roomType: null,
-            metrics: HOTEL_STATE_RESPONSE.metrics,
-            monthlySeries: HOTEL_STATE_RESPONSE.monthlySeries,
-          };
+      let body: unknown;
+      if ((url as string).includes('/reservations')) {
+        body = {
+          partnerId: 'partner-1',
+          propertyId: 'prop-abc',
+          month: '2026-05',
+          roomType: null,
+          reservations: [],
+        };
+      } else if ((url as string).match(/\/properties\/[^/]+\/rooms$/)) {
+        body = { partnerId: 'partner-1', propertyId: 'prop-abc', month: '2026-05', rooms: [] };
+      } else {
+        body = {
+          partnerId: 'partner-1',
+          propertyId: 'prop-abc',
+          month: '2026-05',
+          roomType: null,
+          metrics: HOTEL_STATE_RESPONSE.metrics,
+          monthlySeries: HOTEL_STATE_RESPONSE.monthlySeries,
+        };
+      }
       return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(body) });
     }) as never;
     renderPage();
