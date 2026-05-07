@@ -38,7 +38,7 @@ import ChartsSection from './ChartsSection';
 import { TH, TD } from '../dashboard/ui';
 
 const PAGE_SIZE = 10;
-const ROOM_TYPE_OPTIONS = ['', 'Doble Superior', 'Suite', 'Sencilla', 'Familiar'];
+const ROOM_TYPE_OPTIONS = ['', 'deluxe', 'suite', 'standard', 'junior_suite', 'penthouse'];
 
 const NAV_BTN = { bgcolor: '#1B4F8C', color: '#fff', '&:hover': { bgcolor: '#163d6e' } } as const;
 
