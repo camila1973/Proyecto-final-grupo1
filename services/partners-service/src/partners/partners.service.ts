@@ -20,7 +20,7 @@ import type {
 
 const COMMISSION_RATE = 0.2;
 const TAX_RATE = 0.19;
-const REVENUE_STATUSES = new Set(["confirmed", "submitted"]);
+const REVENUE_STATUSES = new Set(["confirmed", "submitted", "checked_in"]);
 const LOSS_STATUSES = new Set(["cancelled", "failed", "expired"]);
 
 @Injectable()
@@ -178,7 +178,7 @@ function computeMetrics(rows: ReservationDto[]): MetricCard {
   let lossesUsd = 0;
   for (const r of rows) {
     const total = r.grandTotalUsd ?? 0;
-    if (r.status === "confirmed") {
+    if (r.status === "confirmed" || r.status === "checked_in") {
       confirmed += 1;
       revenueUsd += total;
     } else if (LOSS_STATUSES.has(r.status)) {
