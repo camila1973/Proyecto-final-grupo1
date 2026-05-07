@@ -18,6 +18,7 @@ export interface ReservationResponse {
   id: string;
   propertyId: string;
   roomId: string;
+  partnerId: string;
   bookerId: string;
   guestInfo: GuestInfo;
   checkIn: string;
@@ -350,6 +351,7 @@ export class ReservationsRepository {
       id: row.id,
       propertyId: row.property_id,
       roomId: row.room_id,
+      partnerId: row.partner_id,
       bookerId: row.booker_id,
       guestInfo: row.guest_info,
       checkIn: row.check_in,
