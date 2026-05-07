@@ -20,7 +20,7 @@ export default tseslint.config(
       sourceType: 'commonjs',
       parserOptions: {
         projectService: {
-          allowDefaultProject: ['kysely.config.ts'],
+          allowDefaultProject: ['kysely.config.ts', 'scripts/*.ts'],
         },
         tsconfigRootDir: import.meta.dirname,
       },

@@ -31,6 +31,10 @@
     "migrate-down": {
       "executor": "nx:run-commands",
       "options": { "command": "pnpm exec kysely migrate:down", "cwd": "services/payment-service" }
+    },
+    "seed": {
+      "executor": "nx:run-commands",
+      "options": { "command": "npx tsx scripts/seed.ts", "cwd": "services/payment-service" }
     }
   }
 }
