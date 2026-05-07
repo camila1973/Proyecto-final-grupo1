@@ -24,6 +24,15 @@ export class AvailabilityController {
     return this.service.bulkCheck(ids, fromDate!, toDate!);
   }
 
+  @Get("calendar")
+  getCalendar(
+    @Query("roomId") roomId: string,
+    @Query("fromDate") fromDate: string,
+    @Query("toDate") toDate: string,
+  ) {
+    return this.service.getByRoomInternal(roomId, fromDate, toDate);
+  }
+
   @Post("reduce")
   @HttpCode(204)
   reduceCapacity(

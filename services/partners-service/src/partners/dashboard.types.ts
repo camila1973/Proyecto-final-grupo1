@@ -132,3 +132,51 @@ export interface PropertyReservationsResponse {
   guestName: string | null;
   reservations: PartnerReservation[];
 }
+
+export interface RoomDetail {
+  id: string;
+  propertyId: string;
+  roomType: string;
+  bedType: string;
+  viewType: string;
+  capacity: number;
+  totalRooms: number;
+  basePriceUsd: number;
+  status: string;
+}
+
+export interface RoomAvailabilityDay {
+  date: string;
+  totalRooms: number;
+  reservedRooms: number;
+  heldRooms: number;
+  blocked: boolean;
+  available: boolean;
+}
+
+export interface RoomRatePeriod {
+  id: string;
+  roomId: string;
+  fromDate: string;
+  toDate: string;
+  priceUsd: number;
+  currency: string;
+  createdAt: string;
+}
+
+export interface PropertyRoomRow {
+  roomId: string;
+  roomType: string;
+  capacity: number;
+  bedType: string;
+  basePriceUsd: number;
+  status: string;
+  occupancyRate: number;
+}
+
+export interface PropertyRoomsResponse {
+  partnerId: string;
+  propertyId: string;
+  month: string;
+  rooms: PropertyRoomRow[];
+}

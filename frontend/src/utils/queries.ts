@@ -442,6 +442,169 @@ export async function fetchPartnerProperties(
   return res.json() as Promise<PartnerPropertiesResponse>;
 }
 
+export interface PartnerRoomRow {
+  roomId: string;
+  roomType: string;
+  capacity: number;
+  bedType: string;
+  basePriceUsd: number;
+  status: string;
+  occupancyRate: number;
+}
+
+export interface PropertyRoomsData {
+  partnerId: string;
+  propertyId: string;
+  month: string;
+  rooms: PartnerRoomRow[];
+}
+
+export async function fetchPartnerPropertyRooms(
+  partnerId: string,
+  propertyId: string,
+  token: string,
+): Promise<PropertyRoomsData> {
+  const res = await fetch(
+    `${API_BASE}/api/partners/partners/${encodeURIComponent(partnerId)}/properties/${encodeURIComponent(propertyId)}/rooms`,
+    { headers: { Authorization: `Bearer ${token}` } },
+  );
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json() as Promise<PropertyRoomsData>;
+}
+
+// ─── Room Detail (partner-scoped via partners-service) ───────────────────────
+
+export interface RoomDetail {
+  id: string;
+  propertyId: string;
+  roomType: string;
+  bedType: string;
+  viewType: string;
+  capacity: number;
+  totalRooms: number;
+  basePriceUsd: number;
+  status: string;
+}
+
+export interface RoomAvailabilityDay {
+  date: string;
+  totalRooms: number;
+  reservedRooms: number;
+  heldRooms: number;
+  blocked: boolean;
+  available: boolean;
+}
+
+export interface RoomRatePeriod {
+  id: string;
+  roomId: string;
+  fromDate: string;
+  toDate: string;
+  priceUsd: number;
+  currency: string;
+  createdAt: string;
+}
+
+function roomBase(partnerId: string, propertyId: string, roomId: string) {
+  return `${API_BASE}/api/partners/partners/${encodeURIComponent(partnerId)}/properties/${encodeURIComponent(propertyId)}/rooms/${encodeURIComponent(roomId)}`;
+}
+
+export async function fetchPartnerRoomById(
+  partnerId: string,
+  propertyId: string,
+  roomId: string,
+  token: string,
+): Promise<RoomDetail> {
+  const res = await fetch(roomBase(partnerId, propertyId, roomId), {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json() as Promise<RoomDetail>;
+}
+
+export async function fetchPartnerRoomAvailability(
+  partnerId: string,
+  propertyId: string,
+  roomId: string,
+  fromDate: string,
+  toDate: string,
+  token: string,
+): Promise<RoomAvailabilityDay[]> {
+  const params = new URLSearchParams({ fromDate, toDate });
+  const res = await fetch(`${roomBase(partnerId, propertyId, roomId)}/availability?${params}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = (await res.json()) as RoomAvailabilityDay[] | { days?: RoomAvailabilityDay[] };
+  return Array.isArray(data) ? data : (data.days ?? []);
+}
+
+export async function fetchPartnerRoomRates(
+  partnerId: string,
+  propertyId: string,
+  roomId: string,
+  fromDate: string,
+  toDate: string,
+  token: string,
+): Promise<RoomRatePeriod[]> {
+  const params = new URLSearchParams({ fromDate, toDate });
+  const res = await fetch(`${roomBase(partnerId, propertyId, roomId)}/rates?${params}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = (await res.json()) as RoomRatePeriod[] | { rates?: RoomRatePeriod[] };
+  return Array.isArray(data) ? data : (data.rates ?? []);
+}
+
+export async function blockPartnerRoomDates(
+  partnerId: string,
+  propertyId: string,
+  roomId: string,
+  fromDate: string,
+  toDate: string,
+  token: string,
+): Promise<void> {
+  const res = await fetch(`${roomBase(partnerId, propertyId, roomId)}/block`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fromDate, toDate }),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+}
+
+export async function unblockPartnerRoomDates(
+  partnerId: string,
+  propertyId: string,
+  roomId: string,
+  fromDate: string,
+  toDate: string,
+  token: string,
+): Promise<void> {
+  const res = await fetch(`${roomBase(partnerId, propertyId, roomId)}/unblock`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fromDate, toDate }),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+}
+
+export async function createPartnerRoomRate(
+  partnerId: string,
+  propertyId: string,
+  roomId: string,
+  fromDate: string,
+  toDateExclusive: string,
+  priceUsd: number,
+  token: string,
+): Promise<void> {
+  const res = await fetch(`${roomBase(partnerId, propertyId, roomId)}/rates`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fromDate, toDate: toDateExclusive, priceUsd }),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+}
+
 export async function fetchPartnerProperty(
   partnerId: string,
   propertyId: string,

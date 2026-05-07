@@ -186,7 +186,7 @@ export default function MiHotelPage() {
           <MetricCard
             label={`${t('partner.org_dashboard.metric_net')} · ${monthLabel}`}
             value={formatPrice(netPayout, currency)}
-            subLabel={`dispersión: ${disbursementLabel}`}
+            subLabel={`desembolso: ${disbursementLabel}`}
           />
         </div>
 

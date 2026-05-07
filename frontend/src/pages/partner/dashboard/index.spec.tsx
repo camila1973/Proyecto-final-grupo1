@@ -235,6 +235,6 @@ describe('MiHotelPage (org dashboard)', () => {
     await waitFor(() => {
       expect(screen.getAllByText('Hotel Central Park').length).toBeGreaterThanOrEqual(1);
     });
-    expect(screen.getByText('Próximas dispersiones')).toBeInTheDocument();
+    expect(screen.getByText('Próximos desembolsos')).toBeInTheDocument();
   });
 });
