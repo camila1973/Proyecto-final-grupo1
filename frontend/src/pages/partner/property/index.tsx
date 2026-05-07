@@ -37,8 +37,9 @@ import {
   fetchPropertyReservations,
 } from '../../../utils/queries';
 import { formatPrice } from '../../../utils/currency';
-import { currentMonth, formatMonthLabel, shiftMonth } from '../../../utils/month';
+import { currentMonth, formatMonthLabel } from '../../../utils/month';
 import MetricCard from '../components/MetricCard';
+import MonthSwitcher from '../components/MonthSwitcher';
 import ChartsSection from './ChartsSection';
 import { TH, TD } from '../dashboard/ui';
 
@@ -151,17 +152,7 @@ export default function PropertyDashboardPage() {
             ))}
           </TextField>
 
-          <Stack direction="row" spacing={1} alignItems="center">
-            <Typography sx={{ fontSize: 12, color: '#4a5568', minWidth: 110, textAlign: 'right' }}>
-              {formatMonthLabel(month, language)}
-            </Typography>
-            <IconButton size="small" aria-label={t('partner.dashboard.prev_month')} onClick={() => setMonth((m) => shiftMonth(m, -1))} sx={NAV_BTN}>
-              <ArrowBackIcon fontSize="small" />
-            </IconButton>
-            <IconButton size="small" aria-label={t('partner.dashboard.next_month')} onClick={() => setMonth((m) => shiftMonth(m, 1))} sx={NAV_BTN}>
-              <ArrowForwardIcon fontSize="small" />
-            </IconButton>
-          </Stack>
+          <MonthSwitcher month={month} onChange={setMonth} language={language} />
         </Box>
 
         <div className="grid grid-cols-5 gap-4">

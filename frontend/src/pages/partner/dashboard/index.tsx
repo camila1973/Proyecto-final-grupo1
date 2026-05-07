@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useQueries } from '@tanstack/react-query';
@@ -15,6 +16,7 @@ import { formatPrice } from '../../../utils/currency';
 import { currentMonth, shiftMonth, formatMonthLabel } from '../../../utils/month';
 import { PROPERTY_COLORS } from '../components/RevenueTrendChart';
 import MetricCard from '../components/MetricCard';
+import MonthSwitcher from '../components/MonthSwitcher';
 import HeroBanner from './HeroBanner';
 import ChartsSection from './ChartsSection';
 import PropertiesSection, { type PropertyRow } from './PropertiesSection';
@@ -30,7 +32,7 @@ export default function MiHotelPage() {
 
   const partnerId = user?.partnerId ?? '';
   const enabled = !!token && !!partnerId;
-  const month = currentMonth();
+  const [month, setMonth] = useState(currentMonth());
 
   const partnerQuery = useQuery({
     queryKey: ['partner', partnerId],
@@ -163,6 +165,10 @@ export default function MiHotelPage() {
       />
 
       <div className="max-w-[1152px] mx-auto px-6 py-6 flex flex-col gap-6">
+
+        <div className="flex justify-end">
+          <MonthSwitcher month={month} onChange={setMonth} language={language} />
+        </div>
 
         {/* Metric row */}
         <div className="grid grid-cols-6 gap-5">
