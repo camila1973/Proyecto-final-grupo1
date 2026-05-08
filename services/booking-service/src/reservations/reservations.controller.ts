@@ -6,12 +6,14 @@ import {
   Body,
   Param,
   Query,
+  Headers,
   HttpCode,
   HttpStatus,
   Res,
 } from "@nestjs/common";
 import type { Response } from "express";
 import { ReservationsService } from "./reservations.service.js";
+import { BookingActor } from "../events/events.types.js";
 import {
   CheckinDto,
   CreateReservationDto,
@@ -66,8 +68,13 @@ export class ReservationsController {
 
   @Patch(":id/cancel")
   @HttpCode(HttpStatus.OK)
-  cancel(@Param("id") id: string, @Body() body: { reason: string }) {
-    return this.reservationsService.cancel(id, body.reason);
+  cancel(
+    @Param("id") id: string,
+    @Body() body: { reason: string },
+    @Headers("x-user-role") role: string,
+  ) {
+    const actor: BookingActor = role ? (role as BookingActor) : "system";
+    return this.reservationsService.cancel(id, body.reason, actor);
   }
 
   @Patch(":id/rehold")
@@ -78,8 +85,9 @@ export class ReservationsController {
 
   @Patch(":id/confirm")
   @HttpCode(HttpStatus.OK)
-  confirm(@Param("id") id: string) {
-    return this.reservationsService.confirm(id);
+  confirm(@Param("id") id: string, @Headers("x-user-role") role: string) {
+    const actor: BookingActor = role ? (role as BookingActor) : "system";
+    return this.reservationsService.confirm(id, actor);
   }
 
   @Patch(":id/check-in")
@@ -92,18 +100,6 @@ export class ReservationsController {
   @HttpCode(HttpStatus.OK)
   checkOut(@Param("id") id: string) {
     return this.reservationsService.checkOut(id);
-  }
-
-  @Patch(":id/partner-confirm")
-  @HttpCode(HttpStatus.OK)
-  partnerConfirm(@Param("id") id: string) {
-    return this.reservationsService.partnerConfirm(id);
-  }
-
-  @Patch(":id/partner-cancel")
-  @HttpCode(HttpStatus.OK)
-  partnerCancel(@Param("id") id: string, @Body() body: { reason: string }) {
-    return this.reservationsService.partnerCancel(id, body.reason);
   }
 
   @Patch(":id/guest-info")

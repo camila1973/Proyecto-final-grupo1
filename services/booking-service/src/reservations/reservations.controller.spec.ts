@@ -57,8 +57,6 @@ describe("ReservationsController", () => {
             rehold: jest.fn(),
             checkin: jest.fn(),
             checkOut: jest.fn(),
-            partnerConfirm: jest.fn(),
-            partnerCancel: jest.fn(),
             updateGuestInfo: jest.fn(),
           },
         },
@@ -163,14 +161,23 @@ describe("ReservationsController", () => {
   });
 
   describe("confirm", () => {
-    it("delegates to service and returns the confirmed reservation", async () => {
+    it("derives system actor when role header is absent", async () => {
       const reservation = { id: "res-1", status: "confirmed" } as any;
       (service.confirm as jest.Mock).mockResolvedValue(reservation);
 
-      const result = await controller.confirm("res-1");
+      const result = await controller.confirm("res-1", undefined as any);
 
-      expect(service.confirm).toHaveBeenCalledWith("res-1");
+      expect(service.confirm).toHaveBeenCalledWith("res-1", "system");
       expect(result).toBe(reservation);
+    });
+
+    it("derives partner actor when role header is 'partner'", async () => {
+      const reservation = { id: "res-1", status: "confirmed" } as any;
+      (service.confirm as jest.Mock).mockResolvedValue(reservation);
+
+      await controller.confirm("res-1", "partner");
+
+      expect(service.confirm).toHaveBeenCalledWith("res-1", "partner");
     });
   });
 
@@ -206,16 +213,48 @@ describe("ReservationsController", () => {
   });
 
   describe("cancel", () => {
-    it("delegates to service with id and reason", async () => {
+    it("derives system actor when role header is absent", async () => {
       const reservation = { id: "res-1", status: "cancelled" } as any;
       (service.cancel as jest.Mock).mockResolvedValue(reservation);
 
-      const result = await controller.cancel("res-1", {
-        reason: "changed mind",
-      });
+      const result = await controller.cancel(
+        "res-1",
+        { reason: "changed mind" },
+        undefined as any,
+      );
 
-      expect(service.cancel).toHaveBeenCalledWith("res-1", "changed mind");
+      expect(service.cancel).toHaveBeenCalledWith(
+        "res-1",
+        "changed mind",
+        "system",
+      );
       expect(result).toBe(reservation);
+    });
+
+    it("passes guest actor when role header is 'guest'", async () => {
+      const reservation = { id: "res-1", status: "cancelled" } as any;
+      (service.cancel as jest.Mock).mockResolvedValue(reservation);
+
+      await controller.cancel("res-1", { reason: "changed mind" }, "guest");
+
+      expect(service.cancel).toHaveBeenCalledWith(
+        "res-1",
+        "changed mind",
+        "guest",
+      );
+    });
+
+    it("derives partner actor when role header is 'partner'", async () => {
+      const reservation = { id: "res-1", status: "cancelled" } as any;
+      (service.cancel as jest.Mock).mockResolvedValue(reservation);
+
+      await controller.cancel("res-1", { reason: "overbooking" }, "partner");
+
+      expect(service.cancel).toHaveBeenCalledWith(
+        "res-1",
+        "overbooking",
+        "partner",
+      );
     });
   });
 

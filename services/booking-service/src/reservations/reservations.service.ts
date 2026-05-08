@@ -259,7 +259,19 @@ export class ReservationsService {
     return this.reservationsRepo.toResponse(row);
   }
 
-  async cancel(id: string, reason: string) {
+  async cancel(id: string, reason: string, actor: BookingActor = "guest") {
+    if (actor === "partner") {
+      const current = await this.reservationsRepo.findById(id);
+      if (current.status !== "confirmed") {
+        throw new BadRequestException(
+          `Cannot partner-cancel a reservation with status "${current.status}"`,
+        );
+      }
+    }
+
+    // TODO (partner path): trigger refund through payment-service before releasing inventory.
+    // Partner-initiated cancels break the contract on the guest's side, so the
+    // guest should be refunded automatically rather than chase their money.
     const { row, priorStatus } = await this.reservationsRepo.cancel(id, reason);
 
     try {
@@ -283,7 +295,7 @@ export class ReservationsService {
       );
     }
 
-    this.emit("booking.cancelled", row, "guest");
+    this.emit("booking.cancelled", row, actor);
     return this.reservationsRepo.toResponse(row);
   }
 
@@ -366,46 +378,7 @@ export class ReservationsService {
     return this.reservationsRepo.toResponse(row);
   }
 
-  async partnerConfirm(id: string) {
-    const row = await this.reservationsRepo.partnerConfirm(id);
-    try {
-      await this.inventoryClient.confirmHold(
-        row.room_id,
-        row.check_in,
-        row.check_out,
-      );
-    } catch (err) {
-      this.logger.warn(
-        `Failed to confirm hold in inventory for reservation ${id}: ${err}`,
-      );
-    }
-    this.emit("booking.confirmed", row, "partner");
-    return this.reservationsRepo.toResponse(row);
-  }
-
-  async partnerCancel(id: string, reason: string) {
-    const { row } = await this.reservationsRepo.partnerCancel(id, reason);
-
-    // TODO: trigger a refund through payment-service before releasing inventory.
-    // Partner-initiated cancels break the contract on the guest's side, so the
-    // guest should be refunded automatically rather than chase their money.
-    try {
-      await this.inventoryClient.release(
-        row.room_id,
-        row.check_in,
-        row.check_out,
-      );
-    } catch (err) {
-      this.logger.warn(
-        `Failed to update inventory after partner-cancel for reservation ${id}: ${err}`,
-      );
-    }
-
-    this.emit("booking.cancelled", row, "partner");
-    return this.reservationsRepo.toResponse(row);
-  }
-
-  async confirm(id: string) {
+  async confirm(id: string, actor: BookingActor = "system") {
     const row = await this.reservationsRepo.confirm(id);
 
     try {
@@ -420,7 +393,7 @@ export class ReservationsService {
       );
     }
 
-    this.emit("booking.confirmed", row, "system");
+    this.emit("booking.confirmed", row, actor);
     return this.reservationsRepo.toResponse(row);
   }
 
