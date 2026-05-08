@@ -93,6 +93,35 @@ describe("ProxyService", () => {
       );
     });
 
+    it("passes gateway-injected identity headers when present", async () => {
+      const mockFetch = mockJsonFetch(200, {});
+      global.fetch = mockFetch;
+
+      await service.forward(
+        "http://localhost:3004/reservations",
+        mockRequest({
+          headers: {
+            "x-user-id": "user-7",
+            "x-user-email": "user@example.com",
+            "x-user-role": "partner",
+            "x-property-id": "prop-3",
+          },
+        }),
+      );
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            "x-user-id": "user-7",
+            "x-user-email": "user@example.com",
+            "x-user-role": "partner",
+            "x-property-id": "prop-3",
+          }),
+        }),
+      );
+    });
+
     it("sends body for POST requests", async () => {
       const mockFetch = mockJsonFetch(201, { id: 1 });
       global.fetch = mockFetch;
