@@ -184,7 +184,7 @@ describe("EventsService.onModuleInit", () => {
       close: jest.fn().mockResolvedValue(undefined),
     };
     const { PubSub } = await import("@google-cloud/pubsub");
-    (PubSub as jest.Mock).mockImplementation(() => ({
+    (PubSub as unknown as jest.Mock).mockImplementation(() => ({
       subscription: jest.fn().mockReturnValue(mockSubscription),
     }));
 
@@ -334,7 +334,7 @@ describe("EventsService.connectPubSub (private)", () => {
       }),
     };
     const { PubSub } = await import("@google-cloud/pubsub");
-    (PubSub as jest.Mock).mockImplementation(() => ({
+    (PubSub as unknown as jest.Mock).mockImplementation(() => ({
       subscription: jest.fn().mockReturnValue(mockSub),
     }));
     const handler = jest.fn().mockResolvedValue(undefined);
@@ -364,7 +364,7 @@ describe("EventsService.connectPubSub (private)", () => {
       }),
     };
     const { PubSub } = await import("@google-cloud/pubsub");
-    (PubSub as jest.Mock).mockImplementation(() => ({
+    (PubSub as unknown as jest.Mock).mockImplementation(() => ({
       subscription: jest.fn().mockReturnValue(mockSub),
     }));
     const errorSpy = jest.spyOn((service as any).logger, "error");
@@ -393,7 +393,7 @@ describe("EventsService.connectPubSub (private)", () => {
       }),
     };
     const { PubSub } = await import("@google-cloud/pubsub");
-    (PubSub as jest.Mock).mockImplementation(() => ({
+    (PubSub as unknown as jest.Mock).mockImplementation(() => ({
       subscription: jest.fn().mockReturnValue(mockSub),
     }));
     const handler = jest.fn().mockRejectedValue(new Error("handler failed"));
@@ -422,7 +422,7 @@ describe("EventsService.connectPubSub (private)", () => {
       }),
     };
     const { PubSub } = await import("@google-cloud/pubsub");
-    (PubSub as jest.Mock).mockImplementation(() => ({
+    (PubSub as unknown as jest.Mock).mockImplementation(() => ({
       subscription: jest.fn().mockReturnValue(mockSub),
     }));
     const errorSpy = jest.spyOn((service as any).logger, "error");
@@ -442,7 +442,7 @@ describe("EventsService.connectPubSub (private)", () => {
 
   it("logs error and does not throw when PubSub connection fails", async () => {
     const { PubSub } = await import("@google-cloud/pubsub");
-    (PubSub as jest.Mock).mockImplementation(() => {
+    (PubSub as unknown as jest.Mock).mockImplementation(() => {
       throw new Error("no credentials");
     });
     const errorSpy = jest.spyOn((service as any).logger, "error");
