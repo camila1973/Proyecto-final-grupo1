@@ -142,6 +142,16 @@ Standard Vite + React setup. Entry: `frontend/src/main.tsx`. The `vite.config.ts
 ### Mobile
 File-based routing via Expo Router (`mobile/app/`). Path alias `@/*` maps to `./` (mobile project root). The app has `typedRoutes` and `reactCompiler` experiments enabled in `mobile/app.json`. New Architecture (`newArchEnabled: true`) is active.
 
+## Authentication & API Gateway
+
+The **api-gateway** validates every JWT centrally and forwards trusted identity headers (`X-User-Id`, `X-User-Email`, `X-User-Role`, `X-Partner-Id`, `X-Property-Id`) to downstream services. Downstream services do **not** verify JWTs — they trust the headers. The model is **deny-by-default**: routes require a valid token unless explicitly listed in `services/api-gateway/src/auth/public-routes.ts`.
+
+When adding a new endpoint:
+- **Authenticated route (default)** — no gateway change. Just add the controller; the gateway protects it automatically and your handler can read `req.headers["x-user-id"]` etc.
+- **Public route** — add a regex entry in `public-routes.ts`. Pin the HTTP method, prefer narrow patterns over broad prefixes, and add a comment explaining why it's public.
+
+> Use `/auth` for the full header contract, public-route rules, secret management across local/docker/Pulumi, and what the gateway does *not* do (authorization, revocation).
+
 ## ESLint
 
 All projects use the modern ESLint **flat config** format:

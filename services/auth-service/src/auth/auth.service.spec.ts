@@ -4,6 +4,7 @@ import {
   ConflictException,
   UnauthorizedException,
 } from "@nestjs/common";
+import { JwtService } from "@nestjs/jwt";
 import { AuthService } from "./auth.service";
 import type { AuthRepository } from "./auth.repository";
 import type { DbChallenge, DbUser } from "./auth.types";
@@ -88,7 +89,11 @@ describe("AuthService", () => {
     repo.deleteChallengeById.mockResolvedValue(undefined);
     repo.incrementChallengeAttempts.mockResolvedValue(undefined);
     repo.listUsers.mockResolvedValue([]);
-    service = new AuthService(repo as unknown as AuthRepository);
+    const jwtService = new JwtService({
+      secret: "test-secret-1234567890",
+      signOptions: { algorithm: "HS256" },
+    });
+    service = new AuthService(repo as unknown as AuthRepository, jwtService);
     jest.spyOn(global, "fetch").mockResolvedValue({ ok: true } as Response);
   });
 

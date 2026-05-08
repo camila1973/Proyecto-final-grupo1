@@ -17,6 +17,8 @@ export class ProxyController {
       notifications:
         process.env["NOTIFICATION_SERVICE_URL"] ?? "http://localhost:3006",
       partners: process.env["PARTNERS_SERVICE_URL"] ?? "http://localhost:3007",
+      integration:
+        process.env["INTEGRATION_SERVICE_URL"] ?? "http://localhost:3008",
     };
   }
 
