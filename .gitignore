@@ -67,3 +67,5 @@ Thumbs.db
 # Performance test results
 performance-tests/results/*.json
 performance-tests/results/*.html
+# Claude Code runtime
+.claude/scheduled_tasks.lock
