@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useQueries } from '@tanstack/react-query';
@@ -9,12 +10,13 @@ import {
   fetchPartnerProperties,
   fetchPartnerMetrics,
   fetchPropertyMetrics,
-  fetchPartnerPayments,
+  fetchPartnerDisbursement,
 } from '../../../utils/queries';
 import { formatPrice } from '../../../utils/currency';
 import { currentMonth, shiftMonth, formatMonthLabel } from '../../../utils/month';
 import { PROPERTY_COLORS } from '../components/RevenueTrendChart';
 import MetricCard from '../components/MetricCard';
+import MonthSwitcher from '../components/MonthSwitcher';
 import HeroBanner from './HeroBanner';
 import ChartsSection from './ChartsSection';
 import PropertiesSection, { type PropertyRow } from './PropertiesSection';
@@ -30,7 +32,7 @@ export default function MiHotelPage() {
 
   const partnerId = user?.partnerId ?? '';
   const enabled = !!token && !!partnerId;
-  const month = currentMonth();
+  const [month, setMonth] = useState(currentMonth());
 
   const partnerQuery = useQuery({
     queryKey: ['partner', partnerId],
@@ -58,9 +60,9 @@ export default function MiHotelPage() {
     })),
   });
 
-  const paymentsQuery = useQuery({
-    queryKey: ['partner-payments', partnerId, month],
-    queryFn: () => fetchPartnerPayments(partnerId, month, 1, 20, token!),
+  const disbursementQuery = useQuery({
+    queryKey: ['partner-disbursement', partnerId, month],
+    queryFn: () => fetchPartnerDisbursement(partnerId, month, token!),
     enabled,
   });
 
@@ -92,12 +94,10 @@ export default function MiHotelPage() {
   const aggregate = aggregateQuery.data;
   const metrics = aggregate?.metrics ?? { confirmed: 0, cancelled: 0, revenueUsd: 0, lossesUsd: 0, netUsd: 0 };
   const series = aggregate?.monthlySeries ?? [];
-  const payments = paymentsQuery.data;
+  const disbursement = disbursementQuery.data;
 
   const currentOccupancy = (series[series.length - 1]?.occupancyRate ?? 0) * 100;
   const grossRevenue = metrics.revenueUsd;
-  const commissionAmount = grossRevenue * 0.2;
-  const netPayout = grossRevenue * 0.8;
 
   const anyPropertyLoading = propertyQueries.some((q) => q.isLoading);
 
@@ -138,7 +138,19 @@ export default function MiHotelPage() {
 
   const nextMonthStr = shiftMonth(month, 1);
   const disbursementLabel = formatMonthLabel(nextMonthStr, language) + ' 1';
-  const totalNetPayout = payments?.rows.reduce((sum, r) => sum + r.earningsUsd, 0) ?? 0;
+
+  const disbursementRows = (disbursement?.byProperty ?? []).map((r) => ({
+    propertyId: r.propertyId,
+    propertyName: r.propertyName,
+    gross: r.gross,
+    commission: r.commission,
+    taxes: r.tax,
+    net: r.net,
+  }));
+  const totalNetPayout = disbursement?.totals.net ?? 0;
+  const totalCommission = disbursement?.totals.commission ?? 0;
+  const topProperty = disbursementRows[0];
+  const disbursementStatus = disbursement?.status ?? 'projected';
 
   const monthLabel = formatMonthLabel(month, language);
 
@@ -153,6 +165,10 @@ export default function MiHotelPage() {
       />
 
       <div className="max-w-[1152px] mx-auto px-6 py-6 flex flex-col gap-6">
+
+        <div className="flex justify-end">
+          <MonthSwitcher month={month} onChange={setMonth} language={language} />
+        </div>
 
         {/* Metric row */}
         <div className="grid grid-cols-6 gap-5">
@@ -179,19 +195,26 @@ export default function MiHotelPage() {
             value={formatPrice(grossRevenue, currency)}
           />
           <MetricCard
-            label={t('partner.org_dashboard.metric_commission')}
-            value={formatPrice(-commissionAmount, currency)}
-            subLabel={t('partner.org_dashboard.commission_pct', { pct: 20 })}
+            label={t('partner.org_dashboard.metric_top_property')}
+            value={topProperty?.propertyName || '—'}
+            subLabel={
+              topProperty
+                ? formatPrice(topProperty.net, currency)
+                : t('partner.org_dashboard.metric_top_property_empty')
+            }
           />
           <MetricCard
             label={`${t('partner.org_dashboard.metric_net')} · ${monthLabel}`}
-            value={formatPrice(netPayout, currency)}
-            subLabel={`dispersión: ${disbursementLabel}`}
+            value={formatPrice(totalNetPayout, currency)}
+            subLabel={t('partner.org_dashboard.metric_net_sublabel', {
+              commission: formatPrice(-totalCommission, currency),
+              date: disbursementLabel,
+            })}
           />
         </div>
 
         {/* Disbursement alert */}
-        {payments && payments.rows.length > 0 && (
+        {disbursementRows.length > 0 && (
           <div className="bg-[#E8EFF7] border border-[#85B7EB] rounded-lg px-4 py-2.5 flex items-center gap-3 text-[#0C447C]">
             <span className="shrink-0">ℹ</span>
             <span className="text-xs">
@@ -222,11 +245,12 @@ export default function MiHotelPage() {
         <MembersSection partnerId={partnerId} token={token!} />
 
         <DisbursementsSection
-          payments={payments}
+          rows={disbursementRows}
           month={month}
           currency={currency}
           disbursementLabel={disbursementLabel}
           totalNetPayout={totalNetPayout}
+          status={disbursementStatus}
           onViewHistory={() => navigate({ to: '/mi-hotel/pagos' })}
         />
 

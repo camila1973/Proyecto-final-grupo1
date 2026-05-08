@@ -18,8 +18,11 @@ import type {
   ReservationDto,
 } from "./dashboard.types.js";
 
-const COMMISSION_RATE = 0.2;
-const TAX_RATE = 0.19;
+// Default commission rate used only when payment-service has not yet
+// snapshotted the rate on the payment row (legacy data path). New payments
+// always carry their own `commissionRate` and `commissionAmountUsd`.
+const FALLBACK_COMMISSION_RATE = 0.2;
+const FALLBACK_TAX_RATE = 0.19;
 const REVENUE_STATUSES = new Set(["confirmed", "submitted", "checked_in"]);
 const LOSS_STATUSES = new Set(["cancelled", "failed", "expired"]);
 
@@ -147,6 +150,38 @@ export class PartnersService {
 
     return { partnerId, month, total, page, pageSize, rows };
   }
+
+  async getDisbursement(partnerId: string, month: string) {
+    const disbursement = await this.paymentClient.getDisbursement(
+      partnerId,
+      month,
+    );
+    if (!disbursement) {
+      // payment-service unavailable or returned an error → degrade to an empty
+      // projected disbursement so the dashboard still renders.
+      const [yStr, mStr] = month.split("-");
+      const y = Number(yStr);
+      const m = Number(mStr);
+      const periodStart = `${y}-${String(m).padStart(2, "0")}-01`;
+      const nextYear = m === 12 ? y + 1 : y;
+      const nextMonth = m === 12 ? 1 : m + 1;
+      const periodEnd = `${nextYear}-${String(nextMonth).padStart(2, "0")}-01`;
+      return {
+        partnerId,
+        periodStart,
+        periodEnd,
+        scheduledFor: periodEnd,
+        currency: "USD",
+        status: "projected" as const,
+        paidAt: null,
+        externalTransferRef: null,
+        totals: { gross: 0, tax: 0, partnerFee: 0, commission: 0, net: 0 },
+        byProperty: [],
+        paymentCount: 0,
+      };
+    }
+    return disbursement;
+  }
 }
 
 // ─── Pure helpers ─────────────────────────────────────────────────────────────
@@ -273,15 +308,24 @@ async function buildPaymentRow(
 ): Promise<PaymentRow> {
   const payment = await paymentClient.getStatus(r.id);
   const nights = countNights(r.checkIn, r.checkOut);
-  const total = r.grandTotalUsd ?? payment?.amountUsd ?? 0;
-  const subtotal = nights > 0 ? total / (1 + TAX_RATE) : total;
-  const taxes = total - subtotal;
+
+  // Prefer snapshotted breakdown from the payment row; fall back to
+  // recomputed values for reservations without a captured payment yet
+  // (or pre-migration rows).
+  const total =
+    payment?.grossAmountUsd ?? r.grandTotalUsd ?? payment?.amountUsd ?? 0;
+  const taxes =
+    payment?.taxAmountUsd ?? total - total / (1 + FALLBACK_TAX_RATE);
+  const subtotal = total - taxes;
   const ratePerNight = nights > 0 ? subtotal / nights : 0;
-  const commission = round(total * COMMISSION_RATE);
-  const earnings = round(total - commission);
+  const commission =
+    payment?.commissionAmountUsd ?? round(total * FALLBACK_COMMISSION_RATE);
+  const earnings = payment?.netPayoutUsd ?? round(total - commission);
 
   return {
     reservationId: r.id,
+    propertyId: payment?.propertyId ?? r.propertyId,
+    propertyName: payment?.propertyName ?? r.snapshot?.propertyName ?? "",
     status: payment?.status ?? r.status,
     paymentMethod: payment?.stripePaymentIntentId ? "STRIPE" : "—",
     reference: payment?.stripePaymentIntentId ?? "—",
@@ -291,7 +335,7 @@ async function buildPaymentRow(
     taxesUsd: round(taxes),
     totalPaidUsd: round(total),
     commissionUsd: -commission,
-    earningsUsd: earnings,
+    earningsUsd: round(earnings),
     createdAt: payment?.createdAt ?? r.createdAt,
   };
 }

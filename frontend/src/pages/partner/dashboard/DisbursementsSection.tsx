@@ -13,27 +13,48 @@ import {
 import { useTranslation } from 'react-i18next';
 import type { Currency } from '../../../context/LocaleContext';
 import { formatPrice } from '../../../utils/currency';
-import type { PartnerPayments } from '../../../utils/queries';
 import { SectionHeader, TD, TH } from './ui';
 
+export interface PropertyDisbursementRow {
+  propertyId: string;
+  propertyName: string;
+  gross: number;
+  commission: number;
+  taxes: number;
+  net: number;
+}
+
+type DisbursementStatus = 'pending' | 'paid' | 'failed' | 'projected';
+
 interface DisbursementsSectionProps {
-  payments: PartnerPayments | undefined;
+  rows: PropertyDisbursementRow[];
   month: string;
   currency: Currency;
   disbursementLabel: string;
   totalNetPayout: number;
+  status: DisbursementStatus;
   onViewHistory: () => void;
 }
 
+const STATUS_STYLES: Record<DisbursementStatus, { bg: string; color: string; border: string }> = {
+  projected: { bg: '#FFF8E5', color: '#633806', border: '#F5C842' },
+  pending: { bg: '#FFF8E5', color: '#633806', border: '#F5C842' },
+  paid: { bg: '#E6F4EA', color: '#1F5E32', border: '#7CC793' },
+  failed: { bg: '#FCEBEB', color: '#A32D2D', border: '#E89494' },
+};
+
 export default function DisbursementsSection({
-  payments,
+  rows,
   month,
   currency,
   disbursementLabel,
   totalNetPayout,
+  status,
   onViewHistory,
 }: DisbursementsSectionProps) {
   const { t } = useTranslation();
+  const statusStyle = STATUS_STYLES[status];
+  const statusLabel = t(`partner.org_dashboard.status_${status}`);
   return (
     <Box id="disbursements">
       <SectionHeader
@@ -65,7 +86,7 @@ export default function DisbursementsSection({
               </TableRow>
             </TableHead>
             <TableBody>
-              {!payments || payments.rows.length === 0 ? (
+              {rows.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={8} align="center" sx={{ py: 3, color: '#6b7280', fontSize: 12 }}>
                     {t('partner.org_dashboard.no_disbursements')}
@@ -73,30 +94,30 @@ export default function DisbursementsSection({
                 </TableRow>
               ) : (
                 <>
-                  {payments.rows.map((row) => (
-                    <TableRow key={row.reservationId}>
+                  {rows.map((row) => (
+                    <TableRow key={row.propertyId}>
                       <TD sx={{ fontSize: 11, color: '#4a5568' }}>{month}</TD>
-                      <TD sx={{ fontWeight: 500 }}>—</TD>
-                      <TD align="right">{formatPrice(row.totalPaidUsd, currency)}</TD>
+                      <TD sx={{ fontWeight: 500 }}>{row.propertyName || '—'}</TD>
+                      <TD align="right">{formatPrice(row.gross, currency)}</TD>
                       <TD align="right" sx={{ color: '#A32D2D' }}>
-                        {formatPrice(row.commissionUsd, currency)}
+                        {formatPrice(-row.commission, currency)}
                       </TD>
                       <TD align="right" sx={{ color: '#4a5568' }}>
-                        {formatPrice(-row.taxesUsd, currency)}
+                        {formatPrice(-row.taxes, currency)}
                       </TD>
                       <TD align="right" sx={{ color: '#3B6D11', fontWeight: 500 }}>
-                        {formatPrice(row.earningsUsd, currency)}
+                        {formatPrice(row.net, currency)}
                       </TD>
                       <TD sx={{ fontSize: 11 }}>{disbursementLabel}</TD>
                       <TD>
                         <Chip
                           size="small"
-                          label={t('partner.org_dashboard.status_pending')}
+                          label={statusLabel}
                           sx={{
                             fontSize: 11,
-                            bgcolor: '#FFF8E5',
-                            color: '#633806',
-                            border: '1px solid #F5C842',
+                            bgcolor: statusStyle.bg,
+                            color: statusStyle.color,
+                            border: `1px solid ${statusStyle.border}`,
                             height: 22,
                           }}
                         />

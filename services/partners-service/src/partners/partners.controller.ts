@@ -88,6 +88,15 @@ export class PartnersController {
       safePropertyId,
     );
   }
+
+  @Get(":partnerId/disbursements")
+  disbursements(
+    @Param("partnerId") partnerId: string,
+    @Query("month") month?: string,
+  ) {
+    const safeMonth = isMonth(month) ? month! : currentMonth();
+    return this.partnersService.getDisbursement(partnerId, safeMonth);
+  }
 }
 
 function isMonth(s: string | undefined): boolean {

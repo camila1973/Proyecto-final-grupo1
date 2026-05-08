@@ -1,5 +1,8 @@
 import { Injectable, Logger } from "@nestjs/common";
-import type { PaymentDto } from "../partners/dashboard.types.js";
+import type {
+  DisbursementDto,
+  PaymentDto,
+} from "../partners/dashboard.types.js";
 
 @Injectable()
 export class PaymentClientService {
@@ -18,15 +21,7 @@ export class PaymentClientService {
       );
       return null;
     }
-    const data = (await res.json()) as Partial<PaymentDto> & {
-      status?: string;
-      amountUsd?: number;
-      currency?: string;
-      stripePaymentIntentId?: string;
-      guestEmail?: string;
-      createdAt?: string;
-      id?: string;
-    };
+    const data = (await res.json()) as Partial<PaymentDto>;
     return {
       id: data.id ?? "",
       reservationId,
@@ -36,6 +31,31 @@ export class PaymentClientService {
       guestEmail: data.guestEmail ?? null,
       stripePaymentIntentId: data.stripePaymentIntentId ?? null,
       createdAt: data.createdAt ?? new Date().toISOString(),
+      partnerId: data.partnerId ?? null,
+      propertyId: data.propertyId ?? null,
+      propertyName: data.propertyName ?? null,
+      grossAmountUsd: data.grossAmountUsd ?? null,
+      taxAmountUsd: data.taxAmountUsd ?? null,
+      partnerFeeUsd: data.partnerFeeUsd ?? null,
+      commissionRate: data.commissionRate ?? null,
+      commissionAmountUsd: data.commissionAmountUsd ?? null,
+      netPayoutUsd: data.netPayoutUsd ?? null,
+      capturedAt: data.capturedAt ?? null,
     };
+  }
+
+  async getDisbursement(
+    partnerId: string,
+    month: string,
+  ): Promise<DisbursementDto | null> {
+    const url = `${this.baseUrl}/disbursements/by-partner/${encodeURIComponent(partnerId)}?month=${encodeURIComponent(month)}`;
+    const res = await fetch(url);
+    if (!res.ok) {
+      this.logger.warn(
+        `payment-service disbursement fetch failed for ${partnerId} ${month} [${res.status}]`,
+      );
+      return null;
+    }
+    return (await res.json()) as DisbursementDto;
   }
 }

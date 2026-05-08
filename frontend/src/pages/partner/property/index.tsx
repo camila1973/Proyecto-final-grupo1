@@ -6,8 +6,11 @@ import {
   Alert,
   Box,
   Button,
+  Chip,
   CircularProgress,
   IconButton,
+  LinearProgress,
+  Menu,
   MenuItem,
   Paper,
   Stack,
@@ -22,18 +25,21 @@ import {
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
 import SearchIcon from '@mui/icons-material/Search';
 import { useAuth } from '../../../hooks/useAuth';
 import { useLocale } from '../../../context/LocaleContext';
 import HeroBanner from './HeroBanner';
 import {
   fetchPartnerProperty,
+  fetchPartnerPropertyRooms,
   fetchPropertyMetrics,
   fetchPropertyReservations,
 } from '../../../utils/queries';
 import { formatPrice } from '../../../utils/currency';
-import { currentMonth, formatMonthLabel, shiftMonth } from '../../../utils/month';
+import { currentMonth, formatMonthLabel } from '../../../utils/month';
 import MetricCard from '../components/MetricCard';
+import MonthSwitcher from '../components/MonthSwitcher';
 import ChartsSection from './ChartsSection';
 import { TH, TD } from '../dashboard/ui';
 
@@ -53,6 +59,7 @@ export default function PropertyDashboardPage() {
   const [roomType, setRoomType] = useState('');
   const [reservationFilter, setReservationFilter] = useState('');
   const [page, setPage] = useState(1);
+  const [roomMenu, setRoomMenu] = useState<{ el: HTMLElement; roomId: string } | null>(null);
 
   const partnerId = user?.partnerId ?? '';
   const enabled = !!token && !!partnerId;
@@ -72,6 +79,12 @@ export default function PropertyDashboardPage() {
   const propertyQuery = useQuery({
     queryKey: ['partner-property', partnerId, propertyId],
     queryFn: () => fetchPartnerProperty(partnerId, propertyId, token!),
+    enabled,
+  });
+
+  const roomsQuery = useQuery({
+    queryKey: ['property-rooms', partnerId, propertyId],
+    queryFn: () => fetchPartnerPropertyRooms(partnerId, propertyId, token!),
     enabled,
   });
 
@@ -139,17 +152,7 @@ export default function PropertyDashboardPage() {
             ))}
           </TextField>
 
-          <Stack direction="row" spacing={1} alignItems="center">
-            <Typography sx={{ fontSize: 12, color: '#4a5568', minWidth: 110, textAlign: 'right' }}>
-              {formatMonthLabel(month, language)}
-            </Typography>
-            <IconButton size="small" aria-label={t('partner.dashboard.prev_month')} onClick={() => setMonth((m) => shiftMonth(m, -1))} sx={NAV_BTN}>
-              <ArrowBackIcon fontSize="small" />
-            </IconButton>
-            <IconButton size="small" aria-label={t('partner.dashboard.next_month')} onClick={() => setMonth((m) => shiftMonth(m, 1))} sx={NAV_BTN}>
-              <ArrowForwardIcon fontSize="small" />
-            </IconButton>
-          </Stack>
+          <MonthSwitcher month={month} onChange={setMonth} language={language} />
         </Box>
 
         <div className="grid grid-cols-5 gap-4">
@@ -249,6 +252,115 @@ export default function PropertyDashboardPage() {
                   </Table>
                 </TableContainer>
               </Paper>
+            </Box>
+
+            {/* Rooms table */}
+            <Box>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+                <Typography sx={{ fontSize: 14, fontWeight: 500, color: '#1a1a1a' }}>
+                  {t('partner.dashboard.rooms_title')}
+                </Typography>
+                <Button
+                  variant="text"
+                  sx={{ fontSize: 12, color: '#1B4F8C', p: 0, textDecoration: 'underline', textTransform: 'none' }}
+                >
+                  {t('partner.dashboard.manage_rooms')}
+                </Button>
+              </Box>
+
+              <Paper variant="outlined" sx={{ borderRadius: 2, borderColor: '#e2e8f0', overflow: 'hidden' }}>
+                <TableContainer>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TH>{t('partner.dashboard.col_room_type')}</TH>
+                        <TH>{t('partner.dashboard.col_capacity')}</TH>
+                        <TH>{t('partner.dashboard.col_beds')}</TH>
+                        <TH>{t('partner.dashboard.col_base_rate')}</TH>
+                        <TH>{t('partner.dashboard.col_availability')}</TH>
+                        <TH>{t('partner.dashboard.col_room_status')}</TH>
+                        <TH width={40}>{''}</TH>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {roomsQuery.isLoading ? (
+                        <TableRow>
+                          <TableCell colSpan={7} align="center" sx={{ py: 3 }}>
+                            <CircularProgress size={20} />
+                          </TableCell>
+                        </TableRow>
+                      ) : !roomsQuery.data?.rooms.length ? (
+                        <TableRow>
+                          <TableCell colSpan={7} align="center" sx={{ py: 3, fontSize: 12, color: '#6b7280' }}>
+                            {t('partner.dashboard.no_rooms')}
+                          </TableCell>
+                        </TableRow>
+                      ) : roomsQuery.data.rooms.map((room) => {
+                        const availPct = Math.round((1 - room.occupancyRate) * 100);
+                        const isActive = room.status === 'active';
+                        return (
+                          <TableRow key={room.roomId} sx={{ '&:hover': { bgcolor: '#F9FAFB' } }}>
+                            <TD sx={{ fontWeight: 500 }}>{room.roomType}</TD>
+                            <TD>{t('partner.dashboard.guests_count', { count: room.capacity })}</TD>
+                            <TD>{room.bedType}</TD>
+                            <TD>{formatPrice(room.basePriceUsd, currency)}</TD>
+                            <TD>
+                              <Stack direction="row" spacing={1} alignItems="center">
+                                <LinearProgress
+                                  variant="determinate"
+                                  value={availPct}
+                                  sx={{ width: 80, height: 6, borderRadius: 3, bgcolor: '#e2e8f0', '& .MuiLinearProgress-bar': { bgcolor: '#3b82f6' } }}
+                                />
+                                <Typography sx={{ fontSize: 11, color: '#4a5568', minWidth: 28 }}>{availPct}%</Typography>
+                              </Stack>
+                            </TD>
+                            <TD>
+                              <Chip
+                                label={isActive ? t('partner.dashboard.room_active') : t('partner.dashboard.room_no_stock')}
+                                size="small"
+                                sx={{
+                                  fontSize: 11,
+                                  height: 22,
+                                  bgcolor: isActive ? '#dcfce7' : '#fef3c7',
+                                  color: isActive ? '#166534' : '#92400e',
+                                  fontWeight: 500,
+                                }}
+                              />
+                            </TD>
+                            <TD align="right">
+                              <IconButton
+                                size="small"
+                                sx={{ color: '#6b7280' }}
+                                onClick={(e) => setRoomMenu({ el: e.currentTarget, roomId: room.roomId })}
+                              >
+                                <MoreVertIcon fontSize="small" />
+                              </IconButton>
+                            </TD>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </Paper>
+
+              <Menu
+                anchorEl={roomMenu?.el}
+                open={Boolean(roomMenu)}
+                onClose={() => setRoomMenu(null)}
+              >
+                <MenuItem
+                  sx={{ fontSize: 13 }}
+                  onClick={() => {
+                    if (roomMenu) {
+                      navigate({ to: '/mi-hotel/$propertyId/rooms/$roomId', params: { propertyId, roomId: roomMenu.roomId } });
+                      setRoomMenu(null);
+                    }
+                  }}
+                >
+                  {t('partner.dashboard.menu_view_availability')}
+                </MenuItem>
+              </Menu>
             </Box>
           </>
         )}

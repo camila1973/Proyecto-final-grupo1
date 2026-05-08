@@ -412,6 +412,177 @@ const RESERVATIONS = [
   },
 ];
 
+// ─── Historical backfill ─────────────────────────────────────────────────────
+// Spread confirmed reservations over the prior ~9 months so the org dashboard
+// charts and metric cards have non-zero data for the trailing-6-month window.
+// Each entry below is paired with a payment-service capture in the same month
+// (see services/payment-service/scripts/seed.ts).
+
+type FareTemplateName =
+  | "gran_caribe_deluxe_3n"
+  | "gran_caribe_suite_4n"
+  | "historico_deluxe_3n"
+  | "hostal_standard_3n";
+
+const FARE_TEMPLATES: Record<
+  FareTemplateName,
+  {
+    propertyId: string;
+    partnerId: string;
+    roomId: string;
+    snapshot: (typeof SNAPSHOTS)[keyof typeof SNAPSHOTS];
+    fare: Record<string, unknown>;
+    taxTotal: number;
+    feeTotal: number;
+    grandTotal: number;
+    nights: number;
+  }
+> = {
+  gran_caribe_deluxe_3n: {
+    propertyId: PROP_CANCUN_1,
+    partnerId: PARTNER_1,
+    roomId: ROOM(1),
+    snapshot: SNAPSHOTS.gran_caribe_deluxe,
+    fare: {
+      nights: 3,
+      roomRateUsd: 310,
+      subtotalUsd: 930,
+      taxes: [
+        { name: "IVA", type: "PERCENTAGE", rate: 16, amountUsd: 148.8 },
+        { name: "ISH", type: "PERCENTAGE", rate: 3, amountUsd: 27.9 },
+      ],
+      fees: [{ name: "Resort Fee", type: "FLAT_PER_NIGHT", amountUsd: 75 }],
+      taxTotalUsd: 176.7,
+      feeTotalUsd: 75,
+      totalUsd: 1181.7,
+    },
+    taxTotal: 176.7,
+    feeTotal: 75,
+    grandTotal: 1181.7,
+    nights: 3,
+  },
+  gran_caribe_suite_4n: {
+    propertyId: PROP_CANCUN_1,
+    partnerId: PARTNER_1,
+    roomId: ROOM(2),
+    snapshot: SNAPSHOTS.gran_caribe_suite,
+    fare: {
+      nights: 4,
+      roomRateUsd: 370,
+      subtotalUsd: 1480,
+      taxes: [
+        { name: "IVA", type: "PERCENTAGE", rate: 16, amountUsd: 236.8 },
+        { name: "ISH", type: "PERCENTAGE", rate: 3, amountUsd: 44.4 },
+      ],
+      fees: [{ name: "Resort Fee", type: "FLAT_PER_NIGHT", amountUsd: 100 }],
+      taxTotalUsd: 281.2,
+      feeTotalUsd: 100,
+      totalUsd: 1861.2,
+    },
+    taxTotal: 281.2,
+    feeTotal: 100,
+    grandTotal: 1861.2,
+    nights: 4,
+  },
+  historico_deluxe_3n: {
+    propertyId: PROP_CDMX_1,
+    partnerId: PARTNER_2,
+    roomId: ROOM(8),
+    snapshot: SNAPSHOTS.historico_cdmx_deluxe,
+    fare: {
+      nights: 3,
+      roomRateUsd: 270,
+      subtotalUsd: 810,
+      taxes: [
+        { name: "IVA", type: "PERCENTAGE", rate: 16, amountUsd: 129.6 },
+        { name: "ISH", type: "PERCENTAGE", rate: 3, amountUsd: 24.3 },
+      ],
+      fees: [{ name: "Cleaning Fee", type: "FLAT_PER_STAY", amountUsd: 15 }],
+      taxTotalUsd: 153.9,
+      feeTotalUsd: 15,
+      totalUsd: 978.9,
+    },
+    taxTotal: 153.9,
+    feeTotal: 15,
+    grandTotal: 978.9,
+    nights: 3,
+  },
+  hostal_standard_3n: {
+    propertyId: PROP_CANCUN_3,
+    partnerId: PARTNER_2,
+    roomId: ROOM(6),
+    snapshot: SNAPSHOTS.hostal_sol_standard,
+    fare: {
+      nights: 3,
+      roomRateUsd: 60,
+      subtotalUsd: 180,
+      taxes: [
+        { name: "IVA", type: "PERCENTAGE", rate: 16, amountUsd: 28.8 },
+        { name: "ISH", type: "PERCENTAGE", rate: 3, amountUsd: 5.4 },
+      ],
+      fees: [{ name: "Cleaning Fee", type: "FLAT_PER_STAY", amountUsd: 15 }],
+      taxTotalUsd: 34.2,
+      feeTotalUsd: 15,
+      totalUsd: 229.2,
+    },
+    taxTotal: 34.2,
+    feeTotal: 15,
+    grandTotal: 229.2,
+    nights: 3,
+  },
+};
+
+function addDays(date: string, days: number): string {
+  const d = new Date(`${date}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+function historicalReservation(
+  resId: string,
+  template: FareTemplateName,
+  checkIn: string,
+  bookerIdx: 1 | 2 | 3,
+) {
+  const tpl = FARE_TEMPLATES[template];
+  return {
+    id: resId,
+    property_id: tpl.propertyId,
+    room_id: tpl.roomId,
+    partner_id: tpl.partnerId,
+    booker_id: BOOKER(bookerIdx),
+    guest_info: GUEST_INFO[bookerIdx - 1],
+    check_in: checkIn,
+    check_out: addDays(checkIn, tpl.nights),
+    status: "confirmed",
+    snapshot: tpl.snapshot,
+    fare_breakdown: tpl.fare,
+    tax_total_usd: tpl.taxTotal,
+    fee_total_usd: tpl.feeTotal,
+    grand_total_usd: tpl.grandTotal,
+    hold_expires_at: new Date(`${checkIn}T08:00:00.000Z`),
+  };
+}
+
+const HISTORICAL_RESERVATIONS = [
+  // ── PARTNER_1 (Gran Caribe Hospitality Group) ──
+  historicalReservation(RES(10), "gran_caribe_deluxe_3n", "2025-08-04", 1),
+  historicalReservation(RES(11), "gran_caribe_suite_4n", "2025-09-12", 1),
+  historicalReservation(RES(12), "gran_caribe_deluxe_3n", "2025-10-18", 3),
+  historicalReservation(RES(13), "gran_caribe_suite_4n", "2025-11-22", 1),
+  historicalReservation(RES(14), "gran_caribe_deluxe_3n", "2025-12-05", 3),
+  historicalReservation(RES(15), "gran_caribe_deluxe_3n", "2026-01-08", 1),
+  historicalReservation(RES(16), "gran_caribe_suite_4n", "2026-02-19", 3),
+  historicalReservation(RES(17), "gran_caribe_deluxe_3n", "2026-04-11", 1),
+  // ── PARTNER_2 (Sol Boutique Hotels & Hostales) ──
+  historicalReservation(RES(20), "historico_deluxe_3n", "2025-08-22", 2),
+  historicalReservation(RES(21), "hostal_standard_3n", "2025-10-07", 2),
+  historicalReservation(RES(22), "historico_deluxe_3n", "2025-11-15", 2),
+  historicalReservation(RES(23), "hostal_standard_3n", "2025-12-20", 3),
+  historicalReservation(RES(24), "historico_deluxe_3n", "2026-02-04", 2),
+  historicalReservation(RES(25), "hostal_standard_3n", "2026-04-25", 2),
+];
+
 // ─── Seed ─────────────────────────────────────────────────────────────────────
 
 async function seed() {
@@ -477,9 +648,10 @@ async function seed() {
     );
   }
 
-  // Reservations
-  console.log(`Seeding ${RESERVATIONS.length} reservations...`);
-  for (const r of RESERVATIONS) {
+  // Reservations (current + historical backfill)
+  const ALL_RESERVATIONS = [...RESERVATIONS, ...HISTORICAL_RESERVATIONS];
+  console.log(`Seeding ${ALL_RESERVATIONS.length} reservations...`);
+  for (const r of ALL_RESERVATIONS) {
     await db
       .insertInto("reservations")
       .values({

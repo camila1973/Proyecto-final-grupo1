@@ -32,12 +32,34 @@ function makeRepo() {
   };
 }
 
+function makeReservationDetails(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "res-uuid",
+    partnerId: "partner-uuid",
+    propertyId: "prop-uuid",
+    status: "held",
+    grandTotalUsd: 350.5,
+    taxTotalUsd: 50,
+    feeTotalUsd: 10,
+    fareBreakdown: { totalUsd: 350.5 },
+    snapshot: { propertyName: "Hotel Test" },
+    ...overrides,
+  };
+}
+
 function makeBookingClient() {
   return {
     submitReservation: jest.fn().mockResolvedValue(undefined),
     reholdReservation: jest.fn().mockResolvedValue(undefined),
     confirmReservation: jest.fn().mockResolvedValue(undefined),
     failReservation: jest.fn().mockResolvedValue(undefined),
+    getReservation: jest.fn().mockResolvedValue(makeReservationDetails()),
+  };
+}
+
+function makeCommissionRules() {
+  return {
+    resolveRate: jest.fn().mockResolvedValue(0.2),
   };
 }
 
@@ -94,16 +116,19 @@ describe("PaymentsService", () => {
   let repo: ReturnType<typeof makeRepo>;
   let booking: ReturnType<typeof makeBookingClient>;
   let notifications: ReturnType<typeof makeNotifications>;
+  let commissionRules: ReturnType<typeof makeCommissionRules>;
 
   beforeEach(() => {
     jest.clearAllMocks();
     repo = makeRepo();
     booking = makeBookingClient();
     notifications = makeNotifications();
+    commissionRules = makeCommissionRules();
     service = new PaymentsService(
       repo as any,
       booking as any,
       notifications as any,
+      commissionRules as any,
     );
   });
 
@@ -196,6 +221,71 @@ describe("PaymentsService", () => {
       expect(booking.reholdReservation).toHaveBeenCalledWith("res-uuid");
       expect(booking.submitReservation).toHaveBeenCalledWith("res-uuid");
     });
+
+    it("snapshots breakdown columns (commission, tax, fee, net) onto the payment row", async () => {
+      mockPaymentIntentsCreate.mockResolvedValue(makeStripeIntent());
+      repo.create.mockResolvedValue(makePaymentRow());
+      booking.getReservation.mockResolvedValue(
+        makeReservationDetails({
+          partnerId: "p-1",
+          propertyId: "prop-1",
+          grandTotalUsd: 350.5,
+          taxTotalUsd: 50,
+          feeTotalUsd: 10,
+          snapshot: { propertyName: "Hotel Central" },
+        }),
+      );
+      commissionRules.resolveRate.mockResolvedValue(0.2);
+
+      await service.initiate(INITIATE_DTO);
+
+      expect(repo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          partner_id: "p-1",
+          property_id: "prop-1",
+          property_name: "Hotel Central",
+          gross_amount_usd: 350.5,
+          tax_amount_usd: 50,
+          partner_fee_usd: 10,
+          commission_rate: 0.2,
+          commission_amount_usd: 70.1, // 350.5 * 0.2
+          net_payout_usd: 280.4, // 350.5 - 70.1
+          fare_snapshot: { totalUsd: 350.5 },
+        }),
+      );
+    });
+
+    it("uses the commission rate resolved by the rules service", async () => {
+      mockPaymentIntentsCreate.mockResolvedValue(makeStripeIntent());
+      repo.create.mockResolvedValue(makePaymentRow());
+      commissionRules.resolveRate.mockResolvedValue(0.15);
+
+      await service.initiate(INITIATE_DTO);
+
+      expect(commissionRules.resolveRate).toHaveBeenCalledWith(
+        "partner-uuid",
+        expect.any(String),
+      );
+      expect(repo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          commission_rate: 0.15,
+          commission_amount_usd: 52.58, // 350.5 * 0.15 rounded
+          net_payout_usd: 297.92,
+        }),
+      );
+    });
+
+    it("throws BadRequestException when DTO amount mismatches reservation total", async () => {
+      booking.getReservation.mockResolvedValue(
+        makeReservationDetails({ grandTotalUsd: 999 }),
+      );
+
+      await expect(service.initiate(INITIATE_DTO)).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(mockPaymentIntentsCreate).not.toHaveBeenCalled();
+      expect(repo.create).not.toHaveBeenCalled();
+    });
   });
 
   // ─── handleWebhook ────────────────────────────────────────────────────────
@@ -224,10 +314,14 @@ describe("PaymentsService", () => {
 
         await service.handleWebhook(rawBody, sig);
 
-        expect(repo.updateByIntentId).toHaveBeenCalledWith("pi_test_abc", {
-          status: "captured",
-          stripe_payment_method_id: "pm_token_xyz",
-        });
+        expect(repo.updateByIntentId).toHaveBeenCalledWith(
+          "pi_test_abc",
+          expect.objectContaining({
+            status: "captured",
+            stripe_payment_method_id: "pm_token_xyz",
+            captured_at: expect.any(Date),
+          }),
+        );
       });
 
       it("extracts payment_method.id when payment_method is an object", async () => {
@@ -440,7 +534,10 @@ describe("PaymentsService", () => {
 
       const result = await service.getStatus("res-uuid");
 
-      expect(result).toEqual({ status: "captured", failureReason: undefined });
+      expect(result).toMatchObject({
+        status: "captured",
+        failureReason: undefined,
+      });
     });
 
     it("includes failureReason when payment failed", async () => {
@@ -452,9 +549,39 @@ describe("PaymentsService", () => {
 
       const result = await service.getStatus("res-uuid");
 
-      expect(result).toEqual({
+      expect(result).toMatchObject({
         status: "failed",
         failureReason: "Insufficient funds.",
+      });
+    });
+
+    it("returns snapshotted breakdown fields when present", async () => {
+      const row = makePaymentRow({
+        status: "captured",
+        partner_id: "partner-1",
+        property_id: "prop-1",
+        property_name: "Hotel Test",
+        gross_amount_usd: "350.50",
+        tax_amount_usd: "55.95",
+        commission_rate: "0.20",
+        commission_amount_usd: "70.10",
+        net_payout_usd: "280.40",
+        captured_at: new Date("2026-05-01T12:00:00Z"),
+      });
+      repo.findByReservationId.mockResolvedValue(row);
+
+      const result = await service.getStatus("res-uuid");
+
+      expect(result).toMatchObject({
+        partnerId: "partner-1",
+        propertyId: "prop-1",
+        propertyName: "Hotel Test",
+        grossAmountUsd: 350.5,
+        taxAmountUsd: 55.95,
+        commissionRate: 0.2,
+        commissionAmountUsd: 70.1,
+        netPayoutUsd: 280.4,
+        capturedAt: "2026-05-01T12:00:00.000Z",
       });
     });
 

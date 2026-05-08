@@ -71,13 +71,18 @@ const METRICS_RESPONSE = {
   ],
 };
 
-const PAYMENTS_RESPONSE = {
+const DISBURSEMENT_RESPONSE = {
   partnerId: 'partner-1',
-  month: '2026-05',
-  total: 0,
-  page: 1,
-  pageSize: 20,
-  rows: [],
+  periodStart: '2026-05-01',
+  periodEnd: '2026-06-01',
+  scheduledFor: '2026-06-01',
+  currency: 'USD',
+  status: 'projected',
+  paidAt: null,
+  externalTransferRef: null,
+  totals: { gross: 0, tax: 0, partnerFee: 0, commission: 0, net: 0 },
+  byProperty: [],
+  paymentCount: 0,
 };
 
 const MOCK_AUTH = {
@@ -113,8 +118,8 @@ function mockFetch(overrides: { propertiesOk?: boolean } = {}) {
       if (!propertiesOk) return Promise.resolve({ ok: false, status: 500 });
       return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(METRICS_RESPONSE) });
     }
-    if ((url as string).includes('/payments')) {
-      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(PAYMENTS_RESPONSE) });
+    if ((url as string).includes('/disbursements')) {
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(DISBURSEMENT_RESPONSE) });
     }
     if ((url as string).includes('/members')) {
       return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve([]) });
@@ -197,7 +202,7 @@ describe('MiHotelPage (org dashboard)', () => {
       if ((url as string).includes('/metrics')) {
         return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(METRICS_RESPONSE) });
       }
-      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(PAYMENTS_RESPONSE) });
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(DISBURSEMENT_RESPONSE) });
     });
     renderPage();
     await waitFor(() => {
@@ -235,6 +240,66 @@ describe('MiHotelPage (org dashboard)', () => {
     await waitFor(() => {
       expect(screen.getAllByText('Hotel Central Park').length).toBeGreaterThanOrEqual(1);
     });
-    expect(screen.getByText('Próximas dispersiones')).toBeInTheDocument();
+    expect(screen.getByText('Próximos desembolsos')).toBeInTheDocument();
+  });
+
+  it('renders per-property rows from the disbursement payload', async () => {
+    global.fetch = jest.fn().mockImplementation((url: string) => {
+      if ((url as string).includes('/disbursements')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              ...DISBURSEMENT_RESPONSE,
+              status: 'paid',
+              totals: { gross: 1000, tax: 190, partnerFee: 50, commission: 200, net: 800 },
+              byProperty: [
+                {
+                  propertyId: 'prop-abc',
+                  propertyName: 'Hotel Central Park',
+                  gross: 600,
+                  tax: 100,
+                  partnerFee: 30,
+                  commission: 120,
+                  net: 480,
+                  paymentCount: 2,
+                },
+                {
+                  propertyId: 'prop-def',
+                  propertyName: 'Suite Zen',
+                  gross: 400,
+                  tax: 90,
+                  partnerFee: 20,
+                  commission: 80,
+                  net: 320,
+                  paymentCount: 1,
+                },
+              ],
+              paymentCount: 3,
+            }),
+        });
+      }
+      if ((url as string).includes('/properties/') && (url as string).includes('/metrics')) {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(METRICS_RESPONSE) });
+      }
+      if ((url as string).includes('/properties')) {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(PROPERTIES_RESPONSE) });
+      }
+      if ((url as string).includes('/metrics')) {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(METRICS_RESPONSE) });
+      }
+      if ((url as string).includes('/members')) {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve([]) });
+      }
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(PARTNER_DETAILS_RESPONSE) });
+    }) as never;
+
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getAllByText('Pagado').length).toBeGreaterThanOrEqual(1);
+    });
+    // Property rows render with their names in the disbursements section
+    expect(screen.getAllByText('Suite Zen').length).toBeGreaterThanOrEqual(1);
   });
 });

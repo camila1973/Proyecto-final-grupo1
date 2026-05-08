@@ -8,8 +8,13 @@ import type {
   PartnerReservation,
   PropertyMetricsResponse,
   PropertyReservationsResponse,
+  PropertyRoomRow,
+  PropertyRoomsResponse,
   PropertySummary,
   ReservationDto,
+  RoomAvailabilityDay,
+  RoomDetail,
+  RoomRatePeriod,
 } from "../partners/dashboard.types.js";
 
 const REVENUE_STATUSES = new Set(["confirmed", "submitted", "checked_in"]);
@@ -79,6 +84,123 @@ export class PropertyService {
       metrics: computeMetrics(filtered),
       monthlySeries: buildMonthlySeries(scoped, month, roomType),
     };
+  }
+
+  async getRoomDetail(roomId: string): Promise<RoomDetail | null> {
+    const room = await this.inventoryClient.getRoomById(roomId);
+    if (!room) return null;
+    return {
+      id: room.id,
+      propertyId: room.propertyId,
+      roomType: room.roomType,
+      bedType: room.bedType,
+      viewType: room.viewType,
+      capacity: room.capacity,
+      totalRooms: room.totalRooms,
+      basePriceUsd: parseFloat(room.basePriceUsd),
+      status: room.status,
+    };
+  }
+
+  async getRoomAvailability(
+    roomId: string,
+    fromDate: string,
+    toDate: string,
+  ): Promise<RoomAvailabilityDay[]> {
+    return this.inventoryClient.getRoomAvailability(roomId, fromDate, toDate);
+  }
+
+  async getRoomRates(
+    roomId: string,
+    propertyId: string,
+    fromDate: string,
+    toDate: string,
+  ): Promise<RoomRatePeriod[]> {
+    const periods = await this.inventoryClient.getRoomRates(
+      roomId,
+      propertyId,
+      fromDate,
+      toDate,
+    );
+    return periods.map((p) => ({
+      id: p.id,
+      roomId: p.roomId,
+      fromDate: p.fromDate,
+      toDate: p.toDate,
+      priceUsd: parseFloat(p.priceUsd),
+      currency: p.currency,
+      createdAt: p.createdAt,
+    }));
+  }
+
+  async blockRoomDates(
+    roomId: string,
+    fromDate: string,
+    toDate: string,
+  ): Promise<void> {
+    return this.inventoryClient.blockRoomDates(roomId, fromDate, toDate);
+  }
+
+  async unblockRoomDates(
+    roomId: string,
+    fromDate: string,
+    toDate: string,
+  ): Promise<void> {
+    return this.inventoryClient.unblockRoomDates(roomId, fromDate, toDate);
+  }
+
+  async createRoomRate(
+    roomId: string,
+    fromDate: string,
+    toDate: string,
+    priceUsd: number,
+  ): Promise<void> {
+    await this.inventoryClient.createRoomRate(
+      roomId,
+      fromDate,
+      toDate,
+      priceUsd,
+    );
+  }
+
+  async getPropertyRooms(
+    partnerId: string,
+    propertyId: string,
+    month: string,
+  ): Promise<PropertyRoomsResponse> {
+    const [rooms, allReservations] = await Promise.all([
+      this.inventoryClient.listRoomsByProperty(propertyId),
+      this.bookingClient.listReservations(),
+    ]);
+
+    const monthReservations = allReservations
+      .filter((r) => r.partnerId === partnerId && r.propertyId === propertyId)
+      .filter((r) => isInMonth(r.checkIn, month));
+
+    const days = daysInMonth(month);
+
+    const roomRows: PropertyRoomRow[] = rooms.map((room) => {
+      const roomRes = monthReservations.filter(
+        (r) => r.roomId === room.id && REVENUE_STATUSES.has(r.status),
+      );
+      let occupiedNights = 0;
+      for (const r of roomRes) {
+        occupiedNights += nightsInMonth(r.checkIn, r.checkOut, month);
+      }
+      const occupancyRate =
+        days > 0 ? round(Math.min(1, occupiedNights / days), 4) : 0;
+      return {
+        roomId: room.id,
+        roomType: room.roomType,
+        capacity: room.capacity,
+        bedType: room.bedType,
+        basePriceUsd: parseFloat(room.basePriceUsd),
+        status: room.status,
+        occupancyRate,
+      };
+    });
+
+    return { partnerId, propertyId, month, rooms: roomRows };
   }
 
   async getPropertyReservations(

@@ -34,6 +34,18 @@ export interface PaymentDto {
   guestEmail: string | null;
   stripePaymentIntentId: string | null;
   createdAt: string;
+  // Snapshot fields (populated from payment-service when available; null on
+  // payments created before the breakdown migration).
+  partnerId?: string | null;
+  propertyId?: string | null;
+  propertyName?: string | null;
+  grossAmountUsd?: number | null;
+  taxAmountUsd?: number | null;
+  partnerFeeUsd?: number | null;
+  commissionRate?: number | null;
+  commissionAmountUsd?: number | null;
+  netPayoutUsd?: number | null;
+  capturedAt?: string | null;
 }
 
 export interface MetricCard {
@@ -66,6 +78,8 @@ export interface PartnerReservation {
 
 export interface PaymentRow {
   reservationId: string;
+  propertyId: string;
+  propertyName: string;
   status: string;
   paymentMethod: string;
   reference: string;
@@ -77,6 +91,37 @@ export interface PaymentRow {
   commissionUsd: number;
   earningsUsd: number;
   createdAt: string;
+}
+
+export interface DisbursementPropertyRollup {
+  propertyId: string;
+  propertyName: string;
+  gross: number;
+  tax: number;
+  partnerFee: number;
+  commission: number;
+  net: number;
+  paymentCount: number;
+}
+
+export interface DisbursementDto {
+  partnerId: string;
+  periodStart: string;
+  periodEnd: string;
+  scheduledFor: string;
+  currency: string;
+  status: "pending" | "paid" | "failed" | "projected";
+  paidAt: string | null;
+  externalTransferRef: string | null;
+  totals: {
+    gross: number;
+    tax: number;
+    partnerFee: number;
+    commission: number;
+    net: number;
+  };
+  byProperty: DisbursementPropertyRollup[];
+  paymentCount: number;
 }
 
 export interface PaymentsResponse {
@@ -131,4 +176,52 @@ export interface PropertyReservationsResponse {
   reservationId: string | null;
   guestName: string | null;
   reservations: PartnerReservation[];
+}
+
+export interface RoomDetail {
+  id: string;
+  propertyId: string;
+  roomType: string;
+  bedType: string;
+  viewType: string;
+  capacity: number;
+  totalRooms: number;
+  basePriceUsd: number;
+  status: string;
+}
+
+export interface RoomAvailabilityDay {
+  date: string;
+  totalRooms: number;
+  reservedRooms: number;
+  heldRooms: number;
+  blocked: boolean;
+  available: boolean;
+}
+
+export interface RoomRatePeriod {
+  id: string;
+  roomId: string;
+  fromDate: string;
+  toDate: string;
+  priceUsd: number;
+  currency: string;
+  createdAt: string;
+}
+
+export interface PropertyRoomRow {
+  roomId: string;
+  roomType: string;
+  capacity: number;
+  bedType: string;
+  basePriceUsd: number;
+  status: string;
+  occupancyRate: number;
+}
+
+export interface PropertyRoomsResponse {
+  partnerId: string;
+  propertyId: string;
+  month: string;
+  rooms: PropertyRoomRow[];
 }
