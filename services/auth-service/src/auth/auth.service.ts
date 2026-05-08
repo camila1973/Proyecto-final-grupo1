@@ -4,9 +4,9 @@ import {
   Injectable,
   UnauthorizedException,
 } from "@nestjs/common";
+import { JwtService } from "@nestjs/jwt";
 import {
   createHash,
-  createHmac,
   randomBytes,
   randomInt,
   randomUUID,
@@ -28,13 +28,14 @@ import { AuthRepository } from "./auth.repository";
 
 @Injectable()
 export class AuthService {
-  private readonly jwtSecret =
-    process.env.AUTH_JWT_SECRET ?? "travelhub-dev-jwt-secret-change-me";
   private readonly jwtIssuer = "travelhub-auth-service";
   private readonly notificationServiceUrl =
     process.env.NOTIFICATION_SERVICE_URL ?? "http://localhost:3006";
 
-  constructor(private readonly authRepository: AuthRepository) {}
+  constructor(
+    private readonly authRepository: AuthRepository,
+    private readonly jwtService: JwtService,
+  ) {}
 
   async register(body: RegisterBody): Promise<RegisterResponse> {
     this.validateEmailAndPassword(body.email, body.password);
@@ -291,31 +292,19 @@ export class AuthService {
   }
 
   private createAccessToken(user: PublicUser): string {
-    const now = Math.floor(Date.now() / 1000);
     const payload: Record<string, unknown> = {
       sub: user.id,
       email: user.email,
       role: user.role,
       mfa: true,
-      iss: this.jwtIssuer,
-      iat: now,
-      exp: now + 3600,
     };
     if (user.partnerId) payload.partnerId = user.partnerId;
     if (user.propertyId) payload.propertyId = user.propertyId;
-    return this.signJwt(payload);
-  }
-
-  private signJwt(payload: Record<string, unknown>): string {
-    const headerPart = this.base64UrlEncode(
-      JSON.stringify({ alg: "HS256", typ: "JWT" }),
-    );
-    const payloadPart = this.base64UrlEncode(JSON.stringify(payload));
-    const unsignedToken = `${headerPart}.${payloadPart}`;
-    const signature = createHmac("sha256", this.jwtSecret)
-      .update(unsignedToken)
-      .digest("base64url");
-    return `${unsignedToken}.${signature}`;
+    return this.jwtService.sign(payload, {
+      issuer: this.jwtIssuer,
+      expiresIn: "1h",
+      algorithm: "HS256",
+    });
   }
 
   private hashPassword(password: string): string {
@@ -345,13 +334,5 @@ export class AuthService {
     if (!password || password.length < 8) {
       throw new BadRequestException("Password must have at least 8 characters");
     }
-  }
-
-  private base64UrlEncode(input: string): string {
-    return Buffer.from(input)
-      .toString("base64")
-      .replace(/=/g, "")
-      .replace(/\+/g, "-")
-      .replace(/\//g, "_");
   }
 }

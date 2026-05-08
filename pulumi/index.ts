@@ -23,6 +23,9 @@ const stripeSecretKey       = appConfig.getSecret("stripeSecretKey");
 const stripeWebhookSecret   = appConfig.getSecret("stripeWebhookSecret");
 const stripePublishableKey  = appConfig.get("stripePublishableKey");
 
+// JWT — shared between auth-service (signer) and api-gateway (verifier)
+const authJwtSecret = appConfig.requireSecret("authJwtSecret");
+
 // ─── Service definitions ──────────────────────────────────────────────────────
 
 const SERVICES = [
@@ -264,6 +267,21 @@ const stripeWebhookSecretSecret = stripeWebhookSecret
     })()
   : null;
 
+// ─── Secret Manager — JWT signing/verification key ────────────────────────────
+
+const authJwtSecretSecret = (() => {
+  const secret = new gcp.secretmanager.Secret("secret-auth-jwt", {
+    secretId: "travelhub-auth-jwt-secret",
+    replication: { auto: {} },
+    labels: LABELS,
+  });
+  new gcp.secretmanager.SecretVersion("secret-auth-jwt-version", {
+    secret: secret.id,
+    secretData: authJwtSecret,
+  });
+  return secret;
+})();
+
 // ─── Docker images ────────────────────────────────────────────────────────────
 
 const gcpAuth = gcp.organizations.getClientConfigOutput({});
@@ -410,6 +428,7 @@ for (const svc of MICROSERVICES) {
 
   if (svc.name === "auth-service") {
     plainEnv["NOTIFICATION_SERVICE_URL"] = pulumi.interpolate`${runners["notification-service"]!.uri}`;
+    secretEnvVars["AUTH_JWT_SECRET"] = { secretId: authJwtSecretSecret.secretId };
   }
 
   if (svc.name === "notification-service" && smtpHost && smtpUser && smtpPass) {
@@ -515,7 +534,7 @@ runners["api-gateway"] = makeCloudRun(
   3000,
   svcImgs["api-gateway"]!,
   gwEnv,
-  {},       // no secrets for api-gateway
+  { AUTH_JWT_SECRET: { secretId: authJwtSecretSecret.secretId } },
   false,    // no DB
   Object.values(runners) as gcp.cloudrunv2.Service[],
 );
