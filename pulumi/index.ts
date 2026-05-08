@@ -30,7 +30,6 @@ const authJwtSecret = appConfig.requireSecret("authJwtSecret");
 
 const SERVICES = [
   { name: "api-gateway",          port: 3000, db: null                   },
-  // inventory before search — search-service needs INVENTORY_SERVICE_URL at creation time
   { name: "inventory-service",    port: 3003, db: "inventory"            },
   { name: "notification-service", port: 3006, db: "notification"         },
   { name: "auth-service",         port: 3001, db: "auth"                 },
@@ -38,7 +37,6 @@ const SERVICES = [
   { name: "payment-service",      port: 3005, db: "payment"              },
   { name: "partners-service",     port: 3007, db: "partners"             },
   { name: "search-service",       port: 3002, db: "search"               },
-  // integration last — needs inventory, booking, and payment URLs
   { name: "integration-service",  port: 3008, db: "integration_service"  },
 ] as const;
 
@@ -309,6 +307,26 @@ const authJwtSecretSecret = (() => {
   return secret;
 })();
 
+// ─── Secret Manager — inter-service URL secrets ──────────────────────────────
+// Secret IDs are static strings known before any Cloud Run service is created,
+// so services can reference them without any cross-service Pulumi dependency.
+// Bootstrap placeholder versions (http://localhost:PORT) satisfy Cloud Run's
+// requirement that a secret have at least one version before referencing it.
+// Real URIs are written after the Cloud Run loop (see below).
+const urlSecrets: Partial<Record<SvcName, gcp.secretmanager.Secret>> = {};
+for (const svc of MICROSERVICES) {
+  const secret = new gcp.secretmanager.Secret(`secret-url-${svc.name}`, {
+    secretId: `travelhub-url-${svc.name}`,
+    replication: { auto: {} },
+    labels: LABELS,
+  });
+  new gcp.secretmanager.SecretVersion(`secret-url-placeholder-${svc.name}`, {
+    secret: secret.id,
+    secretData: `http://localhost:${svc.port}`,
+  });
+  urlSecrets[svc.name] = secret;
+}
+
 // ─── Docker images ────────────────────────────────────────────────────────────
 
 const gcpAuth = gcp.organizations.getClientConfigOutput({});
@@ -442,10 +460,10 @@ for (const svc of MICROSERVICES) {
   }
 
   if (svc.name === "search-service") {
-    plainEnv["REDIS_URL"]             = pulumi.interpolate`redis://${redisInstance.host}:6379`;
-    plainEnv["MESSAGE_BROKER_TYPE"]   = "pubsub";
-    plainEnv["PUBSUB_PROJECT_ID"]     = PROJECT;
-    plainEnv["INVENTORY_SERVICE_URL"] = pulumi.interpolate`${runners["inventory-service"]!.uri}`;
+    plainEnv["REDIS_URL"]           = pulumi.interpolate`redis://${redisInstance.host}:6379`;
+    plainEnv["MESSAGE_BROKER_TYPE"] = "pubsub";
+    plainEnv["PUBSUB_PROJECT_ID"]   = PROJECT;
+    secretEnvVars["INVENTORY_SERVICE_URL"] = { secretId: urlSecrets["inventory-service"]!.secretId };
   }
 
   if (svc.name === "inventory-service") {
@@ -454,8 +472,8 @@ for (const svc of MICROSERVICES) {
   }
 
   if (svc.name === "auth-service") {
-    plainEnv["NOTIFICATION_SERVICE_URL"] = pulumi.interpolate`${runners["notification-service"]!.uri}`;
-    secretEnvVars["AUTH_JWT_SECRET"] = { secretId: authJwtSecretSecret.secretId };
+    secretEnvVars["NOTIFICATION_SERVICE_URL"] = { secretId: urlSecrets["notification-service"]!.secretId };
+    secretEnvVars["AUTH_JWT_SECRET"]          = { secretId: authJwtSecretSecret.secretId };
   }
 
   if (svc.name === "notification-service" && smtpHost && smtpUser && smtpPass) {
@@ -467,16 +485,16 @@ for (const svc of MICROSERVICES) {
   }
 
   if (svc.name === "booking-service") {
-    plainEnv["REDIS_URL"]                 = pulumi.interpolate`redis://${redisInstance.host}:6379`;
-    plainEnv["INVENTORY_SERVICE_URL"]     = pulumi.interpolate`${runners["inventory-service"]!.uri}`;
-    plainEnv["NOTIFICATION_SERVICE_URL"]  = pulumi.interpolate`${runners["notification-service"]!.uri}`;
-    plainEnv["PARTNERS_SERVICE_URL"]      = pulumi.interpolate`${runners["partners-service"]!.uri}`;
-    plainEnv["MESSAGE_BROKER_TYPE"]       = "pubsub";
-    plainEnv["PUBSUB_PROJECT_ID"]         = PROJECT;
+    plainEnv["REDIS_URL"]           = pulumi.interpolate`redis://${redisInstance.host}:6379`;
+    plainEnv["MESSAGE_BROKER_TYPE"] = "pubsub";
+    plainEnv["PUBSUB_PROJECT_ID"]   = PROJECT;
+    secretEnvVars["INVENTORY_SERVICE_URL"]    = { secretId: urlSecrets["inventory-service"]!.secretId };
+    secretEnvVars["NOTIFICATION_SERVICE_URL"] = { secretId: urlSecrets["notification-service"]!.secretId };
+    secretEnvVars["PARTNERS_SERVICE_URL"]     = { secretId: urlSecrets["partners-service"]!.secretId };
   }
 
   if (svc.name === "payment-service") {
-    plainEnv["BOOKING_SERVICE_URL"] = pulumi.interpolate`${runners["booking-service"]!.uri}`;
+    secretEnvVars["BOOKING_SERVICE_URL"] = { secretId: urlSecrets["booking-service"]!.secretId };
     // SMTP — same config shared with notification-service
     if (smtpHost && smtpUser) {
       plainEnv["SMTP_HOST"] = smtpHost;
@@ -501,19 +519,19 @@ for (const svc of MICROSERVICES) {
   }
 
   if (svc.name === "partners-service") {
-    plainEnv["AUTH_SERVICE_URL"]      = pulumi.interpolate`${runners["auth-service"]!.uri}`;
-    plainEnv["BOOKING_SERVICE_URL"]   = pulumi.interpolate`${runners["booking-service"]!.uri}`;
-    plainEnv["INVENTORY_SERVICE_URL"] = pulumi.interpolate`${runners["inventory-service"]!.uri}`;
-    plainEnv["PAYMENT_SERVICE_URL"]   = pulumi.interpolate`${runners["payment-service"]!.uri}`;
+    secretEnvVars["AUTH_SERVICE_URL"]      = { secretId: urlSecrets["auth-service"]!.secretId };
+    secretEnvVars["BOOKING_SERVICE_URL"]   = { secretId: urlSecrets["booking-service"]!.secretId };
+    secretEnvVars["INVENTORY_SERVICE_URL"] = { secretId: urlSecrets["inventory-service"]!.secretId };
+    secretEnvVars["PAYMENT_SERVICE_URL"]   = { secretId: urlSecrets["payment-service"]!.secretId };
   }
 
   if (svc.name === "integration-service") {
-    plainEnv["REDIS_HOST"]            = redisInstance.host;
-    plainEnv["REDIS_PORT"]            = "6379";
-    plainEnv["INVENTORY_SERVICE_URL"] = pulumi.interpolate`${runners["inventory-service"]!.uri}`;
-    plainEnv["BOOKING_SERVICE_URL"]   = pulumi.interpolate`${runners["booking-service"]!.uri}`;
-    plainEnv["PAYMENT_SERVICE_URL"]   = pulumi.interpolate`${runners["payment-service"]!.uri}`;
-    plainEnv["FX_MOCK"]               = "true";
+    plainEnv["REDIS_HOST"] = redisInstance.host;
+    plainEnv["REDIS_PORT"] = "6379";
+    plainEnv["FX_MOCK"]    = "true";
+    secretEnvVars["INVENTORY_SERVICE_URL"] = { secretId: urlSecrets["inventory-service"]!.secretId };
+    secretEnvVars["BOOKING_SERVICE_URL"]   = { secretId: urlSecrets["booking-service"]!.secretId };
+    secretEnvVars["PAYMENT_SERVICE_URL"]   = { secretId: urlSecrets["payment-service"]!.secretId };
   }
 
   runners[svc.name] = makeCloudRun(
@@ -524,6 +542,18 @@ for (const svc of MICROSERVICES) {
     secretEnvVars,
     svc.db !== null,
   );
+}
+
+// ─── Populate URL secrets with real Cloud Run URIs ────────────────────────────
+// All runners[x] now exist. Write the actual .run.app URIs as new secret versions.
+// Cloud Run resolves "latest" at container startup — any new instance started
+// after this completes picks up the correct production URL.
+// ignoreChanges: SecretVersion is immutable in GCP; Cloud Run URIs are stable.
+for (const svc of MICROSERVICES) {
+  new gcp.secretmanager.SecretVersion(`secret-url-real-${svc.name}`, {
+    secret: urlSecrets[svc.name]!.id,
+    secretData: runners[svc.name]!.uri,
+  }, { ignoreChanges: ["secretData"] });
 }
 
 // ─── Frontend — Cloud Storage static website (~$1/month) ─────────────────────
@@ -551,9 +581,12 @@ const gwEnv: Record<string, pulumi.Input<string>> = {
   NODE_ENV:    "production",
   CORS_ORIGIN: "https://storage.googleapis.com",
 };
+const gwSecretEnv: Record<string, SecretRef> = {
+  AUTH_JWT_SECRET: { secretId: authJwtSecretSecret.secretId },
+};
 for (const svc of MICROSERVICES) {
   const key = svc.name.replace("-service", "").toUpperCase() + "_SERVICE_URL";
-  gwEnv[key] = pulumi.interpolate`${runners[svc.name]!.uri}`;
+  gwSecretEnv[key] = { secretId: urlSecrets[svc.name]!.secretId };
 }
 
 runners["api-gateway"] = makeCloudRun(
@@ -561,7 +594,7 @@ runners["api-gateway"] = makeCloudRun(
   3000,
   svcImgs["api-gateway"]!,
   gwEnv,
-  { AUTH_JWT_SECRET: { secretId: authJwtSecretSecret.secretId } },
+  gwSecretEnv,
   false,    // no DB
   Object.values(runners) as gcp.cloudrunv2.Service[],
 );
