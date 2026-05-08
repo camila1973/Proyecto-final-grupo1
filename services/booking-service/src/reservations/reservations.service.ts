@@ -12,21 +12,21 @@ import {
   FareBreakdown,
 } from "../fare/fare-calculator.service.js";
 import { InventoryClient } from "../clients/inventory.client.js";
-import { NotificationClient } from "../clients/notification.client.js";
 import { PartnersClient } from "../clients/partners.client.js";
 import { ReservationsRepository } from "./reservations.repository.js";
 import { HoldsService } from "./holds.service.js";
 import { EventsPublisher } from "../events/events.publisher.js";
 import {
+  BookingActor,
+  BookingEvent,
+  BookingRoutingKey,
+} from "../events/events.types.js";
+import {
   CreateReservationDto,
   GuestInfoDto,
   PreviewReservationDto,
 } from "./dto/create-reservation.dto.js";
-import type { GuestInfo } from "../database/database.types.js";
-
-function guestFirstName(guestInfo: GuestInfo | null): string {
-  return guestInfo?.firstName?.trim() || "huésped";
-}
+import type { ReservationRow } from "../database/database.types.js";
 
 @Injectable()
 export class ReservationsService {
@@ -36,7 +36,6 @@ export class ReservationsService {
     private readonly fareCalculator: FareCalculatorService,
     private readonly reservationsRepo: ReservationsRepository,
     private readonly inventoryClient: InventoryClient,
-    private readonly notificationClient: NotificationClient,
     private readonly holdsService: HoldsService,
     private readonly publisher: EventsPublisher,
     private readonly partnersClient: PartnersClient,
@@ -236,6 +235,7 @@ export class ReservationsService {
       );
     }
 
+    this.emit("booking.failed", row, "system");
     return this.reservationsRepo.toResponse(row);
   }
 
@@ -255,6 +255,7 @@ export class ReservationsService {
       );
     }
 
+    this.emit("booking.expired", row, "system");
     return this.reservationsRepo.toResponse(row);
   }
 
@@ -282,6 +283,7 @@ export class ReservationsService {
       );
     }
 
+    this.emit("booking.cancelled", row, "guest");
     return this.reservationsRepo.toResponse(row);
   }
 
@@ -354,26 +356,13 @@ export class ReservationsService {
     }
 
     const updated = await this.reservationsRepo.checkin(id);
-    this.publisher.publish("booking.checked_in", {
-      routingKey: "booking.checked_in",
-      reservationId: updated.id,
-      partnerId: updated.partner_id,
-      propertyId: updated.property_id,
-      bookerId: updated.booker_id,
-      guestInfo: updated.guest_info,
-      checkIn: updated.check_in,
-      checkedInAt: updated.checked_in_at,
-      timestamp: new Date().toISOString(),
-    });
+    this.emit("booking.checked_in", updated, "guest");
     return this.reservationsRepo.toResponse(updated);
   }
 
   async checkOut(id: string) {
     const row = await this.reservationsRepo.checkOut(id);
-    this.notifyGuest(row.guest_info, row.booker_id, {
-      subject: "Check-out completado",
-      message: `Hola ${guestFirstName(row.guest_info)}, tu check-out ha sido completado. ¡Gracias por tu estadía!`,
-    });
+    this.emit("booking.checked_out", row, "guest");
     return this.reservationsRepo.toResponse(row);
   }
 
@@ -390,60 +379,30 @@ export class ReservationsService {
         `Failed to confirm hold in inventory for reservation ${id}: ${err}`,
       );
     }
-    this.notifyGuest(row.guest_info, row.booker_id, {
-      subject: "Reserva confirmada",
-      message: `Hola ${guestFirstName(row.guest_info)}, tu reserva ha sido confirmada por el hotel.`,
-    });
+    this.emit("booking.confirmed", row, "partner");
     return this.reservationsRepo.toResponse(row);
   }
 
   async partnerCancel(id: string, reason: string) {
-    const { row, priorStatus } = await this.reservationsRepo.partnerCancel(
-      id,
-      reason,
-    );
+    const { row } = await this.reservationsRepo.partnerCancel(id, reason);
 
+    // TODO: trigger a refund through payment-service before releasing inventory.
+    // Partner-initiated cancels break the contract on the guest's side, so the
+    // guest should be refunded automatically rather than chase their money.
     try {
-      if (priorStatus === "confirmed" || priorStatus === "checked_in") {
-        await this.inventoryClient.release(
-          row.room_id,
-          row.check_in,
-          row.check_out,
-        );
-      } else if (priorStatus === "submitted") {
-        await this.inventoryClient.unhold(
-          row.room_id,
-          row.check_in,
-          row.check_out,
-        );
-      }
+      await this.inventoryClient.release(
+        row.room_id,
+        row.check_in,
+        row.check_out,
+      );
     } catch (err) {
       this.logger.warn(
         `Failed to update inventory after partner-cancel for reservation ${id}: ${err}`,
       );
     }
 
-    this.notifyGuest(row.guest_info, row.booker_id, {
-      subject: "Reserva cancelada",
-      message: `Hola ${guestFirstName(row.guest_info)}, tu reserva ha sido cancelada por el hotel. Motivo: ${reason}.`,
-    });
+    this.emit("booking.cancelled", row, "partner");
     return this.reservationsRepo.toResponse(row);
-  }
-
-  private notifyGuest(
-    guestInfo: GuestInfo | null,
-    userId: string,
-    { subject, message }: { subject: string; message: string },
-  ): void {
-    const to = guestInfo?.email ?? "";
-    if (!to) return;
-    this.notificationClient
-      .send({ userId, to, channel: "email", subject, message })
-      .catch((err) => {
-        this.logger.warn(
-          `Failed to send notification to userId=${userId}: ${err}`,
-        );
-      });
   }
 
   async confirm(id: string) {
@@ -461,22 +420,29 @@ export class ReservationsService {
       );
     }
 
-    this.publisher.publish("booking.confirmed", {
-      routingKey: "booking.confirmed",
+    this.emit("booking.confirmed", row, "system");
+    return this.reservationsRepo.toResponse(row);
+  }
+
+  private emit(
+    routingKey: BookingRoutingKey,
+    row: ReservationRow,
+    actor: BookingActor,
+  ): void {
+    const event: BookingEvent = {
+      routingKey,
       reservationId: row.id,
       partnerId: row.partner_id,
       propertyId: row.property_id,
       roomId: row.room_id,
       bookerId: row.booker_id,
-      guestInfo: row.guest_info,
-      checkIn: row.check_in,
-      checkOut: row.check_out,
-      fareBreakdown: row.fare_breakdown,
-      grandTotalUsd: row.grand_total_usd ? parseFloat(row.grand_total_usd) : 0,
-      taxTotalUsd: row.tax_total_usd ? parseFloat(row.tax_total_usd) : 0,
-      feeTotalUsd: row.fee_total_usd ? parseFloat(row.fee_total_usd) : 0,
+      guestInfo: row.guest_info ?? null,
+      checkIn: String(row.check_in),
+      checkOut: String(row.check_out),
+      actor,
       timestamp: new Date().toISOString(),
-    });
-    return this.reservationsRepo.toResponse(row);
+    };
+    if (row.reason) event.reason = row.reason;
+    this.publisher.publish(routingKey, event);
   }
 }

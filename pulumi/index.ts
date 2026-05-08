@@ -129,6 +129,12 @@ const EVENT_ROUTING_KEYS = [
   "inventory.room.upserted",
   "inventory.price.updated",
   "inventory.room.deleted",
+  "booking.cancelled",
+  "booking.confirmed",
+  "booking.checked_in",
+  "booking.checked_out",
+  "booking.failed",
+  "booking.expired",
 ] as const;
 
 const pubsubTopics: Record<string, gcp.pubsub.Topic> = {};
@@ -147,6 +153,27 @@ const SEARCH_SUBSCRIPTIONS = [
   { name: "search-inventory-room-deleted",  topic: "inventory-room-deleted"  },
 ];
 for (const sub of SEARCH_SUBSCRIPTIONS) {
+  new gcp.pubsub.Subscription(`sub-${sub.name}`, {
+    name: sub.name,
+    topic: pubsubTopics[sub.topic].id,
+    ackDeadlineSeconds: 60,
+    retryPolicy: { minimumBackoff: "10s", maximumBackoff: "600s" },
+    labels: LABELS,
+  });
+}
+
+// Subscriptions consumed by notification-service (booking lifecycle → guest emails).
+// Names mirror the consumer's queue convention (queue "notification.<routing-key>"
+// with dots → hyphens), so underscores from the routing keys are preserved.
+const NOTIFICATION_SUBSCRIPTIONS = [
+  { name: "notification-booking-cancelled",    topic: "booking-cancelled"    },
+  { name: "notification-booking-confirmed",    topic: "booking-confirmed"    },
+  { name: "notification-booking-checked_in",   topic: "booking-checked_in"   },
+  { name: "notification-booking-checked_out",  topic: "booking-checked_out"  },
+  { name: "notification-booking-failed",       topic: "booking-failed"       },
+  { name: "notification-booking-expired",      topic: "booking-expired"      },
+];
+for (const sub of NOTIFICATION_SUBSCRIPTIONS) {
   new gcp.pubsub.Subscription(`sub-${sub.name}`, {
     name: sub.name,
     topic: pubsubTopics[sub.topic].id,

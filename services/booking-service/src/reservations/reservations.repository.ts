@@ -322,14 +322,8 @@ export class ReservationsRepository {
         throw new NotFoundException(`Reservation ${id} not found`);
       }
 
-      const blocked = new Set([
-        "held",
-        "failed",
-        "expired",
-        "cancelled",
-        "checked_out",
-      ]);
-      if (blocked.has(current.status)) {
+      const allowed = new Set(["confirmed"]);
+      if (!allowed.has(current.status)) {
         throw new BadRequestException(
           `Cannot partner-cancel a reservation with status "${current.status}"`,
         );

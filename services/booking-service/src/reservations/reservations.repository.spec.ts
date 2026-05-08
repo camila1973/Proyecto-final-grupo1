@@ -669,29 +669,22 @@ describe("ReservationsRepository", () => {
       ).rejects.toThrow(NotFoundException);
     });
 
-    it.each(["held", "failed", "expired", "cancelled", "checked_out"])(
-      "throws BadRequestException when status is %s",
-      async (status) => {
-        const { BadRequestException } = await import("@nestjs/common");
-        const db = makeDbForPartnerCancel({ currentStatus: status });
-        const repo = new ReservationsRepository(db);
+    it.each([
+      "held",
+      "submitted",
+      "checked_in",
+      "failed",
+      "expired",
+      "cancelled",
+      "checked_out",
+    ])("throws BadRequestException when status is %s", async (status) => {
+      const { BadRequestException } = await import("@nestjs/common");
+      const db = makeDbForPartnerCancel({ currentStatus: status });
+      const repo = new ReservationsRepository(db);
 
-        await expect(repo.partnerCancel("res-uuid", "reason")).rejects.toThrow(
-          BadRequestException,
-        );
-      },
-    );
-
-    it.each(["submitted", "checked_in"])(
-      "succeeds when status is %s",
-      async (status) => {
-        const db = makeDbForPartnerCancel({ currentStatus: status });
-        const repo = new ReservationsRepository(db);
-
-        await expect(
-          repo.partnerCancel("res-uuid", "reason"),
-        ).resolves.not.toThrow();
-      },
-    );
+      await expect(repo.partnerCancel("res-uuid", "reason")).rejects.toThrow(
+        BadRequestException,
+      );
+    });
   });
 });

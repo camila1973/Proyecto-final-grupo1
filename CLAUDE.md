@@ -207,6 +207,7 @@ Reservations go through the following states:
 | Stripe webhook `payment_intent.succeeded` | `submitted` → `confirmed` | payment-service calls `PATCH /reservations/:id/confirm` |
 | Stripe webhook `payment_intent.payment_failed` | `submitted` → `failed` | payment-service calls `PATCH /reservations/:id/fail` |
 | `PATCH /reservations/:id/cancel` | any non-terminal → `cancelled` | Frontend/user |
+| `PATCH /reservations/:id/partner-cancel` | `confirmed` → `cancelled` | Partner dashboard (hotel-initiated) |
 | Hold expiry job (runs every 60s) | `held` → `expired` | booking-service `HoldExpiryService` |
 
 ### Important notes
@@ -215,6 +216,7 @@ Reservations go through the following states:
 - A reservation can have **multiple payment rows** (one per attempt). `payments.reservation_id` is not unique. `findByReservationId` returns the most recent row (`ORDER BY created_at DESC`).
 - On payment retry, `initiate()` detects an existing payment row (`isRetry = true`), calls `rehold` to re-acquire inventory, then proceeds with a new Stripe PaymentIntent and a new payment row.
 - In local dev without Stripe webhooks configured, reservations stay `submitted` after payment. Use the Stripe CLI (`stripe listen --forward-to localhost:3005/payments/webhook`) to test the full flow.
+- `partner-cancel` only accepts `confirmed` reservations. `submitted` is blocked because cancelling mid-payment races the Stripe webhook with no refund wired; `checked_in` is blocked because that case should become a separate early-checkout operation. Refunds for partner-initiated cancels on `confirmed` reservations are not yet implemented (TODO in `reservations.service.ts`).
 
 ## Event Bus (Pub/Sub in GCP, RabbitMQ locally)
 
@@ -283,6 +285,40 @@ Topics and subscriptions are created by Pulumi before the services start — ser
 | `services/search-service/src/events/handlers/room-upserted.handler.ts` | Maps camelCase snapshot → snake_case `RoomIndexRecord` |
 | `services/search-service/src/events/handlers/availability-updated.handler.ts` | Replaces `room_price_periods` for a room |
 | `services/search-service/src/events/handlers/room-deleted.handler.ts` | Sets room inactive; invalidates city Redis cache |
+
+### booking-service → notification-service
+
+booking-service publishes a domain event on every customer-visible status transition. notification-service consumes them, looks up a renderer per `(routingKey, actor)`, and emails the guest when the renderer returns a non-null `RenderedMessage`. Domain facts only — booking does not encode subject/channel/recipient. notification-service still exposes `POST /notifications/send` for payment-service and auth-service, which remain on synchronous HTTP.
+
+| Routing key | Pub/Sub topic | Subscription (notification-service) | Emails today? |
+|---|---|---|---|
+| `booking.cancelled` | `booking-cancelled` | `notification-booking-cancelled` | partner only ("Reserva cancelada") |
+| `booking.confirmed` | `booking-confirmed` | `notification-booking-confirmed` | yes ("Reserva confirmada") |
+| `booking.checked_in` | `booking-checked_in` | `notification-booking-checked_in` | no |
+| `booking.checked_out` | `booking-checked_out` | `notification-booking-checked_out` | yes ("Check-out completado") |
+| `booking.failed` | `booking-failed` | `notification-booking-failed` | no |
+| `booking.expired` | `booking-expired` | `notification-booking-expired` | no |
+
+Event payload (kept in sync between `services/booking-service/src/events/events.types.ts` and `services/notification-service/src/events/types.ts`):
+
+```ts
+{
+  routingKey: BookingRoutingKey;
+  reservationId: string;
+  partnerId: string;
+  propertyId: string;
+  roomId: string;
+  bookerId: string;
+  guestInfo: GuestInfo | null;
+  checkIn: string;
+  checkOut: string;
+  actor: "guest" | "partner" | "system";
+  reason?: string;
+  timestamp: string;
+}
+```
+
+Templates live in `services/notification-service/src/events/templates/`, one file per routing key. Each template is a pure function `(event) => RenderedMessage | null`; returning `null` means "this transition does not email anyone today" (single decision point). `submitted` and `held` are not emitted yet — internal payment churn.
 
 ## Partners — Data Model & Navigation
 
