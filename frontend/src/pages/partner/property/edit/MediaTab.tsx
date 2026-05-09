@@ -2,8 +2,8 @@ import { useTranslation } from 'react-i18next';
 import {
   Box,
   Button,
+  Card,
   Chip,
-  Paper,
   Stack,
   Tooltip,
   Typography,
@@ -17,7 +17,7 @@ interface MediaTabProps {
 export default function MediaTab({ thumbnailUrl }: MediaTabProps) {
   const { t } = useTranslation();
   return (
-    <Paper variant="outlined" sx={{ p: 3, borderColor: '#e2e8f0', borderRadius: 2 }}>
+    <Card sx={{ p: 3 }}>
       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
         <Typography sx={{ fontSize: 16, fontWeight: 600, color: '#1a2332' }}>{t('partner.properties.edit.media.title')}</Typography>
         <Tooltip title={t('partner.properties.edit.coming_soon')}>
@@ -85,6 +85,6 @@ export default function MediaTab({ thumbnailUrl }: MediaTabProps) {
           );
         })}
       </Box>
-    </Paper>
+    </Card>
   );
 }

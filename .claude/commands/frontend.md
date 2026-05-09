@@ -55,7 +55,25 @@ The theme handles the visual side (radius, border, overflow). The wrappers handl
 
 ### Why `<Paper>` is banned
 
-`<Paper>` is MUI's low-level surface primitive that `<Card>`, `<Menu>`, `<Popover>` build on. Using it directly for content surfaces means the team's `MuiCard` theme defaults don't apply — the surface drifts on radius, border and dark-mode behavior. The only sanctioned use is `<TableContainer component={Paper}>`, which is the documented MUI pattern for table wrappers.
+`<Paper>` is MUI's low-level surface primitive that `<Card>`, `<Menu>`, `<Popover>` build on. Using it directly for content surfaces means the team's `MuiCard` theme defaults don't apply — the surface drifts on radius, border and dark-mode behavior.
+
+The only sanctioned use is as the surface for tables. Both forms are accepted (they are functionally equivalent in MUI):
+
+```tsx
+// Nested form — common in this repo
+<Paper variant="outlined">
+  <TableContainer>
+    <Table>...</Table>
+  </TableContainer>
+</Paper>
+
+// component prop form — also fine
+<TableContainer component={Paper} variant="outlined">
+  <Table>...</Table>
+</TableContainer>
+```
+
+Anywhere else that's not a table wrapper, use `<Card>`.
 
 ### Examples
 

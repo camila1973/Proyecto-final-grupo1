@@ -4,9 +4,9 @@ import {
   Alert,
   Box,
   Button,
+  Card,
   Chip,
   CircularProgress,
-  Paper,
   Stack,
   Table,
   TableBody,
@@ -47,7 +47,7 @@ export default function TaxTab({ country, countryLabel, city, rules, isLoading, 
   );
 
   return (
-    <Paper variant="outlined" sx={{ p: 3, borderColor: '#e2e8f0', borderRadius: 2 }}>
+    <Card sx={{ p: 3 }}>
       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
         <Typography sx={{ fontSize: 16, fontWeight: 600, color: '#1a2332' }}>
           {t('partner.properties.edit.tax.title', { city, country: countryLabel })}
@@ -165,6 +165,6 @@ export default function TaxTab({ country, countryLabel, city, rules, isLoading, 
         />
         <KpiBlock label={t('partner.properties.edit.tax.kpi_country')} value={countryLabel} sub={country} />
       </Box>
-    </Paper>
+    </Card>
   );
 }

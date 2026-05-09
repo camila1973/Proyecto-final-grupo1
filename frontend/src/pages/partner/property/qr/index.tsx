@@ -14,7 +14,6 @@ import {
   DialogContentText,
   DialogTitle,
   Divider,
-  Paper,
   Stack,
   Typography,
 } from '@mui/material';
@@ -191,17 +190,14 @@ export default function PropertyQrPage() {
               </Button>
             </Stack>
 
-            <Paper
-              variant="outlined"
-              sx={{ p: 2.5, borderRadius: 2, mt: 3, maxWidth: 380 }}
-            >
+            <Card sx={{ p: 2.5, mt: 3, maxWidth: 380 }}>
               <Typography sx={{ fontWeight: 600, mb: 1, fontSize: 14 }}>
                 {t('partner.properties.qr.instructions_title')}
               </Typography>
               <Typography sx={{ fontSize: 13, color: 'text.secondary', lineHeight: 1.6 }}>
                 {t('partner.properties.qr.instructions_body')}
               </Typography>
-            </Paper>
+            </Card>
           </Box>
         </Stack>
       )}
