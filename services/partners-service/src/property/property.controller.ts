@@ -1,10 +1,13 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
   NotFoundException,
   Param,
   Post,
+  Put,
   Query,
 } from "@nestjs/common";
 import { PropertyService } from "./property.service.js";
@@ -114,6 +117,25 @@ export class PropertyController {
   ) {
     return this.propertyService.createRoomRate(
       roomId,
+      body.fromDate,
+      body.toDate,
+      body.priceUsd,
+    );
+  }
+
+  @Delete(":partnerId/properties/:propertyId/rooms/:roomId/rates/:rateId")
+  @HttpCode(204)
+  deleteRate(@Param("rateId") rateId: string): Promise<void> {
+    return this.propertyService.deleteRoomRate(rateId);
+  }
+
+  @Put(":partnerId/properties/:propertyId/rooms/:roomId/rates/:rateId")
+  updateRate(
+    @Param("rateId") rateId: string,
+    @Body() body: { fromDate: string; toDate: string; priceUsd: number },
+  ): Promise<void> {
+    return this.propertyService.updateRoomRate(
+      rateId,
       body.fromDate,
       body.toDate,
       body.priceUsd,

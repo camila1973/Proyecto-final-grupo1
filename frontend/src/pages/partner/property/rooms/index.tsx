@@ -6,44 +6,52 @@ import {
   Alert,
   Box,
   CircularProgress,
-  IconButton,
   Stack,
-  Typography,
 } from '@mui/material';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import { useAuth } from '../../../../hooks/useAuth';
 import { useLocale } from '../../../../context/LocaleContext';
 import {
   fetchPartnerRoomById,
   fetchPartnerRoomAvailability,
   fetchPartnerRoomRates,
+  fetchPropertyReservations,
   blockPartnerRoomDates,
   unblockPartnerRoomDates,
   createPartnerRoomRate,
+  updatePartnerRoomRate,
+  deletePartnerRoomRate,
 } from '../../../../utils/queries';
-import { currentMonth, formatMonthLabel, shiftMonth } from '../../../../utils/month';
+import { currentMonth, shiftMonth } from '../../../../utils/month';
+import { formatPrice } from '../../../../utils/currency';
+import dayjs from '../../../../utils/dayjs';
 import RoomHeroBanner from './RoomHeroBanner';
-import RoomSummaryStrip from './RoomSummaryStrip';
+import RoomKpiStrip from './RoomKpiStrip';
 import RoomCalendar from './RoomCalendar';
 import { buildCalendarDays } from './calendarDays';
-import RoomEditDrawer from './RoomEditDrawer';
+import RoomEditDrawer, { type DrawerMode } from './RoomEditDrawer';
+import RatePlanCard from './RatePlanCard';
+import BlocksCard from './BlocksCard';
+import UpcomingReservationsCard from './UpcomingReservationsCard';
+import { computeOccupancy } from './roomMetrics';
+import { selectUpcoming } from './upcomingReservations';
+import { groupBlockedRuns, type BlockedRange } from './blockRanges';
+import { formatRatePeriodRange, type RatePlanRow } from './roomRatePlan';
 import PageContainer from '../../../../components/PageContainer';
 
-const NAV_BTN = { bgcolor: '#1B4F8C', color: '#fff', '&:hover': { bgcolor: '#163d6e' } } as const;
-
 function monthWindow(month: string): { fromDate: string; toDate: string } {
-  const [y, m] = month.split('-').map(Number);
-  const fromDate = `${month}-01`;
-  const next = new Date(Date.UTC(y, m, 1));
-  const toDate = `${next.getUTCFullYear()}-${String(next.getUTCMonth() + 1).padStart(2, '0')}-01`;
-  return { fromDate, toDate };
+  const start = dayjs.utc(`${month}-01`);
+  return {
+    fromDate: start.format('YYYY-MM-DD'),
+    toDate: start.add(1, 'month').format('YYYY-MM-DD'),
+  };
 }
 
 function addDays(date: string, n: number): string {
-  const d = new Date(`${date}T00:00:00`);
-  d.setDate(d.getDate() + n);
-  return d.toISOString().slice(0, 10);
+  return dayjs.utc(date).add(n, 'day').format('YYYY-MM-DD');
+}
+
+function todayIso(): string {
+  return dayjs().format('YYYY-MM-DD');
 }
 
 export default function RoomDetailPage() {
@@ -58,8 +66,9 @@ export default function RoomDetailPage() {
   const [selEnd, setSelEnd] = useState<string | null>(null);
   const [hovDate, setHovDate] = useState<string | null>(null);
   const [hintMode, setHintMode] = useState<'idle' | 'selecting'>('idle');
-  const [defaultBlock, setDefaultBlock] = useState(false);
-  const [rangeSelectMode, setRangeSelectMode] = useState(false);
+  const [drawerMode, setDrawerMode] = useState<DrawerMode | null>(null);
+  const [editingRateId, setEditingRateId] = useState<string | null>(null);
+  const [editingInitialPrice, setEditingInitialPrice] = useState<number | undefined>(undefined);
 
   const partnerId = user?.partnerId ?? '';
   const enabled = !!token && !!partnerId;
@@ -83,16 +92,45 @@ export default function RoomDetailPage() {
     enabled,
   });
 
+  const upcomingQuery = useQuery({
+    queryKey: ['property-reservations-room', partnerId, propertyId, roomQuery.data?.roomType ?? null],
+    queryFn: () => fetchPropertyReservations(partnerId, propertyId, currentMonth(), roomQuery.data?.roomType ?? null, token!),
+    enabled: enabled && !!roomQuery.data,
+  });
+
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['room-availability', partnerId, propertyId, roomId, month] });
     queryClient.invalidateQueries({ queryKey: ['room-rates', partnerId, propertyId, roomId, month] });
+    queryClient.invalidateQueries({ queryKey: ['property-reservations-room', partnerId, propertyId] });
   };
 
-  const blockMutation = useMutation({ mutationFn: (v: { from: string; to: string }) => blockPartnerRoomDates(partnerId, propertyId, roomId, v.from, v.to, token!), onSuccess: invalidate });
-  const unblockMutation = useMutation({ mutationFn: (v: { from: string; to: string }) => unblockPartnerRoomDates(partnerId, propertyId, roomId, v.from, v.to, token!), onSuccess: invalidate });
-  const rateMutation = useMutation({ mutationFn: (v: { from: string; toEx: string; price: number }) => createPartnerRoomRate(partnerId, propertyId, roomId, v.from, v.toEx, v.price, token!), onSuccess: invalidate });
+  const blockMutation = useMutation({
+    mutationFn: (v: { from: string; to: string }) => blockPartnerRoomDates(partnerId, propertyId, roomId, v.from, v.to, token!),
+    onSuccess: invalidate,
+  });
+  const unblockMutation = useMutation({
+    mutationFn: (v: { from: string; to: string }) => unblockPartnerRoomDates(partnerId, propertyId, roomId, v.from, v.to, token!),
+    onSuccess: invalidate,
+  });
+  const rateMutation = useMutation({
+    mutationFn: (v: { from: string; toEx: string; price: number }) => createPartnerRoomRate(partnerId, propertyId, roomId, v.from, v.toEx, v.price, token!),
+    onSuccess: invalidate,
+  });
+  const updateRateMutation = useMutation({
+    mutationFn: (v: { rateId: string; from: string; toEx: string; price: number }) =>
+      updatePartnerRoomRate(partnerId, propertyId, roomId, v.rateId, v.from, v.toEx, v.price, token!),
+    onSuccess: invalidate,
+  });
+  const deleteRateMutation = useMutation({
+    mutationFn: (rateId: string) => deletePartnerRoomRate(partnerId, propertyId, roomId, rateId, token!),
+    onSuccess: invalidate,
+  });
 
-  const saving = blockMutation.isPending || unblockMutation.isPending || rateMutation.isPending;
+  const saving =
+    blockMutation.isPending ||
+    unblockMutation.isPending ||
+    rateMutation.isPending ||
+    updateRateMutation.isPending;
 
   const calendarDays = useMemo(() => {
     if (!roomQuery.data) return [];
@@ -105,67 +143,93 @@ export default function RoomDetailPage() {
     );
   }, [month, availQuery.data, ratesQuery.data, roomQuery.data]);
 
-  function resolveDefaultBlock(lo: string, hi: string): boolean {
-    return calendarDays.some((d) => d.date >= lo && d.date <= hi && d.avail?.blocked === true);
-  }
+  const { occupancy, soldRooms } = useMemo(() => computeOccupancy(availQuery.data ?? []), [availQuery.data]);
 
-  function openSingleDay(date: string) {
-    setDefaultBlock(resolveDefaultBlock(date, date));
-    setSelStart(date);
-    setSelEnd(date);
-    setHovDate(null);
-    setHintMode('idle');
-  }
+  const upcoming = useMemo(
+    () => selectUpcoming(upcomingQuery.data?.reservations ?? [], todayIso()),
+    [upcomingQuery.data],
+  );
 
-  function handleDayClick(date: string) {
-    if (!rangeSelectMode) {
-      // Direct click: always open drawer for that single day
-      openSingleDay(date);
-      return;
-    }
-    // Range-select mode (entered via strip buttons)
-    if (!selStart) {
-      setSelStart(date);
-      setHovDate(date);
-      setHintMode('selecting');
-    } else if (!selEnd) {
-      const lo = selStart < date ? selStart : date;
-      const hi = selStart < date ? date : selStart;
-      setDefaultBlock(resolveDefaultBlock(lo, hi));
-      setSelEnd(date);
-      setHovDate(null);
-      setHintMode('idle');
-    } else {
-      // Drawer open: reset to a new single day
-      openSingleDay(date);
-      setRangeSelectMode(false);
-    }
-  }
+  const blockedRanges = useMemo(
+    () => groupBlockedRuns(availQuery.data ?? []),
+    [availQuery.data],
+  );
 
-  function handleDayHover(date: string) {
-    if (rangeSelectMode && selStart && !selEnd) setHovDate(date);
-  }
+  const isPickingRange = drawerMode === 'rate-create' || drawerMode === 'block-create';
+  const interactiveCalendar = isPickingRange && !selEnd;
 
   function clearSel() {
     setSelStart(null);
     setSelEnd(null);
     setHovDate(null);
     setHintMode('idle');
-    setRangeSelectMode(false);
+    setDrawerMode(null);
+    setEditingRateId(null);
+    setEditingInitialPrice(undefined);
   }
 
-  async function handleApply({ price, block }: { avail: number | null; price: number | null; block: boolean }) {
-    if (!selStart || !selEnd) return;
+  function handleDayClick(date: string) {
+    if (!isPickingRange) return;
+    if (!selStart) {
+      setSelStart(date);
+      setHovDate(date);
+      setHintMode('selecting');
+    } else if (!selEnd) {
+      setSelEnd(date);
+      setHovDate(null);
+      setHintMode('idle');
+    }
+  }
+
+  function handleDayHover(date: string) {
+    if (interactiveCalendar && selStart && !selEnd) setHovDate(date);
+  }
+
+  function startRateCreate() {
+    clearSel();
+    setDrawerMode('rate-create');
+    setHintMode('selecting');
+  }
+
+  function startBlockCreate() {
+    clearSel();
+    setDrawerMode('block-create');
+    setHintMode('selecting');
+  }
+
+  function startRateEdit(row: RatePlanRow) {
+    if (row.kind !== 'override' || !row.fromDate || !row.toDate) return;
+    const { from, to } = formatRatePeriodRange(row.fromDate, row.toDate);
+    clearSel();
+    setSelStart(from);
+    setSelEnd(to);
+    setEditingRateId(row.key);
+    setEditingInitialPrice(row.priceUsd);
+    setDrawerMode('rate-edit');
+  }
+
+  async function handleApply({ price }: { price: number | null }) {
+    if (!selStart || !selEnd || !drawerMode) return;
     const lo = selStart < selEnd ? selStart : selEnd;
     const hi = selStart < selEnd ? selEnd : selStart;
     const toEx = addDays(hi, 1);
 
-    if (block) await blockMutation.mutateAsync({ from: lo, to: toEx });
-    else await unblockMutation.mutateAsync({ from: lo, to: toEx });
-
-    if (price !== null && price > 0) await rateMutation.mutateAsync({ from: lo, toEx, price });
+    if (drawerMode === 'rate-create' && price !== null && price > 0) {
+      await rateMutation.mutateAsync({ from: lo, toEx, price });
+    } else if (drawerMode === 'rate-edit' && editingRateId && price !== null && price > 0) {
+      await updateRateMutation.mutateAsync({ rateId: editingRateId, from: lo, toEx, price });
+    } else if (drawerMode === 'block-create') {
+      await blockMutation.mutateAsync({ from: lo, to: toEx });
+    }
 
     clearSel();
+  }
+
+  async function handleBlockDelete(range: BlockedRange) {
+    await unblockMutation.mutateAsync({
+      from: range.from,
+      to: addDays(range.to, 1),
+    });
   }
 
   if (!enabled) {
@@ -177,24 +241,25 @@ export default function RoomDetailPage() {
   }
 
   const room = roomQuery.data;
+  const subtitleParts = room
+    ? [`${room.totalRooms} ${t('partner.room.subtitle_rooms')}`, room.bedType, t('partner.room.subtitle_capacity', { count: room.capacity })].filter(Boolean)
+    : [];
+
+  const deletingRange: BlockedRange | null = unblockMutation.isPending
+    ? (unblockMutation.variables
+        ? { from: unblockMutation.variables.from, to: dayjs.utc(unblockMutation.variables.to).subtract(1, 'day').format('YYYY-MM-DD') }
+        : null)
+    : null;
 
   return (
-    <div className="min-h-screen">
+    <>
       <RoomHeroBanner
         propertyId={propertyId}
-        propertyName={room ? `${propertyId.slice(0, 8)}` : '...'}
+        propertyName={room ? propertyId.slice(0, 8) : '...'}
         roomType={room?.roomType ?? '...'}
-        subtitle={`${propertyId.slice(0, 8)} · ${room?.viewType ?? ''}`}
+        subtitle={subtitleParts.join(' · ')}
+        status={room?.status ?? 'active'}
       />
-
-      {room && (
-        <RoomSummaryStrip
-          room={room}
-          currency={currency}
-          onBlockRange={() => { clearSel(); setDefaultBlock(true); setRangeSelectMode(true); setHintMode('selecting'); }}
-          onAddRate={() => { clearSel(); setDefaultBlock(false); setRangeSelectMode(true); setHintMode('selecting'); }}
-        />
-      )}
 
       <PageContainer>
         {roomQuery.isLoading && (
@@ -205,54 +270,15 @@ export default function RoomDetailPage() {
 
         {room && (
           <>
-            {/* Toolbar: month nav + legend */}
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Stack direction="row" spacing={1.5} alignItems="center">
-                <IconButton size="small" onClick={() => { setMonth((m) => shiftMonth(m, -1)); clearSel(); }} sx={NAV_BTN}>
-                  <ArrowBackIcon fontSize="small" />
-                </IconButton>
-                <Typography sx={{ fontSize: 15, fontWeight: 500, minWidth: 150, textAlign: 'center' }}>
-                  {formatMonthLabel(month, language)}
-                </Typography>
-                <IconButton size="small" onClick={() => { setMonth((m) => shiftMonth(m, 1)); clearSel(); }} sx={NAV_BTN}>
-                  <ArrowForwardIcon fontSize="small" />
-                </IconButton>
-              </Stack>
+            <RoomKpiStrip
+              totalRooms={room.totalRooms}
+              basePriceLabel={formatPrice(room.basePriceUsd, currency)}
+              occupancy={occupancy}
+              soldRooms={soldRooms}
+            />
 
-              <Stack direction="row" spacing={1.5} alignItems="center">
-                {[
-                  { bg: '#EAF3DE', border: '#C0DD97', label: t('partner.room.legend_available') },
-                  { bg: '#FAEEDA', border: '#FAC775', label: t('partner.room.legend_low') },
-                  { bg: '#FCEBEB', border: '#F7C1C1', label: t('partner.room.legend_sold_out') },
-                  { bg: 'repeating-linear-gradient(45deg,#e8e8e8,#e8e8e8 3px,#fff 3px,#fff 6px)', border: '#d1d5db', label: t('partner.room.legend_blocked') },
-                ].map(({ bg, border, label }) => (
-                  <Stack key={label} direction="row" spacing={0.5} alignItems="center">
-                    <Box sx={{ width: 10, height: 10, borderRadius: '2px', background: bg, border: `0.5px solid ${border}` }} />
-                    <Typography sx={{ fontSize: 11, color: '#6b7280' }}>{label}</Typography>
-                  </Stack>
-                ))}
-              </Stack>
-            </Box>
-
-            {/* Hint bar */}
-            <Box sx={{
-              bgcolor: hintMode === 'selecting' ? '#E6F1FB' : '#F9FAFB',
-              border: `0.5px solid ${hintMode === 'selecting' ? '#B5D4F4' : '#e2e8f0'}`,
-              borderRadius: 1.5,
-              px: 2,
-              py: '7px',
-              fontSize: 12,
-              color: hintMode === 'selecting' ? '#0C447C' : '#6b7280',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1,
-            }}>
-              ℹ︎ {hintMode === 'selecting' ? t('partner.room.hint_selecting') : t('partner.room.hint_default')}
-            </Box>
-
-            {/* Calendar + drawer */}
-            <Box sx={{ display: 'flex', gap: 0, border: '0.5px solid #e2e8f0', borderRadius: 2, overflow: 'hidden' }}>
-              <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 320px' }, gap: 2 }}>
+              <Box sx={{ minWidth: 0 }}>
                 {availQuery.isLoading || ratesQuery.isLoading ? (
                   <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
                     <CircularProgress size={22} />
@@ -260,30 +286,59 @@ export default function RoomDetailPage() {
                 ) : (
                   <RoomCalendar
                     month={month}
+                    language={language}
                     days={calendarDays}
                     selStart={selStart}
                     selEnd={selEnd}
                     hovDate={hovDate}
+                    hintMode={hintMode}
+                    interactive={interactiveCalendar}
+                    onPrevMonth={() => { setMonth((m) => shiftMonth(m, -1)); clearSel(); }}
+                    onNextMonth={() => { setMonth((m) => shiftMonth(m, 1)); clearSel(); }}
                     onDayClick={handleDayClick}
                     onDayHover={handleDayHover}
                   />
                 )}
               </Box>
-              <RoomEditDrawer
-                key={selStart && selEnd ? `${selStart}-${selEnd}` : 'closed'}
-                open={!!selEnd}
-                selStart={selStart}
-                selEnd={selEnd}
-                totalRooms={room.totalRooms}
-                defaultBlock={defaultBlock}
-                saving={saving}
-                onClose={clearSel}
-                onApply={handleApply}
-              />
+
+              {drawerMode && selStart && selEnd ? (
+                <RoomEditDrawer
+                  key={`${drawerMode}-${selStart}-${selEnd}`}
+                  mode={drawerMode}
+                  selStart={selStart}
+                  selEnd={selEnd}
+                  initialPrice={editingInitialPrice}
+                  saving={saving}
+                  onClose={clearSel}
+                  onApply={handleApply}
+                />
+              ) : (
+                <Stack spacing={2}>
+                  <RatePlanCard
+                    basePriceUsd={room.basePriceUsd}
+                    rates={ratesQuery.data ?? []}
+                    currency={currency}
+                    onNewRate={startRateCreate}
+                    onEdit={startRateEdit}
+                    onDelete={(rateId) => deleteRateMutation.mutate(rateId)}
+                    deletingRateId={deleteRateMutation.isPending ? (deleteRateMutation.variables ?? null) : null}
+                  />
+                  <BlocksCard
+                    ranges={blockedRanges}
+                    onNewBlock={startBlockCreate}
+                    onDelete={handleBlockDelete}
+                    deletingRange={deletingRange}
+                  />
+                  <UpcomingReservationsCard
+                    reservations={upcoming}
+                    isLoading={upcomingQuery.isLoading}
+                  />
+                </Stack>
+              )}
             </Box>
           </>
         )}
       </PageContainer>
-    </div>
+    </>
   );
 }

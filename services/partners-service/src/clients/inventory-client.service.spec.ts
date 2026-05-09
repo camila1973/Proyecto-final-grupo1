@@ -254,6 +254,67 @@ describe("InventoryClientService", () => {
     });
   });
 
+  describe("updateRoomRate", () => {
+    it("returns the updated rate on success", async () => {
+      const rate = {
+        id: "rate-1",
+        roomId: "room-1",
+        fromDate: "2026-05-01",
+        toDate: "2026-05-31",
+        priceUsd: "200",
+        currency: "USD",
+        createdAt: "2026-05-01",
+      };
+      global.fetch = mockFetch(true, rate) as typeof fetch;
+      const result = await svc.updateRoomRate(
+        "rate-1",
+        "2026-05-01",
+        "2026-05-31",
+        200,
+      );
+      expect(result).toEqual(rate);
+    });
+
+    it("returns null on 404", async () => {
+      global.fetch = mockFetch(false, "", 404) as typeof fetch;
+      const result = await svc.updateRoomRate(
+        "missing",
+        "2026-05-01",
+        "2026-05-31",
+        200,
+      );
+      expect(result).toBeNull();
+    });
+
+    it("returns null on other non-ok responses", async () => {
+      global.fetch = mockFetch(false, "", 500) as typeof fetch;
+      const result = await svc.updateRoomRate(
+        "rate-1",
+        "2026-05-01",
+        "2026-05-31",
+        200,
+      );
+      expect(result).toBeNull();
+    });
+  });
+
+  describe("deleteRoomRate", () => {
+    it("returns true on 204", async () => {
+      global.fetch = mockFetch(true, null, 204) as typeof fetch;
+      expect(await svc.deleteRoomRate("rate-1")).toBe(true);
+    });
+
+    it("returns false on 404", async () => {
+      global.fetch = mockFetch(false, "", 404) as typeof fetch;
+      expect(await svc.deleteRoomRate("missing")).toBe(false);
+    });
+
+    it("returns false on other non-ok responses", async () => {
+      global.fetch = mockFetch(false, "", 500) as typeof fetch;
+      expect(await svc.deleteRoomRate("rate-1")).toBe(false);
+    });
+  });
+
   describe("getPropertyById", () => {
     it("returns property on 200", async () => {
       global.fetch = mockFetch(true, PROPERTY) as typeof fetch;

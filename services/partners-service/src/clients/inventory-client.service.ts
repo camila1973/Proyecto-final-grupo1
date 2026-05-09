@@ -199,6 +199,45 @@ export class InventoryClientService {
     return res.json() as Promise<InventoryRatePeriod>;
   }
 
+  async deleteRoomRate(rateId: string): Promise<boolean> {
+    const res = await fetch(
+      `${this.baseUrl}/rates/${encodeURIComponent(rateId)}`,
+      { method: "DELETE" },
+    );
+    if (res.status === 404) return false;
+    if (!res.ok) {
+      this.logger.warn(
+        `inventory-service delete rate ${rateId} failed [${res.status}]`,
+      );
+      return false;
+    }
+    return true;
+  }
+
+  async updateRoomRate(
+    rateId: string,
+    fromDate: string,
+    toDate: string,
+    priceUsd: number,
+  ): Promise<InventoryRatePeriod | null> {
+    const res = await fetch(
+      `${this.baseUrl}/rates/${encodeURIComponent(rateId)}`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fromDate, toDate, priceUsd }),
+      },
+    );
+    if (res.status === 404) return null;
+    if (!res.ok) {
+      this.logger.warn(
+        `inventory-service update rate ${rateId} failed [${res.status}]`,
+      );
+      return null;
+    }
+    return res.json() as Promise<InventoryRatePeriod>;
+  }
+
   async getPropertyById(propertyId: string): Promise<InventoryProperty | null> {
     const res = await fetch(
       `${this.baseUrl}/properties/${encodeURIComponent(propertyId)}`,

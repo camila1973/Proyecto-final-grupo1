@@ -1,3 +1,4 @@
+import dayjs from '../../../../utils/dayjs';
 import type { RoomAvailabilityDay, RoomRatePeriod } from '../../../../utils/queries';
 
 export type DayState = 'available' | 'low' | 'sold-out' | 'blocked' | 'default';
@@ -10,6 +11,10 @@ export interface CalendarDay {
   state: DayState;
 }
 
+function asDateOnly(value: string): string {
+  return dayjs.utc(value).format('YYYY-MM-DD');
+}
+
 export function buildCalendarDays(
   month: string,
   availability: RoomAvailabilityDay[],
@@ -17,19 +22,22 @@ export function buildCalendarDays(
   basePriceUsd: number,
   totalRooms: number,
 ): CalendarDay[] {
-  const availMap = new Map(availability.map((a) => [a.date.slice(0, 10), a]));
+  const availMap = new Map(availability.map((a) => [asDateOnly(a.date), a]));
+  const ratePeriods = rates.map((r) => ({
+    ...r,
+    from: asDateOnly(r.fromDate),
+    to: asDateOnly(r.toDate),
+  }));
 
-  const [y, m] = month.split('-').map(Number);
-  const daysInMonth = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const monthStart = dayjs.utc(`${month}-01`);
+  const daysInMonth = monthStart.daysInMonth();
   const days: CalendarDay[] = [];
 
-  for (let d = 1; d <= daysInMonth; d++) {
-    const mm = String(m).padStart(2, '0');
-    const dd = String(d).padStart(2, '0');
-    const date = `${y}-${mm}-${dd}`;
+  for (let d = 0; d < daysInMonth; d++) {
+    const date = monthStart.add(d, 'day').format('YYYY-MM-DD');
     const avail = availMap.get(date);
 
-    const period = rates.find((r) => r.fromDate <= date && date < r.toDate);
+    const period = ratePeriods.find((r) => r.from <= date && date < r.to);
     const rate = period ? period.priceUsd : basePriceUsd;
     const hasOverride = !!period && period.id !== 'base';
 

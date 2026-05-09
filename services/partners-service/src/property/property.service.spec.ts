@@ -337,4 +337,70 @@ describe("PropertyService", () => {
       ).rejects.toThrow(NotFoundException);
     });
   });
+
+  describe("deleteRoomRate", () => {
+    it("delegates to the inventory client when the rate exists", async () => {
+      const deleteRoomRate = jest.fn().mockResolvedValue(true);
+      const inventoryClient = {
+        deleteRoomRate,
+      } as unknown as InventoryClientService;
+      const svc = makeSvc(makeBookingClient([]), inventoryClient);
+
+      await expect(svc.deleteRoomRate("rate-1")).resolves.toBeUndefined();
+      expect(deleteRoomRate).toHaveBeenCalledWith("rate-1");
+    });
+
+    it("throws NotFoundException when the inventory client reports the rate is missing", async () => {
+      const deleteRoomRate = jest.fn().mockResolvedValue(false);
+      const inventoryClient = {
+        deleteRoomRate,
+      } as unknown as InventoryClientService;
+      const svc = makeSvc(makeBookingClient([]), inventoryClient);
+
+      await expect(svc.deleteRoomRate("missing")).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  describe("updateRoomRate", () => {
+    it("delegates to the inventory client when the rate exists", async () => {
+      const updated = {
+        id: "rate-1",
+        roomId: "room-1",
+        fromDate: "2026-05-01",
+        toDate: "2026-05-31",
+        priceUsd: "200",
+        currency: "USD",
+        createdAt: "2026-05-01",
+      };
+      const updateRoomRate = jest.fn().mockResolvedValue(updated);
+      const inventoryClient = {
+        updateRoomRate,
+      } as unknown as InventoryClientService;
+      const svc = makeSvc(makeBookingClient([]), inventoryClient);
+
+      await expect(
+        svc.updateRoomRate("rate-1", "2026-05-01", "2026-05-31", 200),
+      ).resolves.toBeUndefined();
+      expect(updateRoomRate).toHaveBeenCalledWith(
+        "rate-1",
+        "2026-05-01",
+        "2026-05-31",
+        200,
+      );
+    });
+
+    it("throws NotFoundException when the inventory client returns null", async () => {
+      const updateRoomRate = jest.fn().mockResolvedValue(null);
+      const inventoryClient = {
+        updateRoomRate,
+      } as unknown as InventoryClientService;
+      const svc = makeSvc(makeBookingClient([]), inventoryClient);
+
+      await expect(
+        svc.updateRoomRate("missing", "2026-05-01", "2026-05-31", 200),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
 });

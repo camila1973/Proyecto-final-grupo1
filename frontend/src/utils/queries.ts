@@ -652,6 +652,44 @@ export async function createPartnerRoomRate(
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
 }
 
+export async function deletePartnerRoomRate(
+  partnerId: string,
+  propertyId: string,
+  roomId: string,
+  rateId: string,
+  token: string,
+): Promise<void> {
+  const res = await fetch(
+    `${roomBase(partnerId, propertyId, roomId)}/rates/${encodeURIComponent(rateId)}`,
+    {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    },
+  );
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+}
+
+export async function updatePartnerRoomRate(
+  partnerId: string,
+  propertyId: string,
+  roomId: string,
+  rateId: string,
+  fromDate: string,
+  toDateExclusive: string,
+  priceUsd: number,
+  token: string,
+): Promise<void> {
+  const res = await fetch(
+    `${roomBase(partnerId, propertyId, roomId)}/rates/${encodeURIComponent(rateId)}`,
+    {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fromDate, toDate: toDateExclusive, priceUsd }),
+    },
+  );
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+}
+
 export async function fetchPartnerProperty(
   partnerId: string,
   propertyId: string,

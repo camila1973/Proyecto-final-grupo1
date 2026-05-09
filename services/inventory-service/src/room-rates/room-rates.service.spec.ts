@@ -81,6 +81,61 @@ describe("RoomRatesService", () => {
       );
     });
 
+    it("publishes the full snapshot of rates for the room, not just the new one", async () => {
+      // Regression: search-service replaces all periods on every event, so
+      // emitting only the new row truncates the search replica.
+      const allRates = [
+        {
+          ...RATE_ROW,
+          id: "rate-existing",
+          from_date: "2026-04-01",
+          to_date: "2026-04-10",
+          price_usd: "150.00",
+        },
+        {
+          ...RATE_ROW,
+          id: "rate-new",
+          from_date: "2026-04-15",
+          to_date: "2026-04-20",
+          price_usd: "200.00",
+        },
+      ];
+      const publish = jest.fn();
+      const service = makeService({
+        repo: {
+          findByRoom: jest.fn().mockResolvedValue(allRates),
+          create: jest.fn().mockResolvedValue(allRates[1]),
+        },
+        events: { publish },
+      });
+
+      await service.create("room-1", "partner-1", {
+        roomId: "room-1",
+        fromDate: "2026-04-15",
+        toDate: "2026-04-20",
+        priceUsd: 200,
+      });
+
+      expect(publish).toHaveBeenCalledWith(
+        "inventory.price.updated",
+        expect.objectContaining({
+          roomId: "room-1",
+          pricePeriods: [
+            expect.objectContaining({
+              fromDate: "2026-04-01",
+              toDate: "2026-04-10",
+              priceUsd: 150,
+            }),
+            expect.objectContaining({
+              fromDate: "2026-04-15",
+              toDate: "2026-04-20",
+              priceUsd: 200,
+            }),
+          ],
+        }),
+      );
+    });
+
     it("splits overlapping rates before inserting", async () => {
       const overlapping = [
         {

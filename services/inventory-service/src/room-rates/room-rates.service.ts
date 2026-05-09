@@ -56,14 +56,7 @@ export class RoomRatesService {
       price_usd: String(dto.priceUsd),
       currency: dto.currency ?? "USD",
     });
-    this.events.publish("inventory.price.updated", {
-      routingKey: "inventory.price.updated",
-      roomId,
-      pricePeriods: [
-        { fromDate: dto.fromDate, toDate: dto.toDate, priceUsd: dto.priceUsd },
-      ],
-      timestamp: new Date().toISOString(),
-    });
+    await this.publishRoomRatesSnapshot(roomId);
     return this.toPublic(rate);
   }
 
@@ -97,6 +90,26 @@ export class RoomRatesService {
     if (!rate) throw new NotFoundException(`Rate ${rateId} not found`);
     await this.roomsService.findOne(rate.room_id);
     await this.repo.delete(rateId);
+    await this.publishRoomRatesSnapshot(rate.room_id);
+  }
+
+  /**
+   * Publishes the full set of rate periods for a room. The search-service
+   * handler replaces all periods on every event, so we must emit the entire
+   * snapshot rather than just the changed row.
+   */
+  private async publishRoomRatesSnapshot(roomId: string): Promise<void> {
+    const rows = await this.repo.findByRoom(roomId);
+    this.events.publish("inventory.price.updated", {
+      routingKey: "inventory.price.updated",
+      roomId,
+      pricePeriods: rows.map((r) => ({
+        fromDate: toDateString(r.from_date),
+        toDate: toDateString(r.to_date),
+        priceUsd: parseFloat(String(r.price_usd)),
+      })),
+      timestamp: new Date().toISOString(),
+    });
   }
 
   /**
