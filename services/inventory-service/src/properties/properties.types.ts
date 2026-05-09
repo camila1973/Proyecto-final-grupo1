@@ -12,6 +12,12 @@ export interface CreatePropertyDto {
   reviewCount?: number;
   thumbnailUrl?: string;
   amenities?: string[];
+  phone?: string;
+  email?: string;
+  address?: string;
+  currency?: string;
+  timezone?: string;
+  description?: string;
 }
 
 export interface UpdatePropertyDto {
@@ -28,6 +34,12 @@ export interface UpdatePropertyDto {
   reviewCount?: number;
   thumbnailUrl?: string;
   amenities?: string[];
+  phone?: string | null;
+  email?: string | null;
+  address?: string | null;
+  currency?: string | null;
+  timezone?: string | null;
+  description?: string | null;
 }
 
 export interface RoomSummary {
@@ -55,6 +67,12 @@ export interface PublicProperty {
   reviewCount: number;
   thumbnailUrl: string;
   amenities: string[];
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  currency: string | null;
+  timezone: string | null;
+  description: string | null;
   createdAt: Date;
   updatedAt: Date;
   rooms?: RoomSummary[];

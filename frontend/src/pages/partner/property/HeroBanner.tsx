@@ -50,6 +50,7 @@ export default function HeroBanner({ propertyName, propertyId, address }: HeroBa
           variant="contained"
           color="warning"
           startIcon={<EditIcon />}
+          onClick={() => navigate({ to: '/mi-hotel/$propertyId/editar', params: { propertyId } })}
         >
           {t('partner.properties.edit_property')}
         </Button>

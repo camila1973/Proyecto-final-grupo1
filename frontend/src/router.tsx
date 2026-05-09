@@ -19,6 +19,7 @@ import PagosPage from './pages/partner/payments';
 import PropertyDashboardPage from './pages/partner/property';
 import PagosPropertyPage from './pages/partner/property/pagos';
 import PropertyQrPage from './pages/partner/property/qr';
+import PropertyEditPage from './pages/partner/property/edit';
 import RoomDetailPage from './pages/partner/property/rooms';
 import PartnerRegisterPage from './pages/partner/register';
 
@@ -166,6 +167,12 @@ const propertyQrRoute = createRoute({
   component: PropertyQrPage,
 });
 
+const propertyEditRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/mi-hotel/$propertyId/editar',
+  component: PropertyEditPage,
+});
+
 const roomDetailRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/mi-hotel/$propertyId/rooms/$roomId',
@@ -190,6 +197,7 @@ const routeTree = rootRoute.addChildren([
   propertyDashboardRoute,
   propertyPagosRoute,
   propertyQrRoute,
+  propertyEditRoute,
   roomDetailRoute,
 ]);
 

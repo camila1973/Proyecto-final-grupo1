@@ -1,8 +1,5 @@
-import {
-  __testing,
-  createQueryClient,
-  setLocationApiForTests,
-} from './queryClient';
+import { __testing, createQueryClient } from './queryClient';
+import { setOnUnauthorizedHandler } from './authBridge';
 
 const { isUnauthorized, handleAuthError } = __testing;
 
@@ -32,43 +29,35 @@ describe('isUnauthorized', () => {
 });
 
 describe('handleAuthError', () => {
-  let navigate: jest.Mock;
-  let pathname: jest.Mock;
+  let onUnauthorized: jest.Mock;
 
   beforeEach(() => {
-    localStorage.setItem('auth_token', 'tok');
-    localStorage.setItem('auth_user', JSON.stringify({ id: 'u1' }));
-    navigate = jest.fn();
-    pathname = jest.fn().mockReturnValue('/booking');
-    setLocationApiForTests({
-      navigate,
-      pathname: () => pathname() as string,
-    });
+    onUnauthorized = jest.fn();
+    setOnUnauthorizedHandler(onUnauthorized);
   });
 
   afterEach(() => {
-    localStorage.clear();
-    setLocationApiForTests(null);
+    setOnUnauthorizedHandler(null);
   });
 
-  it('clears auth storage and redirects to /login on 401', () => {
+  it('triggers the unauthorized handler on 401', () => {
     handleAuthError(new Error('HTTP 401'));
-    expect(localStorage.getItem('auth_token')).toBeNull();
-    expect(localStorage.getItem('auth_user')).toBeNull();
-    expect(navigate).toHaveBeenCalledWith('/login');
+    expect(onUnauthorized).toHaveBeenCalledTimes(1);
+  });
+
+  it('triggers the handler when given a status: 401 object', () => {
+    handleAuthError({ status: 401 });
+    expect(onUnauthorized).toHaveBeenCalledTimes(1);
   });
 
   it('does nothing on non-401 errors', () => {
     handleAuthError(new Error('HTTP 500'));
-    expect(localStorage.getItem('auth_token')).toBe('tok');
-    expect(navigate).not.toHaveBeenCalled();
+    expect(onUnauthorized).not.toHaveBeenCalled();
   });
 
-  it('does not redirect again when already on /login', () => {
-    pathname.mockReturnValue('/login');
-    handleAuthError({ status: 401 });
-    expect(localStorage.getItem('auth_token')).toBeNull();
-    expect(navigate).not.toHaveBeenCalled();
+  it('does not throw when no handler is registered', () => {
+    setOnUnauthorizedHandler(null);
+    expect(() => handleAuthError(new Error('HTTP 401'))).not.toThrow();
   });
 });
 

@@ -41,6 +41,36 @@ export interface InvPropertiesTable {
   review_count: Generated<number>; // DEFAULT 0
   thumbnail_url: Generated<string>; // DEFAULT ''
   amenities: Generated<string[]>; // DEFAULT '{}'
+  phone: ColumnType<
+    string | null,
+    string | null | undefined,
+    string | null | undefined
+  >;
+  email: ColumnType<
+    string | null,
+    string | null | undefined,
+    string | null | undefined
+  >;
+  address: ColumnType<
+    string | null,
+    string | null | undefined,
+    string | null | undefined
+  >;
+  currency: ColumnType<
+    string | null,
+    string | null | undefined,
+    string | null | undefined
+  >;
+  timezone: ColumnType<
+    string | null,
+    string | null | undefined,
+    string | null | undefined
+  >;
+  description: ColumnType<
+    string | null,
+    string | null | undefined,
+    string | null | undefined
+  >;
   created_at: Generated<Date>;
   updated_at: Generated<Date>;
 }
