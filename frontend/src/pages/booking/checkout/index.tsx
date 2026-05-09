@@ -15,6 +15,7 @@ import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import Typography from '@mui/material/Typography';
 import ArrowBackIosNew from '@mui/icons-material/ArrowBackIosNew';
+import PageContainer from '../../../components/PageContainer';
 
 const stripePromise = loadStripe(STRIPE_PUBLISHABLE_KEY);
 
@@ -48,16 +49,16 @@ export default function CheckoutPageWithStripe() {
 
   return (
     <Box sx={{ flex: 1, bgcolor: '#F5F7FA', minHeight: 'calc(100vh - 64px)' }}>
-      <Box sx={{ maxWidth: '1152px', mx: 'auto', px: 3, py: 4 }}>
+      <PageContainer>
         <Button
           startIcon={<ArrowBackIosNew />}
           onClick={() => history.back()}
-          sx={{ color: 'text.secondary', fontWeight: 500, mb: 3 }}
+          sx={{ color: 'text.secondary', fontWeight: 500, alignSelf: 'flex-start' }}
         >
           {t('booking.checkout.back')}
         </Button>
 
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography variant="h5" fontWeight={500}>{t('booking.checkout.title')}</Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <Box sx={{
@@ -115,7 +116,7 @@ export default function CheckoutPageWithStripe() {
           ) : null}
         </Box>
 
-      </Box>
+      </PageContainer>
     </Box>
   );
 }

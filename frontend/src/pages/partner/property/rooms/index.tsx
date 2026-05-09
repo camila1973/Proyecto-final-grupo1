@@ -28,6 +28,7 @@ import RoomSummaryStrip from './RoomSummaryStrip';
 import RoomCalendar from './RoomCalendar';
 import { buildCalendarDays } from './calendarDays';
 import RoomEditDrawer from './RoomEditDrawer';
+import PageContainer from '../../../../components/PageContainer';
 
 const NAV_BTN = { bgcolor: '#1B4F8C', color: '#fff', '&:hover': { bgcolor: '#163d6e' } } as const;
 
@@ -169,9 +170,9 @@ export default function RoomDetailPage() {
 
   if (!enabled) {
     return (
-      <Box sx={{ maxWidth: 1152, mx: 'auto', p: 4 }}>
+      <PageContainer>
         <Alert severity="info">{t('partner.dashboard.login_required')}</Alert>
-      </Box>
+      </PageContainer>
     );
   }
 
@@ -195,7 +196,7 @@ export default function RoomDetailPage() {
         />
       )}
 
-      <div className="max-w-[1152px] mx-auto px-6 py-6 flex flex-col gap-4">
+      <PageContainer>
         {roomQuery.isLoading && (
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
             <CircularProgress size={28} />
@@ -282,7 +283,7 @@ export default function RoomDetailPage() {
             </Box>
           </>
         )}
-      </div>
+      </PageContainer>
     </div>
   );
 }

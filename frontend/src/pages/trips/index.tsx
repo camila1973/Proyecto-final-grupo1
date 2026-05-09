@@ -14,6 +14,7 @@ import {
 import { formatPrice } from '../../utils/currency';
 import { formatAddress } from '../../utils/address';
 import HorizontalCard from '../../components/HorizontalCard';
+import PageContainer from '../../components/PageContainer';
 import ArrowOutwardIcon from '@mui/icons-material/ArrowOutward';
 import ScheduleIcon from '@mui/icons-material/Schedule';
 import Alert from '@mui/material/Alert';
@@ -273,9 +274,9 @@ export default function TripsPage() {
 
   if (isError) {
     return (
-      <main className="w-full max-w-[1152px] mx-auto px-6 py-12">
+      <PageContainer>
         <Typography color="error">{t('trips.error')}</Typography>
-      </main>
+      </PageContainer>
     );
   }
 
@@ -284,8 +285,8 @@ export default function TripsPage() {
   const heldReservation = active.find((r) => r.status === 'held') ?? null;
 
   return (
-    <main className="w-full max-w-[1152px] mx-auto px-6 py-12">
-      <Typography sx={{ fontSize: 22, fontWeight: 500, mb: 3 }}>
+    <PageContainer>
+      <Typography sx={{ fontSize: 22, fontWeight: 500 }}>
         {t('trips.title')}
       </Typography>
 
@@ -419,6 +420,6 @@ export default function TripsPage() {
           </Button>
         </DialogActions>
       </Dialog>
-    </main>
+    </PageContainer>
   );
 }

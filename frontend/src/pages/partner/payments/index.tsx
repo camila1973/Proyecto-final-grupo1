@@ -25,6 +25,7 @@ import { useLocale } from '../../../context/LocaleContext';
 import { fetchPartnerPayments } from '../../../utils/queries';
 import { formatPrice } from '../../../utils/currency';
 import { TH, TD } from '../dashboard/ui';
+import PageContainer from '../../../components/PageContainer';
 
 const PAGE_SIZE = 20;
 
@@ -60,20 +61,20 @@ export default function PagosPage() {
 
   if (!enabled) {
     return (
-      <Box sx={{ maxWidth: 1152, mx: 'auto', p: 4 }}>
+      <PageContainer>
         <Alert severity="info">{t('partner.dashboard.login_required')}</Alert>
-      </Box>
+      </PageContainer>
     );
   }
 
   return (
     <Box className="bg-[#F5F7FA] min-h-screen">
-      <Box sx={{ maxWidth: 1152, mx: 'auto', px: 3, py: 4 }}>
-        <Typography sx={{ fontSize: 18, fontWeight: 600, color: '#1a1a1a', mb: 3 }}>
+      <PageContainer>
+        <Typography sx={{ fontSize: 18, fontWeight: 600, color: '#1a1a1a' }}>
           {t('partner.payments.title')}
         </Typography>
 
-        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+        <Stack direction="row" justifyContent="space-between" alignItems="center">
           <TextField
             size="small"
             placeholder={t('partner.payments.search_placeholder')}
@@ -141,7 +142,7 @@ export default function PagosPage() {
             </TableContainer>
           </Paper>
         )}
-      </Box>
+      </PageContainer>
     </Box>
   );
 }
