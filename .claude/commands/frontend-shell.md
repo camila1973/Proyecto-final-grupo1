@@ -38,6 +38,60 @@ export default function MyPage() {
 
 `PageContainer` is opinionated: a single variant, no props. If a page needs a different layout (sidebar, extra padding, etc.), we don't add new props — that page lives without `PageContainer` (see exceptions below).
 
+## Cards
+
+The team uses a small ladder of card primitives. Pick the most specific one that matches your need; only fall back down the ladder when the higher-level shortcut doesn't fit.
+
+| Use case | Component | File |
+|---|---|---|
+| Property tile, hotel suggestion, anything **with a top image + content + optional footer** | `<VerticalCard>` | `frontend/src/components/VerticalCard.tsx` |
+| Reservation row, list item, anything **with a left image + middle content + optional right panel** | `<HorizontalCard>` | `frontend/src/components/HorizontalCard.tsx` |
+| Custom card layout that doesn't match either of the above | MUI `<Card variant="outlined">` directly | `@mui/material/Card` |
+| **Never** | MUI `<Paper>` | — |
+
+### Why not `<Paper>`
+
+`<Paper>` is MUI's low-level surface primitive (used internally by `<Card>`, `<Menu>`, `<Popover>`, etc.). Using it directly for content surfaces creates drift in border radius, elevation, and dark-mode behavior. **Use `<Card variant="outlined">` instead** — it gives the same visual result with consistent defaults from the theme.
+
+The exception is `<TableContainer component={Paper}>`, which is the documented MUI pattern for table wrappers. That stays.
+
+### Why not raw `<Card>` everywhere
+
+`<VerticalCard>` and `<HorizontalCard>` already encode the team's choices: image fallback URLs, default border radius, content padding, image-load error handling. Reaching for raw `<Card>` reintroduces the drift the wrappers exist to prevent.
+
+### Examples
+
+```tsx
+// Property tile — top image, body, footer button
+<VerticalCard
+  imageUrl={p.thumbnailUrl}
+  imageAlt={p.name}
+  onClick={() => navigate({ to: '/properties/$propertyId', params: { propertyId: p.id } })}
+  content={<>
+    <Typography variant="subtitle2" fontWeight="bold">{p.name}</Typography>
+    <Typography variant="body2" color="text.secondary">{address}</Typography>
+  </>}
+  footer={<Button fullWidth variant="contained" color="warning">Book</Button>}
+/>
+
+// Reservation row — left image, middle text, right panel
+<HorizontalCard
+  imageUrl={r.snapshot.propertyThumbnailUrl}
+  imageAlt={r.snapshot.propertyName}
+  middleContent={<>
+    <Typography variant="subtitle2">{r.snapshot.propertyName}</Typography>
+    <Typography variant="caption">{r.checkIn} → {r.checkOut}</Typography>
+  </>}
+  rightPanel={<Chip label={r.status} />}
+/>
+
+// Custom layout that neither shortcut covers
+<Card variant="outlined" sx={{ p: 3, borderRadius: 2 }}>
+  <SectionTitle>Status</SectionTitle>
+  <Stack>...</Stack>
+</Card>
+```
+
 ## Theme tokens
 
 Defined in `frontend/src/theme.ts`. Use them via MUI (`color="primary"`, `theme.palette.warning.main`) instead of hardcoding hex values:
@@ -90,6 +144,7 @@ const routeTree = rootRoute.addChildren([..., myRoute]);
 - [ ] Mutations + queries follow the fetch + Bearer pattern from `useAuth()` hook (see `pages/partner/property/edit/` for a reference).
 - [ ] Buttons with loading state use `loading={isPending}`, not `disabled={isPending}` plus conditional text.
 - [ ] No snackbars/toasts — feedback comes from re-rendering with fresh data.
+- [ ] Card surfaces use `<VerticalCard>` / `<HorizontalCard>` / `<Card variant="outlined">` — **not** `<Paper>`.
 - [ ] Tests for pure helpers (e.g. `fromX`/`toX`) in an adjacent `*.spec.ts`. See `pages/partner/property/edit/shared.spec.ts` as a reference.
 
 ## When NOT to use PageContainer
