@@ -1,6 +1,6 @@
-# Frontend — Canonical Page Shell
+# Frontend — Page Conventions
 
-Every new page in `frontend/` must use the canonical shell to keep visual consistency across screens. The shell is **opinionated, not preference-driven**: there is one approved pattern and it applies unless the page falls into one of the three documented exceptions at the bottom.
+Conventions for building pages in `frontend/`: page shell, theme tokens, MUI components, i18n, route registration, and a checklist for new partner pages. The conventions exist to keep visual and structural consistency across screens — when in doubt, follow them; when a real reason to deviate appears, document it inline.
 
 ## Page anatomy
 
@@ -40,29 +40,33 @@ export default function MyPage() {
 
 ## Cards
 
-The team uses a small ladder of card primitives. Pick the most specific one that matches your need; only fall back down the ladder when the higher-level shortcut doesn't fit.
+`<Card>` is the default surface for content. The theme (`frontend/src/theme.ts`) sets `variant="outlined"`, `borderRadius: 12` and `overflow: 'hidden'` as `MuiCard` defaults — so a bare `<Card>` already matches the team's look. You don't need to repeat those props at the call site.
 
-| Use case | Component | File |
+| Component | File | When to use |
 |---|---|---|
-| Property tile, hotel suggestion, anything **with a top image + content + optional footer** | `<VerticalCard>` | `frontend/src/components/VerticalCard.tsx` |
-| Reservation row, list item, anything **with a left image + middle content + optional right panel** | `<HorizontalCard>` | `frontend/src/components/HorizontalCard.tsx` |
-| Custom card layout that doesn't match either of the above | MUI `<Card variant="outlined">` directly | `@mui/material/Card` |
-| **Never** | MUI `<Paper>` | — |
+| `<Card>` (MUI) | `@mui/material/Card` | Default. Custom layouts, sectioned content, anything without an image. |
+| `<VerticalCard>` | `frontend/src/components/VerticalCard.tsx` | Shortcut for **top image + content + optional footer** (property tiles, suggestions). Encodes image fallback URL and `onError` handling. |
+| `<HorizontalCard>` | `frontend/src/components/HorizontalCard.tsx` | Shortcut for **left image + middle content + optional right panel** (reservation rows, list items). Same image-fallback contract. |
+| `<Paper>` | — | **Don't use for content surfaces.** Use `<Card>` instead. |
 
-### Why not `<Paper>`
+### Why the wrappers still exist
 
-`<Paper>` is MUI's low-level surface primitive (used internally by `<Card>`, `<Menu>`, `<Popover>`, etc.). Using it directly for content surfaces creates drift in border radius, elevation, and dark-mode behavior. **Use `<Card variant="outlined">` instead** — it gives the same visual result with consistent defaults from the theme.
+The theme handles the visual side (radius, border, overflow). The wrappers handle the **structural** side: image fallback URL, `onError` handler, content/footer/right-panel slots, image dimension defaults. Reach for them when you have an image; otherwise plain `<Card>` is the right call.
 
-The exception is `<TableContainer component={Paper}>`, which is the documented MUI pattern for table wrappers. That stays.
+### Why `<Paper>` is banned
 
-### Why not raw `<Card>` everywhere
-
-`<VerticalCard>` and `<HorizontalCard>` already encode the team's choices: image fallback URLs, default border radius, content padding, image-load error handling. Reaching for raw `<Card>` reintroduces the drift the wrappers exist to prevent.
+`<Paper>` is MUI's low-level surface primitive that `<Card>`, `<Menu>`, `<Popover>` build on. Using it directly for content surfaces means the team's `MuiCard` theme defaults don't apply — the surface drifts on radius, border and dark-mode behavior. The only sanctioned use is `<TableContainer component={Paper}>`, which is the documented MUI pattern for table wrappers.
 
 ### Examples
 
 ```tsx
-// Property tile — top image, body, footer button
+// Default — no need to specify variant/borderRadius
+<Card sx={{ p: 3 }}>
+  <Typography variant="h6">Status</Typography>
+  <Stack>...</Stack>
+</Card>
+
+// Property tile — top image
 <VerticalCard
   imageUrl={p.thumbnailUrl}
   imageAlt={p.name}
@@ -74,7 +78,7 @@ The exception is `<TableContainer component={Paper}>`, which is the documented M
   footer={<Button fullWidth variant="contained" color="warning">Book</Button>}
 />
 
-// Reservation row — left image, middle text, right panel
+// Reservation row — left image, right panel
 <HorizontalCard
   imageUrl={r.snapshot.propertyThumbnailUrl}
   imageAlt={r.snapshot.propertyName}
@@ -84,12 +88,6 @@ The exception is `<TableContainer component={Paper}>`, which is the documented M
   </>}
   rightPanel={<Chip label={r.status} />}
 />
-
-// Custom layout that neither shortcut covers
-<Card variant="outlined" sx={{ p: 3, borderRadius: 2 }}>
-  <SectionTitle>Status</SectionTitle>
-  <Stack>...</Stack>
-</Card>
 ```
 
 ## Theme tokens

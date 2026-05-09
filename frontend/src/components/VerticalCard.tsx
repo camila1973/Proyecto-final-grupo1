@@ -31,9 +31,8 @@ export default function VerticalCard({
 }: VerticalCardProps) {
   return (
     <Card
-      variant="outlined"
       onClick={onClick}
-      sx={{ display: 'flex', flexDirection: 'column', borderRadius: 3, overflow: 'hidden', ...sx }}
+      sx={{ display: 'flex', flexDirection: 'column', ...sx }}
     >
       {imageUrl && (
         <CardMedia
