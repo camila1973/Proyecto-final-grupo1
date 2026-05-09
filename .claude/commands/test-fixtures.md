@@ -1,53 +1,53 @@
-# Test Fixtures — índice
+# Test Fixtures — index
 
-Antes de definir un fixture nuevo en un `*.spec.ts`, mira si ya existe en otro spec del mismo módulo y reúsalo (importarlo o copiar la forma). Esto evita drift entre tests, mantiene los datos realistas y reduce el ruido en revisiones.
+Before defining a new fixture in a `*.spec.ts`, check whether one already exists in another spec of the same module and reuse it (import it or copy the shape). This avoids drift across tests, keeps the data realistic, and reduces review noise.
 
 ## inventory-service
 
-| Fixture | Archivo | Qué representa |
+| Fixture | File | Represents |
 |---|---|---|
-| `PROPERTY_ROW` | `services/inventory-service/src/properties/properties.service.spec.ts` | Fila de `inv_properties` con todos los campos (incluye `phone`, `email`, `address`, `currency`, `timezone`, `description`). **Versión más completa** — copia esta como base. |
-| `ROOM_ROW` | `services/inventory-service/src/properties/properties.service.spec.ts` | Fila de `inv_rooms` (deluxe king ocean view, capacity 2). |
-| `PROPERTY_ROW` | `properties.repository.spec.ts` / `rooms.service.spec.ts` | Variantes mínimas — **considera reemplazarlas por la versión de `properties.service.spec.ts`**. |
-| `RATE_ROW` | `room-rates.service.spec.ts` / `room-rates.repository.spec.ts` | Fila de `inv_room_rates`. |
-| `PUBLIC_PROPERTY` | `properties.controller.spec.ts` | Forma `PublicProperty` (DTO de salida del controller). |
-| `PUBLIC_ROOM` | `rooms.controller.spec.ts` / `room-rates.service.spec.ts` | Forma `PublicRoom`. |
+| `PROPERTY_ROW` | `services/inventory-service/src/properties/properties.service.spec.ts` | Row of `inv_properties` with all fields (includes `phone`, `email`, `address`, `currency`, `timezone`, `description`). **Most complete version** — copy this one as the baseline. |
+| `ROOM_ROW` | `services/inventory-service/src/properties/properties.service.spec.ts` | Row of `inv_rooms` (deluxe king ocean view, capacity 2). |
+| `PROPERTY_ROW` | `properties.repository.spec.ts` / `rooms.service.spec.ts` | Slim variants — **consider replacing them with the version from `properties.service.spec.ts`**. |
+| `RATE_ROW` | `room-rates.service.spec.ts` / `room-rates.repository.spec.ts` | Row of `inv_room_rates`. |
+| `PUBLIC_PROPERTY` | `properties.controller.spec.ts` | `PublicProperty` shape (controller output DTO). |
+| `PUBLIC_ROOM` | `rooms.controller.spec.ts` / `room-rates.service.spec.ts` | `PublicRoom` shape. |
 
 ## booking-service
 
-| Fixture | Archivo | Qué representa |
+| Fixture | File | Represents |
 |---|---|---|
-| `ROW` | `tax-rules/tax-rules.service.spec.ts` | Fila de `tax_rules` (IVA México). |
-| `ROW` | `partner-fees/partner-fees.service.spec.ts` | Fila de `partner_fees`. |
-| `RULE` | `tax-rules/tax-rules.controller.spec.ts` | DTO mínimo de tax rule para tests de controller. |
-| `PREVIEW_DTO`, `CREATE_DTO`, `LOCATION`, `HOLD_ID`, `HOLD_EXPIRES_AT` | `reservations/reservations.service.spec.ts` | Inputs para flujos de cart/preview/create. |
-| `BOOKER`, `ROOM`, `FROM`, `TO`, `DTO`, `PAYLOAD` | `reservations/holds.service.spec.ts` | Hold de reserva (Redis). |
+| `ROW` | `tax-rules/tax-rules.service.spec.ts` | Row of `tax_rules` (Mexico VAT). |
+| `ROW` | `partner-fees/partner-fees.service.spec.ts` | Row of `partner_fees`. |
+| `RULE` | `tax-rules/tax-rules.controller.spec.ts` | Minimal tax rule DTO for controller tests. |
+| `PREVIEW_DTO`, `CREATE_DTO`, `LOCATION`, `HOLD_ID`, `HOLD_EXPIRES_AT` | `reservations/reservations.service.spec.ts` | Inputs for cart/preview/create flows. |
+| `BOOKER`, `ROOM`, `FROM`, `TO`, `DTO`, `PAYLOAD` | `reservations/holds.service.spec.ts` | Reservation hold (Redis). |
 
 ## auth-service
 
-| Fixture | Archivo | Qué representa |
+| Fixture | File | Represents |
 |---|---|---|
-| `DB_USER(overrides)` | `auth/auth.service.spec.ts` | **Factory** de fila `users` — admite overrides parciales. Patrón a seguir para fixtures con muchos campos opcionales. |
-| `DB_CHALLENGE(overrides)` | `auth/auth.service.spec.ts` | Factory de MFA challenge. |
+| `DB_USER(overrides)` | `auth/auth.service.spec.ts` | **Factory** for a `users` row — accepts partial overrides. Pattern to follow for fixtures with many optional fields. |
+| `DB_CHALLENGE(overrides)` | `auth/auth.service.spec.ts` | MFA challenge factory. |
 
 ## partners-service
 
-| Fixture | Archivo | Qué representa |
+| Fixture | File | Represents |
 |---|---|---|
-| `PROPERTY` | `clients/inventory-client.service.spec.ts` | Respuesta de inventory para un partner. |
-| `FEE_DATA` | `clients/booking-client.service.spec.ts` | Respuesta de booking-service para fees. |
-| `OWNER_PAYLOAD` | `clients/auth-client.service.spec.ts` | JWT payload simulado. |
-| `PARTNER_ID`, `PROPERTY_ID`, `CHECK_IN_KEY` | `property-checkin-key/property-checkin-key.repository.spec.ts` | Reusan los UUIDs canónicos de los seeds. |
+| `PROPERTY` | `clients/inventory-client.service.spec.ts` | inventory-service response for a partner. |
+| `FEE_DATA` | `clients/booking-client.service.spec.ts` | booking-service response for fees. |
+| `OWNER_PAYLOAD` | `clients/auth-client.service.spec.ts` | Mocked JWT payload. |
+| `PARTNER_ID`, `PROPERTY_ID`, `CHECK_IN_KEY` | `property-checkin-key/property-checkin-key.repository.spec.ts` | Reuse the canonical UUIDs from the seeds. |
 
 ## api-gateway
 
-| Fixture | Archivo | Qué representa |
+| Fixture | File | Represents |
 |---|---|---|
-| `ISSUER` | `auth/auth.middleware.spec.ts`, `auth/jwt.verifier.spec.ts` | Issuer JWT esperado (`travelhub-auth-service`). |
+| `ISSUER` | `auth/auth.middleware.spec.ts`, `auth/jwt.verifier.spec.ts` | Expected JWT issuer (`travelhub-auth-service`). |
 
-## UUIDs canónicos (seeds → tests de integración)
+## Canonical UUIDs (seeds → integration tests)
 
-Las siguientes constantes están **duplicadas a propósito** entre `services/inventory-service/scripts/seed.ts` y `services/search-service/scripts/seed.ts`. Si tu test de integración cruza servicios, usa estos IDs y no inventes nuevos.
+The following constants are **duplicated on purpose** between `services/inventory-service/scripts/seed.ts` and `services/search-service/scripts/seed.ts`. If your integration test crosses services, use these IDs and don't invent new ones.
 
 ```ts
 const PARTNER_1 = "a1000000-0000-0000-0000-000000000001";
@@ -62,15 +62,15 @@ const PROP_CDMX_2   = "b1000000-0000-0000-0000-000000000005"; // Condesa Inn
 const ROOM = (n: number) => `c1000000-0000-0000-0000-${String(n).padStart(12, "0")}`;
 ```
 
-Ya están reusados en `partners-service/.../property-checkin-key.repository.spec.ts`. Cualquier nuevo spec que necesite un partner/propiedad reales debe leer de aquí.
+These are already reused in `partners-service/.../property-checkin-key.repository.spec.ts`. Any new spec that needs a real partner/property should read from here.
 
 ## Frontend
 
-Hoy **no hay fixtures centralizados** en `frontend/`. El patrón actual es definir constantes in-line por archivo de spec (ver `frontend/src/utils/month.spec.ts` o `frontend/src/pages/partner/property/edit/shared.spec.ts` como ejemplos). Si más adelante varios specs comparten la misma forma de objeto, considera extraerlos a un `_fixtures.ts` por carpeta. Hasta entonces, mantén los fixtures locales al spec y mínimos.
+There are **no centralized fixtures** in `frontend/` today. The current pattern is to define inline constants per spec file (see `frontend/src/utils/month.spec.ts` or `frontend/src/pages/partner/property/edit/shared.spec.ts` as examples). If multiple specs end up sharing the same object shape later, consider extracting them into a `_fixtures.ts` per folder. Until then, keep fixtures local to the spec and minimal.
 
-## Reglas
+## Rules
 
-1. **Antes de inventar un fixture**, busca con `grep -rn "^const [A-Z_]\+ *=" services/<service>/src --include='*.spec.ts'` en el servicio donde estás escribiendo.
-2. **Si extiendes** el shape de una tabla (migration nueva), actualiza el fixture maestro del servicio (típicamente en `<module>.service.spec.ts`) en el mismo PR.
-3. **Si el mismo fixture se duplica** entre 3+ specs, vale la pena moverlo a un `__fixtures__/<table>.ts` y exportar — no antes.
-4. **No copies seeds enteros** a un spec. Usa los UUIDs canónicos de la tabla de arriba si necesitas IDs realistas; el resto de los campos puede ser mínimo.
+1. **Before inventing a fixture**, search with `grep -rn "^const [A-Z_]\+ *=" services/<service>/src --include='*.spec.ts'` in the service you're working in.
+2. **When extending** a table's shape (new migration), update the service's master fixture (typically in `<module>.service.spec.ts`) in the same PR.
+3. **When the same fixture is duplicated** across 3+ specs, it's worth moving it into `__fixtures__/<table>.ts` and exporting — not before.
+4. **Don't copy entire seeds** into a spec. Use the canonical UUIDs from the table above when you need realistic IDs; the rest of the fields can stay minimal.

@@ -1,8 +1,8 @@
-# Frontend — Page Shell canónico
+# Frontend — Canonical Page Shell
 
-Toda página nueva en `frontend/` debe usar el shell canónico para mantener consistencia visual entre pantallas. El shell es **opinión, no preferencia**: hay un único patrón aprobado y se aplica salvo en los tres casos documentados al final.
+Every new page in `frontend/` must use the canonical shell to keep visual consistency across screens. The shell is **opinionated, not preference-driven**: there is one approved pattern and it applies unless the page falls into one of the three documented exceptions at the bottom.
 
-## Anatomía de una página
+## Page anatomy
 
 ```tsx
 import PageHero from '../../components/PageHero';
@@ -12,9 +12,9 @@ import { Tabs, Tab } from '@mui/material';
 export default function MyPage() {
   return (
     <>
-      <PageHero>{/* hero band azul (opcional) */}</PageHero>
+      <PageHero>{/* blue hero band (optional) */}</PageHero>
 
-      {/* tabs de página (opcional) — full-bleed con bg blanco */}
+      {/* page tabs (optional) — full-bleed white background */}
       <Box sx={{ bgcolor: '#fff', borderBottom: '1px solid #e2e8f0', px: 3 }}>
         <Box sx={{ maxWidth: 1152, mx: 'auto' }}>
           <Tabs value={tab} onChange={...}>...</Tabs>
@@ -22,38 +22,38 @@ export default function MyPage() {
       </Box>
 
       <PageContainer>
-        {/* contenido principal: cards, tablas, formularios */}
+        {/* main content: cards, tables, forms */}
       </PageContainer>
     </>
   );
 }
 ```
 
-## Componentes
+## Components
 
-| Componente | Archivo | Renderiza | Cuándo usar |
+| Component | File | Renders | When to use |
 |---|---|---|---|
-| `PageHero` | `frontend/src/components/PageHero.tsx` | `<div>` full-bleed con `bgcolor: theme.primary` | Para landing/dashboard pages que necesitan un banner azul al tope. Opcional. |
-| `PageContainer` | `frontend/src/components/PageContainer.tsx` | `<main className="max-w-[1152px] mx-auto w-full px-6 py-6 flex flex-col gap-6">` | **Siempre**, para cualquier página de contenido stacked vertical. |
+| `PageHero` | `frontend/src/components/PageHero.tsx` | Full-bleed `<div>` with `bgcolor: theme.primary` | Landing/dashboard pages that need a blue banner at the top. Optional. |
+| `PageContainer` | `frontend/src/components/PageContainer.tsx` | `<main className="max-w-[1152px] mx-auto w-full px-6 py-6 flex flex-col gap-6">` | **Always**, for any page with stacked vertical content. |
 
-`PageContainer` es opinionado: una sola variante, sin props. Si una página necesita layout distinto (sidebar, padding extra, etc.), no aceptamos props nuevas — esa página vive sin `PageContainer` (ver excepciones abajo).
+`PageContainer` is opinionated: a single variant, no props. If a page needs a different layout (sidebar, extra padding, etc.), we don't add new props — that page lives without `PageContainer` (see exceptions below).
 
-## Tokens de tema
+## Theme tokens
 
-Definidos en `frontend/src/theme.ts`. Úsalos vía MUI (`color="primary"`, `theme.palette.warning.main`) en vez de hardcodear hex:
+Defined in `frontend/src/theme.ts`. Use them via MUI (`color="primary"`, `theme.palette.warning.main`) instead of hardcoding hex values:
 
-| Token | Valor | Uso |
+| Token | Value | Use |
 |---|---|---|
 | `palette.primary.main` | `#3a608f` | Hero band, links, focus rings |
-| `palette.warning.main` | `#F5C842` | CTAs primarios (Guardar, Reservar) |
-| `palette.success.main` | `#97C459` | Estados positivos |
-| `palette.background.default` | `#f8f9ff` | Fondo del root layout |
+| `palette.warning.main` | `#F5C842` | Primary CTAs (Save, Book) |
+| `palette.success.main` | `#97C459` | Positive states |
+| `palette.background.default` | `#f8f9ff` | Root layout background |
 
-Hex dispersos en código (`#1B4F8C`, `#1a2332`, `#5a6a7e`) **no son tokens** — vienen de iteraciones de diseño viejas. Si vas a usar uno nuevo, considera primero si encaja con un token existente.
+Hex values scattered through code (`#1B4F8C`, `#1a2332`, `#5a6a7e`) **are not tokens** — they come from old design iterations. Before introducing a new one, check whether it fits an existing token.
 
-## Convención de claves i18n
+## i18n key convention
 
-Patrón: `<role>.<feature>.<key>` para páginas, anidando sub-namespaces cuando hay sub-pantallas.
+Pattern: `<role>.<feature>.<key>` for pages, nesting sub-namespaces when there are sub-screens.
 
 ```
 partner.properties.title
@@ -63,9 +63,9 @@ booking.checkout.title
 trips.error
 ```
 
-Las claves van en `frontend/src/i18n/locales/es.json` y `en.json` simultáneamente. Nunca dejes solo uno de los dos.
+Keys go into `frontend/src/i18n/locales/es.json` and `en.json` simultaneously. Never leave only one of the two updated.
 
-## Registrar la ruta
+## Registering the route
 
 `frontend/src/router.tsx`:
 
@@ -81,25 +81,25 @@ const myRoute = createRoute({
 const routeTree = rootRoute.addChildren([..., myRoute]);
 ```
 
-## Checklist — nueva página partner
+## Checklist — new partner page
 
-- [ ] Archivo en `frontend/src/pages/<role>/<feature>/index.tsx` (o carpeta con sub-tabs).
-- [ ] Usa `<PageHero>` (si aplica) + `<PageContainer>`.
-- [ ] Ruta registrada en `router.tsx`.
-- [ ] Claves i18n agregadas en ambos `es.json` y `en.json` bajo `<role>.<feature>.*`.
-- [ ] Mutations + queries usan el patrón fetch + Bearer del `useAuth()` hook (ver `pages/partner/property/edit/` como ejemplo).
-- [ ] Botones con loading: usan `loading={isPending}`, no `disabled={isPending}` ni texto condicional.
-- [ ] Sin snackbars/toasts — feedback viene del re-render con data fresca.
-- [ ] Tests de las funciones puras (helpers tipo `fromX`/`toX`) en un `*.spec.ts` adjunto. Mira `pages/partner/property/edit/shared.spec.ts` como referencia.
+- [ ] File at `frontend/src/pages/<role>/<feature>/index.tsx` (or a folder with sub-tabs).
+- [ ] Uses `<PageHero>` (if applicable) + `<PageContainer>`.
+- [ ] Route registered in `router.tsx`.
+- [ ] i18n keys added to both `es.json` and `en.json` under `<role>.<feature>.*`.
+- [ ] Mutations + queries follow the fetch + Bearer pattern from `useAuth()` hook (see `pages/partner/property/edit/` for a reference).
+- [ ] Buttons with loading state use `loading={isPending}`, not `disabled={isPending}` plus conditional text.
+- [ ] No snackbars/toasts — feedback comes from re-rendering with fresh data.
+- [ ] Tests for pure helpers (e.g. `fromX`/`toX`) in an adjacent `*.spec.ts`. See `pages/partner/property/edit/shared.spec.ts` as a reference.
 
-## Cuándo NO usar PageContainer
+## When NOT to use PageContainer
 
-Tres categorías de páginas viven fuera del shell canónico **a propósito**:
+Three categories of pages live outside the canonical shell **on purpose**:
 
-1. **Auth full-bleed** (`LoginPage`, `MfaPage`, `RegisterPage`, `RegisterSuccess`, `PartnerRegisterPage`): contenido centrado vertical en pantalla completa. Wrapper actual: `<main className="flex-1 flex items-center justify-center py-10 px-4">`.
+1. **Full-bleed auth screens** (`LoginPage`, `MfaPage`, `RegisterPage`, `RegisterSuccess`, `PartnerRegisterPage`): vertically centered content on a full-bleed background. Current wrapper: `<main className="flex-1 flex items-center justify-center py-10 px-4">`.
 
-2. **Layouts con sidebar** (`SearchPage`): flex-row con barra lateral filtra resultados. No es contenido stacked. Wrapper actual: `<main className="max-w-[1152px] mx-auto w-full px-6 py-8 flex gap-8 flex-1">`.
+2. **Sidebar layouts** (`SearchPage`): flex-row with a sidebar that filters results. Not stacked content. Current wrapper: `<main className="max-w-[1152px] mx-auto w-full px-6 py-8 flex gap-8 flex-1">`.
 
-3. **Estados de proceso a sangre** (`BookingConfirmationPage` cuando `status === 'pending'` o `'failed'`): pantallas de spinner/error centradas verticalmente, no usan container. La rama "success" sí usa `<PageContainer>`.
+3. **Full-bleed process states** (`BookingConfirmationPage` when `status === 'pending'` or `'failed'`): centered spinner/error screens that don't use a container. The `success` branch does use `<PageContainer>`.
 
-Si una página tuya cae en una de estas categorías, déjala con su wrapper actual y comenta arriba el por qué.
+If your page falls into one of these categories, leave it with its current wrapper and add a comment at the top explaining why.
