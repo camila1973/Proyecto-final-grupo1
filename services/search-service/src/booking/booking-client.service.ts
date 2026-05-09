@@ -15,6 +15,7 @@ export interface TaxRuleDto {
 export interface PartnerFeeDto {
   id: string;
   partner_id: string;
+  property_id: string | null;
   fee_name: string;
   fee_type: string;
   rate: string | null;

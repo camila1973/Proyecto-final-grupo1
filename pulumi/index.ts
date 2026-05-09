@@ -130,6 +130,10 @@ const EVENT_ROUTING_KEYS = [
   "inventory.room.upserted",
   "inventory.price.updated",
   "inventory.room.deleted",
+  "tax.rule.upserted",
+  "tax.rule.deleted",
+  "partner.fee.upserted",
+  "partner.fee.deleted",
   "booking.cancelled",
   "booking.confirmed",
   "booking.checked_in",
@@ -152,6 +156,10 @@ const SEARCH_SUBSCRIPTIONS = [
   { name: "search-inventory-room-upserted", topic: "inventory-room-upserted" },
   { name: "search-inventory-price-updated", topic: "inventory-price-updated" },
   { name: "search-inventory-room-deleted",  topic: "inventory-room-deleted"  },
+  { name: "search-tax-rule-upserted",       topic: "tax-rule-upserted"       },
+  { name: "search-tax-rule-deleted",        topic: "tax-rule-deleted"        },
+  { name: "search-partner-fee-upserted",    topic: "partner-fee-upserted"    },
+  { name: "search-partner-fee-deleted",     topic: "partner-fee-deleted"     },
 ];
 for (const sub of SEARCH_SUBSCRIPTIONS) {
   new gcp.pubsub.Subscription(`sub-${sub.name}`, {
@@ -464,6 +472,7 @@ for (const svc of MICROSERVICES) {
     plainEnv["MESSAGE_BROKER_TYPE"] = "pubsub";
     plainEnv["PUBSUB_PROJECT_ID"]   = PROJECT;
     secretEnvVars["INVENTORY_SERVICE_URL"] = { secretId: urlSecrets["inventory-service"]!.secretId };
+    secretEnvVars["BOOKING_SERVICE_URL"]   = { secretId: urlSecrets["booking-service"]!.secretId };
   }
 
   if (svc.name === "inventory-service") {

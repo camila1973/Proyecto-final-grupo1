@@ -60,7 +60,7 @@ function makeInventoryClient() {
 function makePartnerFees() {
   return {
     upsertFromEvent: jest.fn().mockResolvedValue(undefined),
-    softDelete: jest.fn().mockResolvedValue(undefined),
+    delete: jest.fn().mockResolvedValue(undefined),
   };
 }
 
@@ -130,13 +130,13 @@ describe("EventsService", () => {
   // ─── handleFeeDeleted ────────────────────────────────────────────────────
 
   describe("handleFeeDeleted", () => {
-    it("delegates to partnerFees.softDelete with feeId", async () => {
+    it("delegates to partnerFees.delete with feeId", async () => {
       const { service, partnerFees } = makeService();
       const event = { feeId: "fee-1", partnerId: "partner-1" };
 
       await service.handleFeeDeleted(event);
 
-      expect(partnerFees.softDelete).toHaveBeenCalledWith("fee-1");
+      expect(partnerFees.delete).toHaveBeenCalledWith("fee-1");
     });
   });
 

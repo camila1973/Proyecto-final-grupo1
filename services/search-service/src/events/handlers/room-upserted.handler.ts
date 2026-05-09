@@ -5,6 +5,7 @@ import {
 } from "../../properties/properties.repository.js";
 import { PropertiesService } from "../../properties/properties.service.js";
 import { BookingClientService } from "../../booking/booking-client.service.js";
+import { aggregateFlatFees } from "../../properties/fees-indexer.js";
 
 export interface RoomUpsertedPayload {
   roomId: string;
@@ -67,24 +68,18 @@ export class RoomUpsertedHandler {
       );
     }
 
-    // Fetch partner fees from booking-service and aggregate flat fee totals
+    // Fetch partner fees and sum the ones applicable to this property:
+    // partner-wide rows (property_id = null) plus property-scoped rows for
+    // this propertyId.
     let flatFeePerNightUsd = 0;
     let flatFeePerStayUsd = 0;
     try {
       const allFees = await this.bookingClient.getPartnerFees(
         payload.partnerId,
       );
-      const activeFlatFees = allFees.filter(
-        (f) =>
-          f.is_active &&
-          (f.fee_type === "FLAT_PER_NIGHT" || f.fee_type === "FLAT_PER_STAY"),
-      );
-      flatFeePerNightUsd = activeFlatFees
-        .filter((f) => f.fee_type === "FLAT_PER_NIGHT")
-        .reduce((acc, f) => acc + parseFloat(f.flat_amount ?? "0"), 0);
-      flatFeePerStayUsd = activeFlatFees
-        .filter((f) => f.fee_type === "FLAT_PER_STAY")
-        .reduce((acc, f) => acc + parseFloat(f.flat_amount ?? "0"), 0);
+      const totals = aggregateFlatFees(allFees, payload.propertyId);
+      flatFeePerNightUsd = totals.perNight;
+      flatFeePerStayUsd = totals.perStay;
     } catch (err) {
       this.logger.warn(
         `Failed to fetch partner fees for ${payload.partnerId}; defaulting flat fees to 0: ${String(err)}`,

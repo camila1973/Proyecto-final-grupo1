@@ -259,48 +259,62 @@ describe("PropertiesRepository", () => {
     });
   });
 
-  describe("bulkUpdateFlatFees", () => {
-    it("selects room IDs by partner_id then updates flat fee columns", async () => {
+  describe("findPropertyIdsForPartner", () => {
+    it("selects distinct property_id rows by partner_id", async () => {
       const selectExecute = jest
         .fn()
-        .mockResolvedValueOnce([{ room_id: "r1" }]);
+        .mockResolvedValueOnce([
+          { property_id: "prop-A" },
+          { property_id: "prop-B" },
+        ]);
       const selectChain: Record<string, jest.Mock> = {
         select: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
+        distinct: jest.fn().mockReturnThis(),
         execute: selectExecute,
       };
+      const db = {
+        selectFrom: jest.fn().mockReturnValue(selectChain),
+      } as unknown as Kysely<SearchDatabase>;
+      const repo = new PropertiesRepository(db);
+
+      const result = await repo.findPropertyIdsForPartner("partner-1");
+      expect(db.selectFrom).toHaveBeenCalledWith("room_search_index");
+      expect(selectChain.distinct).toHaveBeenCalled();
+      expect(result).toEqual(["prop-A", "prop-B"]);
+    });
+  });
+
+  describe("updateFlatFeesForProperty", () => {
+    it("updates rows scoped by partner_id and property_id", async () => {
       const updateChain: Record<string, jest.Mock> = {
         set: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
         execute: jest.fn().mockResolvedValue(undefined),
       };
       const db = {
-        selectFrom: jest.fn().mockReturnValue(selectChain),
         updateTable: jest.fn().mockReturnValue(updateChain),
       } as unknown as Kysely<SearchDatabase>;
       const repo = new PropertiesRepository(db);
 
-      await repo.bulkUpdateFlatFees("partner-1", 25, 50);
-      expect(db.selectFrom).toHaveBeenCalledWith("room_search_index");
+      await repo.updateFlatFeesForProperty("partner-1", "prop-A", 37, 15);
       expect(db.updateTable).toHaveBeenCalledWith("room_search_index");
-      expect(updateChain.execute).toHaveBeenCalledTimes(1);
-    });
-
-    it("does nothing when no rooms match", async () => {
-      const selectExecute = jest.fn().mockResolvedValueOnce([]);
-      const selectChain: Record<string, jest.Mock> = {
-        select: jest.fn().mockReturnThis(),
-        where: jest.fn().mockReturnThis(),
-        execute: selectExecute,
-      };
-      const db = {
-        selectFrom: jest.fn().mockReturnValue(selectChain),
-        updateTable: jest.fn(),
-      } as unknown as Kysely<SearchDatabase>;
-      const repo = new PropertiesRepository(db);
-
-      await repo.bulkUpdateFlatFees("partner-1", 25, 50);
-      expect(db.updateTable).not.toHaveBeenCalled();
+      expect(updateChain.set).toHaveBeenCalledWith(
+        expect.objectContaining({
+          flat_fee_per_night_usd: "37",
+          flat_fee_per_stay_usd: "15",
+        }),
+      );
+      expect(updateChain.where).toHaveBeenCalledWith(
+        "partner_id",
+        "=",
+        "partner-1",
+      );
+      expect(updateChain.where).toHaveBeenCalledWith(
+        "property_id",
+        "=",
+        "prop-A",
+      );
     });
   });
 });

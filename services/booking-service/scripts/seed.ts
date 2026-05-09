@@ -160,11 +160,17 @@ const TAX_RULES = [
 ];
 
 // ─── Partner fees ─────────────────────────────────────────────────────────────
-// Sample fees for the two seeded partners.
-// IDs are stable (d1000000-...) so search-service seed can reference them.
+// Guest-facing reservation fees only (Resort Fee, Cleaning Fee, etc.) — fees
+// that show up in the fare breakdown and are paid by the guest. Mix of partner-
+// scoped (property_id = null → every property of that partner) and property-
+// scoped rows so the partner edit UI shows both Global and "This property".
+//
+// TravelHub commission (the platform's cut of each booking) lives in
+// payment-service's commission_rules table, NOT here.
 
 const PARTNER_FEES = [
-  // Partner 1 — resort fee applied per night across all Cancún properties
+  // ── Partner 1 (owns PROP_CANCUN_1) ───────────────────────────────────────
+  // Global — resort fee applied per night
   {
     id: FEE(1),
     partner_id: PARTNER_1,
@@ -177,7 +183,22 @@ const PARTNER_FEES = [
     effective_from: EFFECTIVE_FROM,
     effective_to: null as string | null,
   },
-  // Partner 2 — one-time cleaning fee per stay
+  // Property-scoped — Gran Caribe Resort only
+  {
+    id: FEE(4),
+    partner_id: PARTNER_1,
+    property_id: PROP_CANCUN_1 as string | null,
+    fee_name: "Beachfront Surcharge",
+    fee_type: "FLAT_PER_NIGHT",
+    rate: null as number | null,
+    flat_amount: 12.0,
+    currency: "USD",
+    effective_from: EFFECTIVE_FROM,
+    effective_to: null as string | null,
+  },
+
+  // ── Partner 2 (owns PROP_CANCUN_3 + PROP_CDMX_1) ─────────────────────────
+  // Global — one-time cleaning fee per stay
   {
     id: FEE(2),
     partner_id: PARTNER_2,
@@ -186,6 +207,32 @@ const PARTNER_FEES = [
     fee_type: "FLAT_PER_STAY",
     rate: null as number | null,
     flat_amount: 15.0,
+    currency: "USD",
+    effective_from: EFFECTIVE_FROM,
+    effective_to: null as string | null,
+  },
+  // Property-scoped — Hotel Histórico CDMX only
+  {
+    id: FEE(6),
+    partner_id: PARTNER_2,
+    property_id: PROP_CDMX_1 as string | null,
+    fee_name: "Centro Histórico Surcharge",
+    fee_type: "FLAT_PER_NIGHT",
+    rate: null as number | null,
+    flat_amount: 8.0,
+    currency: "USD",
+    effective_from: EFFECTIVE_FROM,
+    effective_to: null as string | null,
+  },
+  // Property-scoped — Hostal Sol Cancún only
+  {
+    id: FEE(7),
+    partner_id: PARTNER_2,
+    property_id: PROP_CANCUN_3 as string | null,
+    fee_name: "Beachside Service",
+    fee_type: "FLAT_PER_STAY",
+    rate: null as number | null,
+    flat_amount: 20.0,
     currency: "USD",
     effective_from: EFFECTIVE_FROM,
     effective_to: null as string | null,
@@ -643,8 +690,11 @@ async function seed() {
     )
     .execute();
   for (const f of PARTNER_FEES) {
+    const scope = f.property_id
+      ? `property ${f.property_id.slice(-4)}`
+      : "global";
     console.log(
-      `  ✓ ${f.fee_name} (${f.fee_type}) → partner ${f.partner_id.slice(-4)}`,
+      `  ✓ ${f.fee_name} (${f.fee_type}) → partner ${f.partner_id.slice(-4)} · ${scope}`,
     );
   }
 

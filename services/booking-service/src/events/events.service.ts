@@ -101,8 +101,8 @@ export class EventsService implements OnModuleInit, OnModuleDestroy {
   }
 
   async handleFeeDeleted(event: PartnerFeeDeletedPayload): Promise<void> {
-    await this.partnerFees.softDelete(event.feeId);
-    this.logger.debug(`Soft-deleted partner fee ${event.feeId}`);
+    await this.partnerFees.delete(event.feeId);
+    this.logger.debug(`Deleted partner fee ${event.feeId}`);
   }
 
   // ─── RabbitMQ ────────────────────────────────────────────────────────────────

@@ -1,128 +1,26 @@
 import { PartnerFeeDeletedHandler } from "./partner-fee-deleted.handler.js";
 
-function makeBookingClient(fees: object[] = []) {
-  return { getPartnerFees: jest.fn().mockResolvedValue(fees) };
-}
-
-function makeRepo() {
-  return { bulkUpdateFlatFees: jest.fn().mockResolvedValue(undefined) };
+function makeIndexer() {
+  return { refreshPartner: jest.fn().mockResolvedValue(undefined) };
 }
 
 describe("PartnerFeeDeletedHandler", () => {
-  it("re-queries booking-service after deletion", async () => {
-    const bookingClient = makeBookingClient([]);
-    const repo = makeRepo();
-    const handler = new PartnerFeeDeletedHandler(
-      bookingClient as any,
-      repo as any,
-    );
+  it("delegates to FeesIndexer.refreshPartner with partnerId", async () => {
+    const indexer = makeIndexer();
+    const handler = new PartnerFeeDeletedHandler(indexer as any);
 
     await handler.handle({ feeId: "fee-1", partnerId: "partner-1" });
 
-    expect(bookingClient.getPartnerFees).toHaveBeenCalledWith("partner-1");
+    expect(indexer.refreshPartner).toHaveBeenCalledWith("partner-1");
   });
 
-  it("re-queries booking-service and updates flat fees after deletion", async () => {
-    // The deleted fee is already inactive in booking-service
-    const bookingClient = makeBookingClient([
-      { fee_type: "FLAT_PER_NIGHT", flat_amount: "20", is_active: true },
-    ]);
-    const repo = makeRepo();
-    const handler = new PartnerFeeDeletedHandler(
-      bookingClient as any,
-      repo as any,
-    );
-
-    await handler.handle({ feeId: "fee-1", partnerId: "partner-1" });
-
-    expect(repo.bulkUpdateFlatFees).toHaveBeenCalledWith("partner-1", 20, 0);
-  });
-
-  it("sets totals to 0 when no active flat fees remain after deletion", async () => {
-    const bookingClient = makeBookingClient([]);
-    const repo = makeRepo();
-    const handler = new PartnerFeeDeletedHandler(
-      bookingClient as any,
-      repo as any,
-    );
-
-    await handler.handle({ feeId: "fee-1", partnerId: "partner-1" });
-
-    expect(repo.bulkUpdateFlatFees).toHaveBeenCalledWith("partner-1", 0, 0);
-  });
-
-  it("swallows bulk update errors without throwing", async () => {
-    const bookingClient = makeBookingClient([]);
-    const repo = makeRepo();
-    repo.bulkUpdateFlatFees.mockRejectedValue(new Error("DB down"));
-    const handler = new PartnerFeeDeletedHandler(
-      bookingClient as any,
-      repo as any,
-    );
+  it("swallows refresh errors without throwing", async () => {
+    const indexer = makeIndexer();
+    indexer.refreshPartner.mockRejectedValue(new Error("DB down"));
+    const handler = new PartnerFeeDeletedHandler(indexer as any);
 
     await expect(
       handler.handle({ feeId: "fee-1", partnerId: "partner-1" }),
     ).resolves.not.toThrow();
-  });
-
-  it("excludes inactive fees from flat totals", async () => {
-    const bookingClient = makeBookingClient([
-      { fee_type: "FLAT_PER_NIGHT", flat_amount: "30", is_active: false },
-    ]);
-    const repo = makeRepo();
-    const handler = new PartnerFeeDeletedHandler(
-      bookingClient as any,
-      repo as any,
-    );
-
-    await handler.handle({ feeId: "fee-1", partnerId: "partner-1" });
-
-    expect(repo.bulkUpdateFlatFees).toHaveBeenCalledWith("partner-1", 0, 0);
-  });
-
-  it("aggregates FLAT_PER_STAY fees correctly", async () => {
-    const bookingClient = makeBookingClient([
-      { fee_type: "FLAT_PER_STAY", flat_amount: "75", is_active: true },
-    ]);
-    const repo = makeRepo();
-    const handler = new PartnerFeeDeletedHandler(
-      bookingClient as any,
-      repo as any,
-    );
-
-    await handler.handle({ feeId: "fee-1", partnerId: "partner-1" });
-
-    expect(repo.bulkUpdateFlatFees).toHaveBeenCalledWith("partner-1", 0, 75);
-  });
-
-  it("treats null flat_amount as 0", async () => {
-    const bookingClient = makeBookingClient([
-      { fee_type: "FLAT_PER_NIGHT", flat_amount: null, is_active: true },
-      { fee_type: "FLAT_PER_STAY", flat_amount: null, is_active: true },
-    ]);
-    const repo = makeRepo();
-    const handler = new PartnerFeeDeletedHandler(
-      bookingClient as any,
-      repo as any,
-    );
-
-    await handler.handle({ feeId: "fee-1", partnerId: "partner-1" });
-
-    expect(repo.bulkUpdateFlatFees).toHaveBeenCalledWith("partner-1", 0, 0);
-  });
-
-  it("excludes PERCENTAGE fee types from flat totals", async () => {
-    const bookingClient = makeBookingClient([
-      { fee_type: "PERCENTAGE", flat_amount: null, is_active: true },
-    ]);
-    const repo = makeRepo();
-    const handler = new PartnerFeeDeletedHandler(
-      bookingClient as any,
-      repo as any,
-    );
-
-    await handler.handle({ feeId: "fee-1", partnerId: "partner-1" });
-
-    expect(repo.bulkUpdateFlatFees).toHaveBeenCalledWith("partner-1", 0, 0);
   });
 });

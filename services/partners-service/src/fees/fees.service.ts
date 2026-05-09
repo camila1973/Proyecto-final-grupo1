@@ -18,6 +18,7 @@ export class FeesService {
       currency: dto.currency,
       effectiveFrom: dto.effectiveFrom,
       effectiveTo: dto.effectiveTo,
+      isActive: dto.isActive,
     });
   }
 
@@ -41,6 +42,7 @@ export class FeesService {
       currency: dto.currency,
       effectiveFrom: dto.effectiveFrom ?? new Date().toISOString().slice(0, 10),
       effectiveTo: dto.effectiveTo,
+      isActive: dto.isActive,
     });
   }
 
