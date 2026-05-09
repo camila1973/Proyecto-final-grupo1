@@ -35,6 +35,12 @@ export class PropertiesService {
       review_count: dto.reviewCount,
       thumbnail_url: dto.thumbnailUrl,
       amenities: dto.amenities,
+      phone: dto.phone,
+      email: dto.email,
+      address: dto.address,
+      currency: dto.currency,
+      timezone: dto.timezone,
+      description: dto.description,
     });
     return this.toPublic(property);
   }
@@ -75,6 +81,12 @@ export class PropertiesService {
       review_count: dto.reviewCount,
       thumbnail_url: dto.thumbnailUrl,
       amenities: dto.amenities,
+      phone: dto.phone,
+      email: dto.email,
+      address: dto.address,
+      currency: dto.currency,
+      timezone: dto.timezone,
+      description: dto.description,
     });
     if (!updated) throw new NotFoundException(`Property ${id} not found`);
     await this.publishRoomsUpdated(updated);
@@ -110,6 +122,9 @@ export class PropertiesService {
         rating: parseFloat(property.rating),
         reviewCount: property.review_count,
         thumbnailUrl: property.thumbnail_url,
+        description: property.description
+          ? { es: property.description }
+          : undefined,
         isActive: room.status === "active",
       };
       this.events.publish("inventory.room.upserted", {
@@ -137,6 +152,12 @@ export class PropertiesService {
       reviewCount: row.review_count,
       thumbnailUrl: row.thumbnail_url,
       amenities: row.amenities,
+      phone: row.phone,
+      email: row.email,
+      address: row.address,
+      currency: row.currency,
+      timezone: row.timezone,
+      description: row.description,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };

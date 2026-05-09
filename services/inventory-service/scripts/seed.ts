@@ -76,6 +76,13 @@ async function seed() {
           "beach_access",
           "gym",
         ],
+        phone: "+52 998 881 0000",
+        email: "reservas@grancaribe.com",
+        address: "Blvd. Kukulcan Km 11.5, Zona Hotelera",
+        currency: "MXN",
+        timezone: "America/Cancun",
+        description:
+          "Resort de lujo todo incluido frente al mar Caribe, con servicio premium, spa de clase mundial y experiencias gastronómicas internacionales.",
       },
       {
         id: PROP_CANCUN_2,
@@ -100,6 +107,13 @@ async function seed() {
           "beach_access",
           "spa",
         ],
+        phone: "+52 998 884 2300",
+        email: "contacto@playaazul.mx",
+        address: "Blvd. Kukulcan Km 8.5, Zona Hotelera",
+        currency: "MXN",
+        timezone: "America/Cancun",
+        description:
+          "Hotel boutique de cuatro estrellas a pie de playa, ideal para parejas y viajes de negocios cortos.",
       },
       {
         id: PROP_CANCUN_3,
@@ -116,6 +130,13 @@ async function seed() {
         review_count: 204,
         thumbnail_url: "https://placehold.co/400x300?text=Hostal+Sol",
         amenities: ["wifi", "ac", "parking"],
+        phone: "+52 998 887 1122",
+        email: "hola@hostalsolcancun.com",
+        address: "Av. Tulum 220, Centro",
+        currency: "MXN",
+        timezone: "America/Cancun",
+        description:
+          "Hostal económico en el centro de Cancún con habitaciones privadas y compartidas, a 15 minutos de la zona hotelera.",
       },
       {
         id: PROP_CDMX_1,
@@ -141,6 +162,13 @@ async function seed() {
           "parking",
           "pet_friendly",
         ],
+        phone: "+52 55 5510 4040",
+        email: "info@hotelhistorico.mx",
+        address: "Av. 16 de Septiembre 82, Centro Histórico",
+        currency: "MXN",
+        timezone: "America/Mexico_City",
+        description:
+          "Hotel cinco estrellas en un edificio del siglo XIX restaurado, a una cuadra del Zócalo y de los principales museos.",
       },
       {
         id: PROP_CDMX_2,
@@ -157,6 +185,13 @@ async function seed() {
         review_count: 387,
         thumbnail_url: "https://placehold.co/400x300?text=Condesa+Inn",
         amenities: ["wifi", "breakfast", "ac", "pet_friendly"],
+        phone: "+52 55 5212 0808",
+        email: "reservas@condesainn.com",
+        address: "Av. México 70, Condesa",
+        currency: "MXN",
+        timezone: "America/Mexico_City",
+        description:
+          "Inn moderno en el corazón de la Condesa, rodeado de cafeterías, parques y vida cultural. Pet-friendly.",
       },
     ])
     .execute();

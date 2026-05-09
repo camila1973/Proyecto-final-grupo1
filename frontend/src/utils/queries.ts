@@ -665,6 +665,136 @@ export async function fetchPartnerProperty(
   return res.json() as Promise<PartnerPropertySummary>;
 }
 
+// ─── Inventory · Property edit ────────────────────────────────────────────────
+
+export interface InventoryProperty {
+  id: string;
+  name: string;
+  type: string;
+  city: string;
+  stars: number | null;
+  status: string;
+  countryCode: string;
+  partnerId: string;
+  neighborhood: string | null;
+  lat: number | null;
+  lon: number | null;
+  rating: number;
+  reviewCount: number;
+  thumbnailUrl: string;
+  amenities: string[];
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  currency: string | null;
+  timezone: string | null;
+  description: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UpdatePropertyBody {
+  name?: string;
+  type?: string;
+  city?: string;
+  stars?: number;
+  status?: string;
+  countryCode?: string;
+  neighborhood?: string;
+  phone?: string | null;
+  email?: string | null;
+  address?: string | null;
+  currency?: string | null;
+  timezone?: string | null;
+  description?: string | null;
+}
+
+export async function fetchInventoryProperty(
+  propertyId: string,
+  token: string,
+): Promise<InventoryProperty> {
+  const res = await fetch(
+    `${API_BASE}/api/inventory/properties/${encodeURIComponent(propertyId)}`,
+    { headers: { Authorization: `Bearer ${token}` } },
+  );
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json() as Promise<InventoryProperty>;
+}
+
+export async function updateInventoryProperty(
+  propertyId: string,
+  body: UpdatePropertyBody,
+  token: string,
+): Promise<InventoryProperty> {
+  const res = await fetch(
+    `${API_BASE}/api/inventory/properties/${encodeURIComponent(propertyId)}`,
+    {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    },
+  );
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json() as Promise<InventoryProperty>;
+}
+
+// ─── Booking · Tax rules (read-only for partner edit page) ────────────────────
+
+export interface TaxRule {
+  id: string;
+  country: string;
+  city: string | null;
+  tax_name: string;
+  tax_type: 'PERCENTAGE' | 'FLAT_PER_NIGHT' | 'FLAT_PER_STAY';
+  rate: string | null;
+  flat_amount: string | null;
+  currency: string;
+  applies_to: string;
+  effective_from: string;
+  effective_to: string | null;
+  is_active: boolean;
+}
+
+export async function fetchTaxRulesByCountry(
+  country: string,
+  token: string,
+): Promise<TaxRule[]> {
+  const params = new URLSearchParams({ country });
+  const res = await fetch(`${API_BASE}/api/booking/tax-rules?${params}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json() as Promise<TaxRule[]>;
+}
+
+// ─── Partners · Fees (read-only for partner edit page) ────────────────────────
+
+export interface PartnerFee {
+  id: string;
+  partner_id: string;
+  property_id: string | null;
+  fee_name: string;
+  fee_type: 'PERCENTAGE' | 'FLAT_PER_NIGHT' | 'FLAT_PER_STAY';
+  rate: string | null;
+  flat_amount: string | null;
+  currency: string;
+  effective_from: string;
+  effective_to: string | null;
+  is_active: boolean;
+}
+
+export async function fetchPartnerFees(
+  partnerId: string,
+  token: string,
+): Promise<PartnerFee[]> {
+  const params = new URLSearchParams({ partnerId });
+  const res = await fetch(`${API_BASE}/api/partners/fees?${params}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json() as Promise<PartnerFee[]>;
+}
+
 // ─── Partner Registration ─────────────────────────────────────────────────────
 
 export interface RegisterPartnerParams {
