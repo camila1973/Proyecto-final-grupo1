@@ -20,6 +20,12 @@ const PROPERTY_ROW = {
   review_count: 120,
   thumbnail_url: "https://example.com/thumb.jpg",
   amenities: ["wifi", "pool"],
+  phone: "+52 998 881 0000",
+  email: "reservas@grancaribe.com",
+  address: "Blvd. Kukulcan Km 11.5",
+  currency: "MXN",
+  timezone: "America/Cancun",
+  description: "Resort de lujo frente al mar.",
   created_at: NOW,
   updated_at: NOW,
 };
@@ -105,6 +111,19 @@ describe("PropertiesService", () => {
       await expect(service.findOne("missing")).rejects.toThrow(
         NotFoundException,
       );
+    });
+
+    it("maps contact metadata fields to the public shape", async () => {
+      const service = makeService();
+      const result = await service.findOne("prop-1");
+      expect(result).toMatchObject({
+        phone: "+52 998 881 0000",
+        email: "reservas@grancaribe.com",
+        address: "Blvd. Kukulcan Km 11.5",
+        currency: "MXN",
+        timezone: "America/Cancun",
+        description: "Resort de lujo frente al mar.",
+      });
     });
   });
 
@@ -211,6 +230,45 @@ describe("PropertiesService", () => {
       );
       await service.update("prop-1", { city: "CDMX" });
       expect(publish).not.toHaveBeenCalled();
+    });
+
+    it("wraps property description as { es: text } in the room snapshot", async () => {
+      const publish = jest.fn();
+      const service = makeService(
+        {
+          findByIdWithRooms: jest
+            .fn()
+            .mockResolvedValue({ property: PROPERTY_ROW, rooms: [ROOM_ROW] }),
+        },
+        { publish },
+      );
+      await service.update("prop-1", { city: "CDMX" });
+      expect(publish).toHaveBeenCalledTimes(1);
+      const [, payload] = publish.mock.calls[0];
+      expect(payload.snapshot.description).toEqual({
+        es: "Resort de lujo frente al mar.",
+      });
+    });
+
+    it("emits description as undefined when property has no description", async () => {
+      const publish = jest.fn();
+      const propertyWithoutDescription = {
+        ...PROPERTY_ROW,
+        description: null,
+      };
+      const service = makeService(
+        {
+          update: jest.fn().mockResolvedValue(propertyWithoutDescription),
+          findByIdWithRooms: jest.fn().mockResolvedValue({
+            property: propertyWithoutDescription,
+            rooms: [ROOM_ROW],
+          }),
+        },
+        { publish },
+      );
+      await service.update("prop-1", { city: "CDMX" });
+      const [, payload] = publish.mock.calls[0];
+      expect(payload.snapshot.description).toBeUndefined();
     });
   });
 });
