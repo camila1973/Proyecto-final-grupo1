@@ -9,6 +9,7 @@ import { useLocale } from '../context/LocaleContext';
 import { formatPrice } from '../utils/currency';
 import SearchBarForm from '../components/SearchBarForm';
 import PageHero from '../components/PageHero';
+import PageContainer from '../components/PageContainer';
 import { formatAddress } from '../utils/address';
 import { todayISO, offsetDateISO } from './search/utils';
 import { fetchFeatured } from '../utils/queries';
@@ -31,8 +32,8 @@ export default function HomePage() {
         <SearchBarForm />
       </PageHero>
 
-      <main className="flex-1 max-w-[1152px] mx-auto w-full px-6 py-10">
-        <h2 className="text-xl font-bold text-gray-900 mb-6">{t('recommendations.title')}</h2>
+      <PageContainer>
+        <h2 className="text-xl font-bold text-gray-900">{t('recommendations.title')}</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
           {featured.map((result) => (
             <VerticalCard
@@ -57,7 +58,7 @@ export default function HomePage() {
             />
           ))}
         </div>
-      </main>
+      </PageContainer>
     </>
   );
 }

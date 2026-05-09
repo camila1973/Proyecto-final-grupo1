@@ -14,6 +14,7 @@ import {
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useAuth } from '../../../../hooks/useAuth';
 import PageHero from '../../../../components/PageHero';
+import PageContainer from '../../../../components/PageContainer';
 import {
   fetchInventoryProperty,
   fetchPartnerFees,
@@ -85,17 +86,17 @@ export default function PropertyEditPage() {
 
   if (!enabled) {
     return (
-      <Box sx={{ maxWidth: 1152, mx: 'auto', p: 4 }}>
+      <PageContainer>
         <Alert severity="info">{t('partner.properties.edit.login_required')}</Alert>
-      </Box>
+      </PageContainer>
     );
   }
 
   if (propertyQuery.isError) {
     return (
-      <Box sx={{ maxWidth: 1152, mx: 'auto', p: 4 }}>
+      <PageContainer>
         <Alert severity="error">{t('partner.properties.edit.load_error')}</Alert>
-      </Box>
+      </PageContainer>
     );
   }
 
@@ -153,7 +154,7 @@ export default function PropertyEditPage() {
         </Box>
       </Box>
 
-      <Box sx={{ maxWidth: 1152, mx: 'auto', px: 3, py: 4 }}>
+      <PageContainer>
         {tab === 'info' && (
           <InfoTab
             form={form}
@@ -184,7 +185,7 @@ export default function PropertyEditPage() {
           />
         )}
         {tab === 'media' && <MediaTab thumbnailUrl={property.thumbnailUrl} />}
-      </Box>
+      </PageContainer>
     </Box>
   );
 }

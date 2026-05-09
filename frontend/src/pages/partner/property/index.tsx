@@ -30,6 +30,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import { useAuth } from '../../../hooks/useAuth';
 import { useLocale } from '../../../context/LocaleContext';
 import HeroBanner from './HeroBanner';
+import PageContainer from '../../../components/PageContainer';
 import {
   fetchPartnerProperty,
   fetchPartnerPropertyRooms,
@@ -111,17 +112,17 @@ export default function PropertyDashboardPage() {
 
   if (!enabled) {
     return (
-      <Box sx={{ maxWidth: 1152, mx: 'auto', p: 4 }}>
+      <PageContainer>
         <Alert severity="info">{t('partner.dashboard.login_required')}</Alert>
-      </Box>
+      </PageContainer>
     );
   }
 
   if (isError) {
     return (
-      <Box sx={{ maxWidth: 1152, mx: 'auto', p: 4 }}>
+      <PageContainer>
         <Alert severity="error">{t('partner.dashboard.load_error')}</Alert>
-      </Box>
+      </PageContainer>
     );
   }
 
@@ -133,7 +134,7 @@ export default function PropertyDashboardPage() {
         address={propertyAddress}
       />
 
-      <div className="max-w-[1152px] mx-auto px-6 py-6 flex flex-col gap-6">
+      <PageContainer>
 
         {/* Filter bar */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -364,7 +365,7 @@ export default function PropertyDashboardPage() {
             </Box>
           </>
         )}
-      </div>
+      </PageContainer>
     </div>
   );
 }

@@ -4,9 +4,9 @@ import {
   Alert,
   Box,
   Button,
+  Card,
   Chip,
   CircularProgress,
-  Paper,
   Stack,
   Table,
   TableBody,
@@ -39,7 +39,7 @@ export default function FeesTab({ fees, isLoading, isError, propertyId }: FeesTa
   const propertyCount = activeFees.filter((f) => f.property_id === propertyId).length;
 
   return (
-    <Paper variant="outlined" sx={{ p: 3, borderColor: '#e2e8f0', borderRadius: 2 }}>
+    <Card sx={{ p: 3 }}>
       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
         <Typography sx={{ fontSize: 16, fontWeight: 600, color: '#1a2332' }}>{t('partner.properties.edit.fees.title')}</Typography>
         <Tooltip title={t('partner.properties.edit.coming_soon')}>
@@ -151,6 +151,6 @@ export default function FeesTab({ fees, isLoading, isError, propertyId }: FeesTa
           </Table>
         </TableContainer>
       )}
-    </Paper>
+    </Card>
   );
 }

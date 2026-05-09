@@ -1,4 +1,4 @@
-import { Box, Paper, Typography } from '@mui/material';
+import { Box, Card, Typography } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 import PropertyRevenueChart, { type PropertyRevenueDataPoint } from '../components/PropertyRevenueChart';
 import RevenueTrendChart, { type RevenueTrendSeries } from '../components/RevenueTrendChart';
@@ -26,7 +26,7 @@ export default function ChartsSection({
         <Typography sx={{ fontSize: 14, fontWeight: 500, color: '#1a1a1a', mb: 1.5 }}>
           {t('partner.org_dashboard.chart_revenue_by_property', { month: monthLabel })}
         </Typography>
-        <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, borderColor: '#e2e8f0' }}>
+        <Card sx={{ p: 2 }}>
           <Box sx={{ display: 'flex', gap: 1.75, mb: 1.5, fontSize: 11, color: '#4a5568' }}>
             {BAR_LEGEND_KEYS.map((key, i) => (
               <Box key={key} sx={{ display: 'flex', alignItems: 'center', gap: 0.625 }}>
@@ -36,14 +36,14 @@ export default function ChartsSection({
             ))}
           </Box>
           <PropertyRevenueChart data={barData} loading={anyPropertyLoading} />
-        </Paper>
+        </Card>
       </Box>
 
       <Box>
         <Typography sx={{ fontSize: 14, fontWeight: 500, color: '#1a1a1a', mb: 1.5 }}>
           {t('partner.org_dashboard.chart_trend')}
         </Typography>
-        <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, borderColor: '#e2e8f0' }}>
+        <Card sx={{ p: 2 }}>
           {trendSeries.length > 0 && (
             <Box sx={{ display: 'flex', gap: 1.75, mb: 1.5, fontSize: 11, color: '#4a5568' }}>
               {trendSeries.map((s) => (
@@ -59,7 +59,7 @@ export default function ChartsSection({
             </Box>
           )}
           <RevenueTrendChart series={trendSeries} loading={anyPropertyLoading} />
-        </Paper>
+        </Card>
       </Box>
     </Box>
   );

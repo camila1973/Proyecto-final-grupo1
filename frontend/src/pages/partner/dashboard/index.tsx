@@ -18,6 +18,7 @@ import { PROPERTY_COLORS } from '../components/RevenueTrendChart';
 import MetricCard from '../components/MetricCard';
 import MonthSwitcher from '../components/MonthSwitcher';
 import HeroBanner from './HeroBanner';
+import PageContainer from '../../../components/PageContainer';
 import ChartsSection from './ChartsSection';
 import PropertiesSection, { type PropertyRow } from './PropertiesSection';
 import MembersSection from './MembersSection';
@@ -68,9 +69,9 @@ export default function MiHotelPage() {
 
   if (!enabled) {
     return (
-      <div className="max-w-[1152px] mx-auto p-8">
+      <PageContainer>
         <Alert severity="info">{t('partner.org_dashboard.login_required')}</Alert>
-      </div>
+      </PageContainer>
     );
   }
 
@@ -84,9 +85,9 @@ export default function MiHotelPage() {
 
   if (propertiesQuery.isError || aggregateQuery.isError) {
     return (
-      <div className="max-w-[1152px] mx-auto p-8">
+      <PageContainer>
         <Alert severity="error">{t('partner.org_dashboard.load_error')}</Alert>
-      </div>
+      </PageContainer>
     );
   }
 
@@ -164,7 +165,7 @@ export default function MiHotelPage() {
         role={user?.role ?? ''}
       />
 
-      <div className="max-w-[1152px] mx-auto px-6 py-6 flex flex-col gap-6">
+      <PageContainer>
 
         <div className="flex justify-end">
           <MonthSwitcher month={month} onChange={setMonth} language={language} />
@@ -254,7 +255,7 @@ export default function MiHotelPage() {
           onViewHistory={() => navigate({ to: '/mi-hotel/pagos' })}
         />
 
-      </div>
+      </PageContainer>
     </div>
   );
 }

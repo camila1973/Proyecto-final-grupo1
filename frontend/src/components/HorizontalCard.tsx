@@ -32,10 +32,7 @@ export default function HorizontalCard({
   sx,
 }: HorizontalCardProps) {
   return (
-    <Card
-      variant="outlined"
-      sx={{ display: 'flex', borderRadius: 3, overflow: 'hidden', bgcolor, ...sx }}
-    >
+    <Card sx={{ display: 'flex', bgcolor, ...sx }}>
       <CardMedia
         component="img"
         image={imageUrl}

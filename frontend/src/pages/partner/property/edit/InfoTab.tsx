@@ -3,9 +3,9 @@ import { useTranslation } from 'react-i18next';
 import {
   Box,
   Button,
+  Card,
   Chip,
   MenuItem,
-  Paper,
   Stack,
   TextField,
   Typography,
@@ -50,7 +50,7 @@ export default function InfoTab({ form, setForm, property, onPause, pausing, onS
 
   return (
     <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 320px' }, gap: 3 }}>
-      <Paper variant="outlined" sx={{ p: 3, borderColor: '#e2e8f0', borderRadius: 2 }}>
+      <Card sx={{ p: 3 }}>
         <Typography sx={{ fontSize: 16, fontWeight: 600, color: '#1a2332', mb: 2 }}>
           {t('partner.properties.edit.info.section_title')}
         </Typography>
@@ -132,10 +132,10 @@ export default function InfoTab({ form, setForm, property, onPause, pausing, onS
             {t('partner.properties.edit.save')}
           </Button>
         </Stack>
-      </Paper>
+      </Card>
 
       <Stack spacing={2}>
-        <Paper variant="outlined" sx={{ p: 2.5, borderColor: '#e2e8f0', borderRadius: 2 }}>
+        <Card sx={{ p: 2.5 }}>
           <Typography sx={{ fontSize: 16, fontWeight: 600, color: '#1a2332', mb: 1.5 }}>{t('partner.properties.edit.info.sidebar.status_title')}</Typography>
           <Stack spacing={1.25}>
             <SidebarRow label={t('partner.properties.edit.info.sidebar.visibility')}>
@@ -158,9 +158,9 @@ export default function InfoTab({ form, setForm, property, onPause, pausing, onS
               <Typography sx={{ fontSize: 12, fontFamily: 'monospace' }}>{property.id.slice(0, 8)}</Typography>
             </SidebarRow>
           </Stack>
-        </Paper>
+        </Card>
 
-        <Paper variant="outlined" sx={{ p: 2.5, borderColor: '#e2e8f0', borderRadius: 2 }}>
+        <Card sx={{ p: 2.5 }}>
           <Typography sx={{ fontSize: 16, fontWeight: 600, color: '#1a2332', mb: 1.5 }}>{t('partner.properties.edit.info.sidebar.actions_title')}</Typography>
           <Stack spacing={1}>
             <Button variant="outlined" size="small" startIcon={<QrCode2Icon fontSize="small" />} onClick={goQr} fullWidth>
@@ -181,7 +181,7 @@ export default function InfoTab({ form, setForm, property, onPause, pausing, onS
               {isPaused ? t('partner.properties.edit.info.sidebar.resume_listing') : t('partner.properties.edit.info.sidebar.pause_listing')}
             </Button>
           </Stack>
-        </Paper>
+        </Card>
       </Stack>
     </Box>
   );

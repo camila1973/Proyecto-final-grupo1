@@ -27,6 +27,7 @@ import { useLocale } from '../../../context/LocaleContext';
 import { fetchPartnerPayments } from '../../../utils/queries';
 import { formatPrice } from '../../../utils/currency';
 import { TH, TD } from '../dashboard/ui';
+import PageContainer from '../../../components/PageContainer';
 
 const PAGE_SIZE = 20;
 
@@ -64,15 +65,15 @@ export default function PagosPropertyPage() {
 
   if (!enabled) {
     return (
-      <Box sx={{ maxWidth: 1152, mx: 'auto', p: 4 }}>
+      <PageContainer>
         <Alert severity="info">{t('partner.dashboard.login_required')}</Alert>
-      </Box>
+      </PageContainer>
     );
   }
 
   return (
     <Box className="bg-[#F5F7FA] min-h-screen">
-      <Box sx={{ maxWidth: 1152, mx: 'auto', px: 3, py: 4 }}>
+      <PageContainer>
         <Button
           variant="text"
           sx={{ mb: 1, p: 0, minWidth: 0, fontSize: 12, color: '#1B4F8C' }}
@@ -153,7 +154,7 @@ export default function PagosPropertyPage() {
             </TableContainer>
           </Paper>
         )}
-      </Box>
+      </PageContainer>
     </Box>
   );
 }

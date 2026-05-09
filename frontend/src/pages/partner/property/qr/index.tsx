@@ -14,7 +14,6 @@ import {
   DialogContentText,
   DialogTitle,
   Divider,
-  Paper,
   Stack,
   Typography,
 } from '@mui/material';
@@ -30,6 +29,7 @@ import {
   type CheckinQrResponse,
 } from '../../../../utils/queries';
 import logo from '../../../../assets/logo.png';
+import PageContainer from '../../../../components/PageContainer';
 
 export default function PropertyQrPage() {
   const { t } = useTranslation();
@@ -75,9 +75,9 @@ export default function PropertyQrPage() {
 
   if (!user?.partnerId) {
     return (
-      <Box sx={{ maxWidth: 1152, mx: 'auto', px: { xs: 2, md: 4 }, py: 4 }}>
+      <PageContainer>
         <Alert severity="warning">{t('partner.properties.login_required')}</Alert>
-      </Box>
+      </PageContainer>
     );
   }
 
@@ -85,16 +85,16 @@ export default function PropertyQrPage() {
   const isError = qrQuery.isError;
 
   return (
-    <Box sx={{ maxWidth: 1152, mx: 'auto', px: { xs: 2, md: 4 }, py: 4 }}>
+    <PageContainer>
       <Button
         variant="text"
-        sx={{ mb: 2, fontWeight: 500 }}
+        sx={{ alignSelf: 'flex-start', fontWeight: 500 }}
         onClick={() => navigate({ to: '/mi-hotel/$propertyId', params: { propertyId } })}
       >
         {t('partner.properties.qr.back')}
       </Button>
 
-      <Typography variant="h6" sx={{ fontWeight: 600, mb: 3 }}>
+      <Typography variant="h6" sx={{ fontWeight: 600 }}>
         {t('partner.properties.qr.page_title')}
       </Typography>
 
@@ -190,17 +190,14 @@ export default function PropertyQrPage() {
               </Button>
             </Stack>
 
-            <Paper
-              variant="outlined"
-              sx={{ p: 2.5, borderRadius: 2, mt: 3, maxWidth: 380 }}
-            >
+            <Card sx={{ p: 2.5, mt: 3, maxWidth: 380 }}>
               <Typography sx={{ fontWeight: 600, mb: 1, fontSize: 14 }}>
                 {t('partner.properties.qr.instructions_title')}
               </Typography>
               <Typography sx={{ fontSize: 13, color: 'text.secondary', lineHeight: 1.6 }}>
                 {t('partner.properties.qr.instructions_body')}
               </Typography>
-            </Paper>
+            </Card>
           </Box>
         </Stack>
       )}
@@ -228,6 +225,6 @@ export default function PropertyQrPage() {
           </Button>
         </DialogActions>
       </Dialog>
-    </Box>
+    </PageContainer>
   );
 }

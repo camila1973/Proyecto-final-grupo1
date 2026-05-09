@@ -13,6 +13,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import Typography from '@mui/material/Typography';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
+import PageContainer from '../../../components/PageContainer';
 
 export default function BookingConfirmationPage() {
   const navigate = useNavigate();
@@ -62,7 +63,7 @@ export default function BookingConfirmationPage() {
 
   return (
     <Box sx={{ flex: 1, bgcolor: '#F5F7FA' }}>
-      <Box sx={{ maxWidth: '1152px', mx: 'auto', px: 3, py: 4 }}>
+      <PageContainer>
 
         <Alert
           severity="success"
@@ -77,7 +78,7 @@ export default function BookingConfirmationPage() {
               </Typography>
             </Box>
           }
-          sx={{ mb: 2.5, borderRadius: 2, alignItems: 'center' }}
+          sx={{ borderRadius: 2, alignItems: 'center' }}
           slotProps={{ action: { sx: { marginRight: 0 } } }}
         >
           <AlertTitle sx={{ fontWeight: 500, mb: 0.25 }}>
@@ -124,11 +125,11 @@ export default function BookingConfirmationPage() {
           </Box>
         </Box>
 
-        <Alert severity="warning" sx={{ mt: 2.5, borderRadius: 2 }}>
+        <Alert severity="warning" sx={{ borderRadius: 2 }}>
           {t('booking.confirmation.cancellation_notice')}
         </Alert>
 
-      </Box>
+      </PageContainer>
     </Box>
   );
 }

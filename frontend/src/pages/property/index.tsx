@@ -22,6 +22,7 @@ import LabeledField from '../../components/LabeledField';
 import GuestSelector from '../../components/GuestSelector';
 import ArrowBackIosNew from '@mui/icons-material/ArrowBackIosNew';
 import PageHero from '../../components/PageHero';
+import PageContainer from '../../components/PageContainer';
 
 const DESCRIPTION_PREVIEW_CHARS = 260;
 
@@ -66,17 +67,17 @@ export default function PropertyDetailPage() {
 
   if (isPending && !data) {
     return (
-      <main className="max-w-[1152px] mx-auto w-full px-6 py-8 flex-1">
+      <PageContainer>
         <p className="text-gray-500">{t('property_detail.loading')}</p>
-      </main>
+      </PageContainer>
     );
   }
 
   if (isError || !data?.property) {
     return (
-      <main className="max-w-[1152px] mx-auto w-full px-6 py-8 flex-1">
+      <PageContainer>
         <p className="text-red-500">{t('property_detail.error')}</p>
-      </main>
+      </PageContainer>
     );
   }
 
@@ -116,12 +117,11 @@ export default function PropertyDetailPage() {
         />
       </PageHero>
 
-      <main className="max-w-[1152px] mx-auto px-6 py-6">
-        {/* Back button */}
+      <PageContainer>
         <Button
           startIcon={<ArrowBackIosNew />}
           onClick={() => history.back()}
-          sx={{ color: 'text.secondary', fontWeight: 500, mb: 3 }}
+          sx={{ color: 'text.secondary', fontWeight: 500, alignSelf: 'flex-start' }}
         >
         {t('property_detail.back')}
         </Button>
@@ -286,7 +286,7 @@ export default function PropertyDetailPage() {
           fallbackAverage={property.rating}
           fallbackCount={property.reviewCount}
         />
-      </main>
+      </PageContainer>
     </div>
   );
 }

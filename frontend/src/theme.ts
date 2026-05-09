@@ -14,5 +14,11 @@ export const theme = createTheme({
         root: { textTransform: 'none', borderRadius: 8, fontWeight: 600 },
       },
     },
+    MuiCard: {
+      defaultProps: { variant: 'outlined' },
+      styleOverrides: {
+        root: { borderRadius: 12, overflow: 'hidden' },
+      },
+    },
   },
 });
