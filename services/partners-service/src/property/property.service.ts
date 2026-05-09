@@ -163,6 +163,26 @@ export class PropertyService {
     );
   }
 
+  async deleteRoomRate(rateId: string): Promise<void> {
+    const ok = await this.inventoryClient.deleteRoomRate(rateId);
+    if (!ok) throw new NotFoundException(`Rate ${rateId} not found`);
+  }
+
+  async updateRoomRate(
+    rateId: string,
+    fromDate: string,
+    toDate: string,
+    priceUsd: number,
+  ): Promise<void> {
+    const updated = await this.inventoryClient.updateRoomRate(
+      rateId,
+      fromDate,
+      toDate,
+      priceUsd,
+    );
+    if (!updated) throw new NotFoundException(`Rate ${rateId} not found`);
+  }
+
   async getPropertyRooms(
     partnerId: string,
     propertyId: string,
