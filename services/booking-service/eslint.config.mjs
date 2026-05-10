@@ -19,9 +19,7 @@ export default tseslint.config(
       },
       sourceType: 'commonjs',
       parserOptions: {
-        projectService: {
-          allowDefaultProject: ['kysely.config.ts', 'scripts/*.ts'],
-        },
+        project: ["./tsconfig.json", "./tsconfig.spec.json"],
         tsconfigRootDir: import.meta.dirname,
       },
     },

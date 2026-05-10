@@ -4,12 +4,19 @@
     "outDir": "../../dist/out-tsc",
     "module": "nodenext",
     "resolvePackageJsonExports": false,
-    "types": ["jest", "node"]
+    "types": [
+      "jest",
+      "node"
+    ]
   },
   "include": [
     "src/**/*.spec.ts",
     "src/**/*.test.ts",
     "src/**/*.d.ts",
     "test/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
   ]
 }
