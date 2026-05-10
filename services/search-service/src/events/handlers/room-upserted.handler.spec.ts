@@ -120,6 +120,7 @@ describe("RoomUpsertedHandler", () => {
       {
         id: "f1",
         partner_id: "p1",
+        property_id: null,
         fee_name: "Resort Fee",
         fee_type: "FLAT_PER_NIGHT",
         rate: null,
@@ -130,6 +131,7 @@ describe("RoomUpsertedHandler", () => {
       {
         id: "f2",
         partner_id: "p1",
+        property_id: null,
         fee_name: "Cleaning Fee",
         fee_type: "FLAT_PER_STAY",
         rate: null,
@@ -354,6 +356,7 @@ describe("RoomUpsertedHandler", () => {
       {
         id: "f1",
         partner_id: "p1",
+        property_id: null,
         fee_name: "Resort Fee",
         fee_type: "FLAT_PER_NIGHT",
         rate: null,
@@ -364,6 +367,7 @@ describe("RoomUpsertedHandler", () => {
       {
         id: "f2",
         partner_id: "p1",
+        property_id: null,
         fee_name: "Cleaning Fee",
         fee_type: "FLAT_PER_STAY",
         rate: null,
@@ -388,6 +392,7 @@ describe("RoomUpsertedHandler", () => {
       {
         id: "f1",
         partner_id: "p1",
+        property_id: null,
         fee_name: "Resort Fee",
         fee_type: "FLAT_PER_NIGHT",
         rate: null,
@@ -412,6 +417,7 @@ describe("RoomUpsertedHandler", () => {
       {
         id: "f1",
         partner_id: "p1",
+        property_id: null,
         fee_name: "Commission",
         fee_type: "PERCENTAGE",
         rate: "5",
