@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useSearch } from '@tanstack/react-router';
+import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import Button from '@mui/material/Button';
 import Alert from '@mui/material/Alert';
@@ -90,9 +90,9 @@ export default function MfaPage() {
             {showRetryLink && (
               <span>
                 {' '}
-                <a href="/login" className="underline">
+                <Link to="/login" className="underline">
                   {t('mfa.try_again_link')}
-                </a>
+                </Link>
               </span>
             )}
           </Alert>

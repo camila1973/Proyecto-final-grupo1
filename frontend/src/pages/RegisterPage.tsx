@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from '@tanstack/react-router';
+import { Link as RouterLink, useNavigate } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import Button from '@mui/material/Button';
 import Checkbox from '@mui/material/Checkbox';
@@ -153,7 +153,7 @@ export default function RegisterPage() {
         <h1 className="text-2xl font-bold text-gray-900 mb-1">{t('register.title')}</h1>
         <p className="text-sm text-gray-600 mb-6">
           {t('register.already_have_account')}{' '}
-          <Link href="/login" underline="hover">
+          <Link component={RouterLink} to="/login" underline="hover">
             {t('register.login_link')}
           </Link>
         </p>
