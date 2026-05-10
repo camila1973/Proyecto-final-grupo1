@@ -223,26 +223,36 @@ describe("ReservationsController", () => {
         "res-1",
         { reason: "changed mind" },
         undefined as any,
+        undefined as any,
+        "10.0.0.1",
       );
 
       expect(service.cancel).toHaveBeenCalledWith(
         "res-1",
         "changed mind",
         "system",
+        { actorId: null, requestIp: "10.0.0.1" },
       );
       expect(result).toBe(reservation);
     });
 
-    it("passes guest actor when role header is 'guest'", async () => {
+    it("passes guest actor and forwards user-id + ip to the service", async () => {
       const reservation = { id: "res-1", status: "cancelled" } as any;
       (service.cancel as jest.Mock).mockResolvedValue(reservation);
 
-      await controller.cancel("res-1", { reason: "changed mind" }, "guest");
+      await controller.cancel(
+        "res-1",
+        { reason: "changed mind" },
+        "guest",
+        "user-7",
+        "10.0.0.1",
+      );
 
       expect(service.cancel).toHaveBeenCalledWith(
         "res-1",
         "changed mind",
         "guest",
+        { actorId: "user-7", requestIp: "10.0.0.1" },
       );
     });
 
@@ -250,12 +260,19 @@ describe("ReservationsController", () => {
       const reservation = { id: "res-1", status: "cancelled" } as any;
       (service.cancel as jest.Mock).mockResolvedValue(reservation);
 
-      await controller.cancel("res-1", { reason: "overbooking" }, "partner");
+      await controller.cancel(
+        "res-1",
+        { reason: "overbooking" },
+        "partner",
+        "partner-9",
+        "10.0.0.2",
+      );
 
       expect(service.cancel).toHaveBeenCalledWith(
         "res-1",
         "overbooking",
         "partner",
+        { actorId: "partner-9", requestIp: "10.0.0.2" },
       );
     });
   });

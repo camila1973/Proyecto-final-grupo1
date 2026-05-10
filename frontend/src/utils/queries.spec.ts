@@ -308,13 +308,33 @@ describe('queries', () => {
   // ─── cancelReservation ──────────────────────────────────────────────────────
 
   describe('cancelReservation', () => {
-    it('resolves without a value on success', async () => {
-      (global.fetch as jest.Mock).mockResolvedValue({ ok: true });
-      await expect(cancelReservation('r1', 'tok', 'user_requested')).resolves.toBeUndefined();
+    const refundedOutcome = {
+      status: 'cancelled',
+      refund: {
+        status: 'succeeded',
+        policy: 'full_refund',
+        refundedUsd: 522,
+        externalRef: 're_test',
+        adjustmentId: 'adj-1',
+      },
+    };
+
+    it('returns the parsed cancellation outcome including refund metadata', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue(refundedOutcome),
+      });
+
+      await expect(cancelReservation('r1', 'tok', 'user_requested')).resolves.toEqual(
+        refundedOutcome,
+      );
     });
 
     it('sends a PATCH request with the reason in the body', async () => {
-      (global.fetch as jest.Mock).mockResolvedValue({ ok: true });
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue({ status: 'cancelled', refund: null }),
+      });
       await cancelReservation('r1', 'tok', 'user_requested');
       expect(global.fetch).toHaveBeenCalledWith(
         expect.stringContaining('/reservations/r1/cancel'),

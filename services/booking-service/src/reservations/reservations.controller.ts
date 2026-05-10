@@ -9,6 +9,7 @@ import {
   Headers,
   HttpCode,
   HttpStatus,
+  Ip,
   Res,
 } from "@nestjs/common";
 import type { Response } from "express";
@@ -89,9 +90,14 @@ export class ReservationsController {
     @Param("id") id: string,
     @Body() body: { reason: string },
     @Headers("x-user-role") role: string,
+    @Headers("x-user-id") userId: string,
+    @Ip() ip: string,
   ) {
     const actor: BookingActor = role ? (role as BookingActor) : "system";
-    return this.reservationsService.cancel(id, body.reason, actor);
+    return this.reservationsService.cancel(id, body.reason, actor, {
+      actorId: userId || null,
+      requestIp: ip || null,
+    });
   }
 
   @Patch(":id/rehold")

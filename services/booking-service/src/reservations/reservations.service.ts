@@ -13,6 +13,7 @@ import {
 } from "../fare/fare-calculator.service.js";
 import { InventoryClient } from "../clients/inventory.client.js";
 import { PartnersClient } from "../clients/partners.client.js";
+import { PaymentClient, RefundOutcome } from "../clients/payment.client.js";
 import { ReservationsRepository } from "./reservations.repository.js";
 import { HoldsService } from "./holds.service.js";
 import { EventsPublisher } from "../events/events.publisher.js";
@@ -41,6 +42,7 @@ export class ReservationsService {
     private readonly holdsService: HoldsService,
     private readonly publisher: EventsPublisher,
     private readonly partnersClient: PartnersClient,
+    private readonly paymentClient: PaymentClient,
   ) {}
 
   async preview(dto: PreviewReservationDto): Promise<FareBreakdown> {
@@ -377,7 +379,15 @@ export class ReservationsService {
     return this.refundQuote(total, String(row.check_in));
   }
 
-  async cancel(id: string, reason: string, actor: BookingActor = "guest") {
+  async cancel(
+    id: string,
+    reason: string,
+    actor: BookingActor = "guest",
+    audit: { actorId: string | null; requestIp: string | null } = {
+      actorId: null,
+      requestIp: null,
+    },
+  ) {
     if (actor === "partner") {
       const current = await this.reservationsRepo.findById(id);
       if (current.status !== "confirmed") {
@@ -387,9 +397,6 @@ export class ReservationsService {
       }
     }
 
-    // TODO (partner path): trigger refund through payment-service before releasing inventory.
-    // Partner-initiated cancels break the contract on the guest's side, so the
-    // guest should be refunded automatically rather than chase their money.
     const { row, priorStatus } = await this.reservationsRepo.cancel(id, reason);
 
     try {
@@ -413,8 +420,31 @@ export class ReservationsService {
       );
     }
 
+    // Automated refund (issue #27). Only `confirmed` reservations have a
+    // captured payment to refund — `held`/`submitted`/`failed` either never
+    // charged or were already released by the payment retry logic. We treat
+    // the refund as best-effort: the cancellation must persist even if the
+    // gateway is unreachable, and payment-service is responsible for raising
+    // the customer-support alert + writing a failed audit row in that case.
+    let refund: RefundOutcome | null = null;
+    if (priorStatus === "confirmed") {
+      try {
+        refund = await this.paymentClient.requestRefund({
+          reservationId: id,
+          reason,
+          actorId: audit.actorId,
+          actorRole: actor,
+          requestIp: audit.requestIp,
+        });
+      } catch (err) {
+        this.logger.error(
+          `Automated refund request failed for reservation ${id}: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
+
     this.emit("booking.cancelled", row, actor);
-    return this.reservationsRepo.toResponse(row);
+    return { ...this.reservationsRepo.toResponse(row), refund };
   }
 
   async rehold(id: string) {

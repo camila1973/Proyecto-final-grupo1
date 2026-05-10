@@ -8,6 +8,8 @@ import { saveCheckoutIntent } from '../../hooks/useBookingFlow';
 import {
   fetchMyReservations,
   cancelReservation,
+  fetchRefundQuote,
+  type CancelReservationOutcome,
   type ReservationListItem,
   type ReservationStatus,
 } from '../../utils/queries';
@@ -226,6 +228,8 @@ export default function TripsPage() {
   const queryClient = useQueryClient();
 
   const [cancelTarget, setCancelTarget] = useState<string | null>(null);
+  const [refundResult, setRefundResult] = useState<CancelReservationOutcome | null>(null);
+  const [refundFailedOpen, setRefundFailedOpen] = useState(false);
 
   const { data: reservations = [], isPending, isError } = useQuery({
     queryKey: ['my-reservations', user?.id],
@@ -233,14 +237,29 @@ export default function TripsPage() {
     enabled: !!token && !!user,
   });
 
+  const { data: refundQuote, isLoading: quoteLoading } = useQuery({
+    queryKey: ['refund-quote', cancelTarget],
+    queryFn: () => fetchRefundQuote(cancelTarget!, token!),
+    enabled: !!cancelTarget && !!token,
+  });
+
   const { mutate: doCancel, isPending: cancelling, variables: cancellingId } = useMutation({
     mutationFn: (id: string) => cancelReservation(id, token!, 'user_requested'),
-    onSuccess: (_, id) => {
+    onSuccess: (outcome, id) => {
       queryClient.setQueryData<ReservationListItem[]>(
         ['my-reservations', user?.id],
         (prev) => prev?.map((r) => (r.id === id ? { ...r, status: 'cancelled' as ReservationStatus } : r)),
       );
       setCancelTarget(null);
+      // A null refund either means there was nothing to refund (held/submitted)
+      // or the gateway rejected the request — only the latter requires the
+      // alert dialog. We disambiguate by checking the prior status of the row.
+      const prior = reservations.find((r) => r.id === id);
+      if (outcome.refund) {
+        setRefundResult(outcome);
+      } else if (prior?.status === 'confirmed') {
+        setRefundFailedOpen(true);
+      }
     },
   });
 
@@ -405,7 +424,10 @@ export default function TripsPage() {
       <Dialog open={cancelTarget !== null} onClose={() => !cancelling && setCancelTarget(null)}>
         <DialogTitle>{t('trips.cancel_dialog.title')}</DialogTitle>
         <DialogContent>
-          <DialogContentText>{t('trips.cancel_dialog.body')}</DialogContentText>
+          <DialogContentText sx={{ mb: 2 }}>{t('trips.cancel_dialog.body')}</DialogContentText>
+          <DialogContentText sx={{ fontSize: 13 }}>
+            {refundPolicyMessage(refundQuote, quoteLoading, currency, t)}
+          </DialogContentText>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setCancelTarget(null)} disabled={cancelling}>
@@ -420,6 +442,97 @@ export default function TripsPage() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <RefundResultDialog
+        outcome={refundResult}
+        currency={currency}
+        onClose={() => setRefundResult(null)}
+      />
+
+      <Dialog open={refundFailedOpen} onClose={() => setRefundFailedOpen(false)}>
+        <DialogTitle>{t('trips.refund_failed.title')}</DialogTitle>
+        <DialogContent>
+          <DialogContentText>{t('trips.refund_failed.body')}</DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRefundFailedOpen(false)} variant="contained">
+            {t('trips.refund_failed.close')}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </PageContainer>
+  );
+}
+
+function refundPolicyMessage(
+  quote: { policy: string; refundableUsd: number; daysUntilCheckIn: number } | undefined,
+  loading: boolean,
+  currency: ReturnType<typeof useLocale>['currency'],
+  t: (k: string, opts?: Record<string, unknown>) => string,
+): string {
+  if (loading || !quote) return t('trips.cancel_dialog.loading_quote');
+  if (quote.policy === 'full_refund') {
+    return t('trips.cancel_dialog.policy_full', {
+      amount: formatPrice(quote.refundableUsd, currency),
+    });
+  }
+  if (quote.policy === 'partial_refund') {
+    return t('trips.cancel_dialog.policy_partial', {
+      amount: formatPrice(quote.refundableUsd, currency),
+      days: quote.daysUntilCheckIn,
+    });
+  }
+  return t('trips.cancel_dialog.policy_none');
+}
+
+function RefundResultDialog({
+  outcome,
+  currency,
+  onClose,
+}: {
+  outcome: CancelReservationOutcome | null;
+  currency: ReturnType<typeof useLocale>['currency'];
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+  if (!outcome?.refund) return null;
+  const { refund } = outcome;
+  const skipped = refund.status === 'skipped';
+
+  return (
+    <Dialog open onClose={onClose}>
+      <DialogTitle>
+        {skipped ? t('trips.refund_result.title_skipped') : t('trips.refund_result.title_success')}
+      </DialogTitle>
+      <DialogContent>
+        {skipped ? (
+          <DialogContentText>{t('trips.refund_result.policy_skipped')}</DialogContentText>
+        ) : (
+          <Box>
+            <DialogContentText sx={{ mb: 1.5 }}>
+              <strong>{t('trips.refund_result.amount')}: </strong>
+              {formatPrice(refund.refundedUsd, currency)}
+            </DialogContentText>
+            {refund.externalRef && (
+              <DialogContentText sx={{ mb: 1.5 }}>
+                <strong>{t('trips.refund_result.comprobante')}: </strong>
+                <Box component="span" sx={{ fontFamily: 'monospace', fontSize: 13 }}>
+                  {refund.externalRef}
+                </Box>
+              </DialogContentText>
+            )}
+            <DialogContentText sx={{ mb: 1.5 }}>{t('trips.refund_result.eta')}</DialogContentText>
+            <DialogContentText sx={{ fontSize: 13, color: '#6b7280' }}>
+              {t('trips.refund_result.email_notice')}
+            </DialogContentText>
+          </Box>
+        )}
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose} variant="contained">
+          {t('trips.refund_result.close')}
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 }
