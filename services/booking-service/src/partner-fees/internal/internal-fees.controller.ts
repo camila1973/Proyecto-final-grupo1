@@ -22,6 +22,7 @@ class UpsertFeeDto {
   currency?: string;
   effectiveFrom!: string;
   effectiveTo?: string;
+  isActive?: boolean;
 }
 
 @Controller("internal/fees")
@@ -42,6 +43,7 @@ export class InternalFeesController {
       currency: dto.currency ?? "USD",
       effective_from: dto.effectiveFrom,
       effective_to: dto.effectiveTo ?? null,
+      is_active: dto.isActive ?? true,
     });
   }
 
@@ -53,6 +55,6 @@ export class InternalFeesController {
   @Delete(":id")
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param("id") id: string) {
-    return this.service.softDelete(id);
+    return this.service.delete(id);
   }
 }

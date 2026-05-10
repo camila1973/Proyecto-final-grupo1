@@ -8,6 +8,7 @@ import { TaxRuleDeletedHandler } from "./handlers/tax-rule-deleted.handler.js";
 import { PartnerFeeUpsertedHandler } from "./handlers/partner-fee-upserted.handler.js";
 import { PartnerFeeDeletedHandler } from "./handlers/partner-fee-deleted.handler.js";
 import { PropertiesModule } from "../properties/properties.module.js";
+import { FeesIndexer } from "../properties/fees-indexer.js";
 import { TaxonomiesModule } from "../taxonomies/taxonomies.module.js";
 import { BookingModule } from "../booking/booking.module.js";
 
@@ -15,6 +16,7 @@ import { BookingModule } from "../booking/booking.module.js";
   imports: [PropertiesModule, TaxonomiesModule, BookingModule],
   providers: [
     EventsService,
+    FeesIndexer,
     RoomUpsertedHandler,
     AvailabilityUpdatedHandler,
     RoomDeletedHandler,

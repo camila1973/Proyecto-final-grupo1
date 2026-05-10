@@ -90,6 +90,7 @@ export class PartnerFeesRepository {
           currency: data.currency,
           effective_from: data.effective_from,
           effective_to: data.effective_to,
+          is_active: data.is_active,
           updated_at: new Date(),
         })
         .where("id", "=", data.id)
@@ -111,6 +112,7 @@ export class PartnerFeesRepository {
         currency: data.currency,
         effective_from: data.effective_from,
         effective_to: data.effective_to,
+        is_active: data.is_active,
       })
       .returningAll()
       .executeTakeFirstOrThrow();
@@ -135,12 +137,8 @@ export class PartnerFeesRepository {
     return row;
   }
 
-  async softDelete(id: string): Promise<void> {
-    await this.db
-      .updateTable("partner_fees")
-      .set({ is_active: false, updated_at: new Date() })
-      .where("id", "=", id)
-      .execute();
+  async delete(id: string): Promise<void> {
+    await this.db.deleteFrom("partner_fees").where("id", "=", id).execute();
   }
 
   async upsertFromEvent(event: PartnerFeeEventPayload): Promise<void> {

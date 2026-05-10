@@ -7,4 +7,5 @@ export class UpdateFeeDto {
   currency?: string;
   effectiveFrom?: string;
   effectiveTo?: string;
+  isActive?: boolean;
 }

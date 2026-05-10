@@ -4,7 +4,7 @@ function makeService() {
   return {
     upsert: jest.fn(),
     findAll: jest.fn(),
-    softDelete: jest.fn(),
+    delete: jest.fn(),
   };
 }
 
@@ -72,9 +72,9 @@ describe("InternalFeesController", () => {
 
   it("remove delegates with id", async () => {
     const svc = makeService();
-    svc.softDelete.mockResolvedValue(undefined);
+    svc.delete.mockResolvedValue(undefined);
     const ctrl = new InternalFeesController(svc as any);
     await ctrl.remove("fee-1");
-    expect(svc.softDelete).toHaveBeenCalledWith("fee-1");
+    expect(svc.delete).toHaveBeenCalledWith("fee-1");
   });
 });

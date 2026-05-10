@@ -5,7 +5,7 @@ function makeRepo() {
     upsert: jest.fn(),
     findAll: jest.fn(),
     findById: jest.fn(),
-    softDelete: jest.fn(),
+    delete: jest.fn(),
   };
 }
 
@@ -90,17 +90,17 @@ describe("PartnerFeesService", () => {
     });
   });
 
-  describe("softDelete", () => {
+  describe("delete", () => {
     it("publishes deleted event when row found", async () => {
       const repo = makeRepo();
       const publisher = makePublisher();
       repo.findById.mockResolvedValue(ROW);
-      repo.softDelete.mockResolvedValue(undefined);
+      repo.delete.mockResolvedValue(undefined);
 
       const svc = new PartnerFeesService(repo as any, publisher as any);
-      await svc.softDelete("fee-1");
+      await svc.delete("fee-1");
 
-      expect(repo.softDelete).toHaveBeenCalledWith("fee-1");
+      expect(repo.delete).toHaveBeenCalledWith("fee-1");
       expect(publisher.publish).toHaveBeenCalledWith(
         "partner.fee.deleted",
         expect.objectContaining({ feeId: "fee-1", partnerId: "partner-1" }),
@@ -111,10 +111,10 @@ describe("PartnerFeesService", () => {
       const repo = makeRepo();
       const publisher = makePublisher();
       repo.findById.mockResolvedValue(null);
-      repo.softDelete.mockResolvedValue(undefined);
+      repo.delete.mockResolvedValue(undefined);
 
       const svc = new PartnerFeesService(repo as any, publisher as any);
-      await svc.softDelete("fee-missing");
+      await svc.delete("fee-missing");
 
       expect(publisher.publish).not.toHaveBeenCalled();
     });

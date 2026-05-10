@@ -833,6 +833,74 @@ export async function fetchPartnerFees(
   return res.json() as Promise<PartnerFee[]>;
 }
 
+export interface PartnerCommission {
+  partnerId: string;
+  ratePct: number;
+  source: 'partner' | 'global' | 'fallback';
+  effectiveFrom: string | null;
+  effectiveTo: string | null;
+}
+
+export async function fetchPartnerCommission(
+  partnerId: string,
+  token: string,
+): Promise<PartnerCommission> {
+  const params = new URLSearchParams({ partnerId });
+  const res = await fetch(`${API_BASE}/api/payment/commission-rules/resolve?${params}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json() as Promise<PartnerCommission>;
+}
+
+export interface UpsertPartnerFeeInput {
+  partnerId: string;
+  propertyId?: string | null;
+  feeName: string;
+  feeType: PartnerFee['fee_type'];
+  rate?: number | null;
+  flatAmount?: number | null;
+  currency?: string;
+  effectiveFrom: string;
+  effectiveTo?: string | null;
+  isActive?: boolean;
+}
+
+export async function createPartnerFee(
+  input: UpsertPartnerFeeInput,
+  token: string,
+): Promise<PartnerFee> {
+  const res = await fetch(`${API_BASE}/api/partners/fees`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json() as Promise<PartnerFee>;
+}
+
+export async function updatePartnerFee(
+  id: string,
+  input: UpsertPartnerFeeInput,
+  token: string,
+): Promise<PartnerFee> {
+  const res = await fetch(`${API_BASE}/api/partners/fees/${id}`, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json() as Promise<PartnerFee>;
+}
+
+export async function deletePartnerFee(id: string, token: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/partners/fees/${id}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+}
+
 // ─── Partner Registration ─────────────────────────────────────────────────────
 
 export interface RegisterPartnerParams {

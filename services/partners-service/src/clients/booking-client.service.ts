@@ -12,6 +12,7 @@ interface FeeData {
   currency?: string;
   effectiveFrom: string;
   effectiveTo?: string;
+  isActive?: boolean;
 }
 
 interface ReservationsListResponse {

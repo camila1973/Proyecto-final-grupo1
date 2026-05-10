@@ -242,7 +242,8 @@ async function seed() {
     .values([
       // ── Cancún: Gran Caribe Resort (5★) ──────────────────────────────────
       // tax_rate_pct: MX IVA 16% + Cancún ISH 3% = 19%
-      // flat_fee_per_night_usd: Partner 1 Resort Fee $25/night
+      // flat_fee_per_night_usd: Partner 1 Resort Fee $25/night (global)
+      //   + Beachfront Surcharge $12/night (property-scoped to PROP_CANCUN_1) = $37
       {
         room_id: ROOM(1),
         property_id: PROP_CANCUN_1,
@@ -269,7 +270,7 @@ async function seed() {
         ],
         base_price_usd: "320.00",
         tax_rate_pct: "19.0000",
-        flat_fee_per_night_usd: "25.00",
+        flat_fee_per_night_usd: "37.00",
         flat_fee_per_stay_usd: "0.00",
         stars: 5,
         rating: "4.7",
@@ -302,7 +303,7 @@ async function seed() {
         ],
         base_price_usd: "580.00",
         tax_rate_pct: "19.0000",
-        flat_fee_per_night_usd: "25.00",
+        flat_fee_per_night_usd: "37.00",
         flat_fee_per_stay_usd: "0.00",
         stars: 5,
         rating: "4.7",
@@ -407,7 +408,8 @@ async function seed() {
         thumbnail_url: "https://placehold.co/400x300?text=Playa+Azul",
       },
       // ── Cancún: Hostal Sol (3★) ───────────────────────────────────────────
-      // flat_fee_per_stay_usd: Partner 2 Cleaning Fee $15/stay
+      // flat_fee_per_stay_usd: Partner 2 Cleaning Fee $15/stay (global)
+      //   + Beachside Service $20/stay (property-scoped to PROP_CANCUN_3) = $35
       {
         room_id: ROOM(6),
         property_id: PROP_CANCUN_3,
@@ -426,7 +428,7 @@ async function seed() {
         base_price_usd: "65.00",
         tax_rate_pct: "19.0000",
         flat_fee_per_night_usd: "0.00",
-        flat_fee_per_stay_usd: "15.00",
+        flat_fee_per_stay_usd: "35.00",
         stars: 3,
         rating: "3.8",
         review_count: 204,
@@ -450,7 +452,7 @@ async function seed() {
         base_price_usd: "55.00",
         tax_rate_pct: "19.0000",
         flat_fee_per_night_usd: "0.00",
-        flat_fee_per_stay_usd: "15.00",
+        flat_fee_per_stay_usd: "35.00",
         stars: 3,
         rating: "3.8",
         review_count: 204,
@@ -458,7 +460,8 @@ async function seed() {
       },
       // ── CDMX: Hotel Histórico (5★) ────────────────────────────────────────
       // tax_rate_pct: MX IVA 16% + CDMX ISH 3% = 19%
-      // flat_fee_per_stay_usd: Partner 2 Cleaning Fee $15/stay
+      // flat_fee_per_night_usd: Centro Histórico Surcharge $8/night (property-scoped)
+      // flat_fee_per_stay_usd: Partner 2 Cleaning Fee $15/stay (global)
       {
         room_id: ROOM(8),
         property_id: PROP_CDMX_1,
@@ -476,7 +479,7 @@ async function seed() {
         amenities: ["wifi", "gym", "spa", "restaurant", "breakfast", "ac"],
         base_price_usd: "280.00",
         tax_rate_pct: "19.0000",
-        flat_fee_per_night_usd: "0.00",
+        flat_fee_per_night_usd: "8.00",
         flat_fee_per_stay_usd: "15.00",
         stars: 5,
         rating: "4.6",
@@ -500,7 +503,7 @@ async function seed() {
         amenities: ["wifi", "gym", "spa", "restaurant", "breakfast", "ac"],
         base_price_usd: "650.00",
         tax_rate_pct: "19.0000",
-        flat_fee_per_night_usd: "0.00",
+        flat_fee_per_night_usd: "8.00",
         flat_fee_per_stay_usd: "15.00",
         stars: 5,
         rating: "4.6",

@@ -279,28 +279,30 @@ export class PropertiesRepository {
     }
   }
 
-  async bulkUpdateFlatFees(
+  async findPropertyIdsForPartner(partnerId: string): Promise<string[]> {
+    const rows = await this.db
+      .selectFrom("room_search_index")
+      .select("property_id")
+      .where("partner_id", "=", partnerId)
+      .distinct()
+      .execute();
+    return rows.map((r) => r.property_id);
+  }
+
+  async updateFlatFeesForProperty(
     partnerId: string,
+    propertyId: string,
     flatFeePerNightUsd: number,
     flatFeePerStayUsd: number,
   ): Promise<void> {
-    const rows = await this.db
-      .selectFrom("room_search_index")
-      .select("room_id")
+    await this.db
+      .updateTable("room_search_index")
+      .set({
+        flat_fee_per_night_usd: String(flatFeePerNightUsd),
+        flat_fee_per_stay_usd: String(flatFeePerStayUsd),
+      })
       .where("partner_id", "=", partnerId)
+      .where("property_id", "=", propertyId)
       .execute();
-
-    const ids = rows.map((r) => r.room_id);
-    for (let i = 0; i < ids.length; i += 500) {
-      const chunk = ids.slice(i, i + 500);
-      await this.db
-        .updateTable("room_search_index")
-        .set({
-          flat_fee_per_night_usd: String(flatFeePerNightUsd),
-          flat_fee_per_stay_usd: String(flatFeePerStayUsd),
-        })
-        .where("room_id", "in", chunk)
-        .execute();
-    }
   }
 }

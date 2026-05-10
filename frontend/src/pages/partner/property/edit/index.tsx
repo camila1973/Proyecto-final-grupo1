@@ -17,6 +17,7 @@ import PageHero from '../../../../components/PageHero';
 import PageContainer from '../../../../components/PageContainer';
 import {
   fetchInventoryProperty,
+  fetchPartnerCommission,
   fetchPartnerFees,
   fetchTaxRulesByCountry,
   updateInventoryProperty,
@@ -66,6 +67,12 @@ export default function PropertyEditPage() {
   const feesQuery = useQuery({
     queryKey: ['partner-fees', partnerForFees],
     queryFn: () => fetchPartnerFees(partnerForFees, token!),
+    enabled: enabled && tab === 'fees' && !!partnerForFees,
+  });
+
+  const commissionQuery = useQuery({
+    queryKey: ['partner-commission', partnerForFees],
+    queryFn: () => fetchPartnerCommission(partnerForFees, token!),
     enabled: enabled && tab === 'fees' && !!partnerForFees,
   });
 
@@ -181,7 +188,11 @@ export default function PropertyEditPage() {
             fees={feesQuery.data ?? []}
             isLoading={feesQuery.isLoading}
             isError={feesQuery.isError}
+            partnerId={partnerForFees}
             propertyId={propertyId}
+            token={token!}
+            commission={commissionQuery.data ?? null}
+            commissionLoading={commissionQuery.isLoading}
           />
         )}
         {tab === 'media' && <MediaTab thumbnailUrl={property.thumbnailUrl} />}

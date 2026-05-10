@@ -8,4 +8,5 @@ export class CreateFeeDto {
   currency?: string;
   effectiveFrom!: string;
   effectiveTo?: string;
+  isActive?: boolean;
 }

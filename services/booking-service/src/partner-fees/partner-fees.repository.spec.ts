@@ -18,6 +18,7 @@ function makeDb(
     "returningAll",
     "updateTable",
     "set",
+    "deleteFrom",
   ];
   chain.forEach((m) => {
     db[m] = jest.fn().mockReturnValue(db);
@@ -198,16 +199,15 @@ describe("PartnerFeesRepository", () => {
     });
   });
 
-  describe("softDelete", () => {
-    it("sets is_active=false", async () => {
+  describe("delete", () => {
+    it("hard-deletes the row", async () => {
       const db = makeDb();
       const repo = new PartnerFeesRepository(db);
 
-      await repo.softDelete("fee-1");
-      expect(db.updateTable).toHaveBeenCalledWith("partner_fees");
-      expect(db.set).toHaveBeenCalledWith(
-        expect.objectContaining({ is_active: false }),
-      );
+      await repo.delete("fee-1");
+      expect(db.deleteFrom).toHaveBeenCalledWith("partner_fees");
+      expect(db.where).toHaveBeenCalledWith("id", "=", "fee-1");
+      expect(db.execute).toHaveBeenCalled();
     });
   });
 

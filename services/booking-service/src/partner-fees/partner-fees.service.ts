@@ -39,9 +39,9 @@ export class PartnerFeesService {
     return this.repo.findAll(partnerId);
   }
 
-  async softDelete(id: string): Promise<void> {
+  async delete(id: string): Promise<void> {
     const row = await this.repo.findById(id);
-    await this.repo.softDelete(id);
+    await this.repo.delete(id);
     if (row) {
       this.publisher.publish("partner.fee.deleted", {
         routingKey: "partner.fee.deleted",
