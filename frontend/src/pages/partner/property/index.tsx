@@ -439,7 +439,7 @@ export default function PropertyDashboardPage() {
                             <TD sx={{ fontWeight: 500 }}>{r.guestName}</TD>
                             <TD sx={{ color: '#4a5568' }}>{r.guestEmail}</TD>
                             <TD sx={{ color: '#4a5568' }}>{r.guestPhone}</TD>
-                            <TD align="center">{r.guestCount}</TD>
+                            <TD>{r.guestCount}</TD>
                             <TD>{r.checkIn}</TD>
                             <TD>{r.checkOut}</TD>
                             <TD>{r.roomType}</TD>
