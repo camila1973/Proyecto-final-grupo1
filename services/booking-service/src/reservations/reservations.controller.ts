@@ -118,6 +118,15 @@ export class ReservationsController {
     return this.reservationsService.confirm(id, actor);
   }
 
+  @Patch(":id/partner-check-in")
+  @HttpCode(HttpStatus.OK)
+  partnerCheckin(
+    @Param("id") id: string,
+    @Headers("x-partner-id") partnerId: string,
+  ) {
+    return this.reservationsService.partnerCheckin(id, partnerId);
+  }
+
   @Patch(":id/check-in")
   @HttpCode(HttpStatus.OK)
   checkin(@Param("id") id: string, @Body() dto: CheckinDto) {
