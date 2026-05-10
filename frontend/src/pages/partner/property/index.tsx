@@ -25,6 +25,7 @@ import {
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import SearchIcon from '@mui/icons-material/Search';
 import { useAuth } from '../../../hooks/useAuth';
@@ -227,12 +228,13 @@ export default function PropertyDashboardPage() {
                         <TH>{t('partner.dashboard.col_check_in')}</TH>
                         <TH>{t('partner.dashboard.col_check_out')}</TH>
                         <TH>{t('partner.dashboard.col_room')}</TH>
+                        <TH width={40}>{''}</TH>
                       </TableRow>
                     </TableHead>
                     <TableBody>
                       {pageRows.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={9} align="center" sx={{ py: 3, fontSize: 12, color: '#6b7280' }}>
+                          <TableCell colSpan={10} align="center" sx={{ py: 3, fontSize: 12, color: '#6b7280' }}>
                             {t('partner.dashboard.no_reservations')}
                           </TableCell>
                         </TableRow>
@@ -247,6 +249,23 @@ export default function PropertyDashboardPage() {
                           <TD>{r.checkIn}</TD>
                           <TD>{r.checkOut}</TD>
                           <TD>{r.roomType}</TD>
+                          <TD align="right">
+                            {r.status === 'confirmed' && (
+                              <IconButton
+                                size="small"
+                                aria-label={t('partner.dashboard.menu_edit_reservation')}
+                                onClick={() =>
+                                  navigate({
+                                    to: '/mi-hotel/$propertyId/reservas/$reservationId/editar',
+                                    params: { propertyId, reservationId: r.id },
+                                  })
+                                }
+                                sx={{ color: '#1B4F8C' }}
+                              >
+                                <EditOutlinedIcon fontSize="small" />
+                              </IconButton>
+                            )}
+                          </TD>
                         </TableRow>
                       ))}
                     </TableBody>

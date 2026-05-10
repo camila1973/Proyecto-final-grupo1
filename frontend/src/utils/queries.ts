@@ -238,6 +238,64 @@ export async function cancelReservation(id: string, token: string, reason: strin
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
 }
 
+export interface ModifyReservationInput {
+  checkIn?: string;
+  checkOut?: string;
+  guestInfo?: GuestInfo;
+}
+
+export interface ModifiedReservation {
+  id: string;
+  status: ReservationStatus;
+  checkIn: string;
+  checkOut: string;
+  guestInfo: GuestInfo;
+  grandTotalUsd: number | null;
+  taxTotalUsd: number | null;
+  feeTotalUsd: number | null;
+}
+
+export async function modifyReservation(
+  id: string,
+  token: string,
+  changes: ModifyReservationInput,
+): Promise<ModifiedReservation> {
+  const res = await fetch(`${API_BASE}/api/booking/reservations/${id}`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(changes),
+  });
+  if (!res.ok) {
+    const data = (await res.json().catch(() => ({}))) as { message?: string };
+    throw new Error(data.message ?? `HTTP ${res.status}`);
+  }
+  return res.json() as Promise<ModifiedReservation>;
+}
+
+export type RefundPolicy = 'full_refund' | 'partial_refund' | 'no_refund';
+
+export interface RefundQuote {
+  policy: RefundPolicy;
+  refundableUsd: number;
+  daysUntilCheckIn: number;
+}
+
+export async function fetchRefundQuote(id: string, token: string): Promise<RefundQuote> {
+  const res = await fetch(`${API_BASE}/api/booking/reservations/${id}/refund-quote`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json() as Promise<RefundQuote>;
+}
+
+export async function fetchReservationDetail(id: string, token: string): Promise<ReservationListItem & { guestInfo: GuestInfo }> {
+  const res = await fetch(`${API_BASE}/api/booking/reservations/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json() as Promise<ReservationListItem & { guestInfo: GuestInfo }>;
+}
+
 // ─── Partner Dashboard (B2B) ──────────────────────────────────────────────────
 
 export interface PartnerMetricCard {

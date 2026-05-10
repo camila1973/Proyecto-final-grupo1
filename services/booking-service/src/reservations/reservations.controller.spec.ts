@@ -58,6 +58,8 @@ describe("ReservationsController", () => {
             checkin: jest.fn(),
             checkOut: jest.fn(),
             updateGuestInfo: jest.fn(),
+            modify: jest.fn(),
+            getRefundQuote: jest.fn(),
           },
         },
       ],
@@ -286,6 +288,57 @@ describe("ReservationsController", () => {
         "booker-1",
       );
       expect(result).toBe(reservation);
+    });
+  });
+
+  describe("modify", () => {
+    const MODIFY_DTO = {
+      checkIn: "2026-05-10",
+      checkOut: "2026-05-13",
+      guestInfo: {
+        firstName: "Bea",
+        lastName: "Pérez",
+        email: "bea@example.com",
+      },
+    };
+
+    it("derives partner actor when role header is 'partner'", async () => {
+      const reservation = { id: "res-1", status: "confirmed" } as any;
+      (service.modify as jest.Mock).mockResolvedValue(reservation);
+
+      const result = await controller.modify("res-1", MODIFY_DTO, "partner");
+
+      expect(service.modify).toHaveBeenCalledWith(
+        "res-1",
+        MODIFY_DTO,
+        "partner",
+      );
+      expect(result).toBe(reservation);
+    });
+
+    it("defaults to guest actor when no role header is provided", async () => {
+      const reservation = { id: "res-1", status: "held" } as any;
+      (service.modify as jest.Mock).mockResolvedValue(reservation);
+
+      await controller.modify("res-1", MODIFY_DTO, undefined as any);
+
+      expect(service.modify).toHaveBeenCalledWith("res-1", MODIFY_DTO, "guest");
+    });
+  });
+
+  describe("refundQuote", () => {
+    it("delegates to service.getRefundQuote", async () => {
+      const quote = {
+        policy: "partial_refund",
+        refundableUsd: 200,
+        daysUntilCheckIn: 4,
+      };
+      (service.getRefundQuote as jest.Mock).mockResolvedValue(quote);
+
+      const result = await controller.refundQuote("res-1");
+
+      expect(service.getRefundQuote).toHaveBeenCalledWith("res-1");
+      expect(result).toBe(quote);
     });
   });
 });

@@ -11,6 +11,9 @@ import {
   fetchReservationById,
   fetchMyReservations,
   cancelReservation,
+  fetchRefundQuote,
+  fetchReservationDetail,
+  modifyReservation,
   fetchCheckinQr,
   regenerateCheckinQr,
   downloadCheckinPdf,
@@ -325,6 +328,121 @@ describe('queries', () => {
     it('throws when response is not ok', async () => {
       (global.fetch as jest.Mock).mockResolvedValue(mockFail(400));
       await expect(cancelReservation('r1', 'tok', 'user_requested')).rejects.toThrow('HTTP 400');
+    });
+  });
+
+  // ─── modifyReservation ──────────────────────────────────────────────────────
+
+  describe('modifyReservation', () => {
+    const RESERVATION = {
+      id: 'r1',
+      status: 'confirmed',
+      checkIn: '2026-06-10',
+      checkOut: '2026-06-13',
+      guestInfo: { firstName: 'Ana', lastName: 'García', email: 'ana@x.com', phone: '+1' },
+      grandTotalUsd: 600,
+      taxTotalUsd: 100,
+      feeTotalUsd: 0,
+    };
+
+    it('PATCHes the reservation with the diff and returns the updated record', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockOk(RESERVATION));
+
+      const result = await modifyReservation('r1', 'tok', { checkIn: '2026-06-10' });
+
+      expect(result).toEqual(RESERVATION);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/reservations/r1'),
+        expect.objectContaining({
+          method: 'PATCH',
+          body: JSON.stringify({ checkIn: '2026-06-10' }),
+        }),
+      );
+    });
+
+    it('surfaces the API error message when the request fails', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: false,
+        status: 409,
+        json: () => Promise.resolve({ message: 'No availability for new dates' }),
+      });
+
+      await expect(modifyReservation('r1', 'tok', {})).rejects.toThrow(
+        'No availability for new dates',
+      );
+    });
+
+    it('falls back to the HTTP status when no message is returned', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: false,
+        status: 500,
+        json: () => Promise.reject(new Error('parse error')),
+      });
+
+      await expect(modifyReservation('r1', 'tok', {})).rejects.toThrow('HTTP 500');
+    });
+  });
+
+  // ─── fetchRefundQuote ───────────────────────────────────────────────────────
+
+  describe('fetchRefundQuote', () => {
+    it('returns the quote on success', async () => {
+      const quote = { policy: 'partial_refund', refundableUsd: 250, daysUntilCheckIn: 4 };
+      (global.fetch as jest.Mock).mockResolvedValue(mockOk(quote));
+
+      const result = await fetchRefundQuote('r1', 'tok');
+
+      expect(result).toEqual(quote);
+    });
+
+    it('hits the refund-quote endpoint with the bearer token', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(
+        mockOk({ policy: 'no_refund', refundableUsd: 0, daysUntilCheckIn: 0 }),
+      );
+
+      await fetchRefundQuote('r1', 'tok');
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/reservations/r1/refund-quote'),
+        expect.objectContaining({
+          headers: expect.objectContaining({ Authorization: 'Bearer tok' }),
+        }),
+      );
+    });
+
+    it('throws when the response is not ok', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockFail(404));
+      await expect(fetchRefundQuote('r1', 'tok')).rejects.toThrow('HTTP 404');
+    });
+  });
+
+  // ─── fetchReservationDetail ─────────────────────────────────────────────────
+
+  describe('fetchReservationDetail', () => {
+    it('returns the reservation payload', async () => {
+      const detail = {
+        id: 'r1',
+        status: 'confirmed',
+        propertyId: 'p1',
+        roomId: 'rm1',
+        partnerId: 'pa1',
+        checkIn: '2026-06-01',
+        checkOut: '2026-06-04',
+        grandTotalUsd: 600,
+        createdAt: '2026-05-10T12:00:00Z',
+        snapshot: null,
+        guestInfo: { firstName: 'Ana', lastName: 'García', email: 'a@x.com', phone: '' },
+      };
+      (global.fetch as jest.Mock).mockResolvedValue(mockOk(detail));
+
+      const result = await fetchReservationDetail('r1', 'tok');
+
+      expect(result).toEqual(detail);
+    });
+
+    it('throws when the response is not ok', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockFail(401));
+      await expect(fetchReservationDetail('r1', 'tok')).rejects.toThrow('HTTP 401');
     });
   });
 
