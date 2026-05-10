@@ -544,8 +544,7 @@
         },
         "tax": {
           "title": "Tax rules · {{city}}, {{country}}",
-          "new_rule": "New rule",
-          "banner": "These rules apply automatically to all reservations in {{city}}.",
+          "banner": "TravelHub administers regulatory tax rules for {{city}}. They are reflected in displayed search prices and itemized at checkout.",
           "load_error": "Failed to load tax rules.",
           "no_rules": "No rules configured for {{city}}.",
           "all_cities": "All",
