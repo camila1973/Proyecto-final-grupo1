@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useNavigate } from '@tanstack/react-router';
 import { AuthContext } from './auth-context';
 import type { AuthUser } from './auth-context';
 import { setOnUnauthorizedHandler } from '../utils/authBridge';
@@ -23,19 +22,20 @@ function loadFromStorage(): AuthState {
 }
 
 function AuthBridgeBinder({ logout }: { logout: () => void }) {
-  const navigate = useNavigate();
-  const navigateRef = useRef(navigate);
   const logoutRef = useRef(logout);
 
   useEffect(() => {
-    navigateRef.current = navigate;
     logoutRef.current = logout;
   });
 
   useEffect(() => {
     setOnUnauthorizedHandler(() => {
       logoutRef.current();
-      void navigateRef.current({ to: '/login' });
+      // Full URL replace — hash router's navigate() only touches the hash, so
+      // if the path is already e.g. '/login' the URL ends up '/login#/login'.
+      if (typeof window !== 'undefined') {
+        window.location.replace(`${window.location.origin}/#/login`);
+      }
     });
     return () => setOnUnauthorizedHandler(null);
   }, []);

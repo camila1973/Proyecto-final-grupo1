@@ -12,6 +12,11 @@ const mockLogin = jest.fn();
 jest.mock('@tanstack/react-router', () => ({
   useNavigate: () => mockNavigate,
   useSearch: (...args: unknown[]) => mockUseSearch(...args),
+  Link: ({ to, children, ...rest }: { to: string; children: React.ReactNode } & Record<string, unknown>) => (
+    <a href={`#${to}`} {...rest}>
+      {children}
+    </a>
+  ),
 }));
 
 jest.mock('../hooks/useAuth', () => ({
