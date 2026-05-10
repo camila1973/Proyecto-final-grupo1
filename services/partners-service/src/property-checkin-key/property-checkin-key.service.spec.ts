@@ -76,8 +76,12 @@ describe("PropertyCheckinKeyService", () => {
   // ─── findKey ─────────────────────────────────────────────────────────────────
 
   describe("findKey", () => {
-    it("returns partnerId, propertyId and checkInKey when key exists", async () => {
-      repo.findActiveKey.mockResolvedValue(CHECK_IN_KEY);
+    it("returns partnerId, propertyId, checkInKey and createdAt when key exists", async () => {
+      const createdAt = new Date("2026-03-12T10:00:00Z");
+      repo.findActiveKey.mockResolvedValue({
+        checkInKey: CHECK_IN_KEY,
+        createdAt,
+      });
 
       const result = await service.findKey(PARTNER_ID, PROPERTY_ID);
 
@@ -85,6 +89,7 @@ describe("PropertyCheckinKeyService", () => {
         partnerId: PARTNER_ID,
         propertyId: PROPERTY_ID,
         checkInKey: CHECK_IN_KEY,
+        createdAt: createdAt.toISOString(),
       });
       expect(repo.findActiveKey).toHaveBeenCalledWith(PARTNER_ID, PROPERTY_ID);
     });
@@ -101,9 +106,10 @@ describe("PropertyCheckinKeyService", () => {
   // ─── regenerateKey ───────────────────────────────────────────────────────────
 
   describe("regenerateKey", () => {
-    it("rotates the key and returns the new value", async () => {
+    it("rotates the key and returns the new value with updated timestamp", async () => {
       const newKey = "newkey64hexchars";
-      repo.rotateKey.mockResolvedValue(newKey);
+      const createdAt = new Date("2026-04-01T08:30:00Z");
+      repo.rotateKey.mockResolvedValue({ checkInKey: newKey, createdAt });
 
       const result = await service.regenerateKey(PARTNER_ID, PROPERTY_ID);
 
@@ -111,6 +117,7 @@ describe("PropertyCheckinKeyService", () => {
         partnerId: PARTNER_ID,
         propertyId: PROPERTY_ID,
         checkInKey: newKey,
+        createdAt: createdAt.toISOString(),
       });
       expect(repo.rotateKey).toHaveBeenCalledWith(
         PARTNER_ID,
@@ -128,7 +135,10 @@ describe("PropertyCheckinKeyService", () => {
     });
 
     it("generates a 64-char hex key using randomBytes(32)", async () => {
-      repo.rotateKey.mockResolvedValue("any-key");
+      repo.rotateKey.mockResolvedValue({
+        checkInKey: "any-key",
+        createdAt: new Date(),
+      });
 
       await service.regenerateKey(PARTNER_ID, PROPERTY_ID);
 
@@ -149,7 +159,10 @@ describe("PropertyCheckinKeyService", () => {
     });
 
     it("sets Content-Type and Content-Disposition headers", async () => {
-      repo.findActiveKey.mockResolvedValue(CHECK_IN_KEY);
+      repo.findActiveKey.mockResolvedValue({
+        checkInKey: CHECK_IN_KEY,
+        createdAt: new Date("2026-03-12T10:00:00Z"),
+      });
       inventoryClient.getPropertyById.mockResolvedValue({
         id: PROPERTY_ID,
         name: "Hotel Cancún",
@@ -178,7 +191,10 @@ describe("PropertyCheckinKeyService", () => {
     });
 
     it("uses propertyId as fallback name when inventory returns null", async () => {
-      repo.findActiveKey.mockResolvedValue(CHECK_IN_KEY);
+      repo.findActiveKey.mockResolvedValue({
+        checkInKey: CHECK_IN_KEY,
+        createdAt: new Date("2026-03-12T10:00:00Z"),
+      });
       inventoryClient.getPropertyById.mockResolvedValue(null);
       const res = makeRes();
 
@@ -193,7 +209,10 @@ describe("PropertyCheckinKeyService", () => {
     });
 
     it("uses property name from inventory when available", async () => {
-      repo.findActiveKey.mockResolvedValue(CHECK_IN_KEY);
+      repo.findActiveKey.mockResolvedValue({
+        checkInKey: CHECK_IN_KEY,
+        createdAt: new Date("2026-03-12T10:00:00Z"),
+      });
       inventoryClient.getPropertyById.mockResolvedValue({
         id: PROPERTY_ID,
         name: "Hotel Cancún",
@@ -220,7 +239,10 @@ describe("PropertyCheckinKeyService", () => {
     });
 
     it("pipes the document to the response and calls end", async () => {
-      repo.findActiveKey.mockResolvedValue(CHECK_IN_KEY);
+      repo.findActiveKey.mockResolvedValue({
+        checkInKey: CHECK_IN_KEY,
+        createdAt: new Date("2026-03-12T10:00:00Z"),
+      });
       inventoryClient.getPropertyById.mockResolvedValue(null);
       const res = makeRes();
 

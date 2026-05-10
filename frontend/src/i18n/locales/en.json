@@ -549,7 +549,12 @@
         "regenerate_dialog_body": "A new key will be generated. The previous QR will stop working. This action cannot be undone.",
         "regenerate_cancel": "Cancel",
         "regenerate_confirm": "Yes, regenerate",
-        "load_error": "Failed to load QR code. Please try again later."
+        "load_error": "Failed to load QR code. Please try again later.",
+        "status_title": "QR status",
+        "status_active": "Active",
+        "status_warning": "If your QR was copied or physically replaced, regenerate it. The previous poster will stop working.",
+        "regenerate_link": "Regenerate QR…",
+        "generated_at": "Generated on {{date}}"
       },
       "edit": {
         "breadcrumb": "Settings",
@@ -563,7 +568,8 @@
           "info": "Information",
           "tax": "Tax rules",
           "fees": "Fees & commissions",
-          "media": "Images"
+          "media": "Images",
+          "qr": "QR code"
         },
         "info": {
           "section_title": "Property information",

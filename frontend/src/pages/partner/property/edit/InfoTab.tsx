@@ -46,7 +46,12 @@ export default function InfoTab({ form, setForm, property, onPause, pausing, onS
       /* clipboard unavailable */
     });
   };
-  const goQr = () => navigate({ to: '/mi-hotel/$propertyId/qr', params: { propertyId: property.id } });
+  const goQr = () =>
+    navigate({
+      to: '/mi-hotel/$propertyId/editar',
+      params: { propertyId: property.id },
+      search: { tab: 'qr' },
+    });
 
   return (
     <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 320px' }, gap: 3 }}>

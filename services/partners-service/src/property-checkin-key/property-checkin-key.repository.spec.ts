@@ -27,13 +27,14 @@ describe("PropertyCheckinKeyRepository", () => {
   // ─── findActiveKey ───────────────────────────────────────────────────────────
 
   describe("findActiveKey", () => {
-    it("returns checkInKey when an active row exists", async () => {
-      const qb = makeQueryBuilder({ checkInKey: CHECK_IN_KEY });
+    it("returns the row when an active key exists", async () => {
+      const createdAt = new Date("2026-03-12T10:00:00Z");
+      const qb = makeQueryBuilder({ checkInKey: CHECK_IN_KEY, createdAt });
       const repo = new PropertyCheckinKeyRepository(qb as never);
 
       const result = await repo.findActiveKey(PARTNER_ID, PROPERTY_ID);
 
-      expect(result).toBe(CHECK_IN_KEY);
+      expect(result).toEqual({ checkInKey: CHECK_IN_KEY, createdAt });
       expect(qb.selectFrom).toHaveBeenCalledWith("propertyCheckInKeys");
       expect(qb.where).toHaveBeenCalledWith("partnerId", "=", PARTNER_ID);
       expect(qb.where).toHaveBeenCalledWith("propertyId", "=", PROPERTY_ID);
@@ -53,16 +54,20 @@ describe("PropertyCheckinKeyRepository", () => {
   // ─── rotateKey ───────────────────────────────────────────────────────────────
 
   describe("rotateKey", () => {
-    it("returns the new checkInKey after update", async () => {
+    it("returns the row with the new checkInKey and updated timestamp", async () => {
       const newKey = "newkey123";
-      const qb = makeQueryBuilder({ checkInKey: newKey });
+      const createdAt = new Date("2026-04-01T08:30:00Z");
+      const qb = makeQueryBuilder({ checkInKey: newKey, createdAt });
       const repo = new PropertyCheckinKeyRepository(qb as never);
 
       const result = await repo.rotateKey(PARTNER_ID, PROPERTY_ID, newKey);
 
-      expect(result).toBe(newKey);
+      expect(result).toEqual({ checkInKey: newKey, createdAt });
       expect(qb.updateTable).toHaveBeenCalledWith("propertyCheckInKeys");
-      expect(qb.set).toHaveBeenCalledWith({ checkInKey: newKey });
+      expect(qb.set).toHaveBeenCalledWith({
+        checkInKey: newKey,
+        createdAt: expect.any(Date) as Date,
+      });
       expect(qb.where).toHaveBeenCalledWith("partnerId", "=", PARTNER_ID);
       expect(qb.where).toHaveBeenCalledWith("propertyId", "=", PROPERTY_ID);
       expect(qb.where).toHaveBeenCalledWith("enabled", "=", true);

@@ -1021,6 +1021,7 @@ export interface CheckinQrResponse {
   partnerId: string;
   propertyId: string;
   checkInKey: string;
+  createdAt: string;
 }
 
 export async function fetchCheckinQr(

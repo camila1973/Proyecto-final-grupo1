@@ -34,7 +34,13 @@ export default function HeroBanner({ propertyName, propertyId, address }: HeroBa
             <Tooltip title={t('partner.properties.generate_qr')} placement="right">
               <IconButton
                 color="inherit"
-                onClick={() => navigate({ to: '/mi-hotel/$propertyId/qr', params: { propertyId } })}
+                onClick={() =>
+                  navigate({
+                    to: '/mi-hotel/$propertyId/editar',
+                    params: { propertyId },
+                    search: { tab: 'qr' },
+                  })
+                }
               >
                 <QrCode2Icon />
               </IconButton>
@@ -50,7 +56,13 @@ export default function HeroBanner({ propertyName, propertyId, address }: HeroBa
           variant="contained"
           color="warning"
           startIcon={<EditIcon />}
-          onClick={() => navigate({ to: '/mi-hotel/$propertyId/editar', params: { propertyId } })}
+          onClick={() =>
+            navigate({
+              to: '/mi-hotel/$propertyId/editar',
+              params: { propertyId },
+              search: { tab: 'info' },
+            })
+          }
         >
           {t('partner.properties.edit_property')}
         </Button>

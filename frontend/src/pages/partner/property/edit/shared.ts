@@ -1,6 +1,8 @@
 import type { InventoryProperty, UpdatePropertyBody } from '../../../../utils/queries';
 
-export type TabId = 'info' | 'tax' | 'fees' | 'media';
+export type TabId = 'info' | 'tax' | 'fees' | 'media' | 'qr';
+
+export const TAB_IDS: readonly TabId[] = ['info', 'tax', 'fees', 'media', 'qr'] as const;
 
 export const COUNTRY_OPTIONS = [
   { code: 'MX', name: 'México' },

@@ -25,6 +25,7 @@ const QR_RESPONSE = {
   partnerId: PARTNER_ID,
   propertyId: PROPERTY_ID,
   checkInKey: CHECK_IN_KEY,
+  createdAt: "2026-03-12T10:00:00.000Z",
 };
 
 describe("PropertyCheckinKeyController", () => {
