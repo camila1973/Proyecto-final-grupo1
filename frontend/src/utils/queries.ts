@@ -229,13 +229,29 @@ export async function fetchMyReservations(token: string, bookerId: string): Prom
   return Array.isArray(data) ? data : (data.reservations ?? []);
 }
 
-export async function cancelReservation(id: string, token: string, reason: string): Promise<void> {
+export interface CancelReservationOutcome {
+  status: ReservationStatus;
+  refund: {
+    status: 'succeeded' | 'skipped';
+    policy: RefundPolicy;
+    refundedUsd: number;
+    externalRef: string | null;
+    adjustmentId: string;
+  } | null;
+}
+
+export async function cancelReservation(
+  id: string,
+  token: string,
+  reason: string,
+): Promise<CancelReservationOutcome> {
   const res = await fetch(`${API_BASE}/api/booking/reservations/${id}/cancel`, {
     method: 'PATCH',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ reason }),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json() as Promise<CancelReservationOutcome>;
 }
 
 export interface ModifyReservationInput {

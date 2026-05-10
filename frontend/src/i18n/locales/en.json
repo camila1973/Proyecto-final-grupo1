@@ -309,7 +309,26 @@
       "title": "Cancel reservation?",
       "body": "This action cannot be undone. Are you sure you want to cancel this reservation?",
       "keep": "Keep reservation",
-      "confirm": "Yes, cancel"
+      "confirm": "Yes, cancel",
+      "loading_quote": "Calculating refund based on the cancellation policy…",
+      "policy_full": "You will receive a full refund of {{amount}} on the original payment method.",
+      "policy_partial": "{{days}} days from check-in qualifies for a partial refund: {{amount}}.",
+      "policy_none": "This cancellation does not qualify for a refund per the policy."
+    },
+    "refund_result": {
+      "title_success": "Refund in progress",
+      "title_skipped": "Reservation cancelled without refund",
+      "amount": "Amount to be credited",
+      "comprobante": "Receipt",
+      "eta": "Estimated time to credit: 5 to 10 business days on the original payment method.",
+      "policy_skipped": "Your cancellation is recorded. Per the policy, no refund applies.",
+      "email_notice": "We sent you an email with the refund details.",
+      "close": "Got it"
+    },
+    "refund_failed": {
+      "title": "We could not process the refund automatically",
+      "body": "Your reservation was cancelled, but the payment gateway rejected the refund. Customer Service was notified and will reach out.",
+      "close": "Got it"
     }
   },
   "booking": {

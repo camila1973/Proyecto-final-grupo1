@@ -138,6 +138,11 @@ export interface PaymentAdjustmentsTable {
   applied_at: Generated<Date>;
   external_ref: NullableText;
   reason: NullableText;
+  status: Generated<string>; // succeeded | failed
+  failure_reason: NullableText;
+  actor_id: NullableText;
+  actor_role: NullableText;
+  request_ip: NullableText;
   created_at: Generated<Date>;
 }
 
@@ -203,4 +208,4 @@ export type PaymentAdjustmentRow = Selectable<PaymentAdjustmentsTable>;
 export type NewPaymentAdjustment = Omit<
   Insertable<PaymentAdjustmentsTable>,
   "id" | "applied_at" | "created_at"
-> & { applied_at?: Date | string };
+> & { applied_at?: Date };

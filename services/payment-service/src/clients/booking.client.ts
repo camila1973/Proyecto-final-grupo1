@@ -13,6 +13,12 @@ export interface ReservationDetails {
   snapshot: { propertyName?: string } | null;
 }
 
+export interface RefundQuote {
+  policy: "full_refund" | "partial_refund" | "no_refund";
+  refundableUsd: number;
+  daysUntilCheckIn: number;
+}
+
 @Injectable()
 export class BookingClient {
   private readonly logger = new Logger(BookingClient.name);
@@ -26,6 +32,21 @@ export class BookingClient {
         throw new UpstreamServiceError("booking-service", `HTTP ${res.status}`);
       }
       return (await res.json()) as ReservationDetails;
+    } catch (err) {
+      if (err instanceof UpstreamServiceError) throw err;
+      throw new UpstreamServiceError("booking-service", err);
+    }
+  }
+
+  async getRefundQuote(reservationId: string): Promise<RefundQuote> {
+    try {
+      const res = await fetch(
+        `${this.baseUrl}/reservations/${reservationId}/refund-quote`,
+      );
+      if (!res.ok) {
+        throw new UpstreamServiceError("booking-service", `HTTP ${res.status}`);
+      }
+      return (await res.json()) as RefundQuote;
     } catch (err) {
       if (err instanceof UpstreamServiceError) throw err;
       throw new UpstreamServiceError("booking-service", err);

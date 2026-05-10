@@ -309,7 +309,26 @@
       "title": "¿Cancelar reservación?",
       "body": "Esta acción no se puede deshacer. ¿Estás seguro de que deseas cancelar esta reservación?",
       "keep": "Mantener",
-      "confirm": "Sí, cancelar"
+      "confirm": "Sí, cancelar",
+      "loading_quote": "Calculando reembolso según política de cancelación…",
+      "policy_full": "Recibirás un reembolso total de {{amount}} en el medio de pago original.",
+      "policy_partial": "A {{days}} días del check-in se aplica reembolso parcial: {{amount}}.",
+      "policy_none": "Esta cancelación no genera reembolso según la política."
+    },
+    "refund_result": {
+      "title_success": "Reembolso en proceso",
+      "title_skipped": "Reserva cancelada sin reembolso",
+      "amount": "Importe a acreditar",
+      "comprobante": "Comprobante",
+      "eta": "Tiempo estimado de acreditación: 5 a 10 días hábiles en el medio de pago original.",
+      "policy_skipped": "Tu cancelación quedó registrada. Según la política, no corresponde reembolso.",
+      "email_notice": "Te enviamos un correo con los detalles del reembolso.",
+      "close": "Entendido"
+    },
+    "refund_failed": {
+      "title": "No pudimos procesar el reembolso automáticamente",
+      "body": "Tu reserva fue cancelada, pero la pasarela de pago rechazó el reembolso. Servicio al Cliente fue notificado y se pondrá en contacto contigo.",
+      "close": "Entendido"
     }
   },
   "booking": {

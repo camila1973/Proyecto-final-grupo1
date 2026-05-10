@@ -92,6 +92,7 @@ describe("ReservationsService", () => {
   };
   let publisher: { publish: jest.Mock };
   let partnersClient: { getCheckinKey: jest.Mock };
+  let paymentClient: { requestRefund: jest.Mock };
   let inventoryClient: {
     getRoomLocation: jest.Mock;
     getRoomDetails: jest.Mock;
@@ -136,6 +137,15 @@ describe("ReservationsService", () => {
     };
     publisher = { publish: jest.fn() };
     partnersClient = { getCheckinKey: jest.fn().mockResolvedValue("test-key") };
+    paymentClient = {
+      requestRefund: jest.fn().mockResolvedValue({
+        status: "succeeded",
+        policy: "full_refund",
+        refundedUsd: 522,
+        externalRef: "re_test_123",
+        adjustmentId: "adj-uuid",
+      }),
+    };
     reservationsRepo = {
       insert: jest.fn().mockResolvedValue(row),
       findAll: jest.fn().mockResolvedValue([row, row]),
@@ -168,6 +178,7 @@ describe("ReservationsService", () => {
       holdsService as any,
       publisher as any,
       partnersClient as any,
+      paymentClient as any,
     );
   });
 
@@ -629,7 +640,7 @@ describe("ReservationsService", () => {
       );
     });
 
-    it("returns mapped response", async () => {
+    it("returns mapped response with null refund for non-confirmed cancellations", async () => {
       const cancelledRow = makeRow({
         status: "cancelled",
         reason: "changed mind",
@@ -641,7 +652,56 @@ describe("ReservationsService", () => {
       const result = await service.cancel("res-uuid", "changed mind");
 
       expect(reservationsRepo.toResponse).toHaveBeenCalledWith(cancelledRow);
-      expect(result).toEqual({ id: cancelledRow.id });
+      expect(result).toEqual({ id: cancelledRow.id, refund: null });
+      expect(paymentClient.requestRefund).not.toHaveBeenCalled();
+    });
+
+    it("triggers automated refund only for prior status=confirmed", async () => {
+      const cancelledRow = makeRow({ status: "cancelled" });
+      reservationsRepo.cancel = jest
+        .fn()
+        .mockResolvedValue({ row: cancelledRow, priorStatus: "confirmed" });
+
+      const result = await service.cancel("res-uuid", "changed mind", "guest", {
+        actorId: "user-7",
+        requestIp: "10.0.0.1",
+      });
+
+      expect(paymentClient.requestRefund).toHaveBeenCalledWith({
+        reservationId: "res-uuid",
+        reason: "changed mind",
+        actorId: "user-7",
+        actorRole: "guest",
+        requestIp: "10.0.0.1",
+      });
+      expect(result.refund).toEqual(
+        expect.objectContaining({ status: "succeeded", refundedUsd: 522 }),
+      );
+    });
+
+    it("does not call paymentClient for prior status=submitted (no captured payment yet)", async () => {
+      const cancelledRow = makeRow({ status: "cancelled" });
+      reservationsRepo.cancel = jest
+        .fn()
+        .mockResolvedValue({ row: cancelledRow, priorStatus: "submitted" });
+
+      await service.cancel("res-uuid", "changed mind");
+
+      expect(paymentClient.requestRefund).not.toHaveBeenCalled();
+    });
+
+    it("swallows payment-service errors so cancellation still succeeds", async () => {
+      const cancelledRow = makeRow({ status: "cancelled" });
+      reservationsRepo.cancel = jest
+        .fn()
+        .mockResolvedValue({ row: cancelledRow, priorStatus: "confirmed" });
+      paymentClient.requestRefund.mockRejectedValue(
+        new Error("payment-service unreachable"),
+      );
+
+      const result = await service.cancel("res-uuid", "changed mind");
+
+      expect(result).toEqual({ id: cancelledRow.id, refund: null });
     });
 
     it("partner actor on confirmed reservation calls repo.cancel and releases inventory", async () => {

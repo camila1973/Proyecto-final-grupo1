@@ -318,14 +318,29 @@ describe('TripsPage', () => {
   });
 
   describe('cancel flow', () => {
-    async function setupWithCancellable(status = 'confirmed') {
+    const REFUND_QUOTE = { policy: 'full_refund', refundableUsd: 300, daysUntilCheckIn: 14 };
+
+    async function setupWithCancellable(
+      status = 'confirmed',
+      cancelOutcome: Record<string, unknown> = {
+        status: 'cancelled',
+        refund: { status: 'succeeded', policy: 'full_refund', refundedUsd: 300, externalRef: 're_test_xyz', adjustmentId: 'adj-1' },
+      },
+      quote: Record<string, unknown> = REFUND_QUOTE,
+    ) {
       useAuth.mockReturnValue({ token: TOKEN, user: USER });
-      (global.fetch as jest.Mock)
-        .mockResolvedValueOnce({
+      (global.fetch as jest.Mock).mockImplementation((url: string) => {
+        if (url.includes('/refund-quote')) {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve(quote) });
+        }
+        if (url.includes('/cancel')) {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve(cancelOutcome) });
+        }
+        return Promise.resolve({
           ok: true,
           json: () => Promise.resolve({ reservations: [makeReservation(status)] }),
-        })
-        .mockResolvedValue({ ok: true });
+        });
+      });
       renderPage();
       return screen.findByRole('button', { name: es.trips.card.cancel });
     }
@@ -381,6 +396,58 @@ describe('TripsPage', () => {
       const btn = await setupWithCancellable('submitted');
       fireEvent.click(btn);
       expect(await screen.findByText(es.trips.cancel_dialog.title)).toBeInTheDocument();
+    });
+
+    it('shows the refund-policy preview inside the cancel dialog', async () => {
+      const btn = await setupWithCancellable();
+      fireEvent.click(btn);
+      await screen.findByText(es.trips.cancel_dialog.title);
+      // Renders an interpolated string like "Recibirás un reembolso total de USD 300.00 …"
+      expect(
+        await screen.findByText(/reembolso total/i),
+      ).toBeInTheDocument();
+    });
+
+    it('shows the refund result dialog with comprobante and ETA after a successful cancel', async () => {
+      const btn = await setupWithCancellable();
+      fireEvent.click(btn);
+      await screen.findByText(es.trips.cancel_dialog.title);
+      fireEvent.click(screen.getByRole('button', { name: es.trips.cancel_dialog.confirm }));
+
+      expect(
+        await screen.findByText(es.trips.refund_result.title_success),
+      ).toBeInTheDocument();
+      expect(screen.getByText('re_test_xyz')).toBeInTheDocument();
+      expect(screen.getByText(es.trips.refund_result.eta)).toBeInTheDocument();
+    });
+
+    it('shows the gateway-failure dialog when refund is null on a confirmed cancellation', async () => {
+      const btn = await setupWithCancellable('confirmed', {
+        status: 'cancelled',
+        refund: null,
+      });
+      fireEvent.click(btn);
+      await screen.findByText(es.trips.cancel_dialog.title);
+      fireEvent.click(screen.getByRole('button', { name: es.trips.cancel_dialog.confirm }));
+
+      expect(
+        await screen.findByText(es.trips.refund_failed.title),
+      ).toBeInTheDocument();
+    });
+
+    it('does not pop the gateway-failure dialog when prior status was submitted (no payment captured)', async () => {
+      const btn = await setupWithCancellable('submitted', {
+        status: 'cancelled',
+        refund: null,
+      });
+      fireEvent.click(btn);
+      await screen.findByText(es.trips.cancel_dialog.title);
+      fireEvent.click(screen.getByRole('button', { name: es.trips.cancel_dialog.confirm }));
+
+      await waitFor(() => {
+        expect(screen.queryByText(es.trips.cancel_dialog.title)).not.toBeInTheDocument();
+      });
+      expect(screen.queryByText(es.trips.refund_failed.title)).not.toBeInTheDocument();
     });
   });
 });
