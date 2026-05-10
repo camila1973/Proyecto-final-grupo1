@@ -377,4 +377,92 @@ describe('PropertyDashboardPage', () => {
       expect(screen.getByText('Cancelar reserva', { selector: '[role="heading"], h2' })).toBeInTheDocument();
     });
   });
+
+  // ── Check-out flow ─────────────────────────────────────────────────────────
+
+  it('confirms check-out and shows success snackbar', async () => {
+    mockFetch([CHECKED_IN_RESERVATION]);
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Carlos Ruiz')).toBeInTheDocument());
+    fireEvent.click(screen.getByLabelText('Registrar Check-out'));
+    await waitFor(() => expect(screen.getByText('Confirmar Check-out')).toBeInTheDocument());
+    fireEvent.click(screen.getByText('Registrar Check-out', { selector: 'button' }));
+    await waitFor(() => {
+      expect(screen.getByText('Check-out registrado correctamente.')).toBeInTheDocument();
+    });
+    const patchCalls = (global.fetch as jest.Mock).mock.calls.filter(
+      ([url, init]: [string, RequestInit]) => url.includes('/check-out') && init?.method === 'PATCH',
+    );
+    expect(patchCalls.length).toBe(1);
+  });
+
+  // ── Cancel flow ────────────────────────────────────────────────────────────
+
+  it('confirms cancel and shows success snackbar', async () => {
+    renderPage();
+    await waitFor(() => expect(screen.getByText('María López')).toBeInTheDocument());
+    fireEvent.click(screen.getByLabelText('Más acciones'));
+    await waitFor(() => expect(screen.getByText('Cancelar reserva')).toBeInTheDocument());
+    fireEvent.click(screen.getByText('Cancelar reserva'));
+    await waitFor(() => expect(screen.getByText('Esta acción cancelará la reserva y notificará al huésped. ¿Deseas continuar?')).toBeInTheDocument());
+    fireEvent.click(screen.getByText('Cancelar reserva', { selector: 'button' }));
+    await waitFor(() => {
+      expect(screen.getByText('Reserva cancelada.')).toBeInTheDocument();
+    });
+  });
+
+  // ── StatusChip variants ────────────────────────────────────────────────────
+
+  it('renders "En hotel" chip for checked_in status', async () => {
+    mockFetch([CHECKED_IN_RESERVATION]);
+    renderPage();
+    await waitFor(() => expect(screen.getByText('En hotel')).toBeInTheDocument());
+  });
+
+  it('renders "Check-out" chip for checked_out status', async () => {
+    mockFetch([{ ...CONFIRMED_RESERVATION, status: 'checked_out' }]);
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Check-out')).toBeInTheDocument());
+  });
+
+  it('renders "Cancelada" chip for cancelled status', async () => {
+    mockFetch([{ ...CONFIRMED_RESERVATION, status: 'cancelled' }]);
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Cancelada')).toBeInTheDocument());
+  });
+
+  // ── Context menu for checked_in ────────────────────────────────────────────
+
+  it('shows check-out and cancel options in context menu for checked_in', async () => {
+    mockFetch([CHECKED_IN_RESERVATION]);
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Carlos Ruiz')).toBeInTheDocument());
+    fireEvent.click(screen.getByLabelText('Más acciones'));
+    await waitFor(() => expect(screen.getByText('Registrar Check-out')).toBeInTheDocument());
+    expect(screen.getByText('Cancelar reserva')).toBeInTheDocument();
+  });
+
+  // ── Pagination label ───────────────────────────────────────────────────────
+
+  it('shows pagination label when reservations are present', async () => {
+    renderPage();
+    await waitFor(() => expect(screen.getByText('María López')).toBeInTheDocument());
+    expect(screen.getByText('1–1 de 1')).toBeInTheDocument();
+  });
+
+  // ── Status filter dropdown ─────────────────────────────────────────────────
+
+  it('filters by status dropdown hiding non-matching rows', async () => {
+    mockFetch([CONFIRMED_RESERVATION, CHECKED_IN_RESERVATION]);
+    renderPage();
+    await waitFor(() => expect(screen.getByText('María López')).toBeInTheDocument());
+    expect(screen.getByText('Carlos Ruiz')).toBeInTheDocument();
+    // Open the "Estado" select and pick the checked_in option
+    fireEvent.mouseDown(screen.getByLabelText('Estado'));
+    // findByRole scopes to the open listbox, avoiding ambiguity with the StatusChip
+    const option = await screen.findByRole('option', { name: 'En hotel' });
+    fireEvent.click(option);
+    await waitFor(() => expect(screen.queryByText('María López')).not.toBeInTheDocument());
+    expect(screen.getByText('Carlos Ruiz')).toBeInTheDocument();
+  });
 });

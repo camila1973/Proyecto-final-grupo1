@@ -17,6 +17,8 @@ import {
   fetchCheckinQr,
   regenerateCheckinQr,
   downloadCheckinPdf,
+  partnerCheckIn,
+  partnerCheckOut,
 } from './queries';
 
 function mockOk(data: unknown) {
@@ -574,6 +576,88 @@ describe('queries', () => {
     it('throws when response is not ok', async () => {
       (global.fetch as jest.Mock).mockResolvedValue(mockFail(500));
       await expect(downloadCheckinPdf(PARTNER_ID, PROPERTY_ID, 'tok')).rejects.toThrow('HTTP 500');
+    });
+  });
+
+  // ─── partnerCheckIn ─────────────────────────────────────────────────────────
+
+  describe('partnerCheckIn', () => {
+    it('sends PATCH to partner-check-in with Authorization header', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({ ok: true, json: jest.fn() });
+
+      await partnerCheckIn('res-1', 'tok');
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/reservations/res-1/partner-check-in'),
+        expect.objectContaining({
+          method: 'PATCH',
+          headers: { Authorization: 'Bearer tok' },
+        }),
+      );
+    });
+
+    it('resolves without a value on success (204-style)', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({ ok: true, json: jest.fn() });
+      await expect(partnerCheckIn('res-1', 'tok')).resolves.toBeUndefined();
+    });
+
+    it('throws the server message when response is not ok', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: false,
+        status: 400,
+        json: jest.fn().mockResolvedValue({ message: 'Reservation must be confirmed' }),
+      });
+      await expect(partnerCheckIn('res-1', 'tok')).rejects.toThrow('Reservation must be confirmed');
+    });
+
+    it('falls back to HTTP status when server provides no message', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: false,
+        status: 403,
+        json: jest.fn().mockResolvedValue({}),
+      });
+      await expect(partnerCheckIn('res-1', 'tok')).rejects.toThrow('HTTP 403');
+    });
+  });
+
+  // ─── partnerCheckOut ────────────────────────────────────────────────────────
+
+  describe('partnerCheckOut', () => {
+    it('sends PATCH to check-out with Authorization header', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({ ok: true, json: jest.fn() });
+
+      await partnerCheckOut('res-1', 'tok');
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/reservations/res-1/check-out'),
+        expect.objectContaining({
+          method: 'PATCH',
+          headers: { Authorization: 'Bearer tok' },
+        }),
+      );
+    });
+
+    it('resolves without a value on success', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({ ok: true, json: jest.fn() });
+      await expect(partnerCheckOut('res-1', 'tok')).resolves.toBeUndefined();
+    });
+
+    it('throws the server message when response is not ok', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: false,
+        status: 400,
+        json: jest.fn().mockResolvedValue({ message: 'Reservation must be checked in' }),
+      });
+      await expect(partnerCheckOut('res-1', 'tok')).rejects.toThrow('Reservation must be checked in');
+    });
+
+    it('falls back to HTTP status when server provides no message', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: false,
+        status: 500,
+        json: jest.fn().mockResolvedValue({}),
+      });
+      await expect(partnerCheckOut('res-1', 'tok')).rejects.toThrow('HTTP 500');
     });
   });
 });
