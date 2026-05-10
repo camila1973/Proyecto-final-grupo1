@@ -262,6 +262,64 @@ describe("RefundsService", () => {
     expect(result.policy).toBe("partial_refund");
   });
 
+  it("treats stripe status='pending' as a successful in-flight refund", async () => {
+    mockRefundsCreate.mockResolvedValue({ id: "re_async", status: "pending" });
+
+    const result = await service.issueRefund(INPUT);
+
+    expect(result.status).toBe("succeeded");
+    expect(refunds.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: "succeeded",
+        external_ref: "re_async",
+      }),
+    );
+    expect(notifications.sendRefundIssued).toHaveBeenCalled();
+    expect(notifications.sendRefundFailedAlert).not.toHaveBeenCalled();
+  });
+
+  it("treats stripe status='failed' as a gateway rejection and alerts support", async () => {
+    mockRefundsCreate.mockResolvedValue({
+      id: "re_dead",
+      status: "failed",
+      failure_reason: "lost_or_stolen_card",
+    });
+
+    await expect(service.issueRefund(INPUT)).rejects.toThrow(
+      BadGatewayException,
+    );
+
+    expect(refunds.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: "failed",
+        failure_reason: "lost_or_stolen_card",
+        external_ref: "re_dead",
+      }),
+    );
+    expect(notifications.sendRefundFailedAlert).toHaveBeenCalledWith(
+      expect.objectContaining({ failureReason: "lost_or_stolen_card" }),
+    );
+    expect(notifications.sendRefundIssued).not.toHaveBeenCalled();
+  });
+
+  it("falls back to a synthetic failure reason when stripe omits failure_reason", async () => {
+    mockRefundsCreate.mockResolvedValue({
+      id: "re_canceled",
+      status: "canceled",
+    });
+
+    await expect(service.issueRefund(INPUT)).rejects.toThrow(
+      BadGatewayException,
+    );
+
+    expect(refunds.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: "failed",
+        failure_reason: "stripe_status=canceled",
+      }),
+    );
+  });
+
   it("forwards anonymized actor metadata to Stripe so refunds remain traceable", async () => {
     mockRefundsCreate.mockResolvedValue({ id: "re_test_xyz" });
 

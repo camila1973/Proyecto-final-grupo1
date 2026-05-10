@@ -224,6 +224,7 @@ describe("ReservationsController", () => {
         { reason: "changed mind" },
         undefined as any,
         undefined as any,
+        undefined as any,
         "10.0.0.1",
       );
 
@@ -236,7 +237,7 @@ describe("ReservationsController", () => {
       expect(result).toBe(reservation);
     });
 
-    it("passes guest actor and forwards user-id + ip to the service", async () => {
+    it("prefers x-forwarded-for over @Ip() when both are present", async () => {
       const reservation = { id: "res-1", status: "cancelled" } as any;
       (service.cancel as jest.Mock).mockResolvedValue(reservation);
 
@@ -245,6 +246,7 @@ describe("ReservationsController", () => {
         { reason: "changed mind" },
         "guest",
         "user-7",
+        "203.0.113.5, 198.51.100.10",
         "10.0.0.1",
       );
 
@@ -252,7 +254,7 @@ describe("ReservationsController", () => {
         "res-1",
         "changed mind",
         "guest",
-        { actorId: "user-7", requestIp: "10.0.0.1" },
+        { actorId: "user-7", requestIp: "203.0.113.5" },
       );
     });
 
@@ -265,6 +267,7 @@ describe("ReservationsController", () => {
         { reason: "overbooking" },
         "partner",
         "partner-9",
+        undefined as any,
         "10.0.0.2",
       );
 

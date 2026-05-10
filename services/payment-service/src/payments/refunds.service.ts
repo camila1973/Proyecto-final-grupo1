@@ -16,7 +16,16 @@ import { NotificationClient } from "../clients/notification.client.js";
 interface StripeRefund {
   id: string;
   status?: string | null;
+  failure_reason?: string | null;
 }
+
+// Stripe refund states that count as a customer-visible "issued" outcome.
+// `succeeded` settles immediately on most card networks; `pending` is the
+// async path (ACH, certain currencies) — the money is in flight and the bank
+// ETA already covers it, so we audit and email the guest the same way.
+// Anything else (`failed`, `canceled`, `requires_action`) is treated as a
+// gateway rejection: failed audit row + customer-support alert.
+const ISSUED_STRIPE_STATUSES = new Set(["succeeded", "pending"]);
 
 export interface IssueRefundInput {
   reservationId: string;
@@ -153,6 +162,48 @@ export class RefundsService {
       );
     }
 
+    // Stripe accepted the refund call but the resulting state is what tells
+    // us whether to treat this as customer-visible success. `failed`,
+    // `canceled` and `requires_action` all mean the money will not move on
+    // its own, so we audit them as failed and alert customer support.
+    const stripeStatus = stripeRefund.status ?? "succeeded";
+    if (!ISSUED_STRIPE_STATUSES.has(stripeStatus)) {
+      const failureReason =
+        stripeRefund.failure_reason ?? `stripe_status=${stripeStatus}`;
+      const adjustment = await this.refunds.insert({
+        payment_id: payment.id,
+        kind: "refund",
+        amount_usd: quote.refundableUsd,
+        external_ref: stripeRefund.id,
+        reason: input.reason,
+        status: "failed",
+        failure_reason: failureReason,
+        actor_id: input.actorId,
+        actor_role: input.actorRole,
+        request_ip: input.requestIp,
+      });
+      this.logger.error(
+        `Stripe refund ${stripeRefund.id} returned non-issued status "${stripeStatus}" for reservation ${input.reservationId}`,
+      );
+      await this.notifications
+        .sendRefundFailedAlert({
+          reservationId: input.reservationId,
+          paymentIntentId: payment.stripe_payment_intent_id,
+          attemptedUsd: quote.refundableUsd,
+          failureReason,
+          actorId: input.actorId,
+          actorRole: input.actorRole,
+        })
+        .catch((alertErr) =>
+          this.logger.error(
+            `Failed to alert customer-support inbox: ${alertErr}`,
+          ),
+        );
+      throw new BadGatewayException(
+        `Refund could not be processed (adjustment ${adjustment.id}). Customer support has been notified.`,
+      );
+    }
+
     const adjustment = await this.refunds.insert({
       payment_id: payment.id,
       kind: "refund",
@@ -179,7 +230,7 @@ export class RefundsService {
       );
 
     this.logger.log(
-      `Refund ${stripeRefund.id} issued for reservation ${input.reservationId} (USD ${quote.refundableUsd.toFixed(2)})`,
+      `Refund ${stripeRefund.id} issued (stripe_status=${stripeStatus}) for reservation ${input.reservationId} (USD ${quote.refundableUsd.toFixed(2)})`,
     );
 
     return {

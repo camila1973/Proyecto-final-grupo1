@@ -91,12 +91,17 @@ export class ReservationsController {
     @Body() body: { reason: string },
     @Headers("x-user-role") role: string,
     @Headers("x-user-id") userId: string,
-    @Ip() ip: string,
+    @Headers("x-forwarded-for") forwardedFor: string,
+    @Ip() directIp: string,
   ) {
     const actor: BookingActor = role ? (role as BookingActor) : "system";
+    // booking-service runs behind api-gateway; @Ip() resolves to the gateway
+    // IP, not the original client. Prefer the left-most x-forwarded-for entry
+    // when present so the audit log records the real caller.
+    const fromHeader = forwardedFor?.split(",")[0]?.trim();
     return this.reservationsService.cancel(id, body.reason, actor, {
       actorId: userId || null,
-      requestIp: ip || null,
+      requestIp: fromHeader || directIp || null,
     });
   }
 
