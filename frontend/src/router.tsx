@@ -21,6 +21,7 @@ import PagosPropertyPage from './pages/partner/property/pagos';
 import PropertyQrPage from './pages/partner/property/qr';
 import PropertyEditPage from './pages/partner/property/edit';
 import RoomDetailPage from './pages/partner/property/rooms';
+import ReservationEditPage from './pages/partner/property/reservations/edit';
 import PartnerRegisterPage from './pages/partner/register';
 
 
@@ -179,6 +180,12 @@ const roomDetailRoute = createRoute({
   component: RoomDetailPage,
 });
 
+const reservationEditRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/mi-hotel/$propertyId/reservas/$reservationId/editar',
+  component: ReservationEditPage,
+});
+
 const routeTree = rootRoute.addChildren([
   homeRoute,
   searchRoute,
@@ -199,6 +206,7 @@ const routeTree = rootRoute.addChildren([
   propertyQrRoute,
   propertyEditRoute,
   roomDetailRoute,
+  reservationEditRoute,
 ]);
 
 export function createAppRouter() {

@@ -27,3 +27,9 @@ export class CheckinDto {
   checkInKey: string;
   bookerId: string;
 }
+
+export class ModifyReservationDto {
+  checkIn?: string; // YYYY-MM-DD
+  checkOut?: string; // YYYY-MM-DD
+  guestInfo?: GuestInfoDto;
+}

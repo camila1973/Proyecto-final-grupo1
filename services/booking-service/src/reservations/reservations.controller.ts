@@ -18,6 +18,7 @@ import {
   CheckinDto,
   CreateReservationDto,
   GuestInfoDto,
+  ModifyReservationDto,
   PreviewReservationDto,
 } from "./dto/create-reservation.dto.js";
 
@@ -64,6 +65,22 @@ export class ReservationsController {
   @HttpCode(HttpStatus.OK)
   fail(@Param("id") id: string, @Body() body: { reason: string }) {
     return this.reservationsService.fail(id, body.reason);
+  }
+
+  @Patch(":id")
+  @HttpCode(HttpStatus.OK)
+  modify(
+    @Param("id") id: string,
+    @Body() dto: ModifyReservationDto,
+    @Headers("x-user-role") role: string,
+  ) {
+    const actor: BookingActor = role ? (role as BookingActor) : "guest";
+    return this.reservationsService.modify(id, dto, actor);
+  }
+
+  @Get(":id/refund-quote")
+  refundQuote(@Param("id") id: string) {
+    return this.reservationsService.getRefundQuote(id);
   }
 
   @Patch(":id/cancel")

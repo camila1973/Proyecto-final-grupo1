@@ -453,7 +453,55 @@
       "guests_count": "{{count}} huéspedes",
       "room_active": "Activa",
       "room_no_stock": "Sin stock",
-      "menu_view_availability": "Ver disponibilidad"
+      "menu_view_availability": "Ver disponibilidad",
+      "menu_edit_reservation": "Editar reserva"
+    },
+    "reservation_edit": {
+      "page_title": "Editar reserva #{{shortId}}",
+      "back": "← Volver al dashboard",
+      "section_order": "Detalles de la orden",
+      "section_dates": "Fechas",
+      "first_name": "Nombre",
+      "last_name": "Apellido",
+      "email": "Correo electrónico",
+      "phone": "Teléfono",
+      "room": "Habitación",
+      "check_in": "Check in",
+      "check_out": "Check out",
+      "status": "Estado",
+      "save": "Guardar",
+      "back_button": "Regresar",
+      "cancel_reservation": "Cancelar reserva",
+      "saved": "Reserva actualizada con éxito.",
+      "save_error": "No se pudo actualizar la reserva.",
+      "load_error": "No se pudo cargar la reserva.",
+      "login_required": "Inicia sesión como socio para editar la reserva.",
+      "not_editable": "Solo se pueden modificar reservas confirmadas.",
+      "errors": {
+        "first_name_required": "El nombre es obligatorio",
+        "last_name_required": "El apellido es obligatorio",
+        "email_required": "El correo electrónico es obligatorio",
+        "email_invalid": "Ingresa un correo electrónico válido",
+        "dates_invalid": "El check-out debe ser posterior al check-in",
+        "checkin_past": "El check-in no puede ser en el pasado"
+      },
+      "summary": {
+        "nights_one": "{{count}} noche",
+        "nights_other": "{{count}} noches",
+        "price_per_night": "Precio por noche",
+        "subtotal": "Subtotal",
+        "taxes": "Impuestos",
+        "total": "Total"
+      },
+      "cancel_dialog": {
+        "title": "¿Cancelar reserva?",
+        "policy_full": "Cancelación gratuita: el huésped recibirá el reembolso completo ({{amount}}).",
+        "policy_partial": "Reembolso parcial: el huésped recibirá {{amount}} ({{days}} días al check-in).",
+        "policy_none": "Sin reembolso: faltan menos de 2 días para el check-in.",
+        "loading_quote": "Calculando reembolso…",
+        "keep": "Mantener reserva",
+        "confirm": "Sí, cancelar"
+      }
     },
     "payments": {
       "title": "Pagos",

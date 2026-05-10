@@ -8,6 +8,14 @@ import {
   ReservationRow,
   ReservationSnapshot,
 } from "../database/database.types.js";
+import type { FareBreakdown } from "../fare/fare-calculator.service.js";
+
+export interface ModifyReservationFields {
+  checkIn?: string;
+  checkOut?: string;
+  guestInfo?: GuestInfo;
+  fareBreakdown?: FareBreakdown;
+}
 
 export interface ReservationResponse {
   id: string;
@@ -241,6 +249,35 @@ export class ReservationsRepository {
       .where("status", "=", "held")
       .returningAll()
       .executeTakeFirst();
+  }
+
+  async modify(
+    id: string,
+    fields: ModifyReservationFields,
+  ): Promise<ReservationRow> {
+    const update: Record<string, unknown> = { updated_at: new Date() };
+    if (fields.checkIn !== undefined) update.check_in = fields.checkIn;
+    if (fields.checkOut !== undefined) update.check_out = fields.checkOut;
+    if (fields.guestInfo !== undefined) update.guest_info = fields.guestInfo;
+    if (fields.fareBreakdown !== undefined) {
+      update.fare_breakdown = fields.fareBreakdown;
+      update.tax_total_usd = fields.fareBreakdown.taxTotalUsd;
+      update.fee_total_usd = fields.fareBreakdown.feeTotalUsd;
+      update.grand_total_usd = fields.fareBreakdown.totalUsd;
+    }
+
+    const row = await this.db
+      .updateTable("reservations")
+      .set(update)
+      .where("id", "=", id)
+      .returningAll()
+      .executeTakeFirst();
+
+    if (!row) {
+      throw new NotFoundException(`Reservation ${id} not found`);
+    }
+
+    return row;
   }
 
   async checkin(id: string): Promise<ReservationRow> {

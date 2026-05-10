@@ -453,7 +453,55 @@
       "guests_count": "{{count}} guests",
       "room_active": "Active",
       "room_no_stock": "Out of stock",
-      "menu_view_availability": "View availability"
+      "menu_view_availability": "View availability",
+      "menu_edit_reservation": "Edit reservation"
+    },
+    "reservation_edit": {
+      "page_title": "Edit reservation #{{shortId}}",
+      "back": "← Back to dashboard",
+      "section_order": "Order details",
+      "section_dates": "Dates",
+      "first_name": "First name",
+      "last_name": "Last name",
+      "email": "Email",
+      "phone": "Phone",
+      "room": "Room",
+      "check_in": "Check in",
+      "check_out": "Check out",
+      "status": "Status",
+      "save": "Save",
+      "back_button": "Back",
+      "cancel_reservation": "Cancel reservation",
+      "saved": "Reservation updated successfully.",
+      "save_error": "Could not update the reservation.",
+      "load_error": "Could not load the reservation.",
+      "login_required": "Sign in as a partner to edit the reservation.",
+      "not_editable": "Only confirmed reservations can be modified.",
+      "errors": {
+        "first_name_required": "First name is required",
+        "last_name_required": "Last name is required",
+        "email_required": "Email is required",
+        "email_invalid": "Enter a valid email",
+        "dates_invalid": "Check-out must be after check-in",
+        "checkin_past": "Check-in cannot be in the past"
+      },
+      "summary": {
+        "nights_one": "{{count}} night",
+        "nights_other": "{{count}} nights",
+        "price_per_night": "Price per night",
+        "subtotal": "Subtotal",
+        "taxes": "Taxes",
+        "total": "Total"
+      },
+      "cancel_dialog": {
+        "title": "Cancel reservation?",
+        "policy_full": "Free cancellation: guest will be fully refunded ({{amount}}).",
+        "policy_partial": "Partial refund: guest will receive {{amount}} ({{days}} days to check-in).",
+        "policy_none": "No refund: less than 2 days until check-in.",
+        "loading_quote": "Calculating refund…",
+        "keep": "Keep reservation",
+        "confirm": "Yes, cancel"
+      }
     },
     "payments": {
       "title": "Payments",

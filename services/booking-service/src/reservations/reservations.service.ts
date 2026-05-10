@@ -24,9 +24,11 @@ import {
 import {
   CreateReservationDto,
   GuestInfoDto,
+  ModifyReservationDto,
   PreviewReservationDto,
 } from "./dto/create-reservation.dto.js";
 import type { ReservationRow } from "../database/database.types.js";
+import { quoteRefund, RefundQuote } from "./refund-policy.js";
 
 @Injectable()
 export class ReservationsService {
@@ -257,6 +259,122 @@ export class ReservationsService {
 
     this.emit("booking.expired", row, "system");
     return this.reservationsRepo.toResponse(row);
+  }
+
+  async modify(
+    id: string,
+    dto: ModifyReservationDto,
+    actor: BookingActor = "guest",
+  ) {
+    const current = await this.reservationsRepo.findById(id);
+
+    // Modifications are only safe outside terminal/in-flight states. `submitted`
+    // is excluded because the Stripe webhook may flip it to `confirmed`/`failed`
+    // mid-update, and `checked_in`/`checked_out` are post-stay.
+    const editable = ["held", "confirmed"];
+    if (!editable.includes(current.status)) {
+      throw new BadRequestException(
+        `Cannot modify a reservation with status "${current.status}"`,
+      );
+    }
+
+    if (actor === "partner" && current.status !== "confirmed") {
+      throw new BadRequestException(
+        `Partner can only modify confirmed reservations (current: "${current.status}")`,
+      );
+    }
+
+    const oldCheckIn = String(current.check_in).slice(0, 10);
+    const oldCheckOut = String(current.check_out).slice(0, 10);
+    const newCheckIn = dto.checkIn ?? oldCheckIn;
+    const newCheckOut = dto.checkOut ?? oldCheckOut;
+
+    if (newCheckIn >= newCheckOut) {
+      throw new BadRequestException("checkOut must be after checkIn");
+    }
+
+    const today = new Date().toISOString().slice(0, 10);
+    if (newCheckIn < today) {
+      throw new BadRequestException("checkIn cannot be in the past");
+    }
+
+    const datesChanged =
+      newCheckIn !== oldCheckIn || newCheckOut !== oldCheckOut;
+
+    let fareBreakdown: FareBreakdown | undefined;
+
+    if (datesChanged) {
+      // Acquire inventory for the new range first; if this fails (e.g. 409 no
+      // availability) we leave the existing reservation intact.
+      await this.inventoryClient.hold(current.room_id, newCheckIn, newCheckOut);
+
+      try {
+        if (current.status === "confirmed") {
+          await this.inventoryClient.release(
+            current.room_id,
+            oldCheckIn,
+            oldCheckOut,
+          );
+          await this.inventoryClient.confirmHold(
+            current.room_id,
+            newCheckIn,
+            newCheckOut,
+          );
+        } else {
+          // status === "held": swap one hold for another
+          await this.inventoryClient.unhold(
+            current.room_id,
+            oldCheckIn,
+            oldCheckOut,
+          );
+        }
+      } catch (err) {
+        // Best-effort rollback of the new hold so inventory is not left occupied
+        await this.inventoryClient
+          .unhold(current.room_id, newCheckIn, newCheckOut)
+          .catch((rollbackErr) => {
+            this.logger.warn(
+              `Failed to roll back new hold for reservation ${id}: ${rollbackErr}`,
+            );
+          });
+        throw err;
+      }
+
+      const roomDetails = await this.inventoryClient.getRoomDetails(
+        current.room_id,
+      );
+      fareBreakdown = await this.fareCalculator.calculate({
+        propertyId: current.property_id,
+        roomId: current.room_id,
+        partnerId: current.partner_id,
+        checkIn: new Date(newCheckIn),
+        checkOut: new Date(newCheckOut),
+        propertyLocation: roomDetails,
+      });
+    }
+
+    const guestInfo = dto.guestInfo
+      ? { ...current.guest_info, ...dto.guestInfo }
+      : undefined;
+
+    const updated = await this.reservationsRepo.modify(id, {
+      checkIn: datesChanged ? newCheckIn : undefined,
+      checkOut: datesChanged ? newCheckOut : undefined,
+      guestInfo,
+      fareBreakdown,
+    });
+
+    return this.reservationsRepo.toResponse(updated);
+  }
+
+  refundQuote(grandTotalUsd: number, checkIn: string): RefundQuote {
+    return quoteRefund(grandTotalUsd, checkIn);
+  }
+
+  async getRefundQuote(id: string): Promise<RefundQuote> {
+    const row = await this.reservationsRepo.findById(id);
+    const total = row.grand_total_usd ? parseFloat(row.grand_total_usd) : 0;
+    return this.refundQuote(total, String(row.check_in));
   }
 
   async cancel(id: string, reason: string, actor: BookingActor = "guest") {

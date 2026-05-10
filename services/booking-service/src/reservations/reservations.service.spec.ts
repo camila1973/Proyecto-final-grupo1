@@ -88,6 +88,7 @@ describe("ReservationsService", () => {
     rehold: jest.Mock;
     checkin: jest.Mock;
     checkOut: jest.Mock;
+    modify: jest.Mock;
   };
   let publisher: { publish: jest.Mock };
   let partnersClient: { getCheckinKey: jest.Mock };
@@ -95,6 +96,7 @@ describe("ReservationsService", () => {
     getRoomLocation: jest.Mock;
     getRoomDetails: jest.Mock;
     getPropertySnapshot: jest.Mock;
+    hold: jest.Mock;
     confirmHold: jest.Mock;
     unhold: jest.Mock;
     release: jest.Mock;
@@ -121,6 +123,7 @@ describe("ReservationsService", () => {
         city: "cancún",
         countryCode: "MX",
       }),
+      hold: jest.fn().mockResolvedValue(undefined),
       confirmHold: jest.fn().mockResolvedValue(undefined),
       unhold: jest.fn().mockResolvedValue(undefined),
       release: jest.fn().mockResolvedValue(undefined),
@@ -150,6 +153,13 @@ describe("ReservationsService", () => {
       rehold: jest.fn().mockResolvedValue(row),
       checkin: jest.fn().mockResolvedValue(makeRow({ status: "checked_in" })),
       checkOut: jest.fn().mockResolvedValue(makeRow({ status: "checked_out" })),
+      modify: jest.fn().mockImplementation(async (_id, fields) =>
+        makeRow({
+          ...(fields.checkIn ? { check_in: fields.checkIn } : {}),
+          ...(fields.checkOut ? { check_out: fields.checkOut } : {}),
+          ...(fields.guestInfo ? { guest_info: fields.guestInfo } : {}),
+        }),
+      ),
     };
     service = new ReservationsService(
       fareCalculator as any,
@@ -1003,6 +1013,283 @@ describe("ReservationsService", () => {
           guestInfo: checkedOutRow.guest_info,
         }),
       );
+    });
+  });
+
+  // ─── modify ─────────────────────────────────────────────────────────────────
+
+  describe("modify", () => {
+    const TODAY = "2026-04-15";
+
+    beforeEach(() => {
+      jest.useFakeTimers().setSystemTime(new Date(`${TODAY}T12:00:00Z`));
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it("rejects modifications on a submitted reservation", async () => {
+      reservationsRepo.findById.mockResolvedValue(
+        makeRow({ status: "submitted" }),
+      );
+
+      await expect(
+        service.modify("res-uuid", { checkIn: "2026-05-02" }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it("rejects partner modifications on non-confirmed reservations", async () => {
+      reservationsRepo.findById.mockResolvedValue(makeRow({ status: "held" }));
+
+      await expect(
+        service.modify("res-uuid", { checkIn: "2026-05-02" }, "partner"),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it("rejects when checkOut is not after checkIn", async () => {
+      reservationsRepo.findById.mockResolvedValue(
+        makeRow({ status: "confirmed" }),
+      );
+
+      await expect(
+        service.modify(
+          "res-uuid",
+          { checkIn: "2026-05-04", checkOut: "2026-05-04" },
+          "partner",
+        ),
+      ).rejects.toThrow("checkOut must be after checkIn");
+    });
+
+    it("rejects past check-in dates", async () => {
+      reservationsRepo.findById.mockResolvedValue(
+        makeRow({ status: "confirmed" }),
+      );
+
+      await expect(
+        service.modify(
+          "res-uuid",
+          { checkIn: "2026-04-10", checkOut: "2026-04-12" },
+          "partner",
+        ),
+      ).rejects.toThrow("checkIn cannot be in the past");
+    });
+
+    it("only updates guest info when no dates are provided", async () => {
+      reservationsRepo.findById.mockResolvedValue(
+        makeRow({ status: "confirmed" }),
+      );
+
+      await service.modify(
+        "res-uuid",
+        { guestInfo: { firstName: "Bea", lastName: "X", email: "b@x.com" } },
+        "partner",
+      );
+
+      expect(inventoryClient.hold).not.toHaveBeenCalled();
+      expect(fareCalculator.calculate).not.toHaveBeenCalled();
+      expect(reservationsRepo.modify).toHaveBeenCalledWith(
+        "res-uuid",
+        expect.objectContaining({
+          checkIn: undefined,
+          checkOut: undefined,
+          guestInfo: expect.objectContaining({ firstName: "Bea" }),
+          fareBreakdown: undefined,
+        }),
+      );
+    });
+
+    it("merges new guest info on top of the existing snapshot", async () => {
+      reservationsRepo.findById.mockResolvedValue(
+        makeRow({
+          status: "confirmed",
+          guest_info: {
+            firstName: "Old",
+            lastName: "Last",
+            email: "old@x.com",
+            phone: "+1",
+          },
+        }),
+      );
+
+      await service.modify(
+        "res-uuid",
+        {
+          guestInfo: { firstName: "New", lastName: "Last", email: "old@x.com" },
+        },
+        "partner",
+      );
+
+      const args = reservationsRepo.modify.mock.calls[0][1];
+      expect(args.guestInfo).toEqual({
+        firstName: "New",
+        lastName: "Last",
+        email: "old@x.com",
+        phone: "+1",
+      });
+    });
+
+    it("for held reservations swaps the inventory hold and recalculates the fare", async () => {
+      reservationsRepo.findById.mockResolvedValue(
+        makeRow({
+          status: "held",
+          check_in: "2026-05-01",
+          check_out: "2026-05-04",
+        }),
+      );
+
+      await service.modify("res-uuid", {
+        checkIn: "2026-05-10",
+        checkOut: "2026-05-13",
+      });
+
+      expect(inventoryClient.hold).toHaveBeenCalledWith(
+        "room-uuid",
+        "2026-05-10",
+        "2026-05-13",
+      );
+      expect(inventoryClient.unhold).toHaveBeenCalledWith(
+        "room-uuid",
+        "2026-05-01",
+        "2026-05-04",
+      );
+      expect(inventoryClient.release).not.toHaveBeenCalled();
+      expect(inventoryClient.confirmHold).not.toHaveBeenCalled();
+      expect(fareCalculator.calculate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          propertyId: "prop-uuid",
+          roomId: "room-uuid",
+        }),
+      );
+      expect(reservationsRepo.modify).toHaveBeenCalledWith(
+        "res-uuid",
+        expect.objectContaining({
+          checkIn: "2026-05-10",
+          checkOut: "2026-05-13",
+          fareBreakdown,
+        }),
+      );
+    });
+
+    it("for confirmed reservations releases old inventory and confirms the new range", async () => {
+      reservationsRepo.findById.mockResolvedValue(
+        makeRow({
+          status: "confirmed",
+          check_in: "2026-05-01",
+          check_out: "2026-05-04",
+        }),
+      );
+
+      await service.modify(
+        "res-uuid",
+        { checkIn: "2026-05-10", checkOut: "2026-05-13" },
+        "partner",
+      );
+
+      expect(inventoryClient.hold).toHaveBeenCalledWith(
+        "room-uuid",
+        "2026-05-10",
+        "2026-05-13",
+      );
+      expect(inventoryClient.release).toHaveBeenCalledWith(
+        "room-uuid",
+        "2026-05-01",
+        "2026-05-04",
+      );
+      expect(inventoryClient.confirmHold).toHaveBeenCalledWith(
+        "room-uuid",
+        "2026-05-10",
+        "2026-05-13",
+      );
+    });
+
+    it("rolls back the new hold when releasing the old inventory fails", async () => {
+      reservationsRepo.findById.mockResolvedValue(
+        makeRow({
+          status: "confirmed",
+          check_in: "2026-05-01",
+          check_out: "2026-05-04",
+        }),
+      );
+      inventoryClient.release.mockRejectedValue(new Error("inventory down"));
+
+      await expect(
+        service.modify(
+          "res-uuid",
+          { checkIn: "2026-05-10", checkOut: "2026-05-13" },
+          "partner",
+        ),
+      ).rejects.toThrow("inventory down");
+
+      expect(inventoryClient.unhold).toHaveBeenCalledWith(
+        "room-uuid",
+        "2026-05-10",
+        "2026-05-13",
+      );
+      expect(reservationsRepo.modify).not.toHaveBeenCalled();
+    });
+
+    it("does not touch inventory when only guest info is being updated", async () => {
+      reservationsRepo.findById.mockResolvedValue(
+        makeRow({ status: "confirmed" }),
+      );
+
+      await service.modify(
+        "res-uuid",
+        {
+          checkIn: String(row.check_in),
+          checkOut: String(row.check_out),
+          guestInfo: { firstName: "Bea", lastName: "X", email: "b@x.com" },
+        },
+        "partner",
+      );
+
+      expect(inventoryClient.hold).not.toHaveBeenCalled();
+      expect(fareCalculator.calculate).not.toHaveBeenCalled();
+    });
+  });
+
+  // ─── refund quote ───────────────────────────────────────────────────────────
+
+  describe("getRefundQuote", () => {
+    beforeEach(() => {
+      jest.useFakeTimers().setSystemTime(new Date("2026-05-10T12:00:00Z"));
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it("returns full refund for a far-future confirmed reservation", async () => {
+      reservationsRepo.findById.mockResolvedValue(
+        makeRow({
+          status: "confirmed",
+          grand_total_usd: "1000.00",
+          check_in: "2026-05-20",
+        }),
+      );
+
+      const quote = await service.getRefundQuote("res-uuid");
+
+      expect(quote).toEqual({
+        policy: "full_refund",
+        refundableUsd: 1000,
+        daysUntilCheckIn: 10,
+      });
+    });
+
+    it("treats a missing grand total as zero", async () => {
+      reservationsRepo.findById.mockResolvedValue(
+        makeRow({
+          status: "confirmed",
+          grand_total_usd: null,
+          check_in: "2026-05-20",
+        }),
+      );
+
+      const quote = await service.getRefundQuote("res-uuid");
+
+      expect(quote.refundableUsd).toBe(0);
     });
   });
 });

@@ -221,6 +221,54 @@ describe('PropertyDashboardPage', () => {
     expect(screen.getByText('No hay reservaciones para este mes.')).toBeInTheDocument();
   });
 
+  it('navigates to the edit reservation page on edit button click', async () => {
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByText('María López')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByLabelText('Editar reserva'));
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: '/mi-hotel/$propertyId/reservas/$reservationId/editar',
+      params: { propertyId: 'prop-abc', reservationId: 'res-uuid-1234' },
+    });
+  });
+
+  it('does not show the edit button for non-confirmed reservations', async () => {
+    global.fetch = jest.fn().mockImplementation((url: string) => {
+      let body: unknown;
+      if ((url as string).includes('/reservations')) {
+        body = {
+          partnerId: 'partner-1',
+          propertyId: 'prop-abc',
+          month: '2026-05',
+          roomType: null,
+          reservations: [
+            { ...HOTEL_STATE_RESPONSE.reservations[0], id: 'res-cancelled', status: 'cancelled' },
+          ],
+        };
+      } else if ((url as string).match(/\/properties\/[^/]+\/rooms$/)) {
+        body = { partnerId: 'partner-1', propertyId: 'prop-abc', month: '2026-05', rooms: [] };
+      } else if ((url as string).match(/\/properties\/[^/]+$/)) {
+        body = PROPERTY_RESPONSE;
+      } else {
+        body = {
+          partnerId: 'partner-1',
+          propertyId: 'prop-abc',
+          month: '2026-05',
+          roomType: null,
+          metrics: HOTEL_STATE_RESPONSE.metrics,
+          monthlySeries: HOTEL_STATE_RESPONSE.monthlySeries,
+        };
+      }
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(body) });
+    }) as never;
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByText('CANCELLED')).toBeInTheDocument();
+    });
+    expect(screen.queryByLabelText('Editar reserva')).not.toBeInTheDocument();
+  });
+
   it('navigates month backward and forward', async () => {
     renderPage();
     await waitFor(() => {
