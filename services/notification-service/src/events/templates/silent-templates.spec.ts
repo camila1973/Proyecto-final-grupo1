@@ -24,8 +24,8 @@ function makeEvent(routingKey: BookingEvent["routingKey"]): BookingEvent {
 }
 
 describe("silent templates", () => {
-  it("checked-in returns null", () => {
-    expect(checkedIn(makeEvent("booking.checked_in"))).toBeNull();
+  it("checked-in now sends an email (no longer silent)", () => {
+    expect(checkedIn(makeEvent("booking.checked_in"))).not.toBeNull();
   });
 
   it("failed returns null", () => {

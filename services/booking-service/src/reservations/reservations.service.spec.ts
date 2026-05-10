@@ -966,6 +966,75 @@ describe("ReservationsService", () => {
     });
   });
 
+  // ─── partnerCheckin ──────────────────────────────────────────────────────────
+
+  describe("partnerCheckin", () => {
+    const CONFIRMED_ROW = makeRow({
+      status: "confirmed",
+      partner_id: "partner-uuid",
+    });
+
+    beforeEach(() => {
+      reservationsRepo.findById = jest.fn().mockResolvedValue(CONFIRMED_ROW);
+      reservationsRepo.checkin = jest
+        .fn()
+        .mockResolvedValue(makeRow({ status: "checked_in" }));
+    });
+
+    it("checks in the reservation and returns mapped response", async () => {
+      const result = await service.partnerCheckin("res-uuid", "partner-uuid");
+
+      expect(reservationsRepo.findById).toHaveBeenCalledWith("res-uuid");
+      expect(reservationsRepo.checkin).toHaveBeenCalledWith("res-uuid");
+      expect(result).toEqual({ id: "res-uuid" });
+    });
+
+    it("throws ForbiddenException when partnerId is empty", async () => {
+      await expect(service.partnerCheckin("res-uuid", "")).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(reservationsRepo.findById).not.toHaveBeenCalled();
+    });
+
+    it("throws ForbiddenException when partnerId does not match the reservation", async () => {
+      await expect(
+        service.partnerCheckin("res-uuid", "other-partner"),
+      ).rejects.toThrow(ForbiddenException);
+      expect(reservationsRepo.checkin).not.toHaveBeenCalled();
+    });
+
+    it("throws BadRequestException when reservation is not confirmed", async () => {
+      reservationsRepo.findById = jest
+        .fn()
+        .mockResolvedValue(
+          makeRow({ status: "held", partner_id: "partner-uuid" }),
+        );
+
+      await expect(
+        service.partnerCheckin("res-uuid", "partner-uuid"),
+      ).rejects.toThrow(BadRequestException);
+      expect(reservationsRepo.checkin).not.toHaveBeenCalled();
+    });
+
+    it("publishes booking.checked_in with actor=partner", async () => {
+      await service.partnerCheckin("res-uuid", "partner-uuid");
+
+      expect(publisher.publish).toHaveBeenCalledWith(
+        "booking.checked_in",
+        expect.objectContaining({
+          routingKey: "booking.checked_in",
+          actor: "partner",
+        }),
+      );
+    });
+
+    it("does not call partnersClient.getCheckinKey (no key validation for partners)", async () => {
+      await service.partnerCheckin("res-uuid", "partner-uuid");
+
+      expect(partnersClient.getCheckinKey).not.toHaveBeenCalled();
+    });
+  });
+
   // ─── checkin ────────────────────────────────────────────────────────────────
 
   describe("checkin", () => {

@@ -471,6 +471,30 @@ export class ReservationsService {
     return this.reservationsRepo.toResponse(updated);
   }
 
+  async partnerCheckin(id: string, partnerId: string) {
+    if (!partnerId) {
+      throw new ForbiddenException("Partner identity required");
+    }
+
+    const row = await this.reservationsRepo.findById(id);
+
+    if (row.partner_id !== partnerId) {
+      throw new ForbiddenException(
+        "You are not authorized to check in for this reservation",
+      );
+    }
+
+    if (row.status !== "confirmed") {
+      throw new BadRequestException(
+        `Reservation must be confirmed to check in (current status: ${row.status})`,
+      );
+    }
+
+    const updated = await this.reservationsRepo.checkin(id);
+    this.emit("booking.checked_in", updated, "partner");
+    return this.reservationsRepo.toResponse(updated);
+  }
+
   async checkin(id: string, checkInKey: string, bookerId: string) {
     const row = await this.reservationsRepo.findById(id);
 

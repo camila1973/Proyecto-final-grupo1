@@ -240,6 +240,28 @@ export interface CancelReservationOutcome {
   } | null;
 }
 
+export async function partnerCheckIn(id: string, token: string): Promise<void> {
+  const res = await fetch(
+    `${API_BASE}/api/booking/reservations/${id}/partner-check-in`,
+    { method: 'PATCH', headers: { Authorization: `Bearer ${token}` } },
+  );
+  if (!res.ok) {
+    const data = (await res.json().catch(() => ({}))) as { message?: string };
+    throw new Error(data.message ?? `HTTP ${res.status}`);
+  }
+}
+
+export async function partnerCheckOut(id: string, token: string): Promise<void> {
+  const res = await fetch(
+    `${API_BASE}/api/booking/reservations/${id}/check-out`,
+    { method: 'PATCH', headers: { Authorization: `Bearer ${token}` } },
+  );
+  if (!res.ok) {
+    const data = (await res.json().catch(() => ({}))) as { message?: string };
+    throw new Error(data.message ?? `HTTP ${res.status}`);
+  }
+}
+
 export async function cancelReservation(
   id: string,
   token: string,
