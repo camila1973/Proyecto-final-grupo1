@@ -3,21 +3,17 @@ import { useTranslation } from 'react-i18next';
 import {
   Alert,
   Box,
-  Button,
   Card,
   Chip,
   CircularProgress,
-  Stack,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  Tooltip,
   Typography,
 } from '@mui/material';
-import AddIcon from '@mui/icons-material/Add';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import type { TaxRule } from '../../../../utils/queries';
 import { KpiBlock } from './components';
@@ -48,18 +44,9 @@ export default function TaxTab({ country, countryLabel, city, rules, isLoading, 
 
   return (
     <Card sx={{ p: 3 }}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
-        <Typography sx={{ fontSize: 16, fontWeight: 600, color: '#1a2332' }}>
-          {t('partner.properties.edit.tax.title', { city, country: countryLabel })}
-        </Typography>
-        <Tooltip title={t('partner.properties.edit.coming_soon')}>
-          <span>
-            <Button variant="contained" size="small" startIcon={<AddIcon fontSize="small" />} disabled>
-              {t('partner.properties.edit.tax.new_rule')}
-            </Button>
-          </span>
-        </Tooltip>
-      </Stack>
+      <Typography sx={{ fontSize: 16, fontWeight: 600, color: '#1a2332', mb: 1.5 }}>
+        {t('partner.properties.edit.tax.title', { city, country: countryLabel })}
+      </Typography>
 
       <Alert severity="info" icon={<InfoOutlinedIcon fontSize="inherit" />} sx={{ fontSize: 12.5, mb: 2 }}>
         {t('partner.properties.edit.tax.banner', { city })}

@@ -544,8 +544,7 @@
         },
         "tax": {
           "title": "Reglas de impuesto · {{city}}, {{country}}",
-          "new_rule": "Nueva regla",
-          "banner": "Estas reglas se aplican automáticamente a todas las reservas en {{city}}.",
+          "banner": "TravelHub administra las reglas de impuesto regulatorias para {{city}}. Se reflejan en los precios mostrados en la búsqueda y se desglosan al confirmar la reserva.",
           "load_error": "No se pudieron cargar las reglas de impuesto.",
           "no_rules": "Sin reglas configuradas para {{city}}.",
           "all_cities": "Todas",
