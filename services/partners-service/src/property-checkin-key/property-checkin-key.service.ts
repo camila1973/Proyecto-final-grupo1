@@ -22,28 +22,48 @@ export class PropertyCheckinKeyService {
   async findKey(
     partnerId: string,
     propertyId: string,
-  ): Promise<{ partnerId: string; propertyId: string; checkInKey: string }> {
-    const checkInKey = await this.repo.findActiveKey(partnerId, propertyId);
-    if (!checkInKey) {
+  ): Promise<{
+    partnerId: string;
+    propertyId: string;
+    checkInKey: string;
+    createdAt: string;
+  }> {
+    const row = await this.repo.findActiveKey(partnerId, propertyId);
+    if (!row) {
       throw new NotFoundException(
         `No active check-in key for partner ${partnerId} / property ${propertyId}`,
       );
     }
-    return { partnerId, propertyId, checkInKey };
+    return {
+      partnerId,
+      propertyId,
+      checkInKey: row.checkInKey,
+      createdAt: row.createdAt.toISOString(),
+    };
   }
 
   async regenerateKey(
     partnerId: string,
     propertyId: string,
-  ): Promise<{ partnerId: string; propertyId: string; checkInKey: string }> {
+  ): Promise<{
+    partnerId: string;
+    propertyId: string;
+    checkInKey: string;
+    createdAt: string;
+  }> {
     const newKey = randomBytes(32).toString("hex");
-    const checkInKey = await this.repo.rotateKey(partnerId, propertyId, newKey);
-    if (!checkInKey) {
+    const row = await this.repo.rotateKey(partnerId, propertyId, newKey);
+    if (!row) {
       throw new NotFoundException(
         `No active check-in key for partner ${partnerId} / property ${propertyId}`,
       );
     }
-    return { partnerId, propertyId, checkInKey };
+    return {
+      partnerId,
+      propertyId,
+      checkInKey: row.checkInKey,
+      createdAt: row.createdAt.toISOString(),
+    };
   }
 
   async generateCheckinPdf(
@@ -51,8 +71,8 @@ export class PropertyCheckinKeyService {
     propertyId: string,
     res: Response,
   ): Promise<void> {
-    const checkInKey = await this.repo.findActiveKey(partnerId, propertyId);
-    if (!checkInKey) {
+    const row = await this.repo.findActiveKey(partnerId, propertyId);
+    if (!row) {
       throw new NotFoundException(
         `No active check-in key for partner ${partnerId} / property ${propertyId}`,
       );
@@ -61,7 +81,7 @@ export class PropertyCheckinKeyService {
     const property = await this.inventoryClient.getPropertyById(propertyId);
     const propertyName = property?.name ?? propertyId;
 
-    const deepLink = `travelhub://checkin?key=${checkInKey}`;
+    const deepLink = `travelhub://checkin?key=${row.checkInKey}`;
     const qrBuffer = await QRCode.toBuffer(deepLink, {
       errorCorrectionLevel: "M",
       width: 400,

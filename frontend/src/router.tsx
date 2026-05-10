@@ -18,8 +18,8 @@ import MiHotelPage from './pages/partner/dashboard';
 import PagosPage from './pages/partner/payments';
 import PropertyDashboardPage from './pages/partner/property';
 import PagosPropertyPage from './pages/partner/property/pagos';
-import PropertyQrPage from './pages/partner/property/qr';
 import PropertyEditPage from './pages/partner/property/edit';
+import { TAB_IDS, type TabId } from './pages/partner/property/edit/shared';
 import RoomDetailPage from './pages/partner/property/rooms';
 import PartnerRegisterPage from './pages/partner/register';
 
@@ -161,15 +161,12 @@ const propertyPagosRoute = createRoute({
   component: PagosPropertyPage,
 });
 
-const propertyQrRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/mi-hotel/$propertyId/qr',
-  component: PropertyQrPage,
-});
-
 const propertyEditRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/mi-hotel/$propertyId/editar',
+  validateSearch: (search: Record<string, unknown>) => ({
+    tab: TAB_IDS.includes(search.tab as TabId) ? (search.tab as TabId) : 'info',
+  }),
   component: PropertyEditPage,
 });
 
@@ -196,7 +193,6 @@ const routeTree = rootRoute.addChildren([
   pagosRoute,
   propertyDashboardRoute,
   propertyPagosRoute,
-  propertyQrRoute,
   propertyEditRoute,
   roomDetailRoute,
 ]);

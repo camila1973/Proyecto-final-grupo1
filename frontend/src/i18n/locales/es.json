@@ -501,7 +501,12 @@
         "regenerate_dialog_body": "Se generará una nueva llave. El QR anterior dejará de funcionar. Esta acción no se puede deshacer.",
         "regenerate_cancel": "Cancelar",
         "regenerate_confirm": "Sí, regenerar",
-        "load_error": "No se pudo cargar el código QR. Inténtalo más tarde."
+        "load_error": "No se pudo cargar el código QR. Inténtalo más tarde.",
+        "status_title": "Estado del QR",
+        "status_active": "Activo",
+        "status_warning": "Si tu QR fue copiado o reemplazado físicamente, regenéralo. El cartel anterior dejará de funcionar.",
+        "regenerate_link": "Regenerar QR…",
+        "generated_at": "Generado el {{date}}"
       },
       "edit": {
         "breadcrumb": "Configuración",
@@ -515,7 +520,8 @@
           "info": "Información",
           "tax": "Reglas de impuesto",
           "fees": "Tarifas y comisiones",
-          "media": "Imágenes"
+          "media": "Imágenes",
+          "qr": "Código QR"
         },
         "info": {
           "section_title": "Información de la propiedad",

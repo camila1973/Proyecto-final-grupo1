@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, useParams } from '@tanstack/react-router';
+import { useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
@@ -28,6 +28,7 @@ import InfoTab from './InfoTab';
 import TaxTab from './TaxTab';
 import FeesTab from './FeesTab';
 import MediaTab from './MediaTab';
+import QrTab from './QrTab';
 
 export default function PropertyEditPage() {
   const { t } = useTranslation();
@@ -35,11 +36,14 @@ export default function PropertyEditPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { propertyId } = useParams({ from: '/mi-hotel/$propertyId/editar' });
+  const { tab } = useSearch({ from: '/mi-hotel/$propertyId/editar' });
 
   const partnerId = user?.partnerId ?? '';
   const enabled = !!token && !!partnerId;
 
-  const [tab, setTab] = useState<TabId>('info');
+  const setTab = (next: TabId) =>
+    navigate({ to: '/mi-hotel/$propertyId/editar', params: { propertyId }, search: { tab: next }, replace: true });
+
   const [form, setForm] = useState<FormState | null>(null);
   const [seededFor, setSeededFor] = useState<string | null>(null);
 
@@ -157,6 +161,7 @@ export default function PropertyEditPage() {
             <Tab value="tax" label={t('partner.properties.edit.tabs.tax')} />
             <Tab value="fees" label={t('partner.properties.edit.tabs.fees')} />
             <Tab value="media" label={t('partner.properties.edit.tabs.media')} />
+            <Tab value="qr" label={t('partner.properties.edit.tabs.qr')} />
           </Tabs>
         </Box>
       </Box>
@@ -196,6 +201,7 @@ export default function PropertyEditPage() {
           />
         )}
         {tab === 'media' && <MediaTab thumbnailUrl={property.thumbnailUrl} />}
+        {tab === 'qr' && <QrTab propertyId={propertyId} />}
       </PageContainer>
     </Box>
   );
