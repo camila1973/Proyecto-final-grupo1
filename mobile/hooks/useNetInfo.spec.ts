@@ -1,5 +1,13 @@
 // Must be hoisted before any import that resolves @react-native-community/netinfo
-import { resolveConnected, resolveType } from './useNetInfo';
+import * as React from 'react';
+import { resolveConnected, resolveType, useNetInfo } from './useNetInfo';
+
+jest.mock('react', () => ({
+  ...jest.requireActual('react'),
+  useState: jest.fn(),
+  useRef: jest.fn(),
+  useEffect: jest.fn(),
+}));
 
 jest.mock('@react-native-community/netinfo', () => ({
   __esModule: true,
@@ -81,9 +89,10 @@ describe('resolveType', () => {
 
 // ─── NetInfo integration ──────────────────────────────────────────────────────
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const NetInfo = require('@react-native-community/netinfo').default;
+
 describe('useNetInfo — NetInfo integration', () => {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const NetInfo = require('@react-native-community/netinfo').default;
 
   beforeEach(() => jest.clearAllMocks());
 
@@ -131,5 +140,120 @@ describe('useNetInfo — NetInfo integration', () => {
     const cellularState = makeState({ type: 'cellular', isConnected: true, isInternetReachable: true });
     expect(resolveConnected(cellularState)).toBe(true);
     expect(resolveType(cellularState)).toBe('cellular');
+  });
+});
+
+// ─── useNetInfo hook ──────────────────────────────────────────────────────────
+
+describe('useNetInfo hook', () => {
+  let setResult: jest.Mock;
+  let offlineTimerRef: { current: ReturnType<typeof setTimeout> | null };
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+    setResult = jest.fn();
+    offlineTimerRef = { current: null };
+    (NetInfo.fetch as jest.Mock).mockResolvedValue(
+      makeState({ isConnected: true, isInternetReachable: true }),
+    );
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+    jest.useRealTimers();
+  });
+
+  function mountHook() {
+    (React.useState as jest.Mock).mockReturnValueOnce([
+      { isConnected: true, hasNetwork: true, connectionType: 'unknown', isLoading: true },
+      setResult,
+    ]);
+    (React.useRef as jest.Mock).mockReturnValueOnce(offlineTimerRef);
+
+    let capturedListener: ((state: any) => void) | undefined;
+    let effectCleanup: (() => void) | undefined;
+
+    (NetInfo.addEventListener as jest.Mock).mockImplementation((fn: (s: any) => void) => {
+      capturedListener = fn;
+      return jest.fn();
+    });
+
+    (React.useEffect as jest.Mock).mockImplementationOnce((fn: () => () => void) => {
+      effectCleanup = fn();
+    });
+
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    useNetInfo();
+    return { capturedListener: capturedListener!, effectCleanup: effectCleanup! };
+  }
+
+  it('registers a NetInfo event listener on mount', () => {
+    mountHook();
+    expect(NetInfo.addEventListener).toHaveBeenCalledTimes(1);
+  });
+
+  it('fetches current state on mount', () => {
+    mountHook();
+    expect(NetInfo.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('going online immediately updates state as connected', async () => {
+    const { capturedListener } = mountHook();
+    capturedListener(makeState({ isConnected: true, isInternetReachable: true, type: 'wifi' }));
+
+    expect(setResult).toHaveBeenCalledWith({
+      isConnected: true,
+      hasNetwork: true,
+      connectionType: 'wifi',
+      isLoading: false,
+    });
+  });
+
+  it('going offline does not update state immediately (debounce)', () => {
+    const { capturedListener } = mountHook();
+    capturedListener(makeState({ type: 'none', isConnected: false, isInternetReachable: false }));
+
+    expect(setResult).not.toHaveBeenCalled();
+    expect(offlineTimerRef.current).not.toBeNull();
+  });
+
+  it('going offline updates state after the 2-second debounce', () => {
+    const { capturedListener } = mountHook();
+    capturedListener(makeState({ type: 'none', isConnected: false, isInternetReachable: false }));
+
+    jest.advanceTimersByTime(2000);
+
+    expect(setResult).toHaveBeenCalledWith({
+      isConnected: false,
+      hasNetwork: false,
+      connectionType: 'none',
+      isLoading: false,
+    });
+  });
+
+  it('coming back online cancels the offline debounce timer', () => {
+    const { capturedListener } = mountHook();
+
+    // First go offline to start the debounce
+    capturedListener(makeState({ type: 'none', isConnected: false, isInternetReachable: false }));
+    expect(offlineTimerRef.current).not.toBeNull();
+
+    // Then come back online — should cancel the timer
+    capturedListener(makeState({ isConnected: true, isInternetReachable: true, type: 'wifi' }));
+    expect(offlineTimerRef.current).toBeNull();
+    expect(setResult).toHaveBeenCalledWith(
+      expect.objectContaining({ isConnected: true }),
+    );
+  });
+
+  it('cleanup unsubscribes the listener and clears any pending debounce', () => {
+    const { capturedListener, effectCleanup } = mountHook();
+
+    // Start a debounce
+    capturedListener(makeState({ type: 'none', isConnected: false, isInternetReachable: false }));
+    expect(jest.getTimerCount()).toBe(1);
+
+    effectCleanup();
+    expect(jest.getTimerCount()).toBe(0);
   });
 });
