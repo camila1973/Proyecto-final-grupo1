@@ -44,21 +44,21 @@ jobs:
         working-directory: performance-tests
         run: k6 run --out json=results/results-search-smoke.json scenarios/smoke/search.js
         env:
-          GATEWAY_URL: ${{ github.event.inputs.gateway_url || env.GATEWAY_URL }}
+          GATEWAY_URL: ${{ github.event.inputs.gateway_url || vars.GATEWAY_URL }}
 
       - name: Run smoke/booking
         if: ${{ github.event.inputs.profile == 'smoke' || github.event.inputs.profile == 'all' }}
         working-directory: performance-tests
         run: k6 run --out json=results/results-booking.json scenarios/smoke/booking.js
         env:
-          GATEWAY_URL: ${{ github.event.inputs.gateway_url || env.GATEWAY_URL }}
+          GATEWAY_URL: ${{ github.event.inputs.gateway_url || vars.GATEWAY_URL }}
 
       - name: Run load/search
         if: ${{ github.event.inputs.profile == 'load' || github.event.inputs.profile == 'all' }}
         working-directory: performance-tests
         run: k6 run --out json=results/results-search-load.json scenarios/load/search.js
         env:
-          GATEWAY_URL: ${{ github.event.inputs.gateway_url || env.GATEWAY_URL }}
+          GATEWAY_URL: ${{ github.event.inputs.gateway_url || vars.GATEWAY_URL }}
 
       - name: Upload results
         if: always()  # upload even when thresholds fail so the report is available
