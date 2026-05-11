@@ -155,14 +155,14 @@ describe("EventsService.onModuleInit", () => {
     expect(amqp.connect).not.toHaveBeenCalled();
   });
 
-  it("subscribes to all 6 booking routing keys", async () => {
+  it("subscribes to all 7 booking routing keys", async () => {
     process.env.MESSAGE_BROKER_TYPE = "rabbitmq";
 
     await service.onModuleInit();
 
-    expect(channel.assertQueue).toHaveBeenCalledTimes(6);
-    expect(channel.bindQueue).toHaveBeenCalledTimes(6);
-    expect(channel.consume).toHaveBeenCalledTimes(6);
+    expect(channel.assertQueue).toHaveBeenCalledTimes(7);
+    expect(channel.bindQueue).toHaveBeenCalledTimes(7);
+    expect(channel.consume).toHaveBeenCalledTimes(7);
   });
 
   it("logs error and does not throw when RabbitMQ connection fails", async () => {

@@ -184,8 +184,8 @@ Reservations go through the following states:
 ```
 [User clicks Book]
         ↓
-     held  ──(15 min expires)──→  expired
-        │   ──(user cancel)────→  cancelled
+     held  ──(15 min expires)──→  expired                       (terminal)
+        │   ──(user cancel)────→  cancelled                     (terminal)
         │
   [payment-service.initiate() called]
         ↓
@@ -194,8 +194,11 @@ Reservations go through the following states:
         │                                                              │
   [Stripe webhook: payment_intent.succeeded]                [user retries payment]
         ↓                                                              │
-  confirmed  ──(user cancel)──→  cancelled                            ↓
-                                                          failed ──(rehold)──→ held (retry)
+  confirmed  ──(user cancel)────────→  cancelled                       ↓
+        │    ──(no-show job, hourly)─→  no_show     (terminal) failed ──(rehold)──→ held (retry)
+        │    ──(guest check-in)──────→  checked_in
+                                            │
+                                            └──(checkout)──→  checked_out  (terminal)
 ```
 
 | Status | Meaning | Inventory hold | Can re-book same room? |
@@ -203,9 +206,12 @@ Reservations go through the following states:
 | `held` | User is in checkout, room locked | Active (15-min TTL) | No |
 | `submitted` | Payment submitted to Stripe, awaiting webhook | Consumed | Yes |
 | `confirmed` | Webhook fired, booking finalized | Confirmed | No |
-| `expired` | Hold timed out without payment submission | Released | Yes |
+| `checked_in` | Guest has arrived and checked in | Consumed | No |
+| `checked_out` | Guest stayed and checked out (terminal — happy path) | Consumed | No |
+| `no_show` | Guest never arrived past check-in date (terminal — billable) | Consumed | No |
+| `expired` | Hold timed out without payment submission (terminal) | Released | Yes |
 | `failed` | Stripe reported payment failure | Released | Yes |
-| `cancelled` | User cancelled (any non-terminal state) | Released | Yes |
+| `cancelled` | User cancelled (any non-terminal state) (terminal) | Released | Yes |
 
 ### Key transitions
 
@@ -218,7 +224,10 @@ Reservations go through the following states:
 | Stripe webhook `payment_intent.payment_failed` | `submitted` → `failed` | payment-service calls `PATCH /reservations/:id/fail` |
 | `PATCH /reservations/:id/cancel` | any non-terminal → `cancelled` | Frontend/user |
 | `PATCH /reservations/:id/partner-cancel` | `confirmed` → `cancelled` | Partner dashboard (hotel-initiated) |
+| `PATCH /reservations/:id/checkin` | `confirmed` → `checked_in` | Guest (key) or partner |
+| `PATCH /reservations/:id/checkout` | `checked_in` → `checked_out` | Partner dashboard |
 | Hold expiry job (runs every 60s) | `held` → `expired` | booking-service `HoldExpiryService` |
+| No-show job (runs hourly) | `confirmed` (with `check_in < today`) → `no_show` | booking-service `NoShowService` |
 
 ### Important notes
 - The partial unique index on reservations only covers `held` rows — a `submitted` reservation does **not** block a new hold for the same room/dates.
@@ -227,6 +236,7 @@ Reservations go through the following states:
 - On payment retry, `initiate()` detects an existing payment row (`isRetry = true`), calls `rehold` to re-acquire inventory, then proceeds with a new Stripe PaymentIntent and a new payment row.
 - In local dev without Stripe webhooks configured, reservations stay `submitted` after payment. Use the Stripe CLI (`stripe listen --forward-to localhost:3005/payments/webhook`) to test the full flow.
 - `partner-cancel` only accepts `confirmed` reservations. `submitted` is blocked because cancelling mid-payment races the Stripe webhook with no refund wired; `checked_in` is blocked because that case should become a separate early-checkout operation. Refunds for partner-initiated cancels on `confirmed` reservations are not yet implemented (TODO in `reservations.service.ts`).
+- `NoShowService` runs hourly and flips `confirmed` reservations whose `check_in` date has already passed to `no_show`. It does **not** call `inventoryClient.unhold` — no-show is treated as billable revenue (room stays consumed for the stay window), consistent with PMS industry convention.
 
 ## Event Bus (Pub/Sub in GCP, RabbitMQ locally)
 
@@ -308,6 +318,7 @@ booking-service publishes a domain event on every customer-visible status transi
 | `booking.checked_out` | `booking-checked_out` | `notification-booking-checked_out` | yes ("Check-out completado") |
 | `booking.failed` | `booking-failed` | `notification-booking-failed` | no |
 | `booking.expired` | `booking-expired` | `notification-booking-expired` | no |
+| `booking.no_show` | `booking-no_show` | `notification-booking-no_show` | no |
 
 Event payload (kept in sync between `services/booking-service/src/events/events.types.ts` and `services/notification-service/src/events/types.ts`):
 

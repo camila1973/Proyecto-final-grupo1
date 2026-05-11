@@ -196,7 +196,16 @@ export async function fetchReservationById(id: string): Promise<ReservationRespo
 
 // ─── My Reservations ──────────────────────────────────────────────────────────
 
-export type ReservationStatus = 'held' | 'submitted' | 'confirmed' | 'failed' | 'expired' | 'cancelled';
+export type ReservationStatus =
+  | 'held'
+  | 'submitted'
+  | 'confirmed'
+  | 'checked_in'
+  | 'checked_out'
+  | 'no_show'
+  | 'failed'
+  | 'expired'
+  | 'cancelled';
 
 export interface ReservationSnapshot {
   propertyName: string;

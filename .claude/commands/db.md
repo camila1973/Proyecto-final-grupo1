@@ -9,6 +9,7 @@ Each service with a database has `migrate` and `seed` nx targets. The local DB p
 | `inventory-service` | 5434 | `travelhub` |
 | `integration-service` | 5435 | `integration_service` |
 | `booking-service` | 5436 | `travelhub` |
+| `payment-service` | 5437 | `travelhub` |
 | `partners-service` | 5438 | `partners_service` |
 
 ```bash
@@ -31,6 +32,10 @@ pnpm exec nx run integration-service:seed
 # Booking service
 DATABASE_URL=postgres://postgres:postgres@localhost:5436/travelhub pnpm exec nx run booking-service:migrate
 DATABASE_URL=postgres://postgres:postgres@localhost:5436/travelhub pnpm exec nx run booking-service:seed
+
+# Payment service
+DATABASE_URL=postgres://postgres:postgres@localhost:5437/travelhub pnpm exec nx run payment-service:migrate
+DATABASE_URL=postgres://postgres:postgres@localhost:5437/travelhub pnpm exec nx run payment-service:seed
 
 # Partners service
 DATABASE_URL=postgres://postgres:postgres@localhost:5438/partners_service pnpm exec nx run partners-service:migrate

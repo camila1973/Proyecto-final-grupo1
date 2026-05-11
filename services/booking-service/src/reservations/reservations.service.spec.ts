@@ -837,6 +837,63 @@ describe("ReservationsService", () => {
     });
   });
 
+  describe("noShow", () => {
+    it("returns mapped response for a confirmed reservation", async () => {
+      const noShowRow = makeRow({
+        status: "no_show",
+        reason: "guest did not arrive",
+      });
+      reservationsRepo.markNoShow = jest.fn().mockResolvedValue(noShowRow);
+
+      const result = await service.noShow("res-uuid");
+
+      expect(reservationsRepo.markNoShow).toHaveBeenCalledWith(
+        "res-uuid",
+        "guest did not arrive",
+      );
+      expect(result).toEqual({ id: noShowRow.id });
+    });
+
+    it("does not release inventory (no-show is billable)", async () => {
+      const noShowRow = makeRow({ status: "no_show" });
+      reservationsRepo.markNoShow = jest.fn().mockResolvedValue(noShowRow);
+
+      await service.noShow("res-uuid");
+
+      expect(inventoryClient.unhold).not.toHaveBeenCalled();
+      expect(inventoryClient.release).not.toHaveBeenCalled();
+    });
+
+    it("returns undefined without publishing when row is not confirmed", async () => {
+      reservationsRepo.markNoShow = jest.fn().mockResolvedValue(undefined);
+
+      const result = await service.noShow("res-uuid");
+
+      expect(result).toBeUndefined();
+      expect(publisher.publish).not.toHaveBeenCalled();
+    });
+
+    it("publishes booking.no_show with actor=system and the reason", async () => {
+      const noShowRow = makeRow({
+        status: "no_show",
+        reason: "guest did not arrive",
+      });
+      reservationsRepo.markNoShow = jest.fn().mockResolvedValue(noShowRow);
+
+      await service.noShow("res-uuid");
+
+      expect(publisher.publish).toHaveBeenCalledWith(
+        "booking.no_show",
+        expect.objectContaining({
+          routingKey: "booking.no_show",
+          reservationId: noShowRow.id,
+          actor: "system",
+          reason: "guest did not arrive",
+        }),
+      );
+    });
+  });
+
   // ─── confirm ────────────────────────────────────────────────────────────────
 
   describe("confirm", () => {
