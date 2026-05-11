@@ -1,4 +1,4 @@
-import { Injectable, type NestMiddleware } from "@nestjs/common";
+import { Injectable, Logger, type NestMiddleware } from "@nestjs/common";
 import type { NextFunction, Request, Response } from "express";
 import { JsonWebTokenError } from "jsonwebtoken";
 import { MissingTokenError } from "./jwt.types";
@@ -15,6 +15,8 @@ const IDENTITY_HEADERS = [
 
 @Injectable()
 export class AuthMiddleware implements NestMiddleware {
+  private readonly logger = new Logger(AuthMiddleware.name);
+
   constructor(private readonly verifier: JwtVerifier) {}
 
   use(req: Request, res: Response, next: NextFunction): void {
@@ -40,8 +42,8 @@ export class AuthMiddleware implements NestMiddleware {
         err instanceof MissingTokenError || err instanceof JsonWebTokenError
           ? err.name
           : "UnknownError";
-      console.warn(
-        `[api-gateway] auth_failed method=${req.method} path=${req.path} reason=${reason}`,
+      this.logger.warn(
+        `auth_failed method=${req.method} path=${req.path} reason=${reason}`,
       );
       res.status(401).json({
         statusCode: 401,

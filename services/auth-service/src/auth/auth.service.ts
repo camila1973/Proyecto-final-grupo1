@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   UnauthorizedException,
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
@@ -28,6 +29,7 @@ import { AuthRepository } from "./auth.repository";
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
   private readonly jwtIssuer = "travelhub-auth-service";
   private readonly notificationServiceUrl =
     process.env.NOTIFICATION_SERVICE_URL ?? "http://localhost:3006";
@@ -309,9 +311,12 @@ export class AuthService {
           message: `Your verification code is: ${otp}\n\nThis code expires in 5 minutes.`,
         }),
       });
-    } catch {
+    } catch (err) {
       // Non-blocking: log but don't fail the login flow
-      console.error("Failed to send OTP email");
+      this.logger.error(
+        "Failed to send OTP email",
+        err instanceof Error ? err.stack : String(err),
+      );
     }
   }
 

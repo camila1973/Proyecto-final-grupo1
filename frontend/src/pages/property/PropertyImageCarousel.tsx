@@ -4,6 +4,8 @@ import IconButton from '@mui/material/IconButton';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 
+const CAROUSEL_CONTROLS_Z_INDEX = 30;
+
 interface Props {
   images: string[];
   fallbackImage?: string;
@@ -121,7 +123,7 @@ export default function PropertyImageCarousel({ images, fallbackImage, alt }: Pr
               left: 8,
               transform: 'translateY(-50%)',
               bgcolor: 'rgba(255,255,255,0.85)',
-              zIndex: 30,
+              zIndex: CAROUSEL_CONTROLS_Z_INDEX,
               '&:hover': { bgcolor: 'rgba(255,255,255,1)' },
             }}
           >
@@ -137,14 +139,15 @@ export default function PropertyImageCarousel({ images, fallbackImage, alt }: Pr
               right: 8,
               transform: 'translateY(-50%)',
               bgcolor: 'rgba(255,255,255,0.85)',
-              zIndex: 30,
+              zIndex: CAROUSEL_CONTROLS_Z_INDEX,
               '&:hover': { bgcolor: 'rgba(255,255,255,1)' },
             }}
           >
             <ChevronRightIcon fontSize="small" />
           </IconButton>
           <div
-            className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-30"
+            className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5"
+            style={{ zIndex: CAROUSEL_CONTROLS_Z_INDEX }}
             role="tablist"
             aria-label={t('property_detail.carousel.selector')}
           >
