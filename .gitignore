@@ -67,5 +67,10 @@ Thumbs.db
 # Performance test results
 performance-tests/results/*.json
 performance-tests/results/*.html
+
+# Playwright E2E
+playwright-report/
+test-results/
+/e2e/frontend/.playwright-cache
 # Claude Code runtime
 .claude/scheduled_tasks.lock
