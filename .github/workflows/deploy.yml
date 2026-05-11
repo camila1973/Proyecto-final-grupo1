@@ -134,8 +134,6 @@ jobs:
         env:
           PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
           GOOGLE_PROJECT: ${{ secrets.GCP_PROJECT_ID }}
-          FIREBASE_CLIENT_EMAIL: ${{ secrets.FIREBASE_CLIENT_EMAIL }}
-          FIREBASE_PRIVATE_KEY: ${{ secrets.FIREBASE_PRIVATE_KEY }}
         run: |
           pulumi config set --stack ${{ env.PULUMI_STACK }} smtpHost "smtp.gmail.com"
           pulumi config set --stack ${{ env.PULUMI_STACK }} smtpUser "${{ secrets.SMTP_USER }}"
@@ -146,8 +144,8 @@ jobs:
           pulumi config set --stack ${{ env.PULUMI_STACK }} stripePublishableKey "${{ secrets.STRIPE_PUBLISHABLE_KEY }}"
           pulumi config set --stack ${{ env.PULUMI_STACK }} --secret authJwtSecret "${{ secrets.AUTH_JWT_SECRET }}"
           pulumi config set --stack ${{ env.PULUMI_STACK }} firebaseProjectId "${{ secrets.FIREBASE_PROJECT_ID }}"
-          pulumi config set --stack ${{ env.PULUMI_STACK }} --secret firebaseClientEmail "$FIREBASE_CLIENT_EMAIL"
-          pulumi config set --stack ${{ env.PULUMI_STACK }} --secret firebasePrivateKey "$FIREBASE_PRIVATE_KEY"
+          pulumi config set --stack ${{ env.PULUMI_STACK }} --secret firebaseClientEmail "${{ secrets.FIREBASE_CLIENT_EMAIL }}"
+          pulumi config set --stack ${{ env.PULUMI_STACK }} --secret firebasePrivateKey "${{ secrets.FIREBASE_PRIVATE_KEY }}"
 
       - name: Deploy infrastructure + services (pulumi up)
         uses: pulumi/actions@v6
