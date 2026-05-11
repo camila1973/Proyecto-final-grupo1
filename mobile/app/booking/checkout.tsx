@@ -119,7 +119,7 @@ export default function CheckoutScreen() {
     setReservationError(null);
     try {
       const data = await createReservationHook();
-      console.log('[Checkout] Reservation created successfully:', data.id);
+      if (__DEV__) console.log('[Checkout] Reservation created successfully:', data.id);
       setReservation(data);
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : t('checkout.errorHold');
@@ -171,7 +171,7 @@ export default function CheckoutScreen() {
 
     try {
       // 1. Save guest info
-      console.log('[Checkout] Saving guest info for reservation:', reservation.id);
+      if (__DEV__) console.log('[Checkout] Saving guest info for reservation:', reservation.id);
       const guestRes = await fetch(
         `${API_BASE}/api/booking/reservations/${reservation.id}/guest-info`,
         {
@@ -187,10 +187,10 @@ export default function CheckoutScreen() {
         throw new Error('guest_info');
       }
       
-      console.log('[Checkout] Guest info saved successfully');
+      if (__DEV__) console.log('[Checkout] Guest info saved successfully');
 
       // 2. Initiate payment → get clientSecret
-      console.log('[Checkout] Initiating payment for reservation:', reservation.id);
+      if (__DEV__) console.log('[Checkout] Initiating payment for reservation:', reservation.id);
       const payRes = await fetch(`${API_BASE}/api/payment/payments/initiate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -224,10 +224,10 @@ export default function CheckoutScreen() {
       
       const paymentData = await payRes.json();
       const clientSecret = paymentData.clientSecret;
-      console.log('[Checkout] Payment client secret received');
+      if (__DEV__) console.log('[Checkout] Payment client secret received');
 
       // 3. Init PaymentSheet
-      console.log('[Checkout] Initializing Stripe PaymentSheet');
+      if (__DEV__) console.log('[Checkout] Initializing Stripe PaymentSheet');
       const { error: initError } = await initPaymentSheet({
         paymentIntentClientSecret: clientSecret,
         merchantDisplayName: 'TravelHub',
@@ -249,7 +249,7 @@ export default function CheckoutScreen() {
         throw new Error(initError.message);
       }
       
-      console.log('[Checkout] PaymentSheet initialized, presenting to user');
+      if (__DEV__) console.log('[Checkout] PaymentSheet initialized, presenting to user');
 
       // 4. Present PaymentSheet
       const { error: presentError } = await presentPaymentSheet();
@@ -259,14 +259,14 @@ export default function CheckoutScreen() {
         if (presentError.code !== 'Canceled') {
           Alert.alert(t('checkout.errorPayment'), presentError.message);
         } else {
-          console.log('[Checkout] User canceled payment');
+          if (__DEV__) console.log('[Checkout] User canceled payment');
         }
         setPaying(false);
         return;
       }
 
       // 5. Success
-      console.log('[Checkout] Payment completed successfully');
+      if (__DEV__) console.log('[Checkout] Payment completed successfully');
       clearCheckoutIntent();
       router.replace({
         pathname: '/booking/confirmation',

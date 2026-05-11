@@ -150,8 +150,8 @@ describe("AppService", () => {
     });
 
     it("logs error when sendEmail rejects", async () => {
-      const consoleSpy = jest
-        .spyOn(console, "error")
+      const loggerSpy = jest
+        .spyOn((service as any).logger, "error")
         .mockImplementation(() => {});
       jest
         .spyOn(service as any, "sendEmail")
@@ -167,19 +167,19 @@ describe("AppService", () => {
 
       await new Promise((resolve) => setImmediate(resolve));
 
-      expect(consoleSpy).toHaveBeenCalledWith(
-        "[notification-service] Email send error:",
+      expect(loggerSpy).toHaveBeenCalledWith(
+        "Email send error",
         expect.any(Error),
       );
-      consoleSpy.mockRestore();
+      loggerSpy.mockRestore();
     });
   });
 
   describe("sendEmail (private, called directly)", () => {
     it("logs in DEV MODE when SMTP_HOST is not set", async () => {
       delete process.env.SMTP_HOST;
-      const consoleSpy = jest
-        .spyOn(console, "log")
+      const loggerSpy = jest
+        .spyOn((service as any).logger, "debug")
         .mockImplementation(() => {});
 
       await (service as any).sendEmail(
@@ -188,13 +188,13 @@ describe("AppService", () => {
         "Message body",
       );
 
-      expect(consoleSpy).toHaveBeenCalledWith(
+      expect(loggerSpy).toHaveBeenCalledWith(
         expect.stringContaining("DEV MODE"),
       );
-      expect(consoleSpy).toHaveBeenCalledWith(
+      expect(loggerSpy).toHaveBeenCalledWith(
         expect.stringContaining("user@example.com"),
       );
-      consoleSpy.mockRestore();
+      loggerSpy.mockRestore();
     });
 
     it("creates nodemailer transport with correct SMTP config", async () => {

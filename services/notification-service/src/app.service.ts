@@ -1,8 +1,10 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import * as nodemailer from "nodemailer";
 
 @Injectable()
 export class AppService {
+  private readonly logger = new Logger(AppService.name);
+
   getHealth(): object {
     return { status: "ok", service: "notification-service" };
   }
@@ -42,7 +44,7 @@ export class AppService {
     if (body.channel === "email" && body.to) {
       this.sendEmail(body.to, body.subject, body.message, body.html).catch(
         (err) => {
-          console.error("[notification-service] Email send error:", err);
+          this.logger.error("Email send error", err);
         },
       );
     }
@@ -64,8 +66,8 @@ export class AppService {
     const smtpHost = process.env.SMTP_HOST;
 
     if (!smtpHost) {
-      console.log(
-        `[notification-service] DEV MODE - Email to <${to}> | Subject: ${subject} | ${text}`,
+      this.logger.debug(
+        `DEV MODE - Email to <${to}> | Subject: ${subject} | ${text}`,
       );
       return;
     }
