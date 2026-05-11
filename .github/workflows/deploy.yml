@@ -129,7 +129,7 @@ jobs:
       # - builds & pushes Docker images for all services
       # - creates/updates Cloud Run services
       # - provisions Cloud SQL, Memorystore, Pub/Sub, VPC, Artifact Registry
-      - name: Set SMTP, Stripe and JWT config
+      - name: Set SMTP, Stripe, JWT and Firebase config
         working-directory: pulumi
         env:
           PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
@@ -143,6 +143,9 @@ jobs:
           pulumi config set --stack ${{ env.PULUMI_STACK }} --secret stripeWebhookSecret "${{ secrets.STRIPE_WEBHOOK_SECRET }}"
           pulumi config set --stack ${{ env.PULUMI_STACK }} stripePublishableKey "${{ secrets.STRIPE_PUBLISHABLE_KEY }}"
           pulumi config set --stack ${{ env.PULUMI_STACK }} --secret authJwtSecret "${{ secrets.AUTH_JWT_SECRET }}"
+          pulumi config set --stack ${{ env.PULUMI_STACK }} firebaseProjectId "${{ secrets.FIREBASE_PROJECT_ID }}"
+          pulumi config set --stack ${{ env.PULUMI_STACK }} --secret firebaseClientEmail "${{ secrets.FIREBASE_CLIENT_EMAIL }}"
+          pulumi config set --stack ${{ env.PULUMI_STACK }} --secret firebasePrivateKey "${{ secrets.FIREBASE_PRIVATE_KEY }}"
 
       - name: Deploy infrastructure + services (pulumi up)
         uses: pulumi/actions@v6

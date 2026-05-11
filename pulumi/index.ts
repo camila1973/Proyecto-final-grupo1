@@ -23,6 +23,11 @@ const stripeSecretKey       = appConfig.getSecret("stripeSecretKey");
 const stripeWebhookSecret   = appConfig.getSecret("stripeWebhookSecret");
 const stripePublishableKey  = appConfig.get("stripePublishableKey");
 
+// Firebase — required for notification-service push notifications
+const firebaseProjectId    = appConfig.get("firebaseProjectId");
+const firebaseClientEmail  = appConfig.getSecret("firebaseClientEmail");
+const firebasePrivateKey   = appConfig.getSecret("firebasePrivateKey");
+
 // JWT — shared between auth-service (signer) and api-gateway (verifier)
 const authJwtSecret = appConfig.requireSecret("authJwtSecret");
 
@@ -268,6 +273,38 @@ const smtpPassSecret = smtpPass
     })()
   : null;
 
+// ─── Secret Manager — Firebase credentials (notification-service) ────────────
+
+const firebaseClientEmailSecret = firebaseClientEmail
+  ? (() => {
+      const secret = new gcp.secretmanager.Secret("secret-firebase-client-email", {
+        secretId: "travelhub-firebase-client-email",
+        replication: { auto: {} },
+        labels: LABELS,
+      });
+      new gcp.secretmanager.SecretVersion("secret-firebase-client-email-version", {
+        secret: secret.id,
+        secretData: firebaseClientEmail,
+      });
+      return secret;
+    })()
+  : null;
+
+const firebasePrivateKeySecret = firebasePrivateKey
+  ? (() => {
+      const secret = new gcp.secretmanager.Secret("secret-firebase-private-key", {
+        secretId: "travelhub-firebase-private-key",
+        replication: { auto: {} },
+        labels: LABELS,
+      });
+      new gcp.secretmanager.SecretVersion("secret-firebase-private-key-version", {
+        secret: secret.id,
+        secretData: firebasePrivateKey,
+      });
+      return secret;
+    })()
+  : null;
+
 // ─── Secret Manager — Stripe keys (payment-service) ──────────────────────────
 
 const stripeSecretKeySecret = stripeSecretKey
@@ -485,12 +522,25 @@ for (const svc of MICROSERVICES) {
     secretEnvVars["AUTH_JWT_SECRET"]          = { secretId: authJwtSecretSecret.secretId };
   }
 
-  if (svc.name === "notification-service" && smtpHost && smtpUser && smtpPass) {
-    plainEnv["SMTP_HOST"] = smtpHost;
-    plainEnv["SMTP_PORT"] = smtpPort;
-    plainEnv["SMTP_USER"] = smtpUser;
-    plainEnv["SMTP_FROM"] = smtpFrom ?? smtpUser;
-    secretEnvVars["SMTP_PASS"] = { secretId: smtpPassSecret!.secretId };
+  if (svc.name === "notification-service") {
+    plainEnv["MESSAGE_BROKER_TYPE"] = "pubsub";
+    plainEnv["PUBSUB_PROJECT_ID"]   = PROJECT;
+    if (smtpHost && smtpUser && smtpPass) {
+      plainEnv["SMTP_HOST"] = smtpHost;
+      plainEnv["SMTP_PORT"] = smtpPort;
+      plainEnv["SMTP_USER"] = smtpUser;
+      plainEnv["SMTP_FROM"] = smtpFrom ?? smtpUser;
+      secretEnvVars["SMTP_PASS"] = { secretId: smtpPassSecret!.secretId };
+    }
+    if (firebaseProjectId) {
+      plainEnv["FIREBASE_PROJECT_ID"] = firebaseProjectId;
+    }
+    if (firebaseClientEmailSecret) {
+      secretEnvVars["FIREBASE_CLIENT_EMAIL"] = { secretId: firebaseClientEmailSecret.secretId };
+    }
+    if (firebasePrivateKeySecret) {
+      secretEnvVars["FIREBASE_PRIVATE_KEY"] = { secretId: firebasePrivateKeySecret.secretId };
+    }
   }
 
   if (svc.name === "booking-service") {
