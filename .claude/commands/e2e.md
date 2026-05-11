@@ -34,6 +34,7 @@ nx e2e mobile                 # same as e2e:mobile via Nx
 
 ## Key design decisions
 
+- **On Android, run Maestro against a release APK, not debug + Metro** — debug builds depend on Metro to serve the JS bundle; on the Pixel_10 AVD, sustained IO contention causes Android's spell-checker (`Editor.updateSpellCheckSpans`) to ANR on the first keystroke into a TextInput, killing any flow that fills a form. Release APKs embed the JS bundle, start cold in <2s, and avoid Metro entirely. Build with `pnpm run:android -- --variant=release` before invoking Maestro. The `expo-build-properties` plugin in `mobile/app.json` is configured with `android.usesCleartextTraffic: true` so `http://10.0.2.2:3000` (gateway as seen from the emulator) isn't blocked by Android's default release cleartext policy.
 - **`openLink: travelhub:///account`** — used instead of tapping the tab bar. iOS 26's Liquid Glass tab bar is not traversable by Maestro's XCUITest driver regardless of `testID`, `tabBarTestID`, or text matching. Deep links via Expo Router's scheme are the reliable alternative.
 - **`runScript` for unique emails** — `utils/generate-test-email.js` sets `output.TEST_EMAIL` to `testuser+<timestamp>@example.com` so each run registers a fresh account. Reference it in flows as `${output.TEST_EMAIL}`.
 - **`textContentType="oneTimeCode"`** on both password fields in `mobile/app/(auth)/register.tsx` — suppresses iOS's "Use Strong Password?" system sheet, which otherwise blocks `inputText`.

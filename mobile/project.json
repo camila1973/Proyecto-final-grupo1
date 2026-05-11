@@ -26,12 +26,14 @@
     },
     "run-ios": {
       "executor": "@nx/expo:run",
+      "continuous": false,
       "options": {
         "platform": "ios"
       }
     },
     "run-android": {
       "executor": "@nx/expo:run",
+      "continuous": false,
       "options": {
         "platform": "android"
       }

@@ -51,6 +51,16 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
 
+      - name: Validate gateway URL
+        env:
+          EXPO_PUBLIC_API_URL: ${{ github.event.inputs.api_url || vars.GATEWAY_URL }}
+        run: |
+          if [ -z "$EXPO_PUBLIC_API_URL" ]; then
+            echo "::error::EXPO_PUBLIC_API_URL is empty. Set the GATEWAY_URL repository variable or pass the api_url workflow input."
+            exit 1
+          fi
+          echo "Building against: $EXPO_PUBLIC_API_URL"
+
       - name: Build Android APK pointed at deployed gateway
         working-directory: mobile
         env:
@@ -65,7 +75,20 @@ jobs:
             --local \
             --output ../artifacts/app.apk
 
+      - name: Verify API URL is baked into the bundle
+        env:
+          EXPO_PUBLIC_API_URL: ${{ github.event.inputs.api_url || vars.GATEWAY_URL }}
+        run: |
+          if unzip -p artifacts/app.apk assets/index.android.bundle | strings | grep -qF "$EXPO_PUBLIC_API_URL"; then
+            echo "API URL ($EXPO_PUBLIC_API_URL) found in bundle"
+          else
+            echo "::error::API URL ($EXPO_PUBLIC_API_URL) not found in bundle. Likely a cache or env-propagation issue."
+            exit 1
+          fi
+
       - name: Install Maestro CLI
+        env:
+          MAESTRO_VERSION: 2.5.1
         run: |
           curl -Ls "https://get.maestro.mobile.dev" | bash
           echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
