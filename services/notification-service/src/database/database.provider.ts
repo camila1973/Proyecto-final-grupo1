@@ -1,0 +1,43 @@
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from "@nestjs/common";
+import { Kysely, PostgresDialect, sql } from "kysely";
+import { Pool, types } from "pg";
+import { Database } from "./database.types.js";
+
+// Return date columns as ISO strings instead of JS Date objects
+types.setTypeParser(1082, (v) => v);
+
+export const KYSELY = "KYSELY";
+
+@Injectable()
+export class DatabaseProvider implements OnModuleInit, OnModuleDestroy {
+  private readonly logger = new Logger(DatabaseProvider.name);
+  private pool: Pool;
+  readonly db: Kysely<Database>;
+
+  constructor() {
+    const connectionString = process.env.DATABASE_URL ?? "";
+    this.pool = new Pool({
+      connectionString,
+      ssl: connectionString.includes("localhost")
+        ? false
+        : { rejectUnauthorized: false },
+    });
+    this.db = new Kysely<Database>({
+      dialect: new PostgresDialect({ pool: this.pool }),
+    });
+  }
+
+  async onModuleInit(): Promise<void> {
+    await sql`SELECT 1`.execute(this.db);
+    this.logger.log("Database connection established");
+  }
+
+  async onModuleDestroy(): Promise<void> {
+    await this.pool.end();
+  }
+}

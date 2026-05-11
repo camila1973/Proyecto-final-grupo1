@@ -3,6 +3,7 @@ import { UpstreamServiceError } from "./upstream-service.error.js";
 
 export interface ReservationDetails {
   id: string;
+  bookerId: string;
   partnerId: string;
   propertyId: string;
   status: string;

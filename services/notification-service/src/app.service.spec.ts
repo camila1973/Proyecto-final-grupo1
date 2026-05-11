@@ -1,4 +1,3 @@
-import { Test, TestingModule } from "@nestjs/testing";
 import { AppService } from "./app.service";
 
 jest.mock("nodemailer", () => ({
@@ -10,15 +9,27 @@ jest.mock("nodemailer", () => ({
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const nodemailer = require("nodemailer");
 
+const mockFirebaseService = {
+  onModuleInit: jest.fn(),
+  sendPushNotification: jest.fn().mockResolvedValue(undefined),
+};
+
+const mockDeviceTokensService = {
+  upsert: jest.fn(),
+  findByUserId: jest.fn().mockResolvedValue(null),
+  remove: jest.fn(),
+};
+
 describe("AppService", () => {
   let service: AppService;
 
-  beforeEach(async () => {
+  beforeEach(() => {
     jest.clearAllMocks();
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [AppService],
-    }).compile();
-    service = module.get<AppService>(AppService);
+    mockDeviceTokensService.findByUserId.mockResolvedValue(null);
+    service = new (AppService as any)(
+      mockFirebaseService,
+      mockDeviceTokensService,
+    );
   });
 
   afterEach(() => {
@@ -282,6 +293,94 @@ describe("AppService", () => {
       expect(nodemailer.createTransport).toHaveBeenCalledWith(
         expect.objectContaining({ secure: false }),
       );
+    });
+
+    it("includes html in sendMail call when html is provided", async () => {
+      process.env.SMTP_HOST = "smtp.example.com";
+
+      const mockSendMail = jest.fn().mockResolvedValue({ messageId: "123" });
+      nodemailer.createTransport.mockReturnValue({ sendMail: mockSendMail });
+
+      await (service as any).sendEmail(
+        "to@example.com",
+        "Subject",
+        "Plain body",
+        "<b>HTML body</b>",
+      );
+
+      expect(mockSendMail).toHaveBeenCalledWith(
+        expect.objectContaining({ html: "<b>HTML body</b>" }),
+      );
+    });
+  });
+
+  describe("sendPush (private, via sendNotification)", () => {
+    it("calls firebaseService.sendPushNotification when device token is found", async () => {
+      mockDeviceTokensService.findByUserId.mockResolvedValue(
+        "device-token-abc",
+      );
+
+      service.sendNotification({
+        userId: "usr_001",
+        channel: "push",
+        subject: "Test Push",
+        message: "Hello Push",
+      });
+
+      await new Promise((resolve) => setImmediate(resolve));
+
+      expect(mockFirebaseService.sendPushNotification).toHaveBeenCalledWith(
+        "device-token-abc",
+        "Test Push",
+        "Hello Push",
+      );
+    });
+
+    it("skips sendPushNotification and logs debug when no token found", async () => {
+      mockDeviceTokensService.findByUserId.mockResolvedValue(null);
+      const debugSpy = jest
+        .spyOn((service as any).logger, "debug")
+        .mockImplementation(() => {});
+
+      service.sendNotification({
+        userId: "usr_no_token",
+        channel: "push",
+        subject: "Test",
+        message: "Hello",
+      });
+
+      await new Promise((resolve) => setImmediate(resolve));
+
+      expect(mockFirebaseService.sendPushNotification).not.toHaveBeenCalled();
+      expect(debugSpy).toHaveBeenCalledWith(
+        expect.stringContaining("usr_no_token"),
+      );
+      debugSpy.mockRestore();
+    });
+
+    it("logs error when sendPush rejects", async () => {
+      mockDeviceTokensService.findByUserId.mockResolvedValue("token-xyz");
+      mockFirebaseService.sendPushNotification.mockRejectedValue(
+        new Error("FCM error"),
+      );
+      const loggerSpy = jest
+        .spyOn((service as any).logger, "error")
+        .mockImplementation(() => {});
+
+      service.sendNotification({
+        userId: "usr_001",
+        channel: "push",
+        subject: "Test",
+        message: "Hello",
+      });
+
+      await new Promise((resolve) => setImmediate(resolve));
+
+      expect(loggerSpy).toHaveBeenCalledWith(
+        "Push send error",
+        expect.any(String),
+      );
+      loggerSpy.mockRestore();
     });
   });
 });

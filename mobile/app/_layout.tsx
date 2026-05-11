@@ -11,6 +11,8 @@ import '@/i18n';
 import { AnimatedSplash } from '@/components/animated-splash';
 import { paperTheme } from '@/constants/paper-theme';
 import { AuthProvider } from '@/context/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
+import { useNotifications } from '@/hooks/useNotifications';
 
 const STRIPE_PK = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '';
 
@@ -19,6 +21,12 @@ SplashScreen.preventAutoHideAsync();
 export const unstable_settings = {
   anchor: '(tabs)',
 };
+
+function NotificationsRegistrar() {
+  const { user } = useAuth();
+  useNotifications(user?.id ?? null);
+  return null;
+}
 
 export default function RootLayout() {
   const [appReady, setAppReady] = useState(false);
@@ -34,6 +42,7 @@ export default function RootLayout() {
     <StripeProvider publishableKey={STRIPE_PK} merchantIdentifier="merchant.com.travelhub">
     <AuthProvider>
     <PaperProvider theme={paperTheme}>
+      <NotificationsRegistrar />
       <ThemeProvider value={DefaultTheme}>
         <Stack>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
