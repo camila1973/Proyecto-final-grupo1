@@ -44,7 +44,10 @@ export class AppService {
     if (body.channel === "email" && body.to) {
       this.sendEmail(body.to, body.subject, body.message, body.html).catch(
         (err) => {
-          this.logger.error("Email send error", err);
+          this.logger.error(
+            "Email send error",
+            err instanceof Error ? err.stack : String(err),
+          );
         },
       );
     }

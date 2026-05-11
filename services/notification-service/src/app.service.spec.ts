@@ -169,7 +169,7 @@ describe("AppService", () => {
 
       expect(loggerSpy).toHaveBeenCalledWith(
         "Email send error",
-        expect.any(Error),
+        expect.any(String),
       );
       loggerSpy.mockRestore();
     });

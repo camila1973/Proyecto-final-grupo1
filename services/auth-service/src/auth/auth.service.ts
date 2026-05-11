@@ -311,9 +311,12 @@ export class AuthService {
           message: `Your verification code is: ${otp}\n\nThis code expires in 5 minutes.`,
         }),
       });
-    } catch {
+    } catch (err) {
       // Non-blocking: log but don't fail the login flow
-      this.logger.error("Failed to send OTP email");
+      this.logger.error(
+        "Failed to send OTP email",
+        err instanceof Error ? err.stack : String(err),
+      );
     }
   }
 

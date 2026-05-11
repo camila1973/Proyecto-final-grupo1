@@ -146,7 +146,8 @@ export default function PropertyImageCarousel({ images, fallbackImage, alt }: Pr
             <ChevronRightIcon fontSize="small" />
           </IconButton>
           <div
-            className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-30"
+            className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5"
+            style={{ zIndex: CAROUSEL_CONTROLS_Z_INDEX }}
             role="tablist"
             aria-label={t('property_detail.carousel.selector')}
           >
