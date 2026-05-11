@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Dimensions,
   FlatList,
   Image,
@@ -30,8 +29,7 @@ import {
 } from 'react-native-paper';
 import { Calendar } from 'react-native-calendars';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from '@/hooks/useAuth';
-import { setCheckoutIntent } from '@/services/checkout-store';
+import { useBookingFlow } from '@/hooks/useBookingFlow';
 
 const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
 
@@ -305,8 +303,6 @@ function DatePickerModal({ visible, checkIn, checkOut, onConfirm, onCancel }: Da
 
 export default function PropertyDetailScreen() {
   const router = useRouter();
-  const { t } = useTranslation();
-  const { user } = useAuth();
   const { id, checkIn: qIn, checkOut: qOut, guests: qGuests } =
     useLocalSearchParams<{
       id: string;
@@ -451,18 +447,12 @@ export default function PropertyDetailScreen() {
         ? [property.thumbnailUrl]
         : [];
 
+  const { book } = useBookingFlow();
+
   const handleBook = useCallback(
     (room: SearchRoom) => {
-      if (!checkIn || !checkOut) {
-        Alert.alert(t('property.selectDatesTitle'), t('property.selectDatesMsg'));
-        return;
-      }
-      if (!user) {
-        router.push('/(tabs)/account');
-        return;
-      }
       if (!property) return;
-      setCheckoutIntent({
+      book({
         propertyId: property.id,
         propertyName: property.name,
         propertyCity: property.city,
@@ -475,9 +465,8 @@ export default function PropertyDetailScreen() {
         guests,
         estimatedTotalUsd: room.estimatedTotalUsd,
       });
-      router.push('/booking/checkout');
     },
-    [checkIn, checkOut, user, property, images, guests, router, t],
+    [book, property, images, guests, checkIn, checkOut],
   );
 
   const showDescPreview = description.length > DESCRIPTION_PREVIEW && !descExpanded;

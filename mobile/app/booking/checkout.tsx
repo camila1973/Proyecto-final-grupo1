@@ -24,28 +24,9 @@ import { useStripe } from '@/services/stripe-wrapper';
 
 import { useAuth } from '@/hooks/useAuth';
 import { getCheckoutIntent, clearCheckoutIntent } from '@/services/checkout-store';
+import { useBookingFlow, type CreatedReservation } from '@/hooks/useBookingFlow';
 
 const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
-
-// ─── Types ─────────────────────────────────────────────────────────────────────
-
-interface FareBreakdown {
-  nights: number;
-  roomRateUsd: number;
-  subtotalUsd: number;
-  taxes: { name: string; amountUsd: number }[];
-  fees: { name: string; totalUsd: number }[];
-  taxTotalUsd: number;
-  feeTotalUsd: number;
-  totalUsd: number;
-}
-
-interface Reservation {
-  id: string;
-  grandTotalUsd: number;
-  holdExpiresAt: string;
-  fareBreakdown: FareBreakdown;
-}
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -109,8 +90,9 @@ export default function CheckoutScreen() {
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
 
   const intent = useRef(getCheckoutIntent()).current;
+  const { createReservation: createReservationHook } = useBookingFlow();
 
-  const [reservation, setReservation] = useState<Reservation | null>(null);
+  const [reservation, setReservation] = useState<CreatedReservation | null>(null);
   const [loadingReservation, setLoadingReservation] = useState(true);
   const [reservationError, setReservationError] = useState<string | null>(null);
 
@@ -131,81 +113,30 @@ export default function CheckoutScreen() {
 
   const createReservation = useCallback(async () => {
     if (!intent || !token || !user || reservationCreatedRef.current) return;
-    
+
     reservationCreatedRef.current = true;
     setLoadingReservation(true);
     setReservationError(null);
     try {
-      const payload = {
-        propertyId: intent.propertyId,
-        roomId: intent.roomId,
-        partnerId: intent.partnerId,
-        bookerId: user.id,
-        checkIn: intent.checkIn,
-        checkOut: intent.checkOut,
-      };
-      
-      console.log('[Checkout] Creating reservation with:', payload);
-      console.log('[Checkout] Property:', intent.propertyName);
-      console.log('[Checkout] Room type:', intent.roomType);
-      console.log('[Checkout] Dates:', intent.checkIn, 'to', intent.checkOut);
-      console.log('[Checkout] API endpoint:', `${API_BASE}/api/booking/reservations`);
-      
-      const res = await fetch(`${API_BASE}/api/booking/reservations`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
-      
-      if (!res.ok) {
-        const errorText = await res.text();
-        console.error('[Checkout] Reservation creation failed:', res.status, errorText);
-        
-        // Extraer mensaje específico del backend
-        let backendMessage = t('checkout.errorHold');
-        try {
-          const errorJson = JSON.parse(errorText);
-          if (errorJson.message) {
-            console.error('[Checkout] Backend error details:', errorJson.message);
-            backendMessage = errorJson.message; // Usar mensaje real del backend
-          } else if (errorJson.error) {
-            backendMessage = errorJson.error;
-          }
-        } catch {
-          // No es JSON, usar el texto plano si existe
-          if (errorText && errorText.length < 200) {
-            backendMessage = errorText;
-          }
-        }
-        throw new Error(backendMessage);
-      }
-      
-      const data = (await res.json()) as Reservation;
+      const data = await createReservationHook();
       console.log('[Checkout] Reservation created successfully:', data.id);
       setReservation(data);
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : t('checkout.errorHold');
       console.error('[Checkout] Error:', errorMsg);
-      
-      // En desarrollo, mostrar detalles del error
       if (__DEV__) {
-        console.error('[Checkout] Full error details:', err);
         Alert.alert(
           'Error de Reserva (DEV)',
           `${errorMsg}\n\nRevisa la consola para más detalles.`,
-          [{ text: 'OK' }]
+          [{ text: 'OK' }],
         );
       }
-      
       setReservationError(errorMsg);
       reservationCreatedRef.current = false; // Allow retry
     } finally {
       setLoadingReservation(false);
     }
-  }, [intent, token, user, t]);
+  }, [intent, token, user, t, createReservationHook]);
 
   useEffect(() => {
     if (!token || !user) {
@@ -369,7 +300,7 @@ export default function CheckoutScreen() {
   if (!intent) return null;
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]} edges={['top']}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]} edges={['bottom']}>
       <AppHeader title={t('checkout.title')} showBack />
 
       <KeyboardAvoidingView

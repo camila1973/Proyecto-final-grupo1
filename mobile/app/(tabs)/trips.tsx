@@ -30,7 +30,8 @@ import {
   type Reservation,
   type ReservationStatus,
 } from '@/services/bookings-cache';
-import { rebuildIntent, setCheckoutIntent } from '@/services/checkout-store';
+import { setPendingReservation } from '@/services/pending-reservations-store';
+import { useBookingFlow } from '@/hooks/useBookingFlow';
 
 const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
 
@@ -309,6 +310,11 @@ export default function TripsScreen() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Keep the tab-bar dot in sync with the held reservations actually loaded
+  useEffect(() => {
+    setPendingReservation(reservations.some((r) => r.status === 'held'));
+  }, [reservations]);
+
   // Sync when tab comes into focus (covers post-login navigation)
   useFocusEffect(
     useCallback(() => {
@@ -361,26 +367,15 @@ export default function TripsScreen() {
     [router],
   );
 
-  /**
-   * Permite al usuario retomar el flujo de checkout para completar el pago
-   * de una reserva "held" o reintentar una reserva "failed".
-   */
+  const { resumeHeld } = useBookingFlow();
+
   const handleCompletePayment = useCallback(
     (reservation: Reservation) => {
-      const intent = rebuildIntent(reservation);
-      
-      if (!intent) {
-        Alert.alert(
-          t('bookings.errorTitle'),
-          t('bookings.errorRebuildIntent'),
-        );
-        return;
+      if (!resumeHeld(reservation)) {
+        Alert.alert(t('bookings.errorTitle'), t('bookings.errorRebuildIntent'));
       }
-
-      setCheckoutIntent(intent);
-      router.push('/booking/checkout');
     },
-    [router, t],
+    [resumeHeld, t],
   );
 
   // ─── Render states ────────────────────────────────────────────────────────────

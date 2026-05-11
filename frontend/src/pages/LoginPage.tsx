@@ -73,7 +73,12 @@ export default function LoginPage() {
         <h1 className="text-2xl font-bold text-gray-900 mb-1">{t('login.title')}</h1>
         <p className="text-sm text-gray-600 mb-6">
           {t('login.no_account')}{' '}
-          <Link href="/register" underline="hover">
+          <Link
+            component="button"
+            type="button"
+            underline="hover"
+            onClick={() => navigate({ to: '/register' })}
+          >
             {t('login.register_link')}
           </Link>
         </p>

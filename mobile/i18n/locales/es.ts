@@ -3,6 +3,7 @@ export default {
     search: 'Buscar',
     bookings: 'Reservas',
     account: 'Cuenta',
+    pendingReservation: 'Reserva pendiente de pago',
   },
   home: {
     title: 'TravelHub',
@@ -67,6 +68,13 @@ export default {
     errorPasswordRequired: 'La contraseña es obligatoria',
     errorInvalidCredentials: 'Correo o contraseña incorrectos',
     errorGeneric: 'Ocurrió un error. Intenta de nuevo.',
+  },
+  signInRequired: {
+    title: 'Continuar reserva',
+    heading: 'Para continuar tu reserva',
+    subheading: 'Inicia sesión para reservar tu habitación.',
+    noAccount: '¿No tienes cuenta?',
+    createAccount: 'Crear cuenta',
   },
   loginMfa: {
     title: 'Mi Cuenta',
