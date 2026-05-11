@@ -23,6 +23,14 @@
       "executor": "@nx/jest:jest",
       "outputs": ["{workspaceRoot}/coverage/notification-service"],
       "options": { "jestConfig": "services/notification-service/jest.config.js", "passWithNoTests": true }
+    },
+    "migrate": {
+      "executor": "nx:run-commands",
+      "options": { "command": "pnpm exec kysely migrate:latest", "cwd": "services/notification-service" }
+    },
+    "migrate-down": {
+      "executor": "nx:run-commands",
+      "options": { "command": "pnpm exec kysely migrate:down", "cwd": "services/notification-service" }
     }
   }
 }

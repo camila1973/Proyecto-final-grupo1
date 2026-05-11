@@ -1,9 +1,16 @@
 import { Injectable, Logger } from "@nestjs/common";
 import * as nodemailer from "nodemailer";
+import { FirebaseService } from "./firebase/firebase.service.js";
+import { DeviceTokensService } from "./device-tokens/device-tokens.service.js";
 
 @Injectable()
 export class AppService {
   private readonly logger = new Logger(AppService.name);
+
+  constructor(
+    private readonly firebaseService: FirebaseService,
+    private readonly deviceTokensService: DeviceTokensService,
+  ) {}
 
   getHealth(): object {
     return { status: "ok", service: "notification-service" };
@@ -52,12 +59,34 @@ export class AppService {
       );
     }
 
+    if (body.channel === "push" && body.userId) {
+      this.sendPush(body.userId, body.subject, body.message).catch((err) => {
+        this.logger.error(
+          "Push send error",
+          err instanceof Error ? err.stack : String(err),
+        );
+      });
+    }
+
     return {
       id: "notif_" + Math.random().toString(36).slice(2, 9),
       ...body,
       status: "queued",
       queuedAt: new Date().toISOString(),
     };
+  }
+
+  private async sendPush(
+    userId: string,
+    title: string,
+    body: string,
+  ): Promise<void> {
+    const token = await this.deviceTokensService.findByUserId(userId);
+    if (!token) {
+      this.logger.debug(`No device token for userId=${userId} — push skipped`);
+      return;
+    }
+    await this.firebaseService.sendPushNotification(token, title, body);
   }
 
   private async sendEmail(

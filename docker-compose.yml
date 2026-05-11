@@ -320,6 +320,8 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: travelhub
+    ports:
+      - "5439:5432"
     volumes:
       - notification_pg_data:/var/lib/postgresql/data
     networks:
@@ -340,9 +342,16 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3006
-      DATABASE_URL: postgres://postgres:postgres@notification-db:5432/travelhub
+      DATABASE_URL: postgres://postgres:postgres@notification-db:5432/travelhub?sslmode=disable
+      MESSAGE_BROKER_URL: amqp://guest:guest@rabbitmq:5672
+      MESSAGE_BROKER_TYPE: rabbitmq
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-}
+      FIREBASE_CLIENT_EMAIL: ${FIREBASE_CLIENT_EMAIL:-}
+      FIREBASE_PRIVATE_KEY: ${FIREBASE_PRIVATE_KEY:-}
     depends_on:
       notification-db:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
 
   # ─── Partners Service ─────────────────────────────────────────────────────────

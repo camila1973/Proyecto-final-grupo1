@@ -178,6 +178,32 @@ export class NotificationClient {
     });
   }
 
+  async sendPaymentSucceededPush(opts: {
+    userId: string;
+    reservationId: string;
+    amountUsd: number;
+  }): Promise<void> {
+    await this.send({
+      userId: opts.userId,
+      channel: "push",
+      subject: "¡Reserva confirmada!",
+      message: `Tu reserva fue confirmada. Total: USD $${opts.amountUsd.toFixed(2)}`,
+    });
+  }
+
+  async sendPaymentFailedPush(opts: {
+    userId: string;
+    reservationId: string;
+    reason: string;
+  }): Promise<void> {
+    await this.send({
+      userId: opts.userId,
+      channel: "push",
+      subject: "Pago no procesado",
+      message: `No pudimos procesar tu pago. ${opts.reason}`,
+    });
+  }
+
   private async send(payload: object): Promise<void> {
     try {
       const res = await fetch(`${this.baseUrl}/notifications/send`, {

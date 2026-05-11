@@ -76,6 +76,7 @@ export class PaymentsService {
       metadata: {
         reservation_id: dto.reservationId,
         guest_email: dto.guestEmail,
+        booker_id: reservation.bookerId,
       },
       receipt_email: dto.guestEmail,
     });
@@ -185,6 +186,7 @@ export class PaymentsService {
   private async onPaymentSucceeded(intent: StripePaymentIntent): Promise<void> {
     const reservationId = intent.metadata["reservation_id"];
     const guestEmail = intent.metadata["guest_email"];
+    const bookerId = intent.metadata["booker_id"] ?? "";
     const paymentMethodId =
       typeof intent.payment_method === "string"
         ? intent.payment_method
@@ -214,11 +216,24 @@ export class PaymentsService {
       .catch((err) =>
         this.logger.error(`Failed to send success email: ${err}`),
       );
+
+    if (bookerId) {
+      await this.notifications
+        .sendPaymentSucceededPush({
+          userId: bookerId,
+          reservationId,
+          amountUsd: intent.amount / 100,
+        })
+        .catch((err) =>
+          this.logger.error(`Failed to send success push: ${err}`),
+        );
+    }
   }
 
   private async onPaymentFailed(intent: StripePaymentIntent): Promise<void> {
     const reservationId = intent.metadata["reservation_id"];
     const guestEmail = intent.metadata["guest_email"];
+    const bookerId = intent.metadata["booker_id"] ?? "";
     const reason = intent.last_payment_error?.message ?? "Payment declined";
 
     await this.repo.updateByIntentId(intent.id, {
@@ -240,6 +255,18 @@ export class PaymentsService {
       .catch((err) =>
         this.logger.error(`Failed to send failure email: ${err}`),
       );
+
+    if (bookerId) {
+      await this.notifications
+        .sendPaymentFailedPush({
+          userId: bookerId,
+          reservationId,
+          reason,
+        })
+        .catch((err) =>
+          this.logger.error(`Failed to send failure push: ${err}`),
+        );
+    }
   }
 }
 

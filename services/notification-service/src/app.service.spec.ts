@@ -1,4 +1,3 @@
-import { Test, TestingModule } from "@nestjs/testing";
 import { AppService } from "./app.service";
 
 jest.mock("nodemailer", () => ({
@@ -10,15 +9,27 @@ jest.mock("nodemailer", () => ({
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const nodemailer = require("nodemailer");
 
+const mockFirebaseService = {
+  onModuleInit: jest.fn(),
+  sendPushNotification: jest.fn().mockResolvedValue(undefined),
+};
+
+const mockDeviceTokensService = {
+  upsert: jest.fn(),
+  findByUserId: jest.fn().mockResolvedValue(null),
+  remove: jest.fn(),
+};
+
 describe("AppService", () => {
   let service: AppService;
 
-  beforeEach(async () => {
+  beforeEach(() => {
     jest.clearAllMocks();
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [AppService],
-    }).compile();
-    service = module.get<AppService>(AppService);
+    mockDeviceTokensService.findByUserId.mockResolvedValue(null);
+    service = new (AppService as any)(
+      mockFirebaseService,
+      mockDeviceTokensService,
+    );
   });
 
   afterEach(() => {
