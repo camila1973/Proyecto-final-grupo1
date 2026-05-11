@@ -289,9 +289,12 @@
       "held": "En espera · Completar pago",
       "submitted": "Pendiente",
       "confirmed": "Confirmada",
+      "checked_in": "En hotel",
+      "checked_out": "Check-out completado",
       "failed": "Fallida",
       "expired": "Expirada",
-      "cancelled": "Cancelada"
+      "cancelled": "Cancelada",
+      "no_show": "No presentación"
     },
     "card": {
       "reservation_id": "Reserva",
@@ -454,7 +457,8 @@
         "checked_out": "Check-out",
         "cancelled": "Cancelada",
         "failed": "Fallida",
-        "expired": "Expirada"
+        "expired": "Expirada",
+        "no_show": "No presentación"
       },
       "no_reservations": "No hay reservaciones para este mes.",
       "no_results_filter": "No hay reservaciones que coincidan con los filtros.",

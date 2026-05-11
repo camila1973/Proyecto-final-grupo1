@@ -35,16 +35,19 @@ import 'dayjs/locale/es';
 
 dayjs.locale('es');
 
-const ACTIVE_STATUSES: ReservationStatus[] = ['held', 'submitted', 'confirmed'];
-const PAST_STATUSES: ReservationStatus[] = ['cancelled', 'failed'];
+const ACTIVE_STATUSES: ReservationStatus[] = ['held', 'submitted', 'confirmed', 'checked_in'];
+const PAST_STATUSES: ReservationStatus[] = ['checked_out', 'no_show', 'cancelled', 'failed', 'expired'];
 
 const STATUS_PILL_STYLE: Record<ReservationStatus, { color: string; bg: string; borderColor: string }> = {
-  held:      { color: 'warning.dark',  bg: 'warning.light', borderColor: 'warning.main' },
-  submitted: { color: 'warning.dark',  bg: 'warning.light', borderColor: 'warning.main' },
-  confirmed: { color: 'success.dark', bg: 'success.light', borderColor: 'success.main' },
-  failed:    { color: 'error.main',   bg: 'error.contrastText',   borderColor: 'error.main' },
-  expired:   { color: '#6b7280',      bg: '#f3f4f6',       borderColor: '#d1d5db' },
-  cancelled: { color: 'error.main',   bg: 'error.contrastText',   borderColor: 'error.main' },
+  held:        { color: 'warning.dark',  bg: 'warning.light',       borderColor: 'warning.main' },
+  submitted:   { color: 'warning.dark',  bg: 'warning.light',       borderColor: 'warning.main' },
+  confirmed:   { color: 'success.dark',  bg: 'success.light',       borderColor: 'success.main' },
+  checked_in:  { color: 'success.dark',  bg: 'success.light',       borderColor: 'success.main' },
+  checked_out: { color: '#6b7280',       bg: '#f3f4f6',             borderColor: '#d1d5db' },
+  no_show:     { color: 'error.main',    bg: 'error.contrastText',  borderColor: 'error.main' },
+  failed:      { color: 'error.main',    bg: 'error.contrastText',  borderColor: 'error.main' },
+  expired:     { color: '#6b7280',       bg: '#f3f4f6',             borderColor: '#d1d5db' },
+  cancelled:   { color: 'error.main',    bg: 'error.contrastText',  borderColor: 'error.main' },
 };
 
 function StatusPill({ status, t }: { status: ReservationStatus; t: (k: string) => string }) {

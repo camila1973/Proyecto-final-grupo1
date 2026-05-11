@@ -263,6 +263,16 @@ export class ReservationsService {
     return this.reservationsRepo.toResponse(row);
   }
 
+  async noShow(id: string, reason = "guest did not arrive") {
+    const row = await this.reservationsRepo.markNoShow(id, reason);
+    if (!row) return;
+
+    // No inventory.unhold: no-show is billable revenue, the room stays consumed
+    // for the stay window (industry standard, matches cancellation-with-penalty).
+    this.emit("booking.no_show", row, "system");
+    return this.reservationsRepo.toResponse(row);
+  }
+
   async modify(
     id: string,
     dto: ModifyReservationDto,

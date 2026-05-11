@@ -28,6 +28,7 @@ const ROUTING_KEYS: BookingRoutingKey[] = [
   "booking.checked_out",
   "booking.failed",
   "booking.expired",
+  "booking.no_show",
 ];
 
 @Injectable()

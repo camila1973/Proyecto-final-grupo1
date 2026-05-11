@@ -289,9 +289,12 @@
       "held": "On hold · Complete payment",
       "submitted": "Pending",
       "confirmed": "Confirmed",
+      "checked_in": "Checked in",
+      "checked_out": "Checked out",
       "failed": "Failed",
       "expired": "Expired",
-      "cancelled": "Cancelled"
+      "cancelled": "Cancelled",
+      "no_show": "No show"
     },
     "card": {
       "reservation_id": "Reservation",
@@ -454,7 +457,8 @@
         "checked_out": "Checked out",
         "cancelled": "Cancelled",
         "failed": "Failed",
-        "expired": "Expired"
+        "expired": "Expired",
+        "no_show": "No show"
       },
       "no_reservations": "No reservations for this month.",
       "no_results_filter": "No reservations match the current filters.",

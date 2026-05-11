@@ -251,6 +251,28 @@ export class ReservationsRepository {
       .executeTakeFirst();
   }
 
+  async findStaleConfirmed(): Promise<ReservationRow[]> {
+    return this.db
+      .selectFrom("reservations")
+      .where("status", "=", "confirmed")
+      .where("check_in", "<", new Date().toISOString().slice(0, 10))
+      .selectAll()
+      .execute();
+  }
+
+  async markNoShow(
+    id: string,
+    reason: string,
+  ): Promise<ReservationRow | undefined> {
+    return this.db
+      .updateTable("reservations")
+      .set({ status: "no_show", reason, updated_at: new Date() })
+      .where("id", "=", id)
+      .where("status", "=", "confirmed")
+      .returningAll()
+      .executeTakeFirst();
+  }
+
   async modify(
     id: string,
     fields: ModifyReservationFields,

@@ -6,7 +6,8 @@ export type BookingRoutingKey =
   | "booking.checked_in"
   | "booking.checked_out"
   | "booking.failed"
-  | "booking.expired";
+  | "booking.expired"
+  | "booking.no_show";
 
 export type BookingActor = "guest" | "partner" | "system";
 

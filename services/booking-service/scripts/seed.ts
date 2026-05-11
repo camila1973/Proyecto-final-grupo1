@@ -585,13 +585,28 @@ function addDays(date: string, days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+type HistoricalOutcome = "checked_out" | "cancelled" | "no_show";
+
 function historicalReservation(
   resId: string,
   template: FareTemplateName,
   checkIn: string,
   bookerIdx: 1 | 2 | 3,
+  outcome: HistoricalOutcome = "checked_out",
 ) {
   const tpl = FARE_TEMPLATES[template];
+  const reason =
+    outcome === "cancelled"
+      ? "cancelled by guest"
+      : outcome === "no_show"
+        ? "guest did not arrive"
+        : null;
+  // checked_out implies the guest physically arrived; stamp check-in at 14:00 local
+  // (UTC approximation good enough for seed data) so toResponse serializes it.
+  const checkedInAt =
+    outcome === "checked_out"
+      ? new Date(`${checkIn}T14:00:00.000Z`)
+      : null;
   return {
     id: resId,
     property_id: tpl.propertyId,
@@ -601,7 +616,9 @@ function historicalReservation(
     guest_info: GUEST_INFO[bookerIdx - 1],
     check_in: checkIn,
     check_out: addDays(checkIn, tpl.nights),
-    status: "confirmed",
+    status: outcome,
+    reason,
+    checked_in_at: checkedInAt,
     snapshot: tpl.snapshot,
     fare_breakdown: tpl.fare,
     tax_total_usd: tpl.taxTotal,
@@ -611,18 +628,20 @@ function historicalReservation(
   };
 }
 
+// Distribute 14 historical rows: 11 checked_out, 2 cancelled, 1 no_show
+// (≈78/14/7 split — exercises every terminal state in the trips UI).
 const HISTORICAL_RESERVATIONS = [
   // ── PARTNER_1 (Gran Caribe Hospitality Group) ──
   historicalReservation(RES(10), "gran_caribe_deluxe_3n", "2025-08-04", 1),
-  historicalReservation(RES(11), "gran_caribe_suite_4n", "2025-09-12", 1),
+  historicalReservation(RES(11), "gran_caribe_suite_4n", "2025-09-12", 1, "cancelled"),
   historicalReservation(RES(12), "gran_caribe_deluxe_3n", "2025-10-18", 3),
   historicalReservation(RES(13), "gran_caribe_suite_4n", "2025-11-22", 1),
   historicalReservation(RES(14), "gran_caribe_deluxe_3n", "2025-12-05", 3),
-  historicalReservation(RES(15), "gran_caribe_deluxe_3n", "2026-01-08", 1),
+  historicalReservation(RES(15), "gran_caribe_deluxe_3n", "2026-01-08", 1, "no_show"),
   historicalReservation(RES(16), "gran_caribe_suite_4n", "2026-02-19", 3),
   historicalReservation(RES(17), "gran_caribe_deluxe_3n", "2026-04-11", 1),
   // ── PARTNER_2 (Sol Boutique Hotels & Hostales) ──
-  historicalReservation(RES(20), "historico_deluxe_3n", "2025-08-22", 2),
+  historicalReservation(RES(20), "historico_deluxe_3n", "2025-08-22", 2, "cancelled"),
   historicalReservation(RES(21), "hostal_standard_3n", "2025-10-07", 2),
   historicalReservation(RES(22), "historico_deluxe_3n", "2025-11-15", 2),
   historicalReservation(RES(23), "hostal_standard_3n", "2025-12-20", 3),
@@ -702,6 +721,8 @@ async function seed() {
   const ALL_RESERVATIONS = [...RESERVATIONS, ...HISTORICAL_RESERVATIONS];
   console.log(`Seeding ${ALL_RESERVATIONS.length} reservations...`);
   for (const r of ALL_RESERVATIONS) {
+    const reason = "reason" in r ? r.reason : null;
+    const checkedInAt = "checked_in_at" in r ? r.checked_in_at : null;
     await db
       .insertInto("reservations")
       .values({
@@ -714,6 +735,8 @@ async function seed() {
         check_in: r.check_in,
         check_out: r.check_out,
         status: r.status,
+        reason: reason ?? undefined,
+        checked_in_at: checkedInAt ?? undefined,
         snapshot: r.snapshot,
         fare_breakdown: r.fare_breakdown,
         tax_total_usd: r.tax_total_usd,
@@ -724,13 +747,15 @@ async function seed() {
       .onConflict((oc) =>
         oc.column("id").doUpdateSet((eb) => ({
           status: eb.ref("excluded.status"),
+          reason: eb.ref("excluded.reason"),
+          checked_in_at: eb.ref("excluded.checked_in_at"),
           fare_breakdown: eb.ref("excluded.fare_breakdown"),
           grand_total_usd: eb.ref("excluded.grand_total_usd"),
         })),
       )
       .execute();
     console.log(
-      `  ✓ ${r.status.padEnd(9)} ${r.check_in} → ${r.check_out}  booker …${r.booker_id.slice(-4)}  guest ${r.guest_info.firstName} ${r.guest_info.lastName}  total $${r.grand_total_usd}`,
+      `  ✓ ${r.status.padEnd(11)} ${r.check_in} → ${r.check_out}  booker …${r.booker_id.slice(-4)}  guest ${r.guest_info.firstName} ${r.guest_info.lastName}  total $${r.grand_total_usd}`,
     );
   }
 

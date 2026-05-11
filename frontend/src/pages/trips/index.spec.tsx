@@ -269,15 +269,35 @@ describe('TripsPage', () => {
       expect(await screen.findByText(es.trips.status.failed)).toBeInTheDocument();
     });
 
-    it('does not render expired reservations', async () => {
+    it('renders expired reservations under past', async () => {
       useAuth.mockReturnValue({ token: TOKEN, user: USER });
       (global.fetch as jest.Mock).mockResolvedValue({
         ok: true,
         json: () => Promise.resolve({ reservations: [makeReservation('expired')] }),
       });
       renderPage();
-      expect(await screen.findByText(es.trips.empty)).toBeInTheDocument();
-      expect(screen.queryByText(es.trips.status.expired)).not.toBeInTheDocument();
+      expect(await screen.findByText(es.trips.status.expired)).toBeInTheDocument();
+      expect(screen.queryByText(es.trips.empty)).not.toBeInTheDocument();
+    });
+
+    it('renders checked_out reservations under past', async () => {
+      useAuth.mockReturnValue({ token: TOKEN, user: USER });
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ reservations: [makeReservation('checked_out')] }),
+      });
+      renderPage();
+      expect(await screen.findByText(es.trips.status.checked_out)).toBeInTheDocument();
+    });
+
+    it('renders no_show reservations under past', async () => {
+      useAuth.mockReturnValue({ token: TOKEN, user: USER });
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ reservations: [makeReservation('no_show')] }),
+      });
+      renderPage();
+      expect(await screen.findByText(es.trips.status.no_show)).toBeInTheDocument();
     });
 
     it('does not show cancel button for failed reservations', async () => {

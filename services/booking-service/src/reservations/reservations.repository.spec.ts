@@ -390,6 +390,55 @@ describe("ReservationsRepository", () => {
     });
   });
 
+  describe("findStaleConfirmed", () => {
+    it("returns confirmed rows whose check_in is in the past", async () => {
+      const rows = [
+        makeRow({ id: "r1", status: "confirmed" }),
+        makeRow({ id: "r2", status: "confirmed" }),
+      ];
+      const db = makeDb({ many: rows });
+      const repo = new ReservationsRepository(db);
+
+      const result = await repo.findStaleConfirmed();
+
+      expect(db.selectFrom).toHaveBeenCalledWith("reservations");
+      expect(db.where).toHaveBeenCalledWith("status", "=", "confirmed");
+      expect(db.where).toHaveBeenCalledWith(
+        "check_in",
+        "<",
+        expect.any(String),
+      );
+      expect(result).toBe(rows);
+    });
+  });
+
+  describe("markNoShow", () => {
+    it("transitions status to no_show with reason and returns the row", async () => {
+      const noShow = makeRow({
+        status: "no_show",
+        reason: "guest did not arrive",
+      });
+      const db = makeDb({ single: noShow });
+      const repo = new ReservationsRepository(db);
+
+      const result = await repo.markNoShow("res-uuid", "guest did not arrive");
+
+      expect(db.updateTable).toHaveBeenCalledWith("reservations");
+      expect(db.where).toHaveBeenCalledWith("id", "=", "res-uuid");
+      expect(db.where).toHaveBeenCalledWith("status", "=", "confirmed");
+      expect(result).toBe(noShow);
+    });
+
+    it("returns undefined when row is not confirmed (idempotency guard)", async () => {
+      const db = makeDb({ single: undefined });
+      const repo = new ReservationsRepository(db);
+
+      const result = await repo.markNoShow("already-checked-in", "no arrival");
+
+      expect(result).toBeUndefined();
+    });
+  });
+
   describe("fail", () => {
     it("transitions status from submitted to failed and returns the row", async () => {
       const failed = makeRow({ status: "failed", reason: "card declined" });

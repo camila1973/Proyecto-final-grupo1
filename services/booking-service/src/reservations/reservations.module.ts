@@ -3,6 +3,7 @@ import { ReservationsController } from "./reservations.controller.js";
 import { ReservationsService } from "./reservations.service.js";
 import { ReservationsRepository } from "./reservations.repository.js";
 import { HoldExpiryService } from "./hold-expiry.service.js";
+import { NoShowService } from "./no-show.service.js";
 import { FareCalculatorService } from "../fare/fare-calculator.service.js";
 import { HoldsService } from "./holds.service.js";
 import { ClientsModule } from "../clients/clients.module.js";
@@ -24,6 +25,7 @@ import { PublisherModule } from "../events/publisher.module.js";
     ReservationsService,
     ReservationsRepository,
     HoldExpiryService,
+    NoShowService,
     FareCalculatorService,
     HoldsService,
   ],
