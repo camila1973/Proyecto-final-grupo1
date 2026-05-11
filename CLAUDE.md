@@ -103,6 +103,18 @@ pnpm run affected:build    # Build only changed projects
 pnpm run graph             # Open dependency graph in browser
 ```
 
+### Adding dependencies
+
+This is a pnpm workspace monorepo. App and service deps belong in **their workspace's** `package.json`, **not** the root. Always use `--filter`:
+
+```bash
+pnpm add <pkg> --filter mobile          # Expo / React Native deps
+pnpm add <pkg> --filter frontend        # React / Vite deps
+pnpm add <pkg> --filter auth-service    # NestJS service deps (same shape for any service)
+```
+
+Only repo-wide tooling belongs at root (`pnpm add -w <pkg>`): `nx`, `@nx/*`, `prettier`, `eslint`, `typescript`, `husky`, `lint-staged`. **Never** install `expo-*`, `react-native-*`, `@nestjs/*`, or any runtime/app dep at root — Expo autolinking, Metro resolver, EAS Build, and per-service builds all read from the workspace's `package.json`. Root-installed app deps work by hoisting coincidence and silently break autolinking, SDK version checks, and EAS uploads.
+
 ## Architecture
 
 ### Monorepo Layout
