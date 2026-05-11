@@ -1,1 +1,6 @@
 appId: com.travelhub.mobile
+
+# Where Maestro stores per-flow artifacts (screenshots, command logs, view
+# hierarchies, video) for every run. Resolved relative to the working directory
+# the `maestro` CLI is invoked from (repo root via the pnpm scripts).
+testOutputDir: e2e/mobile/.artifacts

@@ -11,7 +11,16 @@ export function useAuth() {
 
   const login = async (email: string, password: string): Promise<SignInResult> => {
     const result = await initiateLogin(email, password);
-    return { challengeId: result.challengeId, email: result.user.email };
+    if ('accessToken' in result) {
+      await Promise.all([
+        AsyncStorage.setItem(TOKEN_KEY, result.accessToken),
+        AsyncStorage.setItem(USER_KEY, JSON.stringify(result.user)),
+      ]);
+      ctx.setToken(result.accessToken);
+      ctx.setUser(result.user);
+      return { mfaRequired: false };
+    }
+    return { mfaRequired: true, challengeId: result.challengeId, email: result.user.email };
   };
 
   const verifyMfa = async (challengeId: string, code: string): Promise<void> => {

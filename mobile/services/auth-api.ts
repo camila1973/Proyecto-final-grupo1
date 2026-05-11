@@ -15,11 +15,14 @@ export interface LoginChallengeResponse {
 }
 
 export interface LoginTokenResponse {
+  mfaRequired?: false;
   accessToken: string;
   tokenType: 'Bearer';
   expiresIn: number;
   user: AuthUser;
 }
+
+export type LoginResponse = LoginChallengeResponse | LoginTokenResponse;
 
 export class AuthApiError extends Error {
   constructor(
@@ -34,7 +37,7 @@ export class AuthApiError extends Error {
 export async function initiateLogin(
   email: string,
   password: string,
-): Promise<LoginChallengeResponse> {
+): Promise<LoginResponse> {
   const res = await fetch(`${API_BASE}/api/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -45,7 +48,7 @@ export async function initiateLogin(
     throw new AuthApiError(res.status, `Login failed: ${res.status}`);
   }
 
-  return res.json() as Promise<LoginChallengeResponse>;
+  return res.json() as Promise<LoginResponse>;
 }
 
 export async function verifyMfaCode(

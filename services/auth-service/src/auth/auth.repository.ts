@@ -19,6 +19,7 @@ export class AuthRepository {
     phone?: string;
     partnerId?: string;
     propertyId?: string;
+    mfaRequired?: boolean;
   }): Promise<void> {
     await this.db
       .insertInto("auth_users")
@@ -33,6 +34,7 @@ export class AuthRepository {
         phone: params.phone ?? null,
         partner_id: params.partnerId ?? null,
         property_id: params.propertyId ?? null,
+        mfa_required: params.mfaRequired ?? true,
       })
       .executeTakeFirstOrThrow();
   }

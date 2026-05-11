@@ -1,0 +1,113 @@
+name: E2E Mobile (Maestro)
+
+# Manual-only. Builds the Android APK pointed at the deployed gateway URL
+# (default: production), boots an emulator on ubuntu-latest, installs Maestro,
+# runs every flow under e2e/mobile/flows/, and uploads the HTML report and
+# per-flow artifacts (screenshots / view hierarchies / video).
+#
+# Prerequisite: the bypass user (e2e@travelhub.com / E2eTest1234!) must already
+# exist in the deployed auth-service DB with mfa_required=false. See the seed
+# script in services/auth-service/scripts/.
+
+on:
+  workflow_dispatch:
+    inputs:
+      api_url:
+        description: 'Gateway URL the mobile build will hit (EXPO_PUBLIC_API_URL). Defaults to the repo variable GATEWAY_URL.'
+        required: true
+        type: string
+        default: ${{ vars.GATEWAY_URL }}
+
+concurrency:
+  group: e2e-mobile-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  NX_DAEMON: 'false'
+  NX_TUI: 'false'
+  HUSKY: '0'
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
+jobs:
+  e2e-android:
+    name: Android emulator + Maestro
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup (pnpm + Node + deps)
+        uses: ./.github/actions/setup
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Expo + EAS CLI
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Build Android APK pointed at deployed gateway
+        working-directory: mobile
+        env:
+          ANDROID_HOME: /usr/local/lib/android/sdk
+          EXPO_PUBLIC_API_URL: ${{ github.event.inputs.api_url }}
+        run: |
+          mkdir -p ../artifacts
+          eas build \
+            --platform android \
+            --profile preview \
+            --non-interactive \
+            --local \
+            --output ../artifacts/app.apk
+
+      - name: Install Maestro CLI
+        run: |
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+
+      - name: Enable KVM (required by Android emulator)
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run Maestro flows on Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          script: |
+            adb install -r artifacts/app.apk
+            mkdir -p e2e/mobile/reports
+            maestro test e2e/mobile/flows/ \
+              --config e2e/mobile/config.yaml \
+              --format html-detailed \
+              --output e2e/mobile/reports/report.html
+
+      - name: Upload Maestro HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: maestro-report-${{ github.run_id }}
+          path: e2e/mobile/reports/
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Upload Maestro per-flow artifacts (screenshots / video / hierarchy)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: maestro-artifacts-${{ github.run_id }}
+          path: e2e/mobile/.artifacts/
+          retention-days: 7
+          if-no-files-found: ignore

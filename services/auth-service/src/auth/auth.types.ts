@@ -36,13 +36,23 @@ export type RegisterResponse = PublicUser & {
   createdAt: string;
 };
 
-export type LoginResponse = {
+export type LoginChallengeResponse = {
   mfaRequired: true;
   challengeId: string;
   challengeType: "email_otp";
   expiresIn: 300;
   user: PublicUser;
 };
+
+export type LoginTokenResponse = {
+  mfaRequired: false;
+  accessToken: string;
+  tokenType: "Bearer";
+  expiresIn: 3600;
+  user: PublicUser;
+};
+
+export type LoginResponse = LoginChallengeResponse | LoginTokenResponse;
 
 export type LoginMfaResponse = {
   accessToken: string;
@@ -67,6 +77,7 @@ export type DbUser = {
   partner_id: string | null;
   property_id: string | null;
   last_login_at: string | null;
+  mfa_required: boolean;
 };
 
 export type DbChallenge = {

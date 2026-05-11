@@ -62,6 +62,7 @@ const DB_USER = (overrides: Partial<DbUser> = {}): DbUser => ({
   partner_id: null,
   property_id: null,
   last_login_at: null,
+  mfa_required: true,
   ...overrides,
 });
 
@@ -203,6 +204,7 @@ describe("AuthService", () => {
         password,
       });
 
+      if (!result.mfaRequired) throw new Error("expected MFA challenge");
       expect(result.mfaRequired).toBe(true);
       expect(result.challengeId).toMatch(
         /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
@@ -306,6 +308,35 @@ describe("AuthService", () => {
       await service.login({ email: "user@example.com", password });
 
       expect(repo.purgeExpiredChallenges).toHaveBeenCalled();
+    });
+
+    it("returns access token directly when user has mfa_required=false", async () => {
+      const password = "password123";
+      repo.findUserByEmail.mockResolvedValue(
+        DB_USER({
+          password_hash: makePasswordHash(password),
+          mfa_required: false,
+        }),
+      );
+
+      const result = await service.login({
+        email: "user@example.com",
+        password,
+      });
+
+      if (result.mfaRequired) throw new Error("expected token response");
+      expect(result.mfaRequired).toBe(false);
+      expect(result.accessToken).toBeTruthy();
+      expect(result.accessToken.split(".")).toHaveLength(3);
+      expect(result.tokenType).toBe("Bearer");
+      expect(result.expiresIn).toBe(3600);
+      expect(result.user.email).toBe("user@example.com");
+      expect(repo.createChallenge).not.toHaveBeenCalled();
+      expect(repo.purgeExpiredChallenges).not.toHaveBeenCalled();
+      expect(repo.updateLastLoginAt).toHaveBeenCalledWith(
+        "usr_abc123",
+        expect.any(String),
+      );
     });
   });
 
@@ -580,6 +611,7 @@ describe("AuthService", () => {
           partner_id: null,
           property_id: null,
           last_login_at: null,
+          mfa_required: true,
         },
         {
           id: "usr_2",
@@ -593,6 +625,7 @@ describe("AuthService", () => {
           partner_id: null,
           property_id: null,
           last_login_at: null,
+          mfa_required: true,
         },
       ]);
 
