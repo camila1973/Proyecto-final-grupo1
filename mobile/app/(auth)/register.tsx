@@ -8,6 +8,8 @@ import { useTranslation } from 'react-i18next';
 import { AppCard } from '@/components/ui/app-card';
 import { validateRegisterFields, hasErrors } from '@/utils/register-validation';
 import type { RegisterFields, RegisterErrors } from '@/utils/register-validation';
+import { useAuth } from '@/hooks/useAuth';
+import { getCheckoutIntent } from '@/services/checkout-store';
 
 const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
 
@@ -15,6 +17,7 @@ export default function RegisterScreen() {
   const theme = useTheme();
   const router = useRouter();
   const { t } = useTranslation();
+  const { login } = useAuth();
 
   const [fields, setFields] = useState<RegisterFields>({
     firstName: '',
@@ -66,6 +69,17 @@ export default function RegisterScreen() {
         return;
       }
 
+      if (getCheckoutIntent()) {
+        try {
+          const result = await login(fields.email.trim().toLowerCase(), fields.password);
+          router.replace(
+            `/login-mfa?challengeId=${result.challengeId}&email=${encodeURIComponent(result.email)}`,
+          );
+          return;
+        } catch {
+          // Account created but auto-login failed — fall through to the success screen.
+        }
+      }
       router.replace('/register-success');
     } catch {
       setApiError(t('register.errorGeneric'));

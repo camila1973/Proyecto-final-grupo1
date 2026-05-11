@@ -3,6 +3,7 @@ export default {
     search: 'Search',
     bookings: 'Bookings',
     account: 'Account',
+    pendingReservation: 'Pending reservation payment',
   },
   home: {
     title: 'TravelHub',
@@ -67,6 +68,13 @@ export default {
     errorPasswordRequired: 'Password is required',
     errorInvalidCredentials: 'Invalid email or password',
     errorGeneric: 'Something went wrong. Please try again.',
+  },
+  signInRequired: {
+    title: 'Continue booking',
+    heading: 'To continue your booking',
+    subheading: 'Sign in to reserve your room.',
+    noAccount: "Don't have an account?",
+    createAccount: 'Create account',
   },
   loginMfa: {
     title: 'My Account',

@@ -4,16 +4,17 @@ import { Text, TextInput, Button, HelperText, useTheme } from 'react-native-pape
 import { AppHeader } from '@/components/ui/app-header';
 import { AppCard } from '@/components/ui/app-card';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
 import { AuthApiError } from '@/services/auth-api';
+import { useBookingFlow } from '@/hooks/useBookingFlow';
 
 export default function LoginMfaScreen() {
   const theme = useTheme();
-  const router = useRouter();
   const { t } = useTranslation();
   const auth = useAuth();
+  const { resumeAfterAuth } = useBookingFlow();
   const { challengeId, email } = useLocalSearchParams<{ challengeId: string; email: string }>();
 
   const [code, setCode] = useState('');
@@ -25,7 +26,7 @@ export default function LoginMfaScreen() {
     setLoading(true);
     try {
       await auth.verifyMfa(challengeId, code.trim());
-      router.replace('/(tabs)');
+      resumeAfterAuth();
     } catch (err) {
       if (err instanceof AuthApiError && err.status === 401) {
         setApiError(t('loginMfa.errorInvalidCode'));
