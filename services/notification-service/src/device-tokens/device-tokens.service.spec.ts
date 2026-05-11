@@ -22,17 +22,31 @@ describe("DeviceTokensService", () => {
   describe("upsert", () => {
     it("inserts a new device token with on-conflict update", async () => {
       const execute = jest.fn().mockResolvedValue(undefined);
-      const onConflict = jest.fn().mockReturnValue({ execute });
+      const doUpdateSet = jest.fn().mockReturnValue({ execute });
+      const columns = jest.fn().mockReturnValue({ doUpdateSet });
+      const oc = { columns };
+      // Invoke the callback so the onConflict inner function is covered
+      const onConflict = jest
+        .fn()
+        .mockImplementation((cb: (oc: typeof oc) => unknown) => {
+          cb(oc);
+          return { execute };
+        });
       const values = jest.fn().mockReturnValue({ onConflict });
       mockDb.insertInto.mockReturnValue({ values });
 
       await service.upsert("user-1", "token-abc", "ios");
+
       expect(mockDb.insertInto).toHaveBeenCalledWith("device_tokens");
       expect(values).toHaveBeenCalledWith({
         user_id: "user-1",
         token: "token-abc",
         platform: "ios",
       });
+      expect(columns).toHaveBeenCalledWith(["user_id", "token"]);
+      expect(doUpdateSet).toHaveBeenCalledWith(
+        expect.objectContaining({ platform: "ios" }),
+      );
       expect(execute).toHaveBeenCalled();
     });
   });

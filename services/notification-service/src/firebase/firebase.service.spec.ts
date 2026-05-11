@@ -37,6 +37,15 @@ describe("FirebaseService", () => {
     return module.get<FirebaseService>(FirebaseService);
   }
 
+  beforeEach(() => {
+    // Ensure Firebase env vars are absent before each test so that tests
+    // which don't call Object.assign(process.env, FIREBASE_ENV) start clean,
+    // regardless of what the root .env file may have loaded.
+    for (const key of Object.keys(FIREBASE_ENV)) {
+      delete process.env[key];
+    }
+  });
+
   afterEach(() => {
     jest.clearAllMocks();
     for (const key of Object.keys(FIREBASE_ENV)) {
@@ -108,5 +117,16 @@ describe("FirebaseService", () => {
     await expect(
       service.sendPushNotification("token", "T", "B"),
     ).resolves.toBeUndefined();
+  });
+
+  it("logs error and does not throw when initializeApp throws", () => {
+    Object.assign(process.env, FIREBASE_ENV);
+    admin.initializeApp.mockImplementationOnce(() => {
+      throw new Error("Firebase init failed");
+    });
+
+    // Instantiate directly to avoid compile() consuming the one-shot mock
+    const svc = new (FirebaseService as any)();
+    expect(() => svc.onModuleInit()).not.toThrow();
   });
 });
