@@ -103,6 +103,24 @@ pnpm run affected:build    # Build only changed projects
 pnpm run graph             # Open dependency graph in browser
 ```
 
+### Adding dependencies
+
+This is a pnpm workspace monorepo. App and service deps belong in **their workspace's** `package.json`, **not** the root. Always use `--filter`:
+
+```bash
+pnpm add <pkg> --filter mobile          # Expo / React Native deps
+pnpm add <pkg> --filter frontend        # React / Vite deps
+pnpm add <pkg> --filter auth-service    # NestJS service deps (same shape for any service)
+```
+
+Only repo-wide tooling belongs at root (`pnpm add -w <pkg>`): `nx`, `@nx/*`, `prettier`, `eslint`, `typescript`, `husky`, `lint-staged`. **Never** install `expo-*`, `react-native-*`, `@nestjs/*`, or any runtime/app dep at root — Expo autolinking, Metro resolver, EAS Build, and per-service builds all read from the workspace's `package.json`. Root-installed app deps work by hoisting coincidence and silently break autolinking, SDK version checks, and EAS uploads.
+
+**For mobile (Expo), always use `npx expo install` instead of `pnpm add`:**
+```bash
+cd mobile && npx expo install <expo-or-rn-pkg>
+```
+Expo CLI reads `mobile/package.json`'s `expo` version and picks a release of the requested package that matches that SDK. A plain `pnpm add expo-foo` resolves to `latest` on npm, which can land you on a future SDK's version and produce build failures like `Unresolved reference 'convertToJSValue'` when the native API changed between SDKs. The pin should always come from `expo install`, not hand-picked.
+
 ## Architecture
 
 ### Monorepo Layout
