@@ -9,6 +9,7 @@ import { AppCard } from '@/components/ui/app-card';
 import { validateRegisterFields, hasErrors } from '@/utils/register-validation';
 import type { RegisterFields, RegisterErrors } from '@/utils/register-validation';
 import { useAuth } from '@/hooks/useAuth';
+import { useBookingFlow } from '@/hooks/useBookingFlow';
 import { getCheckoutIntent } from '@/services/checkout-store';
 
 const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
@@ -18,6 +19,7 @@ export default function RegisterScreen() {
   const router = useRouter();
   const { t } = useTranslation();
   const { login } = useAuth();
+  const { resumeAfterAuth } = useBookingFlow();
 
   const [fields, setFields] = useState<RegisterFields>({
     firstName: '',
@@ -72,9 +74,13 @@ export default function RegisterScreen() {
       if (getCheckoutIntent()) {
         try {
           const result = await login(fields.email.trim().toLowerCase(), fields.password);
-          router.replace(
-            `/login-mfa?challengeId=${result.challengeId}&email=${encodeURIComponent(result.email)}`,
-          );
+          if (result.mfaRequired) {
+            router.replace(
+              `/login-mfa?challengeId=${result.challengeId}&email=${encodeURIComponent(result.email)}`,
+            );
+          } else {
+            resumeAfterAuth();
+          }
           return;
         } catch {
           // Account created but auto-login failed — fall through to the success screen.
