@@ -238,4 +238,98 @@ describe("NotificationClient", () => {
       ).resolves.not.toThrow();
     });
   });
+
+  // ─── sendPaymentSucceededPush ──────────────────────────────────────────────
+
+  describe("sendPaymentSucceededPush", () => {
+    it("posts a push notification with correct userId, channel, and formatted amount", async () => {
+      mockFetch.mockReturnValue(okResponse());
+
+      await client.sendPaymentSucceededPush({
+        userId: "user-123",
+        reservationId: "res-uuid",
+        amountUsd: 350.5,
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining("/notifications/send"),
+        expect.objectContaining({ method: "POST" }),
+      );
+      const body = JSON.parse(
+        (mockFetch.mock.calls[0][1] as RequestInit).body as string,
+      );
+      expect(body.userId).toBe("user-123");
+      expect(body.channel).toBe("push");
+      expect(body.message).toContain("350.50");
+    });
+
+    it("does not throw when notification-service returns non-200", async () => {
+      mockFetch.mockReturnValue(errorResponse(503));
+
+      await expect(
+        client.sendPaymentSucceededPush({
+          userId: "user-123",
+          reservationId: "res-uuid",
+          amountUsd: 100,
+        }),
+      ).resolves.not.toThrow();
+    });
+
+    it("does not throw when fetch rejects (network error)", async () => {
+      mockFetch.mockRejectedValue(new Error("ECONNREFUSED"));
+
+      await expect(
+        client.sendPaymentSucceededPush({
+          userId: "user-123",
+          reservationId: "res-uuid",
+          amountUsd: 100,
+        }),
+      ).resolves.not.toThrow();
+    });
+  });
+
+  // ─── sendPaymentFailedPush ─────────────────────────────────────────────────
+
+  describe("sendPaymentFailedPush", () => {
+    it("posts a push notification with correct userId, channel, and reason", async () => {
+      mockFetch.mockReturnValue(okResponse());
+
+      await client.sendPaymentFailedPush({
+        userId: "user-456",
+        reservationId: "res-uuid",
+        reason: "Card declined.",
+      });
+
+      const body = JSON.parse(
+        (mockFetch.mock.calls[0][1] as RequestInit).body as string,
+      );
+      expect(body.userId).toBe("user-456");
+      expect(body.channel).toBe("push");
+      expect(body.message).toContain("Card declined.");
+    });
+
+    it("does not throw when notification-service returns non-200", async () => {
+      mockFetch.mockReturnValue(errorResponse(503));
+
+      await expect(
+        client.sendPaymentFailedPush({
+          userId: "user-456",
+          reservationId: "res-uuid",
+          reason: "Insufficient funds.",
+        }),
+      ).resolves.not.toThrow();
+    });
+
+    it("does not throw when fetch rejects (network error)", async () => {
+      mockFetch.mockRejectedValue(new Error("ECONNREFUSED"));
+
+      await expect(
+        client.sendPaymentFailedPush({
+          userId: "user-456",
+          reservationId: "res-uuid",
+          reason: "Network error.",
+        }),
+      ).resolves.not.toThrow();
+    });
+  });
 });

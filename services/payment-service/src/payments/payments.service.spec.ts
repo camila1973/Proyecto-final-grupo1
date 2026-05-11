@@ -67,6 +67,8 @@ function makeNotifications() {
   return {
     sendPaymentSucceeded: jest.fn().mockResolvedValue(undefined),
     sendPaymentFailed: jest.fn().mockResolvedValue(undefined),
+    sendPaymentSucceededPush: jest.fn().mockResolvedValue(undefined),
+    sendPaymentFailedPush: jest.fn().mockResolvedValue(undefined),
   };
 }
 
@@ -286,6 +288,23 @@ describe("PaymentsService", () => {
       expect(mockPaymentIntentsCreate).not.toHaveBeenCalled();
       expect(repo.create).not.toHaveBeenCalled();
     });
+
+    it("falls back to empty string for propertyName and undefined for fare_snapshot when both are null", async () => {
+      mockPaymentIntentsCreate.mockResolvedValue(makeStripeIntent());
+      repo.create.mockResolvedValue(makePaymentRow());
+      booking.getReservation.mockResolvedValue(
+        makeReservationDetails({ snapshot: null, fareBreakdown: null }),
+      );
+
+      await service.initiate(INITIATE_DTO);
+
+      expect(repo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          property_name: "",
+          fare_snapshot: undefined,
+        }),
+      );
+    });
   });
 
   // ─── handleWebhook ────────────────────────────────────────────────────────
@@ -399,6 +418,62 @@ describe("PaymentsService", () => {
           service.handleWebhook(rawBody, sig),
         ).resolves.not.toThrow();
       });
+
+      it("calls sendPaymentSucceededPush when booker_id is present in metadata", async () => {
+        const intent = makeStripeIntent({
+          metadata: {
+            reservation_id: "res-uuid",
+            guest_email: "guest@example.com",
+            booker_id: "user-123",
+          },
+        });
+        mockWebhooksConstructEvent.mockReturnValue({
+          type: "payment_intent.succeeded",
+          data: { object: intent },
+        });
+
+        await service.handleWebhook(rawBody, sig);
+
+        expect(notifications.sendPaymentSucceededPush).toHaveBeenCalledWith(
+          expect.objectContaining({
+            userId: "user-123",
+            reservationId: "res-uuid",
+            amountUsd: 350.5,
+          }),
+        );
+      });
+
+      it("does not call sendPaymentSucceededPush when booker_id is absent", async () => {
+        mockWebhooksConstructEvent.mockReturnValue({
+          type: "payment_intent.succeeded",
+          data: { object: makeStripeIntent() },
+        });
+
+        await service.handleWebhook(rawBody, sig);
+
+        expect(notifications.sendPaymentSucceededPush).not.toHaveBeenCalled();
+      });
+
+      it("does not throw when sendPaymentSucceededPush rejects", async () => {
+        const intent = makeStripeIntent({
+          metadata: {
+            reservation_id: "res-uuid",
+            guest_email: "guest@example.com",
+            booker_id: "user-123",
+          },
+        });
+        mockWebhooksConstructEvent.mockReturnValue({
+          type: "payment_intent.succeeded",
+          data: { object: intent },
+        });
+        notifications.sendPaymentSucceededPush.mockRejectedValue(
+          new Error("FCM unavailable"),
+        );
+
+        await expect(
+          service.handleWebhook(rawBody, sig),
+        ).resolves.not.toThrow();
+      });
     });
 
     describe("payment_intent.payment_failed", () => {
@@ -506,6 +581,63 @@ describe("PaymentsService", () => {
             "booking-service",
             new Error("connection refused"),
           ),
+        );
+
+        await expect(
+          service.handleWebhook(rawBody, sig),
+        ).resolves.not.toThrow();
+      });
+
+      it("calls sendPaymentFailedPush when booker_id is present in metadata", async () => {
+        const intent = makeStripeIntent({
+          metadata: {
+            reservation_id: "res-uuid",
+            guest_email: "guest@example.com",
+            booker_id: "user-456",
+          },
+          last_payment_error: { message: "Card declined." },
+        });
+        mockWebhooksConstructEvent.mockReturnValue({
+          type: "payment_intent.payment_failed",
+          data: { object: intent },
+        });
+
+        await service.handleWebhook(rawBody, sig);
+
+        expect(notifications.sendPaymentFailedPush).toHaveBeenCalledWith(
+          expect.objectContaining({
+            userId: "user-456",
+            reservationId: "res-uuid",
+            reason: "Card declined.",
+          }),
+        );
+      });
+
+      it("does not call sendPaymentFailedPush when booker_id is absent", async () => {
+        mockWebhooksConstructEvent.mockReturnValue({
+          type: "payment_intent.payment_failed",
+          data: { object: makeStripeIntent() },
+        });
+
+        await service.handleWebhook(rawBody, sig);
+
+        expect(notifications.sendPaymentFailedPush).not.toHaveBeenCalled();
+      });
+
+      it("does not throw when sendPaymentFailedPush rejects", async () => {
+        const intent = makeStripeIntent({
+          metadata: {
+            reservation_id: "res-uuid",
+            guest_email: "guest@example.com",
+            booker_id: "user-456",
+          },
+        });
+        mockWebhooksConstructEvent.mockReturnValue({
+          type: "payment_intent.payment_failed",
+          data: { object: intent },
+        });
+        notifications.sendPaymentFailedPush.mockRejectedValue(
+          new Error("FCM unavailable"),
         );
 
         await expect(
