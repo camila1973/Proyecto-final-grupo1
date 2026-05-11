@@ -1,0 +1,9 @@
+# Precondition: app is open on the tabs layout (Search/Home screen visible)
+#               and no user is currently signed in.
+# Postcondition: Sign-in form is visible (input-email present).
+appId: com.travelhub.mobile
+---
+- openLink: travelhub:///account
+- assertVisible:
+    id: "input-email"
+- waitForAnimationToEnd

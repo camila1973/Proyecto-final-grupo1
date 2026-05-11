@@ -13,6 +13,7 @@ export type AuthUsersTable = {
   partner_id: string | null;
   property_id: string | null;
   last_login_at: string | null;
+  mfa_required: Generated<boolean>;
 };
 
 export type AuthLoginChallengesTable = {

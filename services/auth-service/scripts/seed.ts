@@ -66,6 +66,16 @@ const USERS = [
     lastName: "TravelHub",
     partnerId: null,
   },
+  {
+    id: "e1000000-0000-0000-0000-000000000099",
+    email: "e2e@travelhub.com",
+    role: "guest" as const,
+    password: "E2eTest1234!",
+    firstName: "E2E",
+    lastName: "Test",
+    partnerId: null,
+    mfaRequired: false,
+  },
 ];
 
 // ─── seed ─────────────────────────────────────────────────────────────────────
@@ -90,6 +100,7 @@ async function seed() {
         last_name: u.lastName,
         phone: null,
         partner_id: u.partnerId,
+        mfa_required: u.mfaRequired ?? true,
       })),
     )
     .execute();

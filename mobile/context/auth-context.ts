@@ -6,10 +6,9 @@ export type AuthUser = {
   role: string;
 };
 
-export type SignInResult = {
-  challengeId: string;
-  email: string;
-};
+export type SignInResult =
+  | { mfaRequired: true; challengeId: string; email: string }
+  | { mfaRequired: false };
 
 // Internal context — raw state + setters. Business logic lives in useAuth.
 // Public API (signIn, completeSignIn, logout) is assembled by the hook.

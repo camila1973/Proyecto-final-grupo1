@@ -67,9 +67,10 @@ describe('useAuth', () => {
   });
 
   describe('login', () => {
-    it('delegates to initiateLogin and returns challengeId + email', async () => {
+    it('returns MFA challenge info when the backend requires MFA', async () => {
       jest.spyOn(React, 'useContext').mockReturnValue(makeCtx());
       (initiateLogin as jest.Mock).mockResolvedValue({
+        mfaRequired: true,
         challengeId: 'ch-1',
         user: { email: 'test@example.com' },
       });
@@ -78,7 +79,33 @@ describe('useAuth', () => {
       const result = await login('test@example.com', 'secret');
 
       expect(initiateLogin).toHaveBeenCalledWith('test@example.com', 'secret');
-      expect(result).toEqual({ challengeId: 'ch-1', email: 'test@example.com' });
+      expect(result).toEqual({
+        mfaRequired: true,
+        challengeId: 'ch-1',
+        email: 'test@example.com',
+      });
+      expect(AsyncStorage.setItem).not.toHaveBeenCalled();
+    });
+
+    it('persists token + user when backend returns accessToken (MFA bypass)', async () => {
+      const ctx = makeCtx();
+      jest.spyOn(React, 'useContext').mockReturnValue(ctx);
+      const mockUser = { id: 'u-9', email: 'e2e@travelhub.com', role: 'guest' };
+      (initiateLogin as jest.Mock).mockResolvedValue({
+        accessToken: 'jwt-bypass',
+        tokenType: 'Bearer',
+        expiresIn: 3600,
+        user: mockUser,
+      });
+
+      const { login } = useAuth();
+      const result = await login('e2e@travelhub.com', 'E2eTest1234!');
+
+      expect(result).toEqual({ mfaRequired: false });
+      expect(AsyncStorage.setItem).toHaveBeenCalledWith('@auth_token', 'jwt-bypass');
+      expect(AsyncStorage.setItem).toHaveBeenCalledWith('@auth_user', JSON.stringify(mockUser));
+      expect(ctx.setToken).toHaveBeenCalledWith('jwt-bypass');
+      expect(ctx.setUser).toHaveBeenCalledWith(mockUser);
     });
   });
 

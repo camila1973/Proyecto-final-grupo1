@@ -41,6 +41,11 @@ lerna-debug.log*
 .expo-shared/
 web-build/
 
+# Maestro e2e artifacts (screenshots, logs, hierarchy) and rendered reports
+.artifacts/
+e2e/mobile/.artifacts/
+e2e/mobile/reports/
+
 # IDE/Editor
 .vscode/
 .idea/

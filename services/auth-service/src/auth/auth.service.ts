@@ -131,6 +131,30 @@ export class AuthService {
       throw new UnauthorizedException("Invalid credentials");
     }
 
+    if (!user.mfa_required) {
+      await this.authRepository.updateLastLoginAt(
+        user.id,
+        new Date().toISOString(),
+      );
+      const publicUser: PublicUser = {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        firstName: user.first_name ?? undefined,
+        lastName: user.last_name ?? undefined,
+        phone: user.phone ?? undefined,
+        partnerId: user.partner_id ?? undefined,
+        propertyId: user.property_id ?? undefined,
+      };
+      return {
+        mfaRequired: false,
+        accessToken: this.createAccessToken(publicUser),
+        tokenType: "Bearer",
+        expiresIn: 3600,
+        user: publicUser,
+      };
+    }
+
     await this.authRepository.purgeExpiredChallenges();
 
     const otp = this.generateOtp();

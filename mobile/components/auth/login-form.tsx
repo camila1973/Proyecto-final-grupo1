@@ -4,6 +4,7 @@ import { Button, HelperText, TextInput, useTheme } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
+import { useBookingFlow } from '@/hooks/useBookingFlow';
 import { AuthApiError } from '@/services/auth-api';
 
 export function LoginForm() {
@@ -11,6 +12,7 @@ export function LoginForm() {
   const router = useRouter();
   const { t } = useTranslation();
   const { login } = useAuth();
+  const { resumeAfterAuth } = useBookingFlow();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -30,7 +32,11 @@ export function LoginForm() {
     setLoading(true);
     try {
       const result = await login(email.trim().toLowerCase(), password);
-      router.push(`/login-mfa?challengeId=${result.challengeId}&email=${encodeURIComponent(result.email)}`);
+      if (result.mfaRequired) {
+        router.push(`/login-mfa?challengeId=${result.challengeId}&email=${encodeURIComponent(result.email)}`);
+      } else {
+        resumeAfterAuth();
+      }
     } catch (err) {
       if (err instanceof AuthApiError && err.status === 401) {
         setApiError(t('account.errorInvalidCredentials'));
