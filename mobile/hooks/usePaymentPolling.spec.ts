@@ -1,159 +1,159 @@
-/**
- * Tests for usePaymentPolling hook
- * Validates payment status polling logic and API integration
- */
+import * as React from 'react';
+import { usePaymentPolling } from './usePaymentPolling';
+
+jest.mock('react', () => ({
+  ...jest.requireActual('react'),
+  useState: jest.fn(),
+  useEffect: jest.fn(),
+}));
 
 const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
 
+const flushPromises = () => new Promise<void>((resolve) => process.nextTick(resolve));
+
 describe('usePaymentPolling', () => {
+  let setStatus: jest.Mock;
+  let setFailureReason: jest.Mock;
+  let setTimedOut: jest.Mock;
+
   beforeEach(() => {
+    jest.useFakeTimers({ doNotFake: ['nextTick'] });
+    setStatus = jest.fn();
+    setFailureReason = jest.fn();
+    setTimedOut = jest.fn();
+  });
+
+  afterEach(() => {
     jest.clearAllMocks();
+    jest.useRealTimers();
   });
 
-  describe('API endpoint construction', () => {
-    it('should use correct API endpoint format', () => {
-      const reservationId = 'res-123';
-      const expectedUrl = `${API_BASE}/api/payment/payments/${reservationId}/status`;
-      
-      expect(expectedUrl).toContain('/api/payment/payments/');
-      expect(expectedUrl).toContain('/status');
-      expect(expectedUrl).toContain(reservationId);
+  function mountHook(fetchMock: jest.Mock) {
+    global.fetch = fetchMock;
+
+    (React.useState as jest.Mock)
+      .mockReturnValueOnce(['pending', setStatus])
+      .mockReturnValueOnce([undefined, setFailureReason])
+      .mockReturnValueOnce([false, setTimedOut]);
+
+    let effectCleanup: (() => void) | undefined;
+    (React.useEffect as jest.Mock).mockImplementationOnce((fn: () => () => void) => {
+      effectCleanup = fn();
     });
+
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    usePaymentPolling('res-123');
+    return effectCleanup;
+  }
+
+  // ─── Initial state ──────────────────────────────────────────────────────────
+
+  it('returns the initial pending state', () => {
+    (React.useState as jest.Mock)
+      .mockReturnValueOnce(['pending', setStatus])
+      .mockReturnValueOnce([undefined, setFailureReason])
+      .mockReturnValueOnce([false, setTimedOut]);
+    (React.useEffect as jest.Mock).mockImplementationOnce(jest.fn());
+
+    const result = usePaymentPolling('res-123');
+
+    expect(result.status).toBe('pending');
+    expect(result.failureReason).toBeUndefined();
+    expect(result.timedOut).toBe(false);
   });
 
-  describe('Payment status responses', () => {
-    it('should handle captured payment status', async () => {
-      global.fetch = jest.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({ status: 'captured' }),
-      });
+  // ─── API endpoint ───────────────────────────────────────────────────────────
 
-      const response = await global.fetch(`${API_BASE}/api/payment/payments/res-123/status`);
-      const data = await response.json();
-
-      expect(data.status).toBe('captured');
-      expect(response.ok).toBe(true);
+  it('calls the correct API endpoint', async () => {
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ status: 'captured' }),
     });
+    mountHook(fetchMock);
+    await flushPromises();
 
-    it('should handle failed payment status with reason', async () => {
-      global.fetch = jest.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({
-          status: 'failed',
-          failureReason: 'Card declined',
-        }),
-      });
-
-      const response = await global.fetch(`${API_BASE}/api/payment/payments/res-456/status`);
-      const data = await response.json();
-
-      expect(data.status).toBe('failed');
-      expect(data.failureReason).toBe('Card declined');
-    });
-
-    it('should handle pending payment status', async () => {
-      global.fetch = jest.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({ status: 'pending' }),
-      });
-
-      const response = await global.fetch(`${API_BASE}/api/payment/payments/res-789/status`);
-      const data = await response.json();
-
-      expect(data.status).toBe('pending');
-    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      `${API_BASE}/api/payment/payments/res-123/status`,
+    );
   });
 
-  describe('Error handling', () => {
-    it('should handle network errors', async () => {
-      global.fetch = jest.fn().mockRejectedValue(new Error('Network error'));
+  // ─── Terminal statuses ──────────────────────────────────────────────────────
 
-      await expect(
-        global.fetch(`${API_BASE}/api/payment/payments/res-error/status`)
-      ).rejects.toThrow('Network error');
-    });
+  it('sets status to captured and stops polling', async () => {
+    mountHook(jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ status: 'captured' }),
+    }));
+    await flushPromises();
 
-    it('should handle non-ok HTTP responses', async () => {
-      global.fetch = jest.fn().mockResolvedValue({
-        ok: false,
-        status: 500,
-        json: async () => ({ error: 'Internal server error' }),
-      });
-
-      const response = await global.fetch(`${API_BASE}/api/payment/payments/res-500/status`);
-      
-      expect(response.ok).toBe(false);
-      expect(response.status).toBe(500);
-    });
-
-    it('should handle 404 not found', async () => {
-      global.fetch = jest.fn().mockResolvedValue({
-        ok: false,
-        status: 404,
-      });
-
-      const response = await global.fetch(`${API_BASE}/api/payment/payments/res-404/status`);
-      
-      expect(response.ok).toBe(false);
-      expect(response.status).toBe(404);
-    });
+    expect(setStatus).toHaveBeenCalledWith('captured');
+    expect(jest.getTimerCount()).toBe(0);
   });
 
-  describe('Polling configuration', () => {
-    it('should use correct polling interval', () => {
-      const POLL_INTERVAL_MS = 2500;
-      const POLL_TIMEOUT_MS = 60000;
-      
-      expect(POLL_INTERVAL_MS).toBe(2500);
-      expect(POLL_TIMEOUT_MS).toBe(60000);
-      expect(POLL_TIMEOUT_MS / POLL_INTERVAL_MS).toBe(24);
-    });
+  it('sets status to failed and stores the failure reason', async () => {
+    mountHook(jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ status: 'failed', failureReason: 'Card declined' }),
+    }));
+    await flushPromises();
 
-    it('should validate timeout is greater than interval', () => {
-      const POLL_INTERVAL_MS = 2500;
-      const POLL_TIMEOUT_MS = 60000;
-      
-      expect(POLL_TIMEOUT_MS).toBeGreaterThan(POLL_INTERVAL_MS);
-    });
+    expect(setStatus).toHaveBeenCalledWith('failed');
+    expect(setFailureReason).toHaveBeenCalledWith('Card declined');
   });
 
-  describe('Reservation ID validation', () => {
-    it('should validate UUID format', () => {
-      const validUUID = 'b0440ed6-9db8-42bf-a8b8-74576459d9e9';
-      const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      
-      expect(validUUID).toMatch(uuidPattern);
-    });
+  // ─── Pending → keeps polling ────────────────────────────────────────────────
 
-    it('should handle empty string', () => {
-      const emptyId = '';
-      
-      expect(emptyId).toBe('');
-      expect(emptyId.length).toBe(0);
-    });
+  it('schedules the next poll when status is still pending', async () => {
+    mountHook(jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ status: 'pending' }),
+    }));
+    await flushPromises();
+
+    expect(setStatus).toHaveBeenCalledWith('pending');
+    expect(jest.getTimerCount()).toBe(1);
   });
 
-  describe('Payment status types', () => {
-    it('should validate payment status values', () => {
-      const validStatuses = ['pending', 'captured', 'failed'];
-      
-      validStatuses.forEach(status => {
-        expect(['pending', 'captured', 'failed']).toContain(status);
-      });
-    });
+  // ─── Error handling ─────────────────────────────────────────────────────────
 
-    it('should handle failure reasons', () => {
-      const failureReasons = [
-        'Card declined',
-        'Insufficient funds',
-        'Payment timeout',
-        'Invalid card details',
-      ];
-      
-      failureReasons.forEach(reason => {
-        expect(typeof reason).toBe('string');
-        expect(reason.length).toBeGreaterThan(0);
-      });
-    });
+  it('retries after a non-ok HTTP response', async () => {
+    mountHook(jest.fn().mockResolvedValue({ ok: false, status: 503 }));
+    await flushPromises();
+
+    expect(setStatus).not.toHaveBeenCalled();
+    expect(jest.getTimerCount()).toBe(1);
+  });
+
+  it('retries after a network error', async () => {
+    mountHook(jest.fn().mockRejectedValue(new Error('Network failure')));
+    await flushPromises();
+
+    expect(setStatus).not.toHaveBeenCalled();
+    expect(jest.getTimerCount()).toBe(1);
+  });
+
+  // ─── Timeout ────────────────────────────────────────────────────────────────
+
+  it('sets timedOut when the 60-second limit is exceeded', async () => {
+    jest.spyOn(Date, 'now')
+      .mockReturnValueOnce(0)
+      .mockReturnValueOnce(61_000);
+
+    mountHook(jest.fn());
+    await flushPromises();
+
+    expect(setTimedOut).toHaveBeenCalledWith(true);
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  // ─── Cleanup ────────────────────────────────────────────────────────────────
+
+  it('cleanup cancels the pending retry timer', async () => {
+    const cleanup = mountHook(jest.fn().mockResolvedValue({ ok: false }));
+    await flushPromises();
+
+    expect(jest.getTimerCount()).toBe(1);
+    cleanup?.();
+    expect(jest.getTimerCount()).toBe(0);
   });
 });
