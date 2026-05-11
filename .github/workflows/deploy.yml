@@ -145,7 +145,7 @@ jobs:
           pulumi config set --stack ${{ env.PULUMI_STACK }} --secret authJwtSecret "${{ secrets.AUTH_JWT_SECRET }}"
           pulumi config set --stack ${{ env.PULUMI_STACK }} firebaseProjectId "${{ secrets.FIREBASE_PROJECT_ID }}"
           pulumi config set --stack ${{ env.PULUMI_STACK }} --secret firebaseClientEmail "${{ secrets.FIREBASE_CLIENT_EMAIL }}"
-          pulumi config set --stack ${{ env.PULUMI_STACK }} --secret firebasePrivateKey "${{ secrets.FIREBASE_PRIVATE_KEY }}"
+          pulumi config set --stack ${{ env.PULUMI_STACK }} --secret -- firebasePrivateKey "${{ secrets.FIREBASE_PRIVATE_KEY }}"
 
       - name: Deploy infrastructure + services (pulumi up)
         uses: pulumi/actions@v6
