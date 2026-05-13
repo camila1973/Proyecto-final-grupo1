@@ -1,0 +1,89 @@
+# E2E scenario — Reservar hotel: login durante la reserva (mid-flow gate).
+# Flow: launch app cold → search → pick room → sign-in-required → log in as
+#       seeded e2e@travelhub.com → /booking/checkout → fill guest info → pay
+#       with Stripe test card → assert confirmation id.
+---
+appId: com.travelhub.mobile
+env:
+  TEST_EMAIL: "e2e@travelhub.com"
+  TEST_PASSWORD: "E2eTest1234!"
+  FIRST_NAME: "Test"
+  LAST_NAME: "Booking"
+---
+- runScript: "../utils/generate-future-dates.js"
+
+- launchApp:
+    clearState: true
+
+- assertVisible:
+    id: "input-city"
+
+- runFlow:
+    file: "../utils/search-and-pick-room.yaml"
+    env:
+      CHECK_IN: ${output.CHECK_IN}
+      CHECK_OUT: ${output.CHECK_OUT}
+
+# /sign-in-required — the embedded LoginForm component
+- assertVisible:
+    id: "input-email"
+
+- tapOn:
+    id: "input-email"
+- inputText: ${TEST_EMAIL}
+
+- tapOn:
+    id: "input-password"
+- inputText: ${TEST_PASSWORD}
+
+- tapOn:
+    id: "btn-signin"
+
+# iOS Keychain dialog — no-op on Android emulator.
+- tapOn:
+    text: "Not Now"
+    optional: true
+
+- extendedWaitUntil:
+    visible:
+      id: "btn-pay"
+    timeout: 15000
+
+# Guest info. Tap "guest-title" between fields to dismiss the Paper keyboard
+# (hideKeyboard does not work on react-native-paper TextInputs — see
+# .claude/commands/e2e.md).
+- tapOn:
+    id: "input-guest-firstName"
+- inputText: ${FIRST_NAME}
+- tapOn:
+    id: "guest-title"
+
+- tapOn:
+    id: "input-guest-lastName"
+- inputText: ${LAST_NAME}
+- tapOn:
+    id: "guest-title"
+
+# Email is pre-filled from user.email (checkout.tsx — useState(user?.email)).
+# Clear it before typing so we don't append to the pre-filled value.
+- tapOn:
+    id: "input-guest-email"
+- eraseText: 50
+- inputText: ${TEST_EMAIL}
+- tapOn:
+    id: "guest-title"
+
+- tapOn:
+    id: "input-guest-phone"
+- inputText: "5551234567"
+- tapOn:
+    id: "guest-title"
+
+- runFlow: "../utils/pay-stripe-test-card.yaml"
+
+- extendedWaitUntil:
+    visible:
+      id: "confirmation-booking-id"
+    # 25 s — usePaymentPolling caps at 20 s; allow a small buffer for the
+    # confirmation screen to render after the polling resolves.
+    timeout: 25000

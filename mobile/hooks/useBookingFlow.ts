@@ -15,8 +15,7 @@ import {
 } from '@/services/checkout-store';
 import { setPendingReservation } from '@/services/pending-reservations-store';
 import { hasHeldReservation, type Reservation } from '@/services/bookings-cache';
-
-const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
+import { API_BASE } from '@/constants/api';
 
 export interface FareBreakdown {
   nights: number;

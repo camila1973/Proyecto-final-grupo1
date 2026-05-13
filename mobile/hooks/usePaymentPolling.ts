@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
-
-const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
+import { API_BASE } from '@/constants/api';
 const POLL_INTERVAL_MS = 2500;
-const POLL_TIMEOUT_MS = 60_000;
+const POLL_TIMEOUT_MS = 20_000;
 
 export type PaymentStatus = 'pending' | 'captured' | 'failed';
 
@@ -41,7 +40,6 @@ export function usePaymentPolling(reservationId: string) {
     let timer: ReturnType<typeof setTimeout>;
 
     const poll = async () => {
-      // Timeout después de 60 segundos
       if (Date.now() - startedAt > POLL_TIMEOUT_MS) {
         setTimedOut(true);
         return;

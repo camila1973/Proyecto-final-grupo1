@@ -1,0 +1,67 @@
+# Precondition: on /booking/checkout with guest info already filled and the
+#               Pay button (testID="btn-pay") visible.
+# Postcondition: Stripe test card submitted; confirmation screen rendering
+#                (caller asserts confirmation-booking-id).
+#
+# The Stripe PaymentSheet is a native modal rendered by the Stripe SDK, NOT a
+# React Native view tree, so testIDs do not propagate to its fields. We match
+# by visible text. Card-field taps are wrapped with `optional: true` because the
+# SDK may pre-focus a field and re-tapping would dismiss the keyboard.
+appId: com.travelhub.mobile
+---
+- tapOn:
+    id: "btn-pay"
+
+# Stripe sheet animates in — give it a moment to mount native views.
+- waitForAnimationToEnd:
+    timeout: 8000
+
+# Card number
+- tapOn:
+    text: "Card number"
+    optional: true
+- inputText: "4242424242424242"
+
+# Expiry — label varies between "MM / YY" and "Expiry".
+- tapOn:
+    text: "MM / YY"
+    optional: true
+- tapOn:
+    text: "Expiry"
+    optional: true
+- inputText: "1230"
+
+# CVC
+- tapOn:
+    text: "CVC"
+    optional: true
+- inputText: "123"
+
+# Postal / ZIP is only shown for some country/card combos. We do NOT type
+# unconditionally: when the field is absent, `inputText` would append to
+# whichever input is still focused (typically CVC) and silently corrupt it.
+# Maestro 1.x+ supports a `runFlow` with a `when.visible` guard for this.
+- runFlow:
+    when:
+      visible:
+        text: "ZIP|Postal code"
+    commands:
+      - tapOn:
+          text: "ZIP|Postal code"
+      - inputText: "12345"
+
+# Dismiss the native numeric keyboard so the Pay button is reachable. The
+# Stripe sheet's "Billing address" header is a static label that isn't tied to
+# an input, so tapping it removes focus from CVC/ZIP and the keyboard closes.
+- tapOn:
+    text: "Billing address"
+    optional: true
+
+# Stripe's submit button label includes the amount: "Pay $123.45".
+- tapOn:
+    text: "Pay \\$.*"
+
+# We don't wait here — the confirmation screen does its own polling
+# (usePaymentPolling: 60 s max). Callers should follow this flow with an
+# extendedWaitUntil on confirmation-booking-id, timed to allow the poll loop
+# to finish.

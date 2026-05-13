@@ -1,0 +1,33 @@
+name: Firebase config
+description: >
+  Materialize mobile/GoogleService-Info.plist and mobile/google-services.json
+  from base64-encoded repo secrets. Both files are referenced by mobile/app.json
+  and required by expo prebuild during any iOS or Android build.
+
+inputs:
+  plist-b64:
+    description: 'Base64 of GoogleService-Info.plist (the GOOGLE_SERVICES_PLIST_B64 secret).'
+    required: true
+  json-b64:
+    description: 'Base64 of google-services.json (the GOOGLE_SERVICES_JSON_B64 secret).'
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Decode Firebase config files
+      shell: bash
+      env:
+        PLIST_B64: ${{ inputs.plist-b64 }}
+        JSON_B64: ${{ inputs.json-b64 }}
+      run: |
+        if [ -z "$PLIST_B64" ] || [ -z "$JSON_B64" ]; then
+          echo "::error::GOOGLE_SERVICES_PLIST_B64 and/or GOOGLE_SERVICES_JSON_B64 secrets are not set on the repo."
+          exit 1
+        fi
+        printf '%s' "$PLIST_B64" | base64 -d > mobile/GoogleService-Info.plist
+        printf '%s' "$JSON_B64"  | base64 -d > mobile/google-services.json
+        # Sanity check — these are the keys every Firebase client config carries.
+        grep -q 'GOOGLE_APP_ID' mobile/GoogleService-Info.plist || { echo "::error::Decoded plist missing GOOGLE_APP_ID"; exit 1; }
+        grep -q 'project_info'  mobile/google-services.json    || { echo "::error::Decoded google-services.json missing project_info"; exit 1; }
+        echo "Firebase config materialized."

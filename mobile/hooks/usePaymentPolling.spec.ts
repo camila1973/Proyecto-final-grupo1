@@ -1,13 +1,15 @@
 import * as React from 'react';
+
 import { usePaymentPolling } from './usePaymentPolling';
+import { API_BASE } from '@/constants/api';
+
+jest.mock('react-native', () => ({ Platform: { OS: 'ios' } }));
 
 jest.mock('react', () => ({
   ...jest.requireActual('react'),
   useState: jest.fn(),
   useEffect: jest.fn(),
 }));
-
-const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
 
 const flushPromises = () => new Promise<void>((resolve) => process.nextTick(resolve));
 
@@ -134,10 +136,10 @@ describe('usePaymentPolling', () => {
 
   // ─── Timeout ────────────────────────────────────────────────────────────────
 
-  it('sets timedOut when the 60-second limit is exceeded', async () => {
+  it('sets timedOut when the 20-second limit is exceeded', async () => {
     jest.spyOn(Date, 'now')
       .mockReturnValueOnce(0)
-      .mockReturnValueOnce(61_000);
+      .mockReturnValueOnce(21_000);
 
     mountHook(jest.fn());
     await flushPromises();

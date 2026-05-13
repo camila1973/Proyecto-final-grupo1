@@ -1,0 +1,29 @@
+# Precondition: app launched on tabs/home. Caller must pass CHECK_IN and
+#               CHECK_OUT via runFlow env (use ../utils/generate-future-dates.js
+#               in the parent flow to compute them).
+# Postcondition: "Seleccionar habitación" tapped on the first room card of the
+#                first property in the results. Caller decides what to assert
+#                next (sign-in-required vs checkout, depending on auth state).
+#
+# Deep-link bypass: jumping straight to /search-results sidesteps the city
+# typeahead / date picker / guest picker UI on the Home tab. The home flow
+# itself is exercised by the existing search-results.tsx implementation; these
+# booking tests focus on the post-search journey, so the deep link keeps them
+# deterministic and fast.
+appId: com.travelhub.mobile
+---
+- openLink: travelhub:///search-results?city=Canc%C3%BAn&checkIn=${CHECK_IN}&checkOut=${CHECK_OUT}&guests=2
+
+- assertVisible:
+    id: "list-results"
+- waitForAnimationToEnd
+
+- tapOn:
+    id: "result-card"
+
+- assertVisible:
+    id: "btn-select-room"
+- waitForAnimationToEnd
+
+- tapOn:
+    id: "btn-select-room"
