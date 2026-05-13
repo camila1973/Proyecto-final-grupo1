@@ -52,25 +52,23 @@ appId: com.travelhub.mobile
     optional: true
 - inputText: "123"
 
-# Postal / ZIP is only shown for some country/card combos. We do NOT type
-# unconditionally: when the field is absent, `inputText` would append to
-# whichever input is still focused (typically CVC) and silently corrupt it.
-# Maestro 1.x+ supports a `runFlow` with a `when.visible` guard for this.
+# Postal / ZIP is only shown for some country/card combos (e.g. United States
+# in the Stripe test sheet renders "ZIP Code"). We do NOT type unconditionally:
+# when the field is absent, `inputText` would append to whichever input is
+# still focused (typically CVC) and silently corrupt it. The regex is
+# unanchored on both sides because Maestro matches `text:` as a full-string
+# regex — "ZIP Code" must be caught by ".*ZIP.*", not by "ZIP".
 - runFlow:
     when:
       visible:
-        text: "ZIP|Postal code"
+        text: ".*ZIP.*|.*Postal.*"
     commands:
       - tapOn:
-          text: "ZIP|Postal code"
+          text: ".*ZIP.*|.*Postal.*"
       - inputText: "12345"
 
-# Dismiss the native numeric keyboard so the Pay button is reachable. The
-# Stripe sheet's "Billing address" header is a static label that isn't tied to
-# an input, so tapping it removes focus from CVC/ZIP and the keyboard closes.
-- tapOn:
-    text: "Billing address"
-    optional: true
+# Dismiss the native numeric keyboard so the Pay button is reachable.
+- hideKeyboard
 
 # Stripe's submit button label includes the amount: "Pay $123.45".
 - tapOn:
