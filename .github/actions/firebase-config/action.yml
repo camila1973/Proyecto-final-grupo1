@@ -30,10 +30,15 @@ runs:
         # Sanity check — these are the keys every Firebase client config carries.
         grep -q 'GOOGLE_APP_ID' mobile/GoogleService-Info.plist || { echo "::error::Decoded plist missing GOOGLE_APP_ID"; exit 1; }
         grep -q 'project_info'  mobile/google-services.json    || { echo "::error::Decoded google-services.json missing project_info"; exit 1; }
-        # `eas build --local` bundles the project via `git ls-files`, which
-        # ignores gitignored files even when they exist on disk. Both Firebase
-        # files are gitignored as secrets, so we force-add them to this
-        # runner's git index (never pushed — the runner is ephemeral) so the
-        # bundle includes them and `expo prebuild` can copy them into android/.
+        # `eas build --local` bundles the project from the committed git tree
+        # (`git archive HEAD`-style), not from disk or the index. Both Firebase
+        # files are gitignored as secrets, so just having them on disk — or
+        # even `git add -f` them — isn't enough; the local builder won't see
+        # anything that isn't in HEAD. Force-add and commit on the ephemeral
+        # runner (never pushed) so they land in HEAD and travel into the
+        # bundle, letting `expo prebuild` copy them into android/app/.
         git add -f mobile/GoogleService-Info.plist mobile/google-services.json
-        echo "Firebase config materialized and staged for EAS bundling."
+        git -c user.email=ci@github.actions -c user.name='CI Firebase config' \
+            commit --no-verify -m 'ci: materialize firebase config (ephemeral)' \
+            mobile/GoogleService-Info.plist mobile/google-services.json
+        echo "Firebase config materialized and committed for EAS bundling."
