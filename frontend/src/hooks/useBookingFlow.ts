@@ -27,6 +27,8 @@ export const consumeCheckoutIntent = (): CheckoutIntent | null => {
   return JSON.parse(raw) as CheckoutIntent;
 };
 
+export const clearCheckoutIntent = (): void => sessionStorage.removeItem(KEY);
+
 /**
  * Module-level promise — survives StrictMode remounts so the reservation
  * request is fired exactly once when the user clicks "Book".

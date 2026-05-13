@@ -70,6 +70,15 @@ export async function syncReservations(token: string, userId: string): Promise<R
   return reservations;
 }
 
+export async function hasHeldReservation(token: string, userId: string): Promise<boolean> {
+  try {
+    const reservations = await fetchReservations(token, userId);
+    return reservations.some((r) => r.status === 'held');
+  } catch {
+    return false;
+  }
+}
+
 export class CheckInError extends Error {
   constructor(public readonly status: number) {
     super(`Check-in failed: ${status}`);

@@ -1,6 +1,6 @@
 import logo from '../assets/logo.png';
 import { useTranslation } from 'react-i18next';
-import { Link } from '@tanstack/react-router';
+import { Link, useNavigate } from '@tanstack/react-router';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '@mui/material/styles';
 import LocaleSelector from './LocaleSelector';
@@ -8,7 +8,13 @@ import LocaleSelector from './LocaleSelector';
 export default function Navbar() {
   const { t } = useTranslation();
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const theme = useTheme();
+
+  const handleLogout = () => {
+    logout();
+    void navigate({ to: '/' });
+  };
 
   return (
     <header className="bg-white" style={{ borderBottom: `2px solid ${theme.palette.primary.main}` }}>
@@ -30,7 +36,7 @@ export default function Navbar() {
               ) : (
                 <Link to="/trips" className="hover:text-gray-900">{t('nav.myBookings')}</Link>
               )}
-              <button onClick={logout} className="bg-transparent border-0 p-0 text-sm text-gray-700 hover:text-gray-900 cursor-pointer">
+              <button onClick={handleLogout} className="bg-transparent border-0 p-0 text-sm text-gray-700 hover:text-gray-900 cursor-pointer">
                 {t('nav.logout')}
               </button>
             </>

@@ -35,7 +35,7 @@ export function LoginForm() {
       if (result.mfaRequired) {
         router.push(`/login-mfa?challengeId=${result.challengeId}&email=${encodeURIComponent(result.email)}`);
       } else {
-        resumeAfterAuth();
+        await resumeAfterAuth();
       }
     } catch (err) {
       if (err instanceof AuthApiError && err.status === 401) {

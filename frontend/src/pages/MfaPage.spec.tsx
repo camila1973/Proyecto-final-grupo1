@@ -30,11 +30,17 @@ jest.mock('../hooks/useBookingFlow', () => ({
   startCheckoutAfterLogin: (...args: unknown[]) => mockStartCheckoutAfterLogin(...args),
 }));
 
+const mockHasHeldReservation = jest.fn();
+jest.mock('../utils/queries', () => ({
+  hasHeldReservation: (...args: unknown[]) => mockHasHeldReservation(...args),
+}));
+
 describe('MfaPage', () => {
   beforeEach(() => {
     mockUseSearch.mockReturnValue({ challengeId: 'ch_123' });
     global.fetch = jest.fn();
     mockStartCheckoutAfterLogin.mockReturnValue(false);
+    mockHasHeldReservation.mockResolvedValue(false);
   });
 
   afterEach(() => {
@@ -195,5 +201,32 @@ describe('MfaPage', () => {
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith({ to: '/booking/checkout' });
     });
+    expect(mockHasHeldReservation).not.toHaveBeenCalled();
+  });
+
+  it('navigates to /trips when no intent but user has a held reservation', async () => {
+    mockStartCheckoutAfterLogin.mockReturnValue(false);
+    mockHasHeldReservation.mockResolvedValue(true);
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () =>
+        Promise.resolve({
+          accessToken: 'token_123',
+          user: { id: 'u_1', email: 'user@example.com', role: 'guest' },
+        }),
+    });
+
+    render(<MfaPage />);
+
+    fireEvent.change(screen.getByLabelText(es.mfa.code_label), {
+      target: { value: '123456' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: es.mfa.submit }));
+
+    await waitFor(() => {
+      expect(mockHasHeldReservation).toHaveBeenCalledWith('token_123', 'u_1');
+    });
+    expect(mockNavigate).toHaveBeenCalledWith({ to: '/trips' });
   });
 });
