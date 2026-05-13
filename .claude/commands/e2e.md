@@ -26,10 +26,11 @@ nx run-ios mobile             # build & launch on iOS simulator (must be running
 ## Running locally
 
 ```bash
-pnpm e2e:mobile               # run all flows in e2e/mobile/flows/
-pnpm e2e:mobile:register      # run the registration flow only
-pnpm e2e:mobile:record        # record a video of the registration flow
-nx e2e mobile                 # same as e2e:mobile via Nx
+pnpm e2e:mobile                       # run all flows in e2e/mobile/flows/
+pnpm e2e:mobile:flow register         # run a single flow by basename (no .yaml)
+pnpm e2e:mobile:flow booking-cancel   # any flow under e2e/mobile/flows/
+pnpm e2e:mobile:record register       # record a video of one flow
+nx e2e mobile                         # same as e2e:mobile via Nx
 ```
 
 ## Key design decisions

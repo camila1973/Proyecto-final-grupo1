@@ -82,12 +82,13 @@ function SuccessState({
         </Text>
         <Text
           variant="titleMedium"
-          style={{ 
-            color: theme.colors.onSurface, 
-            fontWeight: '700', 
-            letterSpacing: 2, 
-            fontFamily: 'monospace' 
+          style={{
+            color: theme.colors.onSurface,
+            fontWeight: '700',
+            letterSpacing: 2,
+            fontFamily: 'monospace'
           }}
+          testID="confirmation-booking-id"
         >
           #{shortId}
         </Text>

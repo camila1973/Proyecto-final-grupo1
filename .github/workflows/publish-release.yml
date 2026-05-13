@@ -7,15 +7,6 @@ on:
         description: 'Version tag (e.g. v1.0.0)'
         required: true
         type: string
-      build_strategy:
-        description: 'Build strategy'
-        required: true
-        type: choice
-        default: eas-cloud
-        options:
-          - eas-cloud
-          - github-actions
-          - self-hosted
 
 concurrency:
   group: publish-release
@@ -81,71 +72,10 @@ jobs:
           echo "sha=$SHA" >> "$GITHUB_OUTPUT"
           echo "Tagged $SHA as $TAG"
 
-  # ── 3a. Build — EAS Cloud ─────────────────────────────────────────────────────
-  build-eas-cloud:
-    name: Build / EAS Cloud
-    needs: tag
-    if: ${{ github.event.inputs.build_strategy == 'eas-cloud' }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.tag.outputs.sha }}
-
-      - uses: ./.github/actions/setup
-
-      - name: Set app version in app.json
-        run: |
-          VERSION="${{ github.event.inputs.version }}"
-          SEMVER="${VERSION#v}"
-          node -e "
-            const fs = require('fs');
-            const cfg = JSON.parse(fs.readFileSync('mobile/app.json', 'utf8'));
-            cfg.expo.version = '$SEMVER';
-            cfg.expo.android = cfg.expo.android ?? {};
-            cfg.expo.android.versionCode = parseInt('$SEMVER'.replace(/\./g, ''));
-            fs.writeFileSync('mobile/app.json', JSON.stringify(cfg, null, 2));
-          "
-
-      - name: Setup Expo + EAS CLI
-        uses: expo/expo-github-action@v8
-        with:
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
-
-      - name: Build with EAS (Android + iOS)
-        working-directory: mobile
-        run: |
-          eas build \
-            --platform all \
-            --profile preview \
-            --non-interactive \
-            --json \
-            --wait \
-            > eas-output.json
-
-      - name: Download artifacts from EAS
-        run: |
-          mkdir -p artifacts
-
-          ANDROID_URL=$(jq -r '.[] | select(.platform == "ANDROID") | .artifacts.buildUrl' mobile/eas-output.json)
-          IOS_URL=$(jq -r '.[] | select(.platform == "IOS") | .artifacts.buildUrl' mobile/eas-output.json)
-
-          [ -n "$ANDROID_URL" ] && curl -fsSL -o "artifacts/travelhub-${{ github.event.inputs.version }}.apk" "$ANDROID_URL"
-          [ -n "$IOS_URL" ]     && curl -fsSL -o "artifacts/travelhub-${{ github.event.inputs.version }}-ios-simulator.tar.gz" "$IOS_URL"
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: travelhub-builds
-          path: artifacts/
-          if-no-files-found: error
-
-  # ── 3b. Build — GitHub Actions (Android) ──────────────────────────────────────
+  # ── 3a. Build — Android ───────────────────────────────────────────────────────
   build-gh-android:
-    name: Build / GitHub Actions / Android
+    name: Build / Android
     needs: tag
-    if: ${{ github.event.inputs.build_strategy == 'github-actions' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -179,6 +109,12 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
 
+      - name: Materialize Firebase config
+        uses: ./.github/actions/firebase-config
+        with:
+          plist-b64: ${{ secrets.GOOGLE_SERVICES_PLIST_B64 }}
+          json-b64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
+
       - name: Build Android (local)
         working-directory: mobile
         env:
@@ -200,11 +136,10 @@ jobs:
 
           if-no-files-found: error
 
-  # ── 3c. Build — GitHub Actions (iOS) ──────────────────────────────────────────
+  # ── 3b. Build — iOS ───────────────────────────────────────────────────────────
   build-gh-ios:
-    name: Build / GitHub Actions / iOS
+    name: Build / iOS
     needs: tag
-    if: ${{ github.event.inputs.build_strategy == 'github-actions' }}
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -232,6 +167,12 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
 
+      - name: Materialize Firebase config
+        uses: ./.github/actions/firebase-config
+        with:
+          plist-b64: ${{ secrets.GOOGLE_SERVICES_PLIST_B64 }}
+          json-b64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
+
       - name: Build iOS (local)
         working-directory: mobile
         run: |
@@ -251,102 +192,29 @@ jobs:
 
           if-no-files-found: error
 
-  # ── 3d. Build — Self-hosted (Android + iOS) ───────────────────────────────────
-  build-self-hosted:
-    name: Build / Self-hosted / Android + iOS
-    needs: tag
-    if: ${{ github.event.inputs.build_strategy == 'self-hosted' }}
-    runs-on: self-hosted
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.tag.outputs.sha }}
-
-      - uses: ./.github/actions/setup
-
-      - name: Set app version in app.json
-        run: |
-          VERSION="${{ github.event.inputs.version }}"
-          SEMVER="${VERSION#v}"
-          node -e "
-            const fs = require('fs');
-            const cfg = JSON.parse(fs.readFileSync('mobile/app.json', 'utf8'));
-            cfg.expo.version = '$SEMVER';
-            cfg.expo.android = cfg.expo.android ?? {};
-            cfg.expo.android.versionCode = parseInt('$SEMVER'.replace(/\./g, ''));
-            fs.writeFileSync('mobile/app.json', JSON.stringify(cfg, null, 2));
-          "
-
-      - name: Setup Expo + EAS CLI
-        uses: expo/expo-github-action@v8
-        with:
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
-
-      - name: Build Android + iOS (local)
-        working-directory: mobile
-        run: |
-          mkdir -p ../artifacts
-          eas build \
-            --platform android \
-            --profile preview \
-            --non-interactive \
-            --local \
-            --output "../artifacts/travelhub-${{ github.event.inputs.version }}.apk"
-          eas build \
-            --platform ios \
-            --profile preview \
-            --non-interactive \
-            --local \
-            --output "../artifacts/travelhub-${{ github.event.inputs.version }}-ios-simulator.tar.gz"
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: travelhub-builds
-          path: artifacts/
-
-          if-no-files-found: error
-
   # ── 4. Collect artifacts (fan-in) ─────────────────────────────────────────────
   collect:
     name: Collect artifacts
-    needs: [tag, build-eas-cloud, build-gh-android, build-gh-ios, build-self-hosted]
+    needs: [tag, build-gh-android, build-gh-ios]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Check at least one build succeeded
         run: |
-          EAS="${{ needs.build-eas-cloud.result }}"
           GH_A="${{ needs.build-gh-android.result }}"
           GH_I="${{ needs.build-gh-ios.result }}"
-          SH="${{ needs.build-self-hosted.result }}"
-          if [[ "$EAS" != "success" && "$GH_A" != "success" && "$GH_I" != "success" && "$SH" != "success" ]]; then
+          if [[ "$GH_A" != "success" && "$GH_I" != "success" ]]; then
             echo "::error::No build job succeeded. Cannot create release."
             exit 1
           fi
 
-      - name: Download EAS Cloud artifacts
-        if: ${{ needs.build-eas-cloud.result == 'success' }}
-        uses: actions/download-artifact@v4
-        with:
-          name: travelhub-builds
-          path: artifacts/
-
-      - name: Download GitHub Actions artifacts
+      - name: Download build artifacts
         if: ${{ needs.build-gh-android.result == 'success' || needs.build-gh-ios.result == 'success' }}
         uses: actions/download-artifact@v4
         with:
           pattern: travelhub-builds-*
           path: artifacts/
           merge-multiple: true
-
-      - name: Download self-hosted artifacts
-        if: ${{ needs.build-self-hosted.result == 'success' }}
-        uses: actions/download-artifact@v4
-        with:
-          name: travelhub-builds
-          path: artifacts/
 
       - name: Upload unified artifacts
         uses: actions/upload-artifact@v4

@@ -1,0 +1,30 @@
+# Precondition: app is open on the tabs layout (Search/Home screen visible)
+#               and no user is currently signed in.
+# Postcondition: Authenticated session for e2e@travelhub.com; Home tab visible.
+#
+# Relies on the seeded user from services/auth-service/scripts/seed.ts
+# (mfa_required=false, so the OTP step is skipped and the JWT is returned
+# directly by POST /auth/login).
+appId: com.travelhub.mobile
+---
+- runFlow: "navigate-to-login.yaml"
+
+- tapOn:
+    id: "input-email"
+- inputText: "e2e@travelhub.com"
+
+- tapOn:
+    id: "input-password"
+- inputText: "E2eTest1234!"
+
+- tapOn:
+    id: "btn-signin"
+
+# iOS Keychain "Save Password?" system dialog — outside the app view tree.
+# No-op on Android emulators and on simulators where it's already dismissed.
+- tapOn:
+    text: "Not Now"
+    optional: true
+
+- assertVisible:
+    id: "input-city"

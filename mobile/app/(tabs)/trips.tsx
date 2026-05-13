@@ -32,8 +32,7 @@ import {
 } from '@/services/bookings-cache';
 import { setPendingReservation } from '@/services/pending-reservations-store';
 import { useBookingFlow } from '@/hooks/useBookingFlow';
-
-const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
+import { API_BASE } from '@/constants/api';
 
 // ─── Status chip ───────────────────────────────────────────────────────────────
 
@@ -135,6 +134,7 @@ function HeldBanner({ reservation, onCompletePayment, theme }: HeldBannerProps) 
         buttonColor={theme.colors.secondary}
         style={styles.heldBannerBtn}
         labelStyle={{ fontSize: 13, fontWeight: '700' }}
+        testID="btn-complete-payment-banner"
       >
         {t('bookings.completePayment')}
       </Button>
@@ -235,6 +235,7 @@ function ReservationCard({ item, onCancel, onCompletePayment, onCheckin, isOnlin
               buttonColor={theme.colors.secondary}
               style={styles.completeBtn}
               labelStyle={{ fontSize: 12 }}
+              testID="btn-complete-payment"
             >
               {t('bookings.completePayment')}
             </Button>
@@ -245,6 +246,7 @@ function ReservationCard({ item, onCancel, onCompletePayment, onCheckin, isOnlin
               onPress={() => onCheckin(item.id)}
               style={styles.completeBtn}
               labelStyle={{ fontSize: 12 }}
+              testID="btn-checkin"
             >
               {t('bookings.checkinBtn')}
             </Button>
@@ -256,6 +258,7 @@ function ReservationCard({ item, onCancel, onCompletePayment, onCheckin, isOnlin
               textColor={theme.colors.error}
               style={[styles.cancelBtn, { borderColor: theme.colors.error }]}
               labelStyle={{ fontSize: 12 }}
+              testID="btn-cancel-reservation"
             >
               {t('bookings.cancel')}
             </Button>

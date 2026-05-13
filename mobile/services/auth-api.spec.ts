@@ -1,6 +1,7 @@
 import { initiateLogin, verifyMfaCode, AuthApiError } from './auth-api';
+import { API_BASE } from '@/constants/api';
 
-const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
+jest.mock('react-native', () => ({ Platform: { OS: 'ios' } }));
 
 // ─── fetch mock helpers ────────────────────────────────────────────────────────
 

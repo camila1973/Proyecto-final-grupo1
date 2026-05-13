@@ -25,8 +25,7 @@ import { useStripe } from '@/services/stripe-wrapper';
 import { useAuth } from '@/hooks/useAuth';
 import { getCheckoutIntent, clearCheckoutIntent } from '@/services/checkout-store';
 import { useBookingFlow, type CreatedReservation } from '@/hooks/useBookingFlow';
-
-const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
+import { API_BASE } from '@/constants/api';
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -402,7 +401,7 @@ export default function CheckoutScreen() {
 
           {/* ── Guest info ── */}
           <Surface style={[styles.card, { backgroundColor: theme.colors.surface }]} elevation={1}>
-            <Text variant="titleSmall" style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
+            <Text variant="titleSmall" style={[styles.sectionTitle, { color: theme.colors.onSurface }]} testID="guest-title">
               {t('checkout.guestTitle')}
             </Text>
 
@@ -415,6 +414,7 @@ export default function CheckoutScreen() {
                 onChangeText={(v) => { setFirstName(v); setFieldErrors((p) => ({ ...p, firstName: '' })); }}
                 error={!!fieldErrors.firstName}
                 dense
+                testID="input-guest-firstName"
               />
               <TextInput
                 style={[styles.input, styles.half]}
@@ -424,6 +424,7 @@ export default function CheckoutScreen() {
                 onChangeText={(v) => { setLastName(v); setFieldErrors((p) => ({ ...p, lastName: '' })); }}
                 error={!!fieldErrors.lastName}
                 dense
+                testID="input-guest-lastName"
               />
             </View>
             {(fieldErrors.firstName || fieldErrors.lastName) ? (
@@ -442,6 +443,7 @@ export default function CheckoutScreen() {
               autoCapitalize="none"
               error={!!fieldErrors.email}
               dense
+              testID="input-guest-email"
             />
             {fieldErrors.email ? (
               <Text variant="labelSmall" style={{ color: theme.colors.error, marginBottom: 4 }}>{fieldErrors.email}</Text>
@@ -456,6 +458,7 @@ export default function CheckoutScreen() {
               keyboardType="phone-pad"
               error={!!fieldErrors.phone}
               dense
+              testID="input-guest-phone"
             />
             {fieldErrors.phone ? (
               <Text variant="labelSmall" style={{ color: theme.colors.error }}>{fieldErrors.phone}</Text>
@@ -471,6 +474,7 @@ export default function CheckoutScreen() {
             style={styles.payBtn}
             contentStyle={styles.payBtnContent}
             labelStyle={{ fontSize: 16, fontWeight: '700' }}
+            testID="btn-pay"
           >
             {paying ? t('checkout.processing') : t('checkout.payBtn', { amount: usd(reservation?.grandTotalUsd ?? intent.estimatedTotalUsd) })}
           </Button>

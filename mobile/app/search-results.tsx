@@ -46,7 +46,7 @@ function PropertyCard({
   const totalPrice = nights > 0 ? item.estimatedTotalUsd : null;
 
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.85}>
+    <TouchableOpacity onPress={onPress} activeOpacity={0.85} testID="result-card">
     <AppCard style={cardStyles.card}>
       <Image
         source="https://cf.bstatic.com/xdata/images/hotel/max1024x768/484083124.jpg?k=f129efcf29b69ac37463eb551c3fd79e43e3a66a223194e917d3844c721ee338&o="

@@ -11,8 +11,7 @@ import type { RegisterFields, RegisterErrors } from '@/utils/register-validation
 import { useAuth } from '@/hooks/useAuth';
 import { useBookingFlow } from '@/hooks/useBookingFlow';
 import { getCheckoutIntent } from '@/services/checkout-store';
-
-const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
+import { API_BASE } from '@/constants/api';
 
 export default function RegisterScreen() {
   const theme = useTheme();

@@ -30,8 +30,7 @@ import {
 import { Calendar } from 'react-native-calendars';
 import { Ionicons } from '@expo/vector-icons';
 import { useBookingFlow } from '@/hooks/useBookingFlow';
-
-const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
+import { API_BASE } from '@/constants/api';
 
 const BRAND = '#2d3a8c';
 const ACCENT = '#f5a524';
@@ -769,7 +768,7 @@ function RoomCard({
           ${price.toFixed(0)}{' '}
           <Text style={styles.roomPriceSuffix}>Por noche</Text>
         </Text>
-        <TouchableOpacity style={styles.selectBtn} onPress={() => onBook(room)}>
+        <TouchableOpacity style={styles.selectBtn} onPress={() => onBook(room)} testID="btn-select-room">
           <Text style={styles.selectBtnText}>Seleccionar habitación</Text>
         </TouchableOpacity>
       </View>
