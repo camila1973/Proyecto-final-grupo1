@@ -51,6 +51,12 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
 
+      - name: Materialize Firebase config
+        uses: ./.github/actions/firebase-config
+        with:
+          plist-b64: ${{ secrets.GOOGLE_SERVICES_PLIST_B64 }}
+          json-b64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
+
       - name: Validate gateway URL
         env:
           EXPO_PUBLIC_API_URL: ${{ github.event.inputs.api_url || vars.GATEWAY_URL }}
