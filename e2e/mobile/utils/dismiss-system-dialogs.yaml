@@ -1,0 +1,11 @@
+# Dismisses Android system dialogs that race with test startup on the CI
+# emulator (most notably "Pixel Launcher isn't responding" ANR popups).
+# All taps are optional so this is a no-op when no dialog is present.
+appId: com.travelhub.mobile
+---
+- tapOn:
+    text: "Wait"
+    optional: true
+- tapOn:
+    text: "Close app"
+    optional: true

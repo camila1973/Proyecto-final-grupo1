@@ -13,6 +13,8 @@ env:
 - launchApp:
     clearState: true
 
+- runFlow: "../utils/dismiss-system-dialogs.yaml"
+
 - assertVisible:
     id: "input-city"
 

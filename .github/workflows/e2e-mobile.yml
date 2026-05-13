@@ -120,6 +120,14 @@ jobs:
           disable-animations: true
           script: |
             adb install -r artifacts/app.apk
+            # Pequeña pausa para que el launcher (Pixel Launcher) termine de
+            # estabilizarse tras el boot del emulador antes de lanzar la app
+            # — evita la carrera con el ANR "Pixel Launcher isn't responding".
+            sleep 5
+            # Dismiss any pending system dialog (ANR/permission) que pudiera
+            # estar en foreground; KEYCODE_BACK es no-op si no hay diálogo.
+            adb shell input keyevent KEYCODE_BACK || true
+            adb shell input keyevent KEYCODE_HOME || true
             pnpm run e2e:mobile:report
 
       - name: Upload Maestro HTML report
