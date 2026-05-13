@@ -39,12 +39,31 @@ jest.mock('@/services/checkout-store', () => ({
 jest.mock('@/services/pending-reservations-store', () => ({
   setPendingReservation: jest.fn(),
 }));
+
+jest.mock('@/services/bookings-cache', () => ({
+  hasHeldReservation: jest.fn(),
+}));
+
+jest.mock('@react-native-async-storage/async-storage', () => ({
+  __esModule: true,
+  default: { getItem: jest.fn() },
+}));
+
+jest.mock('@/context/AuthContext', () => ({
+  TOKEN_KEY: '@auth_token',
+  USER_KEY: '@auth_user',
+}));
+
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { Alert } = require('react-native');
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const checkoutStore = require('@/services/checkout-store');
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const pendingStore = require('@/services/pending-reservations-store');
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const bookingsCache = require('@/services/bookings-cache');
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const AsyncStorage = require('@react-native-async-storage/async-storage').default;
 
 const INTENT: CheckoutIntent = {
   propertyId: 'prop-1',
@@ -144,23 +163,63 @@ describe('book', () => {
 // ─── resumeAfterAuth ──────────────────────────────────────────────────────────
 
 describe('resumeAfterAuth', () => {
-  it('replaces to /booking/checkout when an intent is stashed', () => {
+  it('replaces to /booking/checkout when an intent is stashed', async () => {
     checkoutStore.getCheckoutIntent.mockReturnValue(INTENT);
-     
+
     const { resumeAfterAuth } = useBookingFlow();
 
-    resumeAfterAuth();
+    await resumeAfterAuth();
 
     expect(replaceMock).toHaveBeenCalledWith('/booking/checkout');
+    expect(bookingsCache.hasHeldReservation).not.toHaveBeenCalled();
   });
 
-  it('replaces to /(tabs) when no intent', () => {
+  it('replaces to /(tabs) when no intent and no held reservations', async () => {
     checkoutStore.getCheckoutIntent.mockReturnValue(null);
-     
+    AsyncStorage.getItem.mockImplementation((key: string) =>
+      Promise.resolve(
+        key === '@auth_token'
+          ? 'tok-1'
+          : JSON.stringify({ id: 'user-1', email: 'g@example.com', role: 'guest' }),
+      ),
+    );
+    bookingsCache.hasHeldReservation.mockResolvedValue(false);
+
     const { resumeAfterAuth } = useBookingFlow();
 
-    resumeAfterAuth();
+    await resumeAfterAuth();
 
+    expect(bookingsCache.hasHeldReservation).toHaveBeenCalledWith('tok-1', 'user-1');
+    expect(replaceMock).toHaveBeenCalledWith('/(tabs)');
+  });
+
+  it('replaces to /(tabs)/trips when no intent but user has a held reservation', async () => {
+    checkoutStore.getCheckoutIntent.mockReturnValue(null);
+    AsyncStorage.getItem.mockImplementation((key: string) =>
+      Promise.resolve(
+        key === '@auth_token'
+          ? 'tok-1'
+          : JSON.stringify({ id: 'user-1', email: 'g@example.com', role: 'guest' }),
+      ),
+    );
+    bookingsCache.hasHeldReservation.mockResolvedValue(true);
+
+    const { resumeAfterAuth } = useBookingFlow();
+
+    await resumeAfterAuth();
+
+    expect(replaceMock).toHaveBeenCalledWith('/(tabs)/trips');
+  });
+
+  it('falls back to /(tabs) when stored credentials are missing', async () => {
+    checkoutStore.getCheckoutIntent.mockReturnValue(null);
+    AsyncStorage.getItem.mockResolvedValue(null);
+
+    const { resumeAfterAuth } = useBookingFlow();
+
+    await resumeAfterAuth();
+
+    expect(bookingsCache.hasHeldReservation).not.toHaveBeenCalled();
     expect(replaceMock).toHaveBeenCalledWith('/(tabs)');
   });
 });

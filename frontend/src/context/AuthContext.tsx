@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AuthContext } from './auth-context';
 import type { AuthUser } from './auth-context';
 import { setOnUnauthorizedHandler } from '../utils/authBridge';
+import { clearCheckoutIntent } from '../hooks/useBookingFlow';
 
 type AuthState = {
   token: string | null;
@@ -55,6 +56,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(() => {
     localStorage.removeItem('auth_token');
     localStorage.removeItem('auth_user');
+    clearCheckoutIntent();
     setState({ token: null, user: null });
   }, []);
 

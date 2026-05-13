@@ -4,6 +4,7 @@ import { AuthContext } from '@/context/auth-context';
 import type { SignInResult } from '@/context/auth-context';
 import { TOKEN_KEY, USER_KEY } from '@/context/AuthContext';
 import { initiateLogin, verifyMfaCode } from '@/services/auth-api';
+import { clearCheckoutIntent } from '@/services/checkout-store';
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
@@ -38,6 +39,7 @@ export function useAuth() {
       AsyncStorage.removeItem(TOKEN_KEY),
       AsyncStorage.removeItem(USER_KEY),
     ]);
+    clearCheckoutIntent();
     ctx.setToken(null);
     ctx.setUser(null);
   };

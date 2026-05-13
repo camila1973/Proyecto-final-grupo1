@@ -60,6 +60,16 @@ describe('AuthProvider', () => {
     expect(localStorage.getItem('auth_token')).toBeNull();
   });
 
+  it('logout also clears any pending checkoutIntent from sessionStorage', async () => {
+    sessionStorage.setItem(
+      'checkoutIntent',
+      JSON.stringify({ property: { id: 'p1', name: 'Demo' } }),
+    );
+    render(<AuthProvider><AuthConsumer /></AuthProvider>);
+    await act(async () => { screen.getByRole('button', { name: 'logout' }).click(); });
+    expect(sessionStorage.getItem('checkoutIntent')).toBeNull();
+  });
+
   it('registers an unauthorized handler via authBridge on mount', () => {
     render(<AuthProvider><AuthConsumer /></AuthProvider>);
     expect(mockSetOnUnauthorizedHandler).toHaveBeenCalledWith(expect.any(Function));

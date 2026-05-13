@@ -19,6 +19,10 @@ jest.mock('@/context/AuthContext', () => ({
   USER_KEY: '@auth_user',
 }));
 
+jest.mock('@/services/checkout-store', () => ({
+  clearCheckoutIntent: jest.fn(),
+}));
+
 /* Mock react so we can control useContext */
 const originalUseContext = React.useContext;
 
@@ -30,6 +34,8 @@ afterEach(() => {
 const AsyncStorage = require('@react-native-async-storage/async-storage');
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { initiateLogin, verifyMfaCode } = require('@/services/auth-api');
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { clearCheckoutIntent } = require('@/services/checkout-store');
 
 function makeCtx(overrides: Partial<AuthContextValue> = {}): AuthContextValue {
   return {
@@ -131,7 +137,7 @@ describe('useAuth', () => {
   });
 
   describe('logout', () => {
-    it('removes token + user from AsyncStorage and clears context', async () => {
+    it('removes token + user from AsyncStorage, clears checkout intent, and clears context', async () => {
       const ctx = makeCtx({ token: 'existing-token' });
       jest.spyOn(React, 'useContext').mockReturnValue(ctx);
 
@@ -140,6 +146,7 @@ describe('useAuth', () => {
 
       expect(AsyncStorage.removeItem).toHaveBeenCalledWith('@auth_token');
       expect(AsyncStorage.removeItem).toHaveBeenCalledWith('@auth_user');
+      expect(clearCheckoutIntent).toHaveBeenCalled();
       expect(ctx.setToken).toHaveBeenCalledWith(null);
       expect(ctx.setUser).toHaveBeenCalledWith(null);
     });

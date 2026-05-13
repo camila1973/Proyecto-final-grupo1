@@ -238,6 +238,15 @@ export async function fetchMyReservations(token: string, bookerId: string): Prom
   return Array.isArray(data) ? data : (data.reservations ?? []);
 }
 
+export async function hasHeldReservation(token: string, bookerId: string): Promise<boolean> {
+  try {
+    const reservations = await fetchMyReservations(token, bookerId);
+    return reservations.some((r) => r.status === 'held');
+  } catch {
+    return false;
+  }
+}
+
 export interface CancelReservationOutcome {
   status: ReservationStatus;
   refund: {

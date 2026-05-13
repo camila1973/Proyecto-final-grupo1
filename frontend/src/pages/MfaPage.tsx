@@ -6,6 +6,7 @@ import Alert from '@mui/material/Alert';
 import { API_BASE } from '../env';
 import { useAuth } from '../hooks/useAuth';
 import { startCheckoutAfterLogin } from '../hooks/useBookingFlow';
+import { hasHeldReservation } from '../utils/queries';
 import LabeledField from '../components/LabeledField';
 
 type MfaSearch = { challengeId: string | undefined };
@@ -68,7 +69,12 @@ export default function MfaPage() {
 
       login(data.accessToken, data.user);
       const toCheckout = startCheckoutAfterLogin(data.accessToken, data.user.id);
-      void navigate({ to: toCheckout ? '/booking/checkout' : '/' });
+      if (toCheckout) {
+        void navigate({ to: '/booking/checkout' });
+        return;
+      }
+      const hasHeld = await hasHeldReservation(data.accessToken, data.user.id);
+      void navigate({ to: hasHeld ? '/trips' : '/' });
     } catch {
       setErrorKey('generic');
     } finally {
