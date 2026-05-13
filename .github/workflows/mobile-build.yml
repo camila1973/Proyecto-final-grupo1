@@ -47,12 +47,6 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
 
-      - name: Materialize Firebase config
-        uses: ./.github/actions/firebase-config
-        with:
-          plist-b64: ${{ secrets.GOOGLE_SERVICES_PLIST_B64 }}
-          json-b64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
-
       - name: Build Android (local)
         working-directory: mobile
         env:
@@ -90,12 +84,6 @@ jobs:
         with:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
-
-      - name: Materialize Firebase config
-        uses: ./.github/actions/firebase-config
-        with:
-          plist-b64: ${{ secrets.GOOGLE_SERVICES_PLIST_B64 }}
-          json-b64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
 
       - name: Build iOS (local)
         working-directory: mobile

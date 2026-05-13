@@ -8,7 +8,3 @@ expo-env.d.ts
 # Generated native directories (expo prebuild)
 android/
 ios/
-
-# Firebase config — secrets, injected via EAS at build time
-GoogleService-Info.plist
-google-services.json
