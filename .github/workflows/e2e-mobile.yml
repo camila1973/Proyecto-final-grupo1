@@ -45,6 +45,16 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: Cache Gradle (user-level)
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('mobile/android/**/*.gradle*', 'mobile/android/gradle/wrapper/gradle-wrapper.properties', 'mobile/package.json', 'pnpm-lock.yaml') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
       - name: Setup Expo + EAS CLI
         uses: expo/expo-github-action@v8
         with:
