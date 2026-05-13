@@ -122,6 +122,29 @@ jobs:
             adb install -r artifacts/app.apk
             pnpm run e2e:mobile:report
 
+      # TODO(revertir): paso de diagnóstico temporal. Una vez confirmemos dónde
+      # Maestro está escribiendo screenshots/commands JSON en CI, eliminar este
+      # paso y ajustar el upload-artifact correspondiente.
+      - name: Diagnose Maestro output paths
+        if: always()
+        run: |
+          echo "=== pwd ==="
+          pwd
+          echo "=== ls e2e/mobile/.artifacts ==="
+          ls -laR e2e/mobile/.artifacts/ 2>&1 || echo "(missing)"
+          echo "=== ls e2e/mobile/reports ==="
+          ls -la e2e/mobile/reports/ 2>&1 || echo "(missing)"
+          echo "=== find workspace for maestro artifacts ==="
+          find "$GITHUB_WORKSPACE" \
+            \( -name "screenshot-*.png" -o -name "commands-*.json" -o -name "maestro.log" -o -name "report.html" \) \
+            2>/dev/null | head -200
+          echo "=== ls ~/.maestro ==="
+          ls -la "$HOME/.maestro" 2>&1 || echo "(missing)"
+          echo "=== find ~/.maestro for artifacts ==="
+          find "$HOME/.maestro" -type f \
+            \( -name "screenshot-*.png" -o -name "commands-*.json" -o -name "maestro.log" \) \
+            2>/dev/null | head -200
+
       - name: Upload Maestro HTML report
         if: always()
         uses: actions/upload-artifact@v4
