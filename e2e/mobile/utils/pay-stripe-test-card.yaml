@@ -70,18 +70,18 @@ appId: com.travelhub.mobile
 # Dismiss the native numeric keyboard so the Pay button is reachable.
 - hideKeyboard
 
-# Stripe's submit button label includes the amount (e.g. "Pay $123.45"). The
-# whitespace between "Pay" and the currency symbol can be a non-breaking
-# space ( ) in some locale renderings, so we use `.*` between "Pay"
-# and "\$" instead of a literal space. Wait until the button is actually
-# visible — after hideKeyboard, the relayout pass takes a moment before the
-# button settles into the visible area.
+# Stripe's submit button merges its semantics: the visible "Pay $X" label is
+# NOT exposed as a `text` or `content-desc` node in the accessibility tree
+# (both attributes are empty on the button view, confirmed via
+# `adb shell uiautomator dump`). We target it instead by the stable
+# resource-id `com.travelhub.mobile:id/primary_button` published by the
+# Stripe Android SDK — language- and currency-independent.
 - extendedWaitUntil:
     visible:
-      text: "Pay.*\\$.*"
+      id: "primary_button"
     timeout: 10000
 - tapOn:
-    text: "Pay.*\\$.*"
+    id: "primary_button"
 
 # We don't wait here — the confirmation screen does its own polling
 # (usePaymentPolling: 60 s max). Callers should follow this flow with an
