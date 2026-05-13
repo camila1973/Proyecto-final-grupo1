@@ -2,7 +2,10 @@ import { useCallback } from 'react';
 import { Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '@/hooks/useAuth';
+import { TOKEN_KEY, USER_KEY } from '@/context/AuthContext';
+import type { AuthUser } from '@/context/auth-context';
 import {
   clearCheckoutIntent,
   getCheckoutIntent,
@@ -11,7 +14,7 @@ import {
   type CheckoutIntent,
 } from '@/services/checkout-store';
 import { setPendingReservation } from '@/services/pending-reservations-store';
-import type { Reservation } from '@/services/bookings-cache';
+import { hasHeldReservation, type Reservation } from '@/services/bookings-cache';
 import { API_BASE } from '@/constants/api';
 
 export interface FareBreakdown {
@@ -56,9 +59,25 @@ export function useBookingFlow() {
     [router, user, t],
   );
 
-  const resumeAfterAuth = useCallback((): void => {
+  const resumeAfterAuth = useCallback(async (): Promise<void> => {
     const intent = getCheckoutIntent();
-    router.replace(intent ? '/booking/checkout' : '/(tabs)');
+    if (intent) {
+      router.replace('/booking/checkout');
+      return;
+    }
+    // Read directly from AsyncStorage — react context state may not have
+    // settled yet in the tick right after login()/verifyMfa() resolves.
+    const [freshToken, rawUser] = await Promise.all([
+      AsyncStorage.getItem(TOKEN_KEY),
+      AsyncStorage.getItem(USER_KEY),
+    ]);
+    if (!freshToken || !rawUser) {
+      router.replace('/(tabs)');
+      return;
+    }
+    const freshUser = JSON.parse(rawUser) as AuthUser;
+    const hasHeld = await hasHeldReservation(freshToken, freshUser.id);
+    router.replace(hasHeld ? '/(tabs)/trips' : '/(tabs)');
   }, [router]);
 
   const resumeHeld = useCallback(

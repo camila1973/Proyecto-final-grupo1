@@ -78,7 +78,7 @@ export default function RegisterScreen() {
               `/login-mfa?challengeId=${result.challengeId}&email=${encodeURIComponent(result.email)}`,
             );
           } else {
-            resumeAfterAuth();
+            await resumeAfterAuth();
           }
           return;
         } catch {

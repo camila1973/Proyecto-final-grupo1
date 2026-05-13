@@ -10,10 +10,14 @@ import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import { API_BASE } from '../env';
 import LabeledField from '../components/LabeledField';
+import { useAuth } from '../hooks/useAuth';
+import { startCheckoutAfterLogin } from '../hooks/useBookingFlow';
+import { hasHeldReservation } from '../utils/queries';
 
 export default function LoginPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -58,8 +62,27 @@ export default function LoginPage() {
         return;
       }
 
-      const data = await response.json() as { challengeId: string };
-      navigate({ to: '/login/mfa', search: { challengeId: data.challengeId } });
+      const data = await response.json() as
+        | { mfaRequired: true; challengeId: string }
+        | {
+            mfaRequired: false;
+            accessToken: string;
+            user: { id: string; email: string; role: string; partnerId?: string };
+          };
+
+      if (data.mfaRequired) {
+        navigate({ to: '/login/mfa', search: { challengeId: data.challengeId } });
+        return;
+      }
+
+      login(data.accessToken, data.user);
+      const toCheckout = startCheckoutAfterLogin(data.accessToken, data.user.id);
+      if (toCheckout) {
+        void navigate({ to: '/booking/checkout' });
+        return;
+      }
+      const hasHeld = await hasHeldReservation(data.accessToken, data.user.id);
+      void navigate({ to: hasHeld ? '/trips' : '/' });
     } catch {
       setApiError(t('login.errors.generic'));
     } finally {

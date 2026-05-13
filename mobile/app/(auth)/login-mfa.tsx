@@ -26,7 +26,7 @@ export default function LoginMfaScreen() {
     setLoading(true);
     try {
       await auth.verifyMfa(challengeId, code.trim());
-      resumeAfterAuth();
+      await resumeAfterAuth();
     } catch (err) {
       if (err instanceof AuthApiError && err.status === 401) {
         setApiError(t('loginMfa.errorInvalidCode'));
