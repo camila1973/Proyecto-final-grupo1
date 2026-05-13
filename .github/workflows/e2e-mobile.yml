@@ -111,10 +111,7 @@ jobs:
           script: |
             adb install -r artifacts/app.apk
             mkdir -p e2e/mobile/reports
-            maestro test e2e/mobile/flows/ \
-              --config e2e/mobile/config.yaml \
-              --format html-detailed \
-              --output e2e/mobile/reports/report.html
+            maestro test e2e/mobile/flows/ --config e2e/mobile/config.yaml --format html-detailed --output e2e/mobile/reports/report.html
 
       - name: Upload Maestro HTML report
         if: always()
