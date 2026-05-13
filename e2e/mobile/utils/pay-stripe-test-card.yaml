@@ -70,9 +70,18 @@ appId: com.travelhub.mobile
 # Dismiss the native numeric keyboard so the Pay button is reachable.
 - hideKeyboard
 
-# Stripe's submit button label includes the amount: "Pay $123.45".
+# Stripe's submit button label includes the amount (e.g. "Pay $123.45"). The
+# whitespace between "Pay" and the currency symbol can be a non-breaking
+# space ( ) in some locale renderings, so we use `.*` between "Pay"
+# and "\$" instead of a literal space. Wait until the button is actually
+# visible — after hideKeyboard, the relayout pass takes a moment before the
+# button settles into the visible area.
+- extendedWaitUntil:
+    visible:
+      text: "Pay.*\\$.*"
+    timeout: 10000
 - tapOn:
-    text: "Pay \\$.*"
+    text: "Pay.*\\$.*"
 
 # We don't wait here — the confirmation screen does its own polling
 # (usePaymentPolling: 60 s max). Callers should follow this flow with an
