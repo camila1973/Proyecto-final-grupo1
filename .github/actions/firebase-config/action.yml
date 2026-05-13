@@ -30,4 +30,10 @@ runs:
         # Sanity check — these are the keys every Firebase client config carries.
         grep -q 'GOOGLE_APP_ID' mobile/GoogleService-Info.plist || { echo "::error::Decoded plist missing GOOGLE_APP_ID"; exit 1; }
         grep -q 'project_info'  mobile/google-services.json    || { echo "::error::Decoded google-services.json missing project_info"; exit 1; }
-        echo "Firebase config materialized."
+        # `eas build --local` bundles the project via `git ls-files`, which
+        # ignores gitignored files even when they exist on disk. Both Firebase
+        # files are gitignored as secrets, so we force-add them to this
+        # runner's git index (never pushed — the runner is ephemeral) so the
+        # bundle includes them and `expo prebuild` can copy them into android/.
+        git add -f mobile/GoogleService-Info.plist mobile/google-services.json
+        echo "Firebase config materialized and staged for EAS bundling."
