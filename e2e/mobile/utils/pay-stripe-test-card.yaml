@@ -16,6 +16,21 @@ appId: com.travelhub.mobile
 - waitForAnimationToEnd:
     timeout: 8000
 
+# Newer Stripe PaymentSheet variants open on a payment-method selector
+# (Link / Card / Cash App Pay / Amazon Pay rows) instead of the card form.
+# We detect that screen by the presence of "Cash App Pay" — unique to the
+# selector — and tap "Card" to expand the card form. When the sheet opens
+# directly on the card form, this runFlow is a no-op.
+- runFlow:
+    when:
+      visible:
+        text: "Cash App Pay"
+    commands:
+      - tapOn:
+          text: "Card"
+      - waitForAnimationToEnd:
+          timeout: 3000
+
 # Card number
 - tapOn:
     text: "Card number"
