@@ -10,6 +10,9 @@
       },
       "ios": {
         "simulator": true
+      },
+      "env": {
+        "EAS_ABI_FILTER": "x86_64"
       }
     }
   }

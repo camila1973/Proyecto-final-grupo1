@@ -45,7 +45,7 @@
     "prepare": "husky",
     "e2e:mobile": "maestro test e2e/mobile/flows/ --config e2e/mobile/config.yaml",
     "e2e:mobile:flow": "sh -c 'maestro test e2e/mobile/flows/$0.yaml --config e2e/mobile/config.yaml'",
-    "e2e:mobile:report": "mkdir -p e2e/mobile/reports && maestro test e2e/mobile/flows/ --config e2e/mobile/config.yaml --format html-detailed --output e2e/mobile/reports/report.html",
+    "e2e:mobile:report": "mkdir -p e2e/mobile/reports e2e/mobile/.artifacts && maestro test e2e/mobile/flows/ --config e2e/mobile/config.yaml --format html-detailed --output e2e/mobile/reports/report.html --debug-output e2e/mobile/.artifacts",
     "e2e:mobile:record": "sh -c 'maestro record e2e/mobile/flows/$0.yaml --config e2e/mobile/config.yaml'"
   },
   "pnpm": {

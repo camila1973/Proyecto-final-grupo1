@@ -40,6 +40,7 @@
         }
       ],
       "./plugins/withCoreSplashscreen",
+      "./plugins/withAndroidAbiOverride",
       [
         "expo-splash-screen",
         {
