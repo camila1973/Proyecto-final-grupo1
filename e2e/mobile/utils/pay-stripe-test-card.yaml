@@ -67,21 +67,51 @@ appId: com.travelhub.mobile
           text: ".*ZIP.*|.*Postal.*"
       - inputText: "12345"
 
-# Dismiss the native numeric keyboard so the Pay button is reachable.
-- hideKeyboard
-
-# Stripe's submit button merges its semantics: the visible "Pay $X" label is
-# NOT exposed as a `text` or `content-desc` node in the accessibility tree
-# (both attributes are empty on the button view, confirmed via
-# `adb shell uiautomator dump`). We target it instead by the stable
-# resource-id `com.travelhub.mobile:id/primary_button` published by the
-# Stripe Android SDK — language- and currency-independent.
-- extendedWaitUntil:
-    visible:
-      id: "primary_button"
-    timeout: 10000
+# Dismiss the native keyboard so the Pay button is reachable. We tap a
+# non-interactive label inside the sheet rather than using `hideKeyboard`:
+# Maestro's hideKeyboard fails inside Stripe's iOS PaymentSheet ("Couldn't
+# hide the keyboard. This can happen if the app uses a custom input or
+# doesn't expose a standard dismiss action.") because the sheet manages its
+# own input lifecycle. "Billing address" and "Card information" are static
+# headers present in both platforms' sheets, so tapping them removes focus
+# from the last text input. `optional: true` makes both taps no-ops when
+# the keyboard isn't showing or the header isn't on screen.
 - tapOn:
-    id: "primary_button"
+    text: "Billing address"
+    optional: true
+- tapOn:
+    text: "Card information"
+    optional: true
+
+# Stripe's submit button exposes different identifiers on each platform:
+#   Android: resource-id `com.travelhub.mobile:id/primary_button`. Both
+#            `text` and `content-desc` are empty because the Compose button
+#            merges its descendants' semantics, so the visible "Pay $X"
+#            label never reaches the accessibility tree. Confirmed via
+#            `adb shell uiautomator dump`.
+#   iOS:     no resource-id, but `accessibilityText` carries "Pay $X"
+#            literally. Confirmed via `maestro hierarchy`.
+# We branch by platform to use the right selector in each case.
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - extendedWaitUntil:
+          visible:
+            id: "primary_button"
+          timeout: 10000
+      - tapOn:
+          id: "primary_button"
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - extendedWaitUntil:
+          visible:
+            text: "Pay.*\\$.*"
+          timeout: 10000
+      - tapOn:
+          text: "Pay.*\\$.*"
 
 # We don't wait here — the confirmation screen does its own polling
 # (usePaymentPolling: 60 s max). Callers should follow this flow with an

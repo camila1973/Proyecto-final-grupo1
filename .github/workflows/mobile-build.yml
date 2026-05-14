@@ -24,10 +24,30 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 
 jobs:
+  # ── Pre-flight: fail fast if required env is missing ──────────────────────────
+  validate-env:
+    name: Validate env
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check GATEWAY_URL and STRIPE_PUBLISHABLE_KEY
+        env:
+          EXPO_PUBLIC_API_URL: ${{ vars.GATEWAY_URL }}
+          EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.STRIPE_PUBLISHABLE_KEY }}
+        run: |
+          if [ -z "$EXPO_PUBLIC_API_URL" ]; then
+            echo "::error::EXPO_PUBLIC_API_URL is empty. Set the GATEWAY_URL repository variable."
+            exit 1
+          fi
+          if [ -z "$EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY" ]; then
+            echo "::error::STRIPE_PUBLISHABLE_KEY secret is empty. Set it in the repo secrets."
+            exit 1
+          fi
+
   # ── Android (ubuntu-latest) ───────────────────────────────────────────────────
   build-gh-android:
     if: ${{ github.event.inputs.platform != 'ios' }}
     name: Android
+    needs: validate-env
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -51,6 +71,10 @@ jobs:
         working-directory: mobile
         env:
           ANDROID_HOME: /usr/local/lib/android/sdk
+          EXPO_PUBLIC_API_URL: ${{ vars.GATEWAY_URL }}
+          # StripeProvider in mobile/app/_layout.tsx throws on an empty key
+          # and cascades into a render error before the app can boot.
+          EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.STRIPE_PUBLISHABLE_KEY }}
         run: |
           mkdir -p ../artifacts
           eas build \
@@ -72,6 +96,7 @@ jobs:
   build-gh-ios:
     if: ${{ github.event.inputs.platform != 'android' }}
     name: iOS
+    needs: validate-env
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -87,6 +112,9 @@ jobs:
 
       - name: Build iOS (local)
         working-directory: mobile
+        env:
+          EXPO_PUBLIC_API_URL: ${{ vars.GATEWAY_URL }}
+          EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.STRIPE_PUBLISHABLE_KEY }}
         run: |
           mkdir -p ../artifacts
           eas build \

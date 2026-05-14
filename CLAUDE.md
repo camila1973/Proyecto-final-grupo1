@@ -203,7 +203,7 @@ Reservations go through the following states:
 [User clicks Book]
         ↓
      held  ──(15 min expires)──→  expired                       (terminal)
-        │   ──(user cancel)────→  cancelled                     (terminal)
+        │   ──(api cancel)─────→  cancelled                     (terminal, API-only — see notes)
         │
   [payment-service.initiate() called]
         ↓
@@ -240,7 +240,7 @@ Reservations go through the following states:
 | `POST /payment/payments/initiate` (retry) | `failed` → `held` → `submitted` | payment-service calls `PATCH /reservations/:id/rehold` then `PATCH /reservations/:id/submit` |
 | Stripe webhook `payment_intent.succeeded` | `submitted` → `confirmed` | payment-service calls `PATCH /reservations/:id/confirm` |
 | Stripe webhook `payment_intent.payment_failed` | `submitted` → `failed` | payment-service calls `PATCH /reservations/:id/fail` |
-| `PATCH /reservations/:id/cancel` | any non-terminal → `cancelled` | Frontend/user |
+| `PATCH /reservations/:id/cancel` | any non-terminal → `cancelled` | Frontend/user (UI exposes it only for `submitted` on web and `confirmed` on both clients — see notes) |
 | `PATCH /reservations/:id/partner-cancel` | `confirmed` → `cancelled` | Partner dashboard (hotel-initiated) |
 | `PATCH /reservations/:id/checkin` | `confirmed` → `checked_in` | Guest (key) or partner |
 | `PATCH /reservations/:id/checkout` | `checked_in` → `checked_out` | Partner dashboard |
@@ -248,6 +248,8 @@ Reservations go through the following states:
 | No-show job (runs hourly) | `confirmed` (with `check_in < today`) → `no_show` | booking-service `NoShowService` |
 
 ### Important notes
+- `held → cancelled` is accepted by the API (`reservations.repository.ts` only blocks already-terminal `expired`/`cancelled`) but is **not exposed in any UI today**. Both mobile (`mobile/app/(tabs)/trips.tsx`) and web (`frontend/src/pages/trips/index.tsx`) render Complete Payment on a held row, with no cancel affordance — held rows in production terminal either via payment (`submitted`) or via the 15-min hold expiry (`expired`). The transition is kept available for ops/admin tooling and direct API callers; it is not a guest-facing path.
+- The UI exposes cancel as follows: mobile shows cancel only on `confirmed`; web shows cancel on `submitted` and `confirmed`. Partner cancel is `confirmed`-only (guarded server-side).
 - The partial unique index on reservations only covers `held` rows — a `submitted` reservation does **not** block a new hold for the same room/dates.
 - `HoldExpiryService` only expires `held` reservations, not `submitted` ones.
 - A reservation can have **multiple payment rows** (one per attempt). `payments.reservation_id` is not unique. `findByReservationId` returns the most recent row (`ORDER BY created_at DESC`).

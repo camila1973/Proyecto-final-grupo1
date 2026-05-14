@@ -113,6 +113,8 @@ export default {
     loading: 'Cargando reservas...',
     empty: 'Sin reservas aún',
     emptyDesc: 'Tus próximas reservaciones aparecerán aquí.',
+    empty_filtered: 'Ninguna reserva coincide con este filtro',
+    filter: { all: 'Todos' },
     signInPrompt: 'Inicia sesión para ver tus reservas',
     errorLoad: 'No se pudieron cargar las reservas. Tira hacia abajo para reintentar.',
     errorTitle: 'Error',

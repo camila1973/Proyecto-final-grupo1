@@ -61,12 +61,17 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
 
-      - name: Validate gateway URL
+      - name: Validate env (GATEWAY_URL + STRIPE_PUBLISHABLE_KEY)
         env:
           EXPO_PUBLIC_API_URL: ${{ github.event.inputs.api_url || vars.GATEWAY_URL }}
+          EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.STRIPE_PUBLISHABLE_KEY }}
         run: |
           if [ -z "$EXPO_PUBLIC_API_URL" ]; then
             echo "::error::EXPO_PUBLIC_API_URL is empty. Set the GATEWAY_URL repository variable or pass the api_url workflow input."
+            exit 1
+          fi
+          if [ -z "$EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY" ]; then
+            echo "::error::STRIPE_PUBLISHABLE_KEY secret is empty. Set it in the repo secrets."
             exit 1
           fi
           echo "Building against: $EXPO_PUBLIC_API_URL"
@@ -76,6 +81,10 @@ jobs:
         env:
           ANDROID_HOME: /usr/local/lib/android/sdk
           EXPO_PUBLIC_API_URL: ${{ github.event.inputs.api_url || vars.GATEWAY_URL }}
+          # StripeProvider in mobile/app/_layout.tsx throws on an empty key,
+          # which cascades into a "useAuth must be used inside AuthProvider"
+          # render error and the app never reaches the login screen.
+          EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.STRIPE_PUBLISHABLE_KEY }}
         run: |
           mkdir -p ../artifacts
           eas build \

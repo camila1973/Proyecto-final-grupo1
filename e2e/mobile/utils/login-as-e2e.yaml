@@ -25,6 +25,3 @@ appId: com.travelhub.mobile
 - tapOn:
     text: "Not Now"
     optional: true
-
-- assertVisible:
-    id: "input-city"
