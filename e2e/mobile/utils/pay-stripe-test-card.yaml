@@ -16,6 +16,21 @@ appId: com.travelhub.mobile
 - waitForAnimationToEnd:
     timeout: 8000
 
+# Newer Stripe PaymentSheet variants open on a payment-method selector
+# (Link / Card / Cash App Pay / Amazon Pay rows) instead of the card form.
+# We detect that screen by the presence of "Cash App Pay" — unique to the
+# selector — and tap "Card" to expand the card form. When the sheet opens
+# directly on the card form, this runFlow is a no-op.
+- runFlow:
+    when:
+      visible:
+        text: "Cash App Pay"
+    commands:
+      - tapOn:
+          text: "Card"
+      - waitForAnimationToEnd:
+          timeout: 3000
+
 # Card number
 - tapOn:
     text: "Card number"
@@ -37,29 +52,36 @@ appId: com.travelhub.mobile
     optional: true
 - inputText: "123"
 
-# Postal / ZIP is only shown for some country/card combos. We do NOT type
-# unconditionally: when the field is absent, `inputText` would append to
-# whichever input is still focused (typically CVC) and silently corrupt it.
-# Maestro 1.x+ supports a `runFlow` with a `when.visible` guard for this.
+# Postal / ZIP is only shown for some country/card combos (e.g. United States
+# in the Stripe test sheet renders "ZIP Code"). We do NOT type unconditionally:
+# when the field is absent, `inputText` would append to whichever input is
+# still focused (typically CVC) and silently corrupt it. The regex is
+# unanchored on both sides because Maestro matches `text:` as a full-string
+# regex — "ZIP Code" must be caught by ".*ZIP.*", not by "ZIP".
 - runFlow:
     when:
       visible:
-        text: "ZIP|Postal code"
+        text: ".*ZIP.*|.*Postal.*"
     commands:
       - tapOn:
-          text: "ZIP|Postal code"
+          text: ".*ZIP.*|.*Postal.*"
       - inputText: "12345"
 
-# Dismiss the native numeric keyboard so the Pay button is reachable. The
-# Stripe sheet's "Billing address" header is a static label that isn't tied to
-# an input, so tapping it removes focus from CVC/ZIP and the keyboard closes.
-- tapOn:
-    text: "Billing address"
-    optional: true
+# Dismiss the native numeric keyboard so the Pay button is reachable.
+- hideKeyboard
 
-# Stripe's submit button label includes the amount: "Pay $123.45".
+# Stripe's submit button merges its semantics: the visible "Pay $X" label is
+# NOT exposed as a `text` or `content-desc` node in the accessibility tree
+# (both attributes are empty on the button view, confirmed via
+# `adb shell uiautomator dump`). We target it instead by the stable
+# resource-id `com.travelhub.mobile:id/primary_button` published by the
+# Stripe Android SDK — language- and currency-independent.
+- extendedWaitUntil:
+    visible:
+      id: "primary_button"
+    timeout: 10000
 - tapOn:
-    text: "Pay \\$.*"
+    id: "primary_button"
 
 # We don't wait here — the confirmation screen does its own polling
 # (usePaymentPolling: 60 s max). Callers should follow this flow with an

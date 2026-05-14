@@ -45,6 +45,16 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: Cache Gradle (user-level)
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('mobile/android/**/*.gradle*', 'mobile/android/gradle/wrapper/gradle-wrapper.properties', 'mobile/package.json', 'pnpm-lock.yaml') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
       - name: Setup Expo + EAS CLI
         uses: expo/expo-github-action@v8
         with:
@@ -110,6 +120,14 @@ jobs:
           disable-animations: true
           script: |
             adb install -r artifacts/app.apk
+            # Pequeña pausa para que el launcher (Pixel Launcher) termine de
+            # estabilizarse tras el boot del emulador antes de lanzar la app
+            # — evita la carrera con el ANR "Pixel Launcher isn't responding".
+            sleep 5
+            # Dismiss any pending system dialog (ANR/permission) que pudiera
+            # estar en foreground; KEYCODE_BACK es no-op si no hay diálogo.
+            adb shell input keyevent KEYCODE_BACK || true
+            adb shell input keyevent KEYCODE_HOME || true
             pnpm run e2e:mobile:report
 
       - name: Upload Maestro HTML report
@@ -121,6 +139,9 @@ jobs:
           retention-days: 14
           if-no-files-found: warn
 
+      # `e2e/mobile/.artifacts/` empieza con punto, por lo que upload-artifact@v4
+      # lo descarta por defecto (include-hidden-files: false). Lo habilitamos
+      # explícitamente para que screenshots y commands JSON sí se publiquen.
       - name: Upload Maestro per-flow artifacts (screenshots / video / hierarchy)
         if: always()
         uses: actions/upload-artifact@v4
@@ -129,3 +150,4 @@ jobs:
           path: e2e/mobile/.artifacts/
           retention-days: 7
           if-no-files-found: ignore
+          include-hidden-files: true
