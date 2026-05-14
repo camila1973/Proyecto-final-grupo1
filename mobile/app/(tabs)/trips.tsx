@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
+  FlatList,
   RefreshControl,
-  SectionList,
+  ScrollView,
   StyleSheet,
   View,
 } from 'react-native';
@@ -269,6 +270,54 @@ function ReservationCard({ item, onCancel, onCompletePayment, onCheckin, isOnlin
   );
 }
 
+// ─── Filter pills ──────────────────────────────────────────────────────────────
+
+type FilterValue = 'all' | 'held' | 'confirmed' | 'checked_in' | 'cancelled';
+const FILTER_OPTIONS: FilterValue[] = ['all', 'held', 'confirmed', 'checked_in', 'cancelled'];
+
+interface FilterPillsProps {
+  value: FilterValue;
+  onChange: (v: FilterValue) => void;
+  t: (k: string) => string;
+}
+
+function FilterPills({ value, onChange, t }: FilterPillsProps) {
+  const theme = useTheme();
+  return (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={styles.filterRow}
+    >
+      {FILTER_OPTIONS.map((opt) => {
+        const isActive = value === opt;
+        return (
+          <Chip
+            key={opt}
+            mode={isActive ? 'flat' : 'outlined'}
+            selected={isActive}
+            onPress={() => onChange(opt)}
+            showSelectedCheck={false}
+            style={[
+              styles.filterChip,
+              isActive
+                ? { backgroundColor: theme.colors.primary }
+                : { backgroundColor: 'transparent', borderColor: theme.colors.outline },
+            ]}
+            textStyle={[
+              styles.filterChipText,
+              { color: isActive ? theme.colors.onPrimary : theme.colors.onSurfaceVariant },
+            ]}
+            testID={`filter-${opt}`}
+          >
+            {opt === 'all' ? t('bookings.filter.all') : t(`bookings.status.${opt}`)}
+          </Chip>
+        );
+      })}
+    </ScrollView>
+  );
+}
+
 // ─── Trips screen ──────────────────────────────────────────────────────────────
 
 export default function TripsScreen() {
@@ -282,6 +331,7 @@ export default function TripsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [filter, setFilter] = useState<FilterValue>('all');
 
   // Load from cache immediately, then sync from API if online
   const loadData = useCallback(
@@ -426,42 +476,31 @@ export default function TripsScreen() {
       );
     }
 
-    // Buscar la primera reserva "held" para mostrar el banner
-    const heldReservation = reservations.find(r => r.status === 'held');
-
-    // Separar reservas en activas y pasadas
-    const ACTIVE_STATUSES: ReservationStatus[] = ['held', 'submitted', 'confirmed', 'checked_in'];
-    const PAST_STATUSES: ReservationStatus[] = ['cancelled', 'expired', 'failed'];
-    
-    const activeReservations = reservations.filter(r => ACTIVE_STATUSES.includes(r.status));
-    const pastReservations = reservations.filter(r => PAST_STATUSES.includes(r.status));
-
-    // Crear secciones solo si existen reservas en cada categoría
-    const sections = [
-      ...(activeReservations.length > 0 ? [{ title: t('bookings.sections.active'), data: activeReservations }] : []),
-      ...(pastReservations.length > 0 ? [{ title: t('bookings.sections.past'), data: pastReservations }] : []),
-    ];
+    // Newest first by createdAt. The cache and syncReservations don't sort,
+    // so this is the single source of order for the screen. Expired holds are
+    // hidden — they expose internal hold-TTL plumbing and aren't actionable.
+    const sorted = reservations
+      .filter((r) => r.status !== 'expired')
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    const heldReservation = sorted.find((r) => r.status === 'held');
+    const visible = filter === 'all' ? sorted : sorted.filter((r) => r.status === filter);
 
     return (
-      <SectionList
-        sections={sections}
+      <FlatList
+        data={visible}
         keyExtractor={(item) => item.id}
         ListHeaderComponent={
-          heldReservation ? (
-            <HeldBanner 
-              reservation={heldReservation} 
-              onCompletePayment={handleCompletePayment}
-              theme={theme}
-            />
-          ) : null
+          <>
+            {heldReservation ? (
+              <HeldBanner
+                reservation={heldReservation}
+                onCompletePayment={handleCompletePayment}
+                theme={theme}
+              />
+            ) : null}
+            <FilterPills value={filter} onChange={setFilter} t={t} />
+          </>
         }
-        renderSectionHeader={({ section }) => (
-          <View style={[styles.sectionHeader, { backgroundColor: theme.colors.background }]}>
-            <Text variant="titleMedium" style={{ color: theme.colors.onSurface, fontWeight: '700' }}>
-              {section.title}
-            </Text>
-          </View>
-        )}
         renderItem={({ item }) => (
           <ReservationCard
             item={item}
@@ -471,10 +510,20 @@ export default function TripsScreen() {
             isOnline={isConnected}
           />
         )}
+        ListEmptyComponent={
+          filter !== 'all' ? (
+            <View style={styles.filteredEmpty}>
+              <Text
+                variant="bodyMedium"
+                style={{ color: theme.colors.onSurfaceVariant, textAlign: 'center' }}
+              >
+                {t('bookings.empty_filtered')}
+              </Text>
+            </View>
+          ) : null
+        }
         contentContainerStyle={styles.list}
         ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
-        SectionSeparatorComponent={() => <View style={{ height: 20 }} />}
-        stickySectionHeadersEnabled={false}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -510,10 +559,24 @@ const styles = StyleSheet.create({
   loadingText: { marginTop: 12 },
   emptyDesc: { marginTop: 8, textAlign: 'center' },
   list: { padding: 16, paddingBottom: 32 },
-  sectionHeader: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 12,
+
+  // Filter pill row
+  filterRow: {
+    paddingHorizontal: 4,
+    paddingVertical: 12,
+    gap: 8,
+  },
+  filterChip: {
+    marginRight: 8,
+  },
+  filterChipText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  filteredEmpty: {
+    paddingVertical: 32,
+    paddingHorizontal: 24,
+    alignItems: 'center',
   },
 
   // Card

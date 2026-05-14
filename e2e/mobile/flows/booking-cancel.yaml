@@ -1,0 +1,117 @@
+# E2E scenario 6 — Cancelar reservación.
+# Flow: launch app cold → login → search → pick room → on /booking/checkout
+#       fill guest info → pay with Stripe test card → wait for confirmation →
+#       Trips → tap Cancel on the confirmed card → confirm in the native Alert
+#       dialog → assert status flips to "cancelled".
+#
+# Note on setup: mobile only exposes the cancel button for `confirmed`
+# reservations (trips.tsx — `canCancel` is gated to `confirmed`/`held`, but
+# `held` rows render Complete Payment instead, so the cancel CTA only appears
+# once Stripe has confirmed the payment). The `held → cancelled` transition
+# exists in the API but has no UI affordance, so this flow drives the booking
+# all the way to `confirmed` before cancelling.
+---
+appId: com.travelhub.mobile
+env:
+  TEST_EMAIL: "e2e@travelhub.com"
+  FIRST_NAME: "Test"
+  LAST_NAME: "Cancel"
+---
+- runScript: "../utils/generate-future-dates.js"
+
+- launchApp:
+    clearState: true
+
+- assertVisible:
+    id: "input-city"
+
+- runFlow: "../utils/login-as-e2e.yaml"
+
+# Force the home tab. Post-login, the app can land on Trips if a held
+# reservation from a previous run still exists; jumping home keeps the
+# subsequent search-and-pick-room step deterministic.
+- openLink: travelhub:///
+- extendedWaitUntil:
+    visible:
+      id: "input-city"
+    timeout: 10000
+
+- runFlow:
+    file: "../utils/search-and-pick-room.yaml"
+    env:
+      CHECK_IN: ${output.CHECK_IN}
+      CHECK_OUT: ${output.CHECK_OUT}
+
+# btn-pay appearing proves the reservation was successfully created with
+# status=held (see checkout.tsx — pay button stays disabled until the
+# /reservations POST returns).
+- extendedWaitUntil:
+    visible:
+      id: "btn-pay"
+    timeout: 15000
+
+# Guest info. Tap "guest-title" between fields to dismiss the Paper keyboard
+# (hideKeyboard does not work on react-native-paper TextInputs — see
+# .claude/commands/e2e.md).
+- tapOn:
+    id: "input-guest-firstName"
+- inputText: ${FIRST_NAME}
+- tapOn:
+    id: "guest-title"
+
+- tapOn:
+    id: "input-guest-lastName"
+- inputText: ${LAST_NAME}
+- tapOn:
+    id: "guest-title"
+
+# Email is pre-filled from user.email (checkout.tsx — useState(user?.email)).
+# Clear it before typing so we don't append to the pre-filled value.
+- tapOn:
+    id: "input-guest-email"
+- eraseText: 50
+- inputText: ${TEST_EMAIL}
+- tapOn:
+    id: "guest-title"
+
+- tapOn:
+    id: "input-guest-phone"
+- inputText: "5551234567"
+- tapOn:
+    id: "guest-title"
+
+- runFlow: "../utils/pay-stripe-test-card.yaml"
+
+# Wait for the confirmation screen — proves the Stripe webhook has flipped
+# the reservation to `confirmed` (usePaymentPolling caps at 20s; allow a
+# small buffer).
+- extendedWaitUntil:
+    visible:
+      id: "confirmation-booking-id"
+    timeout: 25000
+
+# Open Trips tab. The confirmed reservation surfaces a card with the
+# per-card cancel button.
+- openLink: travelhub:///trips
+
+- extendedWaitUntil:
+    visible:
+      id: "btn-cancel-reservation"
+    timeout: 10000
+
+- tapOn:
+    id: "btn-cancel-reservation"
+
+# Native Alert.alert dialog from trips.tsx:330 — buttons are rendered by the
+# OS, so we match by visible text. The destructive button label comes from
+# i18n key bookings.cancelConfirm. Match both locales (CI Android emulator
+# defaults to English; local dev devices may be Spanish).
+- tapOn:
+    text: "Yes, cancel|Sí, cancelar"
+
+# After cancellation, the card reloads with the "cancelled" status chip
+# (bookings.status.cancelled).
+- extendedWaitUntil:
+    visible:
+      text: "Cancelled|Cancelada"
+    timeout: 10000

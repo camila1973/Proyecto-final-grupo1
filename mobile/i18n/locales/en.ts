@@ -113,6 +113,8 @@ export default {
     loading: 'Loading bookings...',
     empty: 'No bookings yet',
     emptyDesc: 'Your upcoming reservations will appear here.',
+    empty_filtered: 'No bookings match this filter',
+    filter: { all: 'All' },
     signInPrompt: 'Sign in to see your bookings',
     errorLoad: 'Could not load bookings. Pull down to retry.',
     errorTitle: 'Error',
