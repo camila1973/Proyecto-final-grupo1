@@ -5,6 +5,7 @@ import {
   Body,
   Param,
   Headers,
+  Query,
   Req,
   HttpCode,
   HttpStatus,
@@ -43,5 +44,20 @@ export class PaymentsController {
   @Get(":reservationId/status")
   getStatus(@Param("reservationId") reservationId: string) {
     return this.paymentsService.getStatus(reservationId);
+  }
+
+  @Get("by-partner/:partnerId/captured")
+  getCapturedByPartner(
+    @Param("partnerId") partnerId: string,
+    @Query("from") from: string,
+    @Query("to") to: string,
+    @Query("propertyId") propertyId?: string,
+  ) {
+    return this.paymentsService.getCapturedByPartner(
+      partnerId,
+      from,
+      to,
+      propertyId,
+    );
   }
 }

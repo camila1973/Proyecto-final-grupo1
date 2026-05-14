@@ -9,6 +9,6 @@ import { MembersModule } from "../members/members.module.js";
   imports: [ClientsModule, MembersModule],
   controllers: [PartnersController],
   providers: [PartnersService, PartnersRepository],
-  exports: [PartnersService],
+  exports: [PartnersService, PartnersRepository],
 })
 export class PartnersModule {}

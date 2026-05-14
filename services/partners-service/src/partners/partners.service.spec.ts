@@ -433,4 +433,69 @@ describe("PartnersService", () => {
       expect(result.rows[0].reservationId).toBe("r1");
     });
   });
+
+  describe("getDisbursementHistory", () => {
+    function makePaymentClientWith(
+      historyResult: unknown,
+    ): PaymentClientService {
+      return {
+        getDisbursementHistory: jest.fn().mockResolvedValue(historyResult),
+      } as unknown as PaymentClientService;
+    }
+
+    it("rejects bad date formats", async () => {
+      const svc = makeDashboardSvc(
+        makeBookingClient([]),
+        makePaymentClientWith(null),
+      );
+      await expect(
+        svc.getDisbursementHistory("partner-1", "bad", "2026-05-01", null),
+      ).rejects.toThrow(/from/);
+    });
+
+    it("throws ServiceUnavailable when payment-service is down", async () => {
+      const svc = makeDashboardSvc(
+        makeBookingClient([]),
+        makePaymentClientWith(null),
+      );
+      await expect(
+        svc.getDisbursementHistory(
+          "partner-1",
+          "2026-01-01",
+          "2026-05-01",
+          null,
+        ),
+      ).rejects.toThrow(/payment-service/);
+    });
+
+    it("delegates and returns the history response unchanged", async () => {
+      const fixture = {
+        partnerId: "partner-1",
+        from: "2026-01-01",
+        to: "2026-05-01",
+        currency: "USD" as const,
+        totals: { gross: 100, tax: 19, partnerFee: 5, commission: 20, net: 75 },
+        paymentCount: 1,
+        months: [],
+      };
+      const client = makePaymentClientWith(fixture);
+      const svc = makeDashboardSvc(makeBookingClient([]), client);
+      const result = await svc.getDisbursementHistory(
+        "partner-1",
+        "2026-01-01",
+        "2026-05-01",
+        "prop-A",
+      );
+      expect(result).toEqual(fixture);
+      const mockFn = (
+        client as unknown as { getDisbursementHistory: jest.Mock }
+      ).getDisbursementHistory;
+      expect(mockFn).toHaveBeenCalledWith(
+        "partner-1",
+        "2026-01-01",
+        "2026-05-01",
+        "prop-A",
+      );
+    });
+  });
 });

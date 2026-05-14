@@ -90,6 +90,7 @@
     "country-state-city": "^3.2.1",
     "csv-parse": "^6.2.1",
     "dayjs": "^1.11.20",
+    "exceljs": "^4.4.0",
     "express": "^5.2.1",
     "firebase-admin": "^13.4.0",
     "i18next": "^25.8.18",

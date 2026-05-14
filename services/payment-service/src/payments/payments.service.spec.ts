@@ -29,6 +29,7 @@ function makeRepo() {
     findByReservationId: jest.fn(),
     findByIntentId: jest.fn(),
     updateByIntentId: jest.fn(),
+    findCapturedByPartner: jest.fn(),
   };
 }
 
@@ -723,6 +724,117 @@ describe("PaymentsService", () => {
       await expect(service.getStatus("unknown")).rejects.toThrow(
         NotFoundException,
       );
+    });
+  });
+
+  describe("getCapturedByPartner", () => {
+    it("rejects bad date formats with BadRequestException", async () => {
+      await expect(
+        service.getCapturedByPartner("p-1", "bad", "2026-05-01"),
+      ).rejects.toThrow(BadRequestException);
+      await expect(
+        service.getCapturedByPartner("p-1", "2026-04-01", "bad"),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it("rejects ranges over 366 days", async () => {
+      await expect(
+        service.getCapturedByPartner("p-1", "2024-01-01", "2026-01-01"),
+      ).rejects.toThrow(/366/);
+    });
+
+    it("rejects to <= from", async () => {
+      await expect(
+        service.getCapturedByPartner("p-1", "2026-05-01", "2026-04-01"),
+      ).rejects.toThrow(/after/);
+    });
+
+    it("aggregates totals across captured rows and orders by captured_at", async () => {
+      repo.findCapturedByPartner.mockResolvedValue([
+        {
+          id: "pay-1",
+          reservation_id: "res-1",
+          property_id: "prop-1",
+          property_name: "Hotel A",
+          status: "captured",
+          stripe_payment_intent_id: "pi_1",
+          amount_usd: "1190.00",
+          gross_amount_usd: "1190.00",
+          tax_amount_usd: "190.00",
+          commission_rate: "0.2000",
+          commission_amount_usd: "238.00",
+          net_payout_usd: "952.00",
+          captured_at: new Date("2026-04-05T12:00:00Z"),
+          created_at: new Date("2026-04-05T11:00:00Z"),
+          fare_snapshot: { nights: 2 },
+        },
+        {
+          id: "pay-2",
+          reservation_id: "res-2",
+          property_id: "prop-1",
+          property_name: "Hotel A",
+          status: "captured",
+          stripe_payment_intent_id: "pi_2",
+          amount_usd: "595.00",
+          gross_amount_usd: "595.00",
+          tax_amount_usd: "95.00",
+          commission_rate: "0.2000",
+          commission_amount_usd: "119.00",
+          net_payout_usd: "476.00",
+          captured_at: new Date("2026-04-15T12:00:00Z"),
+          created_at: new Date("2026-04-15T11:00:00Z"),
+          fare_snapshot: { nights: 1 },
+        },
+      ]);
+
+      const result = await service.getCapturedByPartner(
+        "p-1",
+        "2026-04-01",
+        "2026-05-01",
+      );
+
+      expect(result.totals).toEqual({
+        grossUsd: 1785,
+        taxUsd: 285,
+        commissionUsd: 357,
+        netUsd: 1428,
+        count: 2,
+      });
+      expect(result.rows).toHaveLength(2);
+      expect(result.currency).toBe("USD");
+      expect(repo.findCapturedByPartner).toHaveBeenCalledWith(
+        "p-1",
+        new Date("2026-04-01T00:00:00.000Z"),
+        new Date("2026-05-01T00:00:00.000Z"),
+        undefined,
+      );
+    });
+
+    it("forwards propertyId when provided", async () => {
+      repo.findCapturedByPartner.mockResolvedValue([]);
+      await service.getCapturedByPartner(
+        "p-1",
+        "2026-04-01",
+        "2026-05-01",
+        "10000000-0000-4000-8000-000000000001",
+      );
+      expect(repo.findCapturedByPartner).toHaveBeenCalledWith(
+        "p-1",
+        expect.any(Date),
+        expect.any(Date),
+        "10000000-0000-4000-8000-000000000001",
+      );
+    });
+
+    it("rejects invalid propertyId UUID", async () => {
+      await expect(
+        service.getCapturedByPartner(
+          "p-1",
+          "2026-04-01",
+          "2026-05-01",
+          "not-a-uuid",
+        ),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 });

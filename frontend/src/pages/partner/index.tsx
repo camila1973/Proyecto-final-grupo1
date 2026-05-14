@@ -3,27 +3,26 @@ import { useNavigate } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useQueries } from '@tanstack/react-query';
 import { Alert, CircularProgress } from '@mui/material';
-import { useAuth } from '../../../hooks/useAuth';
-import { useLocale } from '../../../context/LocaleContext';
+import { useAuth } from '../../hooks/useAuth';
+import { useLocale } from '../../context/LocaleContext';
 import {
   fetchPartner,
   fetchPartnerProperties,
   fetchPartnerMetrics,
   fetchPropertyMetrics,
   fetchPartnerDisbursement,
-} from '../../../utils/queries';
-import { formatPrice } from '../../../utils/currency';
-import { currentMonth, shiftMonth, formatMonthLabel } from '../../../utils/month';
-import { PROPERTY_COLORS } from '../components/RevenueTrendChart';
-import MetricCard from '../components/MetricCard';
-import MonthSwitcher from '../components/MonthSwitcher';
-import HeroBanner from './HeroBanner';
-import PageContainer from '../../../components/PageContainer';
-import ChartsSection from './ChartsSection';
-import PropertiesSection, { type PropertyRow } from './PropertiesSection';
-import MembersSection from './MembersSection';
-import DisbursementsSection from './DisbursementsSection';
-import type { PropertyRevenueDataPoint } from '../components/PropertyRevenueChart';
+} from '../../utils/queries';
+import { formatPrice } from '../../utils/currency';
+import { currentMonth, shiftMonth, formatMonthLabel } from '../../utils/month';
+import { PROPERTY_COLORS } from './components/RevenueTrendChart';
+import MetricCard from './components/MetricCard';
+import MonthSwitcher from './components/MonthSwitcher';
+import { PartnerTopTabs } from './components/PartnerTabs';
+import HeroBanner from './sections/PartnerHeroBanner';
+import PageContainer from '../../components/PageContainer';
+import ChartsSection from './sections/OverviewCharts';
+import DisbursementsSection from './sections/DisbursementsPreview';
+import type { PropertyRevenueDataPoint } from './components/PropertyRevenueChart';
 
 export default function MiHotelPage() {
   const { t } = useTranslation();
@@ -106,28 +105,15 @@ export default function MiHotelPage() {
     (q) => !q.isLoading && (q.data?.metrics.confirmed ?? 0) === 0,
   ).length;
 
-  const propertyRows: PropertyRow[] = properties.map((p, i) => {
-    const propData = propertyQueries[i]?.data;
-    const loading = propertyQueries[i]?.isLoading ?? false;
-    const propSeries = propData?.monthlySeries;
+  const barData: PropertyRevenueDataPoint[] = properties.map((p, i) => {
+    const gross = propertyQueries[i]?.data?.metrics.revenueUsd ?? 0;
     return {
-      propertyId: p.propertyId,
-      propertyName: p.propertyName,
-      loading,
-      confirmed: propData?.metrics.confirmed ?? 0,
-      gross: propData?.metrics.revenueUsd ?? 0,
-      lastOccupancy: propSeries
-        ? (propSeries[propSeries.length - 1]?.occupancyRate ?? 0) * 100
-        : null,
+      name: p.propertyName,
+      gross: Math.round(gross),
+      commission: Math.round(gross * 0.2),
+      net: Math.round(gross * 0.8),
     };
   });
-
-  const barData: PropertyRevenueDataPoint[] = propertyRows.map((r) => ({
-    name: r.propertyName,
-    gross: Math.round(r.gross),
-    commission: Math.round(r.gross * 0.2),
-    net: Math.round(r.gross * 0.8),
-  }));
 
   const trendSeries = properties
     .map((p, i) => ({
@@ -148,8 +134,8 @@ export default function MiHotelPage() {
     taxes: r.tax,
     net: r.net,
   }));
-  const totalNetPayout = disbursement?.totals.net ?? 0;
-  const totalCommission = disbursement?.totals.commission ?? 0;
+  const totalNetPayout = disbursement?.totals?.net ?? 0;
+  const totalCommission = disbursement?.totals?.commission ?? 0;
   const topProperty = disbursementRows[0];
   const disbursementStatus = disbursement?.status ?? 'projected';
 
@@ -157,13 +143,13 @@ export default function MiHotelPage() {
 
   return (
     <div className="min-h-screen">
-
       <HeroBanner
         orgName={partnerQuery.data?.name ?? ''}
         identifier={partnerQuery.data?.identifier ?? ''}
         userName={[user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.email || ''}
         role={user?.role ?? ''}
       />
+      <PartnerTopTabs active="resumen" />
 
       <PageContainer>
 
@@ -237,14 +223,6 @@ export default function MiHotelPage() {
           monthLabel={monthLabel}
         />
 
-        <PropertiesSection
-          rows={propertyRows}
-          currency={currency}
-          onView={(propertyId) => navigate({ to: '/mi-hotel/$propertyId', params: { propertyId } })}
-        />
-
-        <MembersSection partnerId={partnerId} token={token!} />
-
         <DisbursementsSection
           rows={disbursementRows}
           month={month}
@@ -252,7 +230,7 @@ export default function MiHotelPage() {
           disbursementLabel={disbursementLabel}
           totalNetPayout={totalNetPayout}
           status={disbursementStatus}
-          onViewHistory={() => navigate({ to: '/mi-hotel/pagos' })}
+          onViewHistory={() => navigate({ to: '/mi-hotel/desembolsos' })}
         />
 
       </PageContainer>

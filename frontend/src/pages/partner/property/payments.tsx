@@ -26,8 +26,9 @@ import { useAuth } from '../../../hooks/useAuth';
 import { useLocale } from '../../../context/LocaleContext';
 import { fetchPartnerPayments } from '../../../utils/queries';
 import { formatPrice } from '../../../utils/currency';
-import { TH, TD } from '../dashboard/ui';
+import { TH, TD } from '../sections/ui';
 import PageContainer from '../../../components/PageContainer';
+import ReportExportToolbar from '../components/ReportExportToolbar';
 
 const PAGE_SIZE = 20;
 
@@ -36,7 +37,7 @@ const NAV_BTN = { bgcolor: '#1B4F8C', color: '#fff', '&:hover': { bgcolor: '#163
 export default function PagosPropertyPage() {
   const { t } = useTranslation();
   const { token, user } = useAuth();
-  const { currency } = useLocale();
+  const { currency, language } = useLocale();
   const navigate = useNavigate();
   const { propertyId } = useParams({ from: '/mi-hotel/$propertyId/pagos' });
 
@@ -85,6 +86,15 @@ export default function PagosPropertyPage() {
         <Typography sx={{ fontSize: 18, fontWeight: 600, color: '#1a1a1a', mb: 3 }}>
           {t('partner.payments.title')}
         </Typography>
+
+        {token && (
+          <ReportExportToolbar
+            partnerId={partnerId}
+            propertyId={propertyId}
+            token={token}
+            language={language}
+          />
+        )}
 
         <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
           <TextField

@@ -110,18 +110,45 @@ export interface DisbursementDto {
   periodEnd: string;
   scheduledFor: string;
   currency: string;
-  status: "pending" | "paid" | "failed" | "projected";
+  status: DisbursementStatus;
   paidAt: string | null;
   externalTransferRef: string | null;
-  totals: {
-    gross: number;
-    tax: number;
-    partnerFee: number;
-    commission: number;
-    net: number;
-  };
+  totals: DisbursementAggregateTotals;
   byProperty: DisbursementPropertyRollup[];
   paymentCount: number;
+}
+
+export type DisbursementStatus = "pending" | "paid" | "failed" | "projected";
+
+export interface DisbursementAggregateTotals {
+  gross: number;
+  tax: number;
+  partnerFee: number;
+  commission: number;
+  net: number;
+}
+
+export interface DisbursementMonthDto {
+  month: string; // YYYY-MM
+  periodStart: string;
+  periodEnd: string;
+  scheduledFor: string;
+  status: DisbursementStatus;
+  paidAt: string | null;
+  externalTransferRef: string | null;
+  totals: DisbursementAggregateTotals;
+  byProperty: DisbursementPropertyRollup[];
+  paymentCount: number;
+}
+
+export interface DisbursementHistoryResponse {
+  partnerId: string;
+  from: string; // YYYY-MM-DD
+  to: string; // exclusive
+  currency: "USD";
+  totals: DisbursementAggregateTotals;
+  paymentCount: number;
+  months: DisbursementMonthDto[];
 }
 
 export interface PaymentsResponse {
@@ -131,6 +158,38 @@ export interface PaymentsResponse {
   page: number;
   pageSize: number;
   rows: PaymentRow[];
+}
+
+export interface CapturedPaymentDto {
+  paymentId: string;
+  reservationId: string;
+  propertyId: string | null;
+  propertyName: string | null;
+  status: string;
+  stripePaymentIntentId: string | null;
+  grossAmountUsd: number;
+  taxAmountUsd: number;
+  commissionRate: number;
+  commissionAmountUsd: number;
+  netPayoutUsd: number;
+  capturedAt: string | null;
+  createdAt: string;
+  fareSnapshot: Record<string, unknown> | null;
+}
+
+export interface CapturedPaymentsResponse {
+  partnerId: string;
+  from: string;
+  to: string;
+  currency: string;
+  totals: {
+    grossUsd: number;
+    taxUsd: number;
+    commissionUsd: number;
+    netUsd: number;
+    count: number;
+  };
+  rows: CapturedPaymentDto[];
 }
 
 export interface PropertySummary {

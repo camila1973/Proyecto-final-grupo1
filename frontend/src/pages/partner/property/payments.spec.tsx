@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { setupTestI18n } from '../../../i18n/test-utils';
 import { LocaleProvider } from '../../../context/LocaleContext';
 import { AuthContext } from '../../../context/auth-context';
-import PagosPropertyPage from './pagos';
+import PagosPropertyPage from './payments';
 
 setupTestI18n('es');
 

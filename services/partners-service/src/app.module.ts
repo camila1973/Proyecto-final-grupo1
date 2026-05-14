@@ -7,6 +7,7 @@ import { FeesModule } from "./fees/fees.module.js";
 import { PropertyModule } from "./property/property.module.js";
 import { PropertyCheckinKeyModule } from "./property-checkin-key/property-checkin-key.module.js";
 import { MembersModule } from "./members/members.module.js";
+import { ReportsModule } from "./reports/reports.module.js";
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { MembersModule } from "./members/members.module.js";
     PropertyModule,
     PropertyCheckinKeyModule,
     MembersModule,
+    ReportsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

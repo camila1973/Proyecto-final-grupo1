@@ -97,6 +97,21 @@ export class PartnersController {
     const safeMonth = isMonth(month) ? month! : currentMonth();
     return this.partnersService.getDisbursement(partnerId, safeMonth);
   }
+
+  @Get(":partnerId/disbursements/history")
+  disbursementHistory(
+    @Param("partnerId") partnerId: string,
+    @Query("from") from: string,
+    @Query("to") to: string,
+    @Query("propertyId") propertyId?: string,
+  ) {
+    return this.partnersService.getDisbursementHistory(
+      partnerId,
+      from,
+      to,
+      propertyId?.trim() || null,
+    );
+  }
 }
 
 function isMonth(s: string | undefined): boolean {

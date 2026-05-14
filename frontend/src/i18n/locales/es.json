@@ -428,6 +428,15 @@
     "currency_label": "Moneda"
   },
   "partner": {
+    "tabs": {
+      "resumen": "Resumen",
+      "desembolsos": "Desembolsos",
+      "propiedades": "Propiedades",
+      "equipo": "Equipo",
+      "finanzas": "Finanzas",
+      "reservas": "Reservas",
+      "habitaciones": "Habitaciones"
+    },
     "dashboard": {
       "hotel_name": "Hotel Central Park",
       "hotel_address": "#4-12 Calle 65 Bis, Chapinero, 110231 Bogotá, Colombia",
@@ -568,7 +577,62 @@
       "col_taxes": "Impuestos",
       "col_total": "Total pagado",
       "col_commission": "Comisión",
-      "col_earnings": "Ganancia"
+      "col_earnings": "Ganancia",
+      "report": {
+        "export_pdf": "Exportar PDF",
+        "export_xlsx": "Exportar Excel",
+        "period_mode": {
+          "month": "Mes",
+          "year": "Año"
+        },
+        "generating": "Generando reporte…",
+        "download_failed": "No se pudo generar el reporte. Inténtalo de nuevo."
+      }
+    },
+    "finance": {
+      "title_property": "Finanzas",
+      "title_partner": "Desembolsos",
+      "subtitle_partner": "Pagos consolidados a propietarios · valores en USD",
+      "crumb_finance": "Finanzas",
+      "crumb_liquidaciones": "Desembolsos",
+      "history_title": "Historial de pagos",
+      "history_title_partner": "Historial de desembolsos",
+      "see_finance": "Ver finanzas",
+      "subtotal": "Subtotal del mes",
+      "empty": "Sin desembolsos en este período",
+      "period": {
+        "last_12_months": "Últimos 12 meses",
+        "year": "Año"
+      },
+      "kpi": {
+        "gross_revenue": "Ingresos brutos",
+        "gross_sub": "Período seleccionado",
+        "commission": "Comisión TravelHub",
+        "commission_sub": "Sobre ingresos brutos",
+        "payouts": "Pagos al propietario",
+        "payouts_sub": "Neto del período",
+        "next_payout": "Próximo pago",
+        "no_projected": "Sin proyección"
+      },
+      "col": {
+        "period": "Período",
+        "property": "Propiedad",
+        "gross": "Bruto",
+        "commission": "Comisión",
+        "net": "Neto",
+        "date": "Fecha de pago",
+        "status": "Estado"
+      },
+      "status": {
+        "projected": "Proyectado",
+        "pending": "Pendiente",
+        "paid": "Pagado",
+        "failed": "Fallido"
+      },
+      "action": {
+        "download_statement": "Descargar estado de cuenta",
+        "download_failed": "No se pudo descargar el estado. Inténtalo de nuevo."
+      }
     },
     "properties": {
       "title": "Mis propiedades",
@@ -788,7 +852,7 @@
       "action_delete": "Eliminar",
       "action_reset_password": "Restablecer contraseña",
       "section_disbursements": "Próximos desembolsos",
-      "see_full_history": "Ver historial completo ↗",
+      "see_full_history": "Ver historial de liquidaciones ↗",
       "col_period": "Período",
       "col_property_name": "Propiedad",
       "col_gross_amount": "Bruto",

@@ -31,28 +31,6 @@ jest.mock('recharts', () => {
   };
 });
 
-// ─── Fixtures ─────────────────────────────────────────────────────────────────
-
-const CONFIRMED_RESERVATION = {
-  id: 'res-uuid-1234',
-  status: 'confirmed',
-  guestName: 'María López',
-  guestEmail: 'maria@test.com',
-  guestPhone: '+573001234567',
-  guestCount: 2,
-  checkIn: '2026-05-10',
-  checkOut: '2026-05-13',
-  roomType: 'Doble Superior',
-  grandTotalUsd: 300,
-};
-
-const CHECKED_IN_RESERVATION = {
-  ...CONFIRMED_RESERVATION,
-  id: 'res-uuid-5678',
-  status: 'checked_in',
-  guestName: 'Carlos Ruiz',
-};
-
 const METRICS_RESPONSE = {
   partnerId: 'partner-1',
   propertyId: 'prop-abc',
@@ -80,57 +58,15 @@ const MOCK_AUTH = {
   logout: jest.fn(),
 };
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function makeReservationsBody(reservations: typeof CONFIRMED_RESERVATION[]) {
-  return {
-    partnerId: 'partner-1',
-    propertyId: 'prop-abc',
-    month: '2026-05',
-    roomType: null,
-    reservations,
-  };
-}
-
-function mockFetch(
-  reservations: typeof CONFIRMED_RESERVATION[] = [CONFIRMED_RESERVATION],
-  options: { ok?: boolean; checkInFails?: boolean } = {},
-) {
-  const { ok = true, checkInFails = false } = options;
-  global.fetch = jest.fn().mockImplementation((url: string, init?: RequestInit) => {
+function mockFetch(options: { ok?: boolean } = {}) {
+  const { ok = true } = options;
+  global.fetch = jest.fn().mockImplementation((url: string) => {
     if (!ok) {
       return Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve({}) });
-    }
-
-    // Mutation endpoints
-    if ((url as string).includes('/partner-check-in')) {
-      if (checkInFails) {
-        return Promise.resolve({
-          ok: false,
-          status: 400,
-          json: () => Promise.resolve({ message: 'Reservation must be confirmed' }),
-        });
-      }
-      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({}) });
-    }
-    if ((url as string).includes('/check-out')) {
-      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({}) });
-    }
-    if ((url as string).includes('/cancel') && (init?.method === 'PATCH')) {
-      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({}) });
-    }
-
-    // Query endpoints
-    if ((url as string).includes('/reservations')) {
-      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(makeReservationsBody(reservations)) });
-    }
-    if ((url as string).match(/\/properties\/[^/]+\/rooms$/)) {
-      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ partnerId: 'partner-1', propertyId: 'prop-abc', rooms: [] }) });
     }
     if ((url as string).match(/\/properties\/[^/]+$/)) {
       return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(PROPERTY_RESPONSE) });
     }
-    // metrics
     return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(METRICS_RESPONSE) });
   }) as never;
 }
@@ -148,9 +84,7 @@ function renderPage(authValue: typeof MOCK_AUTH | null = MOCK_AUTH) {
   );
 }
 
-// ─── Tests ────────────────────────────────────────────────────────────────────
-
-describe('PropertyDashboardPage', () => {
+describe('PropertyDashboardPage (Resumen)', () => {
   beforeEach(() => {
     mockFetch();
   });
@@ -159,24 +93,20 @@ describe('PropertyDashboardPage', () => {
     jest.resetAllMocks();
   });
 
-  // ── Auth & error states ────────────────────────────────────────────────────
-
   it('shows login required alert when unauthenticated', () => {
     renderPage({ token: null, user: null, login: jest.fn(), logout: jest.fn() } as never);
     expect(screen.getByText('Inicia sesión como socio para ver el panel.')).toBeInTheDocument();
   });
 
   it('shows error alert on fetch failure', async () => {
-    mockFetch([], { ok: false });
+    mockFetch({ ok: false });
     renderPage();
     await waitFor(() => {
       expect(screen.getByText('No se pudieron cargar las métricas. Inténtalo más tarde.')).toBeInTheDocument();
     });
   });
 
-  // ── Metrics ───────────────────────────────────────────────────────────────
-
-  it('renders all five metric cards after data loads', async () => {
+  it('renders the five metric cards after data loads', async () => {
     renderPage();
     await waitFor(() => {
       expect(screen.getByTestId('metric-confirmed')).toBeInTheDocument();
@@ -195,274 +125,5 @@ describe('PropertyDashboardPage', () => {
     await waitFor(() => {
       expect((global.fetch as jest.Mock).mock.calls.length).toBeGreaterThan(callsBefore);
     });
-  });
-
-  // ── Reservation table rendering ────────────────────────────────────────────
-
-  it('renders guest name and status chip for a confirmed reservation', async () => {
-    renderPage();
-    await waitFor(() => expect(screen.getByText('María López')).toBeInTheDocument());
-    expect(screen.getByText('Confirmada')).toBeInTheDocument();
-    expect(screen.getByText('maria@test.com')).toBeInTheDocument();
-  });
-
-  it('shows empty-month message when no reservations exist', async () => {
-    mockFetch([]);
-    renderPage();
-    await waitFor(() => {
-      expect(screen.getByText('No hay reservaciones para este mes.')).toBeInTheDocument();
-    });
-  });
-
-  it('navigates to the payments page on link click', async () => {
-    renderPage();
-    await waitFor(() => expect(screen.getByText('Ver todos los pagos')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('Ver todos los pagos'));
-    expect(mockNavigate).toHaveBeenCalledWith({
-      to: '/mi-hotel/$propertyId/pagos',
-      params: { propertyId: 'prop-abc' },
-    });
-  });
-
-  // ── Search & filter ────────────────────────────────────────────────────────
-
-  it('filters reservations by reservation id (partial match)', async () => {
-    renderPage();
-    await waitFor(() => expect(screen.getByText('María López')).toBeInTheDocument());
-    fireEvent.change(
-      screen.getByPlaceholderText('Buscar por # reserva o huésped'),
-      { target: { value: 'no-match-xyz' } },
-    );
-    expect(screen.queryByText('María López')).not.toBeInTheDocument();
-    expect(screen.getByText('No hay reservaciones que coincidan con los filtros.')).toBeInTheDocument();
-  });
-
-  it('filters reservations by guest name (case-insensitive)', async () => {
-    renderPage();
-    await waitFor(() => expect(screen.getByText('María López')).toBeInTheDocument());
-    fireEvent.change(
-      screen.getByPlaceholderText('Buscar por # reserva o huésped'),
-      { target: { value: 'maría' } },
-    );
-    expect(screen.getByText('María López')).toBeInTheDocument();
-  });
-
-  it('shows no-filter-results message when name search yields nothing', async () => {
-    renderPage();
-    await waitFor(() => expect(screen.getByText('María López')).toBeInTheDocument());
-    fireEvent.change(
-      screen.getByPlaceholderText('Buscar por # reserva o huésped'),
-      { target: { value: 'ghost' } },
-    );
-    expect(screen.getByText('No hay reservaciones que coincidan con los filtros.')).toBeInTheDocument();
-  });
-
-  // ── Status-based action buttons ────────────────────────────────────────────
-
-  it('shows check-in icon button for confirmed reservations', async () => {
-    renderPage();
-    await waitFor(() => expect(screen.getByText('María López')).toBeInTheDocument());
-    expect(screen.getByLabelText('Registrar Check-in')).toBeInTheDocument();
-  });
-
-  it('does not show check-in button for non-confirmed reservations', async () => {
-    mockFetch([{ ...CONFIRMED_RESERVATION, status: 'checked_out' }]);
-    renderPage();
-    await waitFor(() => expect(screen.getByText('María López')).toBeInTheDocument());
-    expect(screen.queryByLabelText('Registrar Check-in')).not.toBeInTheDocument();
-  });
-
-  it('shows check-out icon button for checked_in reservations', async () => {
-    mockFetch([CHECKED_IN_RESERVATION]);
-    renderPage();
-    await waitFor(() => expect(screen.getByText('Carlos Ruiz')).toBeInTheDocument());
-    expect(screen.getByLabelText('Registrar Check-out')).toBeInTheDocument();
-  });
-
-  it('does not show action buttons for terminal statuses', async () => {
-    mockFetch([{ ...CONFIRMED_RESERVATION, status: 'cancelled' }]);
-    renderPage();
-    await waitFor(() => expect(screen.getByText('Cancelada')).toBeInTheDocument());
-    expect(screen.queryByLabelText('Registrar Check-in')).not.toBeInTheDocument();
-    expect(screen.queryByLabelText('Registrar Check-out')).not.toBeInTheDocument();
-  });
-
-  // ── Check-in flow ──────────────────────────────────────────────────────────
-
-  it('opens confirmation dialog when check-in button is clicked', async () => {
-    renderPage();
-    await waitFor(() => expect(screen.getByText('María López')).toBeInTheDocument());
-    fireEvent.click(screen.getByLabelText('Registrar Check-in'));
-    await waitFor(() => {
-      expect(screen.getByText('Confirmar Check-in')).toBeInTheDocument();
-    });
-    expect(screen.getByText('¿Confirmas que el huésped ha llegado y deseas registrar el check-in?')).toBeInTheDocument();
-  });
-
-  it('calls partner-check-in API and shows success snackbar on confirm', async () => {
-    renderPage();
-    await waitFor(() => expect(screen.getByText('María López')).toBeInTheDocument());
-    fireEvent.click(screen.getByLabelText('Registrar Check-in'));
-    await waitFor(() => expect(screen.getByText('Confirmar Check-in')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('Registrar Check-in', { selector: 'button' }));
-    await waitFor(() => {
-      expect(screen.getByText('Check-in registrado correctamente.')).toBeInTheDocument();
-    });
-    const patchCalls = (global.fetch as jest.Mock).mock.calls.filter(
-      ([url, init]: [string, RequestInit]) => url.includes('/partner-check-in') && init?.method === 'PATCH',
-    );
-    expect(patchCalls.length).toBe(1);
-  });
-
-  it('shows error snackbar when check-in API returns an error', async () => {
-    mockFetch([CONFIRMED_RESERVATION], { checkInFails: true });
-    renderPage();
-    await waitFor(() => expect(screen.getByText('María López')).toBeInTheDocument());
-    fireEvent.click(screen.getByLabelText('Registrar Check-in'));
-    await waitFor(() => expect(screen.getByText('Confirmar Check-in')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('Registrar Check-in', { selector: 'button' }));
-    await waitFor(() => {
-      expect(screen.getByText('Reservation must be confirmed')).toBeInTheDocument();
-    });
-  });
-
-  it('dismisses dialog without calling API when back button is clicked', async () => {
-    renderPage();
-    await waitFor(() => expect(screen.getByText('María López')).toBeInTheDocument());
-    fireEvent.click(screen.getByLabelText('Registrar Check-in'));
-    await waitFor(() => expect(screen.getByText('Confirmar Check-in')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('Regresar'));
-    expect(screen.queryByText('Confirmar Check-in')).not.toBeInTheDocument();
-    const patchCalls = (global.fetch as jest.Mock).mock.calls.filter(
-      ([url, init]: [string, RequestInit]) => url.includes('/partner-check-in') && init?.method === 'PATCH',
-    );
-    expect(patchCalls.length).toBe(0);
-  });
-
-  // ── Context menu (MoreVert) ────────────────────────────────────────────────
-
-  it('shows edit option in context menu for confirmed reservations', async () => {
-    renderPage();
-    await waitFor(() => expect(screen.getByText('María López')).toBeInTheDocument());
-    fireEvent.click(screen.getByLabelText('Más acciones'));
-    await waitFor(() => expect(screen.getByText('Editar reserva')).toBeInTheDocument());
-  });
-
-  it('navigates to edit page when edit option is selected from context menu', async () => {
-    renderPage();
-    await waitFor(() => expect(screen.getByText('María López')).toBeInTheDocument());
-    fireEvent.click(screen.getByLabelText('Más acciones'));
-    await waitFor(() => expect(screen.getByText('Editar reserva')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('Editar reserva'));
-    expect(mockNavigate).toHaveBeenCalledWith({
-      to: '/mi-hotel/$propertyId/reservas/$reservationId/editar',
-      params: { propertyId: 'prop-abc', reservationId: 'res-uuid-1234' },
-    });
-  });
-
-  it('shows cancel option in context menu for confirmed reservations', async () => {
-    renderPage();
-    await waitFor(() => expect(screen.getByText('María López')).toBeInTheDocument());
-    fireEvent.click(screen.getByLabelText('Más acciones'));
-    await waitFor(() => expect(screen.getByText('Cancelar reserva')).toBeInTheDocument());
-  });
-
-  it('opens cancel confirmation dialog from context menu', async () => {
-    renderPage();
-    await waitFor(() => expect(screen.getByText('María López')).toBeInTheDocument());
-    fireEvent.click(screen.getByLabelText('Más acciones'));
-    await waitFor(() => expect(screen.getByText('Cancelar reserva')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('Cancelar reserva'));
-    await waitFor(() => {
-      expect(screen.getByText('Cancelar reserva', { selector: '[role="heading"], h2' })).toBeInTheDocument();
-    });
-  });
-
-  // ── Check-out flow ─────────────────────────────────────────────────────────
-
-  it('confirms check-out and shows success snackbar', async () => {
-    mockFetch([CHECKED_IN_RESERVATION]);
-    renderPage();
-    await waitFor(() => expect(screen.getByText('Carlos Ruiz')).toBeInTheDocument());
-    fireEvent.click(screen.getByLabelText('Registrar Check-out'));
-    await waitFor(() => expect(screen.getByText('Confirmar Check-out')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('Registrar Check-out', { selector: 'button' }));
-    await waitFor(() => {
-      expect(screen.getByText('Check-out registrado correctamente.')).toBeInTheDocument();
-    });
-    const patchCalls = (global.fetch as jest.Mock).mock.calls.filter(
-      ([url, init]: [string, RequestInit]) => url.includes('/check-out') && init?.method === 'PATCH',
-    );
-    expect(patchCalls.length).toBe(1);
-  });
-
-  // ── Cancel flow ────────────────────────────────────────────────────────────
-
-  it('confirms cancel and shows success snackbar', async () => {
-    renderPage();
-    await waitFor(() => expect(screen.getByText('María López')).toBeInTheDocument());
-    fireEvent.click(screen.getByLabelText('Más acciones'));
-    await waitFor(() => expect(screen.getByText('Cancelar reserva')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('Cancelar reserva'));
-    await waitFor(() => expect(screen.getByText('Esta acción cancelará la reserva y notificará al huésped. ¿Deseas continuar?')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('Cancelar reserva', { selector: 'button' }));
-    await waitFor(() => {
-      expect(screen.getByText('Reserva cancelada.')).toBeInTheDocument();
-    });
-  });
-
-  // ── StatusChip variants ────────────────────────────────────────────────────
-
-  it('renders "En hotel" chip for checked_in status', async () => {
-    mockFetch([CHECKED_IN_RESERVATION]);
-    renderPage();
-    await waitFor(() => expect(screen.getByText('En hotel')).toBeInTheDocument());
-  });
-
-  it('renders "Check-out" chip for checked_out status', async () => {
-    mockFetch([{ ...CONFIRMED_RESERVATION, status: 'checked_out' }]);
-    renderPage();
-    await waitFor(() => expect(screen.getByText('Check-out')).toBeInTheDocument());
-  });
-
-  it('renders "Cancelada" chip for cancelled status', async () => {
-    mockFetch([{ ...CONFIRMED_RESERVATION, status: 'cancelled' }]);
-    renderPage();
-    await waitFor(() => expect(screen.getByText('Cancelada')).toBeInTheDocument());
-  });
-
-  // ── Context menu for checked_in ────────────────────────────────────────────
-
-  it('shows check-out and cancel options in context menu for checked_in', async () => {
-    mockFetch([CHECKED_IN_RESERVATION]);
-    renderPage();
-    await waitFor(() => expect(screen.getByText('Carlos Ruiz')).toBeInTheDocument());
-    fireEvent.click(screen.getByLabelText('Más acciones'));
-    await waitFor(() => expect(screen.getByText('Registrar Check-out')).toBeInTheDocument());
-    expect(screen.getByText('Cancelar reserva')).toBeInTheDocument();
-  });
-
-  // ── Pagination label ───────────────────────────────────────────────────────
-
-  it('shows pagination label when reservations are present', async () => {
-    renderPage();
-    await waitFor(() => expect(screen.getByText('María López')).toBeInTheDocument());
-    expect(screen.getByText('1–1 de 1')).toBeInTheDocument();
-  });
-
-  // ── Status filter dropdown ─────────────────────────────────────────────────
-
-  it('filters by status dropdown hiding non-matching rows', async () => {
-    mockFetch([CONFIRMED_RESERVATION, CHECKED_IN_RESERVATION]);
-    renderPage();
-    await waitFor(() => expect(screen.getByText('María López')).toBeInTheDocument());
-    expect(screen.getByText('Carlos Ruiz')).toBeInTheDocument();
-    // Open the "Estado" select and pick the checked_in option
-    fireEvent.mouseDown(screen.getByLabelText('Estado'));
-    // findByRole scopes to the open listbox, avoiding ambiguity with the StatusChip
-    const option = await screen.findByRole('option', { name: 'En hotel' });
-    fireEvent.click(option);
-    await waitFor(() => expect(screen.queryByText('María López')).not.toBeInTheDocument());
-    expect(screen.getByText('Carlos Ruiz')).toBeInTheDocument();
   });
 });

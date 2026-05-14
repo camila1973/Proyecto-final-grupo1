@@ -54,4 +54,26 @@ export class PaymentsRepository {
       .where("stripe_payment_intent_id", "=", intentId)
       .execute();
   }
+
+  // Range scan for partner financial reports. `from` inclusive, `to` exclusive.
+  // Uses the partial index payments_partner_captured_idx (partner_id, captured_at)
+  // WHERE status = 'captured'.
+  async findCapturedByPartner(
+    partnerId: string,
+    from: Date,
+    to: Date,
+    propertyId?: string,
+  ): Promise<PaymentRow[]> {
+    let query = this.db
+      .selectFrom("payments")
+      .selectAll()
+      .where("partner_id", "=", partnerId)
+      .where("status", "=", "captured")
+      .where("captured_at", ">=", from)
+      .where("captured_at", "<", to);
+    if (propertyId) {
+      query = query.where("property_id", "=", propertyId);
+    }
+    return query.orderBy("captured_at", "asc").execute();
+  }
 }

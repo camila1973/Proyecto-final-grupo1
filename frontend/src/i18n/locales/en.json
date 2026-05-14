@@ -428,6 +428,15 @@
     "currency_label": "Currency"
   },
   "partner": {
+    "tabs": {
+      "resumen": "Overview",
+      "desembolsos": "Disbursements",
+      "propiedades": "Properties",
+      "equipo": "Team",
+      "finanzas": "Finance",
+      "reservas": "Reservations",
+      "habitaciones": "Rooms"
+    },
     "dashboard": {
       "hotel_name": "Hotel Central Park",
       "hotel_address": "#4-12 Calle 65 Bis, Chapinero, 110231 Bogotá, Colombia",
@@ -568,7 +577,62 @@
       "col_taxes": "Taxes",
       "col_total": "Total paid",
       "col_commission": "Commission",
-      "col_earnings": "Earnings"
+      "col_earnings": "Earnings",
+      "report": {
+        "export_pdf": "Export PDF",
+        "export_xlsx": "Export Excel",
+        "period_mode": {
+          "month": "Month",
+          "year": "Year"
+        },
+        "generating": "Generating report…",
+        "download_failed": "Could not generate the report. Please try again."
+      }
+    },
+    "finance": {
+      "title_property": "Finance",
+      "title_partner": "Disbursements",
+      "subtitle_partner": "Consolidated owner payouts · values in USD",
+      "crumb_finance": "Finance",
+      "crumb_liquidaciones": "Disbursements",
+      "history_title": "Payment history",
+      "history_title_partner": "Disbursement history",
+      "see_finance": "View finance",
+      "subtotal": "Month subtotal",
+      "empty": "No disbursements in this period",
+      "period": {
+        "last_12_months": "Last 12 months",
+        "year": "Year"
+      },
+      "kpi": {
+        "gross_revenue": "Gross revenue",
+        "gross_sub": "Selected period",
+        "commission": "TravelHub commission",
+        "commission_sub": "On gross revenue",
+        "payouts": "Owner payouts",
+        "payouts_sub": "Net for period",
+        "next_payout": "Next payout",
+        "no_projected": "No projection"
+      },
+      "col": {
+        "period": "Period",
+        "property": "Property",
+        "gross": "Gross",
+        "commission": "Commission",
+        "net": "Net",
+        "date": "Payment date",
+        "status": "Status"
+      },
+      "status": {
+        "projected": "Projected",
+        "pending": "Pending",
+        "paid": "Paid",
+        "failed": "Failed"
+      },
+      "action": {
+        "download_statement": "Download statement",
+        "download_failed": "Could not download the statement. Please try again."
+      }
     },
     "properties": {
       "title": "My properties",
@@ -788,7 +852,7 @@
       "action_delete": "Delete",
       "action_reset_password": "Reset password",
       "section_disbursements": "Upcoming disbursements",
-      "see_full_history": "See full history ↗",
+      "see_full_history": "See settlement history ↗",
       "col_period": "Period",
       "col_property_name": "Property",
       "col_gross_amount": "Gross",

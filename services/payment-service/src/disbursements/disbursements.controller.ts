@@ -23,4 +23,14 @@ export class DisbursementsController {
     }
     return this.service.getByPartnerAndMonth(partnerId, month);
   }
+
+  @Get("by-partner/:partnerId/history")
+  history(
+    @Param("partnerId") partnerId: string,
+    @Query("from") from: string,
+    @Query("to") to: string,
+    @Query("propertyId") propertyId?: string,
+  ) {
+    return this.service.getHistory(partnerId, from, to, propertyId);
+  }
 }

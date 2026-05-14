@@ -550,6 +550,54 @@ export async function fetchPartnerDisbursement(
   return res.json() as Promise<PartnerDisbursement>;
 }
 
+export interface DisbursementAggregateTotals {
+  gross: number;
+  tax: number;
+  partnerFee: number;
+  commission: number;
+  net: number;
+}
+
+export interface DisbursementMonth {
+  month: string; // YYYY-MM
+  periodStart: string;
+  periodEnd: string;
+  scheduledFor: string;
+  status: 'pending' | 'paid' | 'failed' | 'projected';
+  paidAt: string | null;
+  externalTransferRef: string | null;
+  totals: DisbursementAggregateTotals;
+  byProperty: DisbursementPropertyRollup[];
+  paymentCount: number;
+}
+
+export interface PartnerDisbursementHistory {
+  partnerId: string;
+  from: string;
+  to: string;
+  currency: 'USD';
+  totals: DisbursementAggregateTotals;
+  paymentCount: number;
+  months: DisbursementMonth[];
+}
+
+export async function fetchPartnerDisbursementHistory(
+  partnerId: string,
+  from: string,
+  to: string,
+  token: string,
+  propertyId?: string | null,
+): Promise<PartnerDisbursementHistory> {
+  const params = new URLSearchParams({ from, to });
+  if (propertyId) params.set('propertyId', propertyId);
+  const res = await fetch(
+    `${API_BASE}/api/partners/partners/${encodeURIComponent(partnerId)}/disbursements/history?${params}`,
+    { headers: { Authorization: `Bearer ${token}` } },
+  );
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json() as Promise<PartnerDisbursementHistory>;
+}
+
 export interface PartnerPropertySummary {
   propertyId: string;
   propertyName: string;
@@ -1123,4 +1171,58 @@ export async function downloadCheckinPdf(
   a.download = `qr-checkin-${propertyId}.pdf`;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+async function downloadPaymentsReport(
+  format: 'pdf' | 'xlsx',
+  partnerId: string,
+  from: string,
+  to: string,
+  token: string,
+  propertyId: string | null,
+  lang: string,
+): Promise<void> {
+  const params = new URLSearchParams({ from, to, lang });
+  if (propertyId) params.set('propertyId', propertyId);
+  const res = await fetch(
+    `${API_BASE}/api/partners/partners/${encodeURIComponent(partnerId)}/reports/payments.${format}?${params.toString()}`,
+    { headers: { Authorization: `Bearer ${token}` } },
+  );
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filenameFromHeader(res.headers.get('content-disposition'))
+    ?? `travelhub-${from}_${to}.${format}`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+export function downloadPaymentsReportPdf(
+  partnerId: string,
+  from: string,
+  to: string,
+  token: string,
+  propertyId: string | null,
+  lang: string,
+): Promise<void> {
+  return downloadPaymentsReport('pdf', partnerId, from, to, token, propertyId, lang);
+}
+
+export function downloadPaymentsReportXlsx(
+  partnerId: string,
+  from: string,
+  to: string,
+  token: string,
+  propertyId: string | null,
+  lang: string,
+): Promise<void> {
+  return downloadPaymentsReport('xlsx', partnerId, from, to, token, propertyId, lang);
+}
+
+function filenameFromHeader(header: string | null): string | null {
+  if (!header) return null;
+  const match = /filename="([^"]+)"/.exec(header);
+  return match?.[1] ?? null;
 }
