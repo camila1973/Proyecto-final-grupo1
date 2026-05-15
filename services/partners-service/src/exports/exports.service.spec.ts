@@ -2,7 +2,7 @@ import {
   BadRequestException,
   ServiceUnavailableException,
 } from "@nestjs/common";
-import { ReportsService } from "./reports.service.js";
+import { ExportsService } from "./exports.service.js";
 
 function makePaymentClient(rows: unknown[] = [], totals: unknown = null) {
   return {
@@ -29,9 +29,9 @@ function makePartnersRepo(name = "Hotel Alpha") {
   };
 }
 
-describe("ReportsService", () => {
+describe("ExportsService", () => {
   it("rejects invalid date formats with 400", async () => {
-    const svc = new ReportsService(
+    const svc = new ExportsService(
       makePaymentClient() as any,
       makePartnersRepo() as any,
     );
@@ -44,7 +44,7 @@ describe("ReportsService", () => {
   });
 
   it("rejects to <= from", async () => {
-    const svc = new ReportsService(
+    const svc = new ExportsService(
       makePaymentClient() as any,
       makePartnersRepo() as any,
     );
@@ -54,7 +54,7 @@ describe("ReportsService", () => {
   });
 
   it("rejects ranges over 366 days", async () => {
-    const svc = new ReportsService(
+    const svc = new ExportsService(
       makePaymentClient() as any,
       makePartnersRepo() as any,
     );
@@ -67,7 +67,7 @@ describe("ReportsService", () => {
     const client = {
       getCapturedByPartner: jest.fn().mockResolvedValue(null),
     };
-    const svc = new ReportsService(client as any, makePartnersRepo() as any);
+    const svc = new ExportsService(client as any, makePartnersRepo() as any);
     await expect(
       svc.loadReportData("p-1", "2026-04-01", "2026-05-01", null),
     ).rejects.toBeInstanceOf(ServiceUnavailableException);
@@ -101,7 +101,7 @@ describe("ReportsService", () => {
         count: 1,
       },
     );
-    const svc = new ReportsService(client as any, makePartnersRepo() as any);
+    const svc = new ExportsService(client as any, makePartnersRepo() as any);
     const data = await svc.loadReportData(
       "p-1",
       "2026-04-01",
@@ -130,7 +130,7 @@ describe("ReportsService", () => {
   });
 
   it("returns empty rows + zero totals for periods with no payments", async () => {
-    const svc = new ReportsService(
+    const svc = new ExportsService(
       makePaymentClient([]) as any,
       makePartnersRepo() as any,
     );

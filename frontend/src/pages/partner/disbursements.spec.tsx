@@ -79,7 +79,7 @@ function renderPage(authValue: typeof MOCK_AUTH | null = MOCK_AUTH) {
 describe('PagosPage (Desembolsos)', () => {
   beforeEach(() => {
     global.fetch = jest.fn().mockImplementation((url: string) => {
-      if (url.includes('/disbursements/history')) {
+      if (url.includes('/disbursements?') || url.includes('/disbursements/by-partner')) {
         return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(HISTORY_FIXTURE) });
       }
       if (url.includes(`/partners/${PARTNER_FIXTURE.id}`)) {
@@ -93,14 +93,10 @@ describe('PagosPage (Desembolsos)', () => {
     jest.resetAllMocks();
   });
 
-  it('renders the Desembolsos hero and history row', async () => {
+  it('renders the disbursement history row', async () => {
     renderPage();
     await waitFor(() => {
-      // Title is rendered as an h4 inside the hero (variant="h4")
-      expect(screen.getByRole('heading', { name: 'Desembolsos' })).toBeInTheDocument();
-      // Month label appears in the table
       expect(screen.getByText('2026-04')).toBeInTheDocument();
-      // 'Hotel Alpha' appears in both breadcrumb and table body — at least one match
       expect(screen.getAllByText('Hotel Alpha').length).toBeGreaterThanOrEqual(1);
     });
   });
@@ -114,7 +110,7 @@ describe('PagosPage (Desembolsos)', () => {
 
   it('shows empty state when no months are returned', async () => {
     (global.fetch as jest.Mock).mockImplementation((url: string) => {
-      if (url.includes('/disbursements/history')) {
+      if (url.includes('/disbursements?') || url.includes('/disbursements/by-partner')) {
         return Promise.resolve({
           ok: true,
           status: 200,

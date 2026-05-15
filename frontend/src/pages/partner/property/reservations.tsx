@@ -38,14 +38,11 @@ import SearchIcon from '@mui/icons-material/Search';
 import { useAuth } from '../../../hooks/useAuth';
 import {
   cancelReservation,
-  fetchPartnerProperty,
   fetchPropertyReservations,
   partnerCheckIn,
   partnerCheckOut,
 } from '../../../utils/queries';
-import HeroBanner from '../sections/PropertyHeroBanner';
 import PageContainer from '../../../components/PageContainer';
-import { PropertyTabs } from '../components/PartnerTabs';
 import { TH, TD } from '../sections/ui';
 import { currentMonth } from '../../../utils/month';
 
@@ -115,12 +112,12 @@ function ConfirmDialog({ open, title, description, confirmLabel, confirmColor = 
 
 type PendingAction = { type: 'check_in' | 'check_out' | 'cancel'; reservationId: string };
 
-export default function PropertyReservationsPage() {
+export default function ReservationsBody() {
   const { t } = useTranslation();
   const { token, user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { propertyId } = useParams({ from: '/mi-hotel/$propertyId/reservas' });
+  const { propertyId } = useParams({ from: '/mi-hotel/$propertyId' });
 
   const [searchText, setSearchText] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -136,12 +133,6 @@ export default function PropertyReservationsPage() {
   const reservationsQuery = useQuery({
     queryKey: ['property-reservations', partnerId, propertyId, month, null],
     queryFn: () => fetchPropertyReservations(partnerId, propertyId, month, null, token!),
-    enabled,
-  });
-
-  const propertyQuery = useQuery({
-    queryKey: ['partner-property', partnerId, propertyId],
-    queryFn: () => fetchPartnerProperty(partnerId, propertyId, token!),
     enabled,
   });
 
@@ -179,13 +170,6 @@ export default function PropertyReservationsPage() {
 
   const isMutating = checkInMutation.isPending || checkOutMutation.isPending || cancelMutation.isPending;
   const isLoading = reservationsQuery.isLoading;
-
-  const propertyName = propertyQuery.data?.propertyName ?? propertyId;
-  const propertyAddress = [
-    propertyQuery.data?.propertyNeighborhood,
-    propertyQuery.data?.propertyCity,
-    propertyQuery.data?.propertyCountryCode,
-  ].filter(Boolean).join(', ');
 
   const filteredReservations = useMemo(() => {
     const rows = reservationsQuery.data?.reservations ?? [];
@@ -250,14 +234,7 @@ export default function PropertyReservationsPage() {
   }
 
   return (
-    <div className="min-h-screen">
-      <HeroBanner
-        propertyName={propertyName}
-        propertyId={propertyId}
-        address={propertyAddress}
-      />
-      <PropertyTabs propertyId={propertyId} active="reservas" />
-
+    <>
       <PageContainer>
         <Typography sx={{ fontSize: 18, fontWeight: 700, color: '#1a1a1a' }}>
           {t('partner.dashboard.reservations_title')}
@@ -505,6 +482,6 @@ export default function PropertyReservationsPage() {
           {snack?.msg}
         </Alert>
       </Snackbar>
-    </div>
+    </>
   );
 }

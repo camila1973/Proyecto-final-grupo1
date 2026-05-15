@@ -265,6 +265,7 @@ describe('ReservationEditPage', () => {
       expect(mockNavigate).toHaveBeenCalledWith({
         to: '/mi-hotel/$propertyId',
         params: { propertyId: 'prop-abc' },
+        search: { tab: 'reservas' },
       });
     });
   });
@@ -281,6 +282,7 @@ describe('ReservationEditPage', () => {
     expect(mockNavigate).toHaveBeenCalledWith({
       to: '/mi-hotel/$propertyId',
       params: { propertyId: 'prop-abc' },
+      search: { tab: 'reservas' },
     });
   });
 });

@@ -11,6 +11,7 @@ const mockNavigate = jest.fn();
 jest.mock('@tanstack/react-router', () => ({
   useNavigate: () => mockNavigate,
   useParams: () => ({ propertyId: 'prop-abc' }),
+  useSearch: () => ({ tab: 'resumen' }),
 }));
 
 jest.mock('recharts', () => {

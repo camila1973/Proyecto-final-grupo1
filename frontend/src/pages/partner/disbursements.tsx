@@ -16,23 +16,21 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  ToggleButton,
+  ToggleButtonGroup,
   Typography,
 } from '@mui/material';
-import DownloadIcon from '@mui/icons-material/Download';
-import GridOnIcon from '@mui/icons-material/GridOn';
 import { useAuth } from '../../hooks/useAuth';
 import { useLocale } from '../../context/LocaleContext';
 import {
-  downloadPaymentsReportPdf,
-  downloadPaymentsReportXlsx,
-  fetchPartner,
-  fetchPartnerDisbursementHistory,
+  downloadPartnerDisbursements,
+  fetchPartnerDisbursements,
   type DisbursementMonth,
+  type ExportFormat,
 } from '../../utils/queries';
 import { formatPrice } from '../../utils/currency';
-import PartnerHero, { HeroBreadcrumbEyebrow } from './components/PartnerHero';
-import { PartnerTopTabs } from './components/PartnerTabs';
 import MetricCard from './components/MetricCard';
+import ExportButtons from './components/ExportButtons';
 import PageContainer from '../../components/PageContainer';
 
 type PeriodMode = '12m' | 'year';
@@ -62,7 +60,7 @@ const STATUS_COLOR: Record<DisbursementMonth['status'], 'success' | 'warning' | 
   failed: 'error',
 };
 
-export default function PagosPage() {
+export default function DisbursementsBody() {
   const { t } = useTranslation();
   const { token, user } = useAuth();
   const { language, currency } = useLocale();
@@ -73,20 +71,12 @@ export default function PagosPage() {
 
   const [mode, setMode] = useState<PeriodMode>('12m');
   const [year, setYear] = useState<number>(new Date().getUTCFullYear());
-  const [downloading, setDownloading] = useState<'pdf' | 'xlsx' | null>(null);
-  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   const range = useMemo(() => rangeForMode(mode, year), [mode, year]);
 
-  const partnerQuery = useQuery({
-    queryKey: ['partner', partnerId],
-    queryFn: () => fetchPartner(partnerId, token!),
-    enabled,
-  });
-
   const historyQuery = useQuery({
-    queryKey: ['partner-disbursement-history', partnerId, range.from, range.to],
-    queryFn: () => fetchPartnerDisbursementHistory(partnerId, range.from, range.to, token!),
+    queryKey: ['partner-disbursements', partnerId, range.from, range.to],
+    queryFn: () => fetchPartnerDisbursements(partnerId, range.from, range.to, token!),
     enabled,
   });
 
@@ -94,19 +84,9 @@ export default function PagosPage() {
   const months = history?.months ?? [];
   const nextPayout = months.find((m) => m.status === 'projected');
 
-  async function downloadStatement(format: 'pdf' | 'xlsx') {
+  async function downloadStatement(format: ExportFormat) {
     if (!partnerId || !token) return;
-    setDownloading(format);
-    setDownloadError(null);
-    try {
-      const fn = format === 'pdf' ? downloadPaymentsReportPdf : downloadPaymentsReportXlsx;
-      await fn(partnerId, range.from, range.to, token, null, language);
-    } catch (e) {
-      setDownloadError(t('partner.finance.action.download_failed'));
-      console.error(e);
-    } finally {
-      setDownloading(null);
-    }
+    await downloadPartnerDisbursements(partnerId, format, range.from, range.to, token, language);
   }
 
   if (!enabled) {
@@ -118,218 +98,167 @@ export default function PagosPage() {
   }
 
   return (
-    <Box className="bg-[#f1f4f8] min-h-screen">
-      <PartnerHero
-        eyebrow={
-          <HeroBreadcrumbEyebrow
-            items={[
-              { label: partnerQuery.data?.name ?? '' },
-              { label: t('partner.finance.crumb_liquidaciones') },
-            ]}
-          />
-        }
-        title={t('partner.finance.title_partner')}
-        subtitle={t('partner.finance.subtitle_partner')}
-        actions={
-          <Button
-            variant="outlined"
-            size="small"
-            startIcon={<DownloadIcon fontSize="small" />}
-            disabled={downloading !== null}
-            onClick={() => downloadStatement('pdf')}
-            sx={{ color: '#fff', borderColor: 'rgba(255,255,255,.4)', textTransform: 'none' }}
-          >
-            {t('partner.finance.action.download_statement')}
-          </Button>
-        }
-      />
-      <PartnerTopTabs active="desembolsos" />
-
-      <PageContainer>
-        <Stack direction="row" spacing={1} alignItems="center">
-          <Button
-            size="small"
-            variant={mode === '12m' ? 'contained' : 'outlined'}
-            onClick={() => setMode('12m')}
-            sx={mode === '12m' ? { bgcolor: '#1B4F8C', textTransform: 'none' } : { textTransform: 'none' }}
-          >
-            {t('partner.finance.period.last_12_months')}
-          </Button>
-          <Button
-            size="small"
-            variant={mode === 'year' ? 'contained' : 'outlined'}
-            onClick={() => setMode('year')}
-            sx={mode === 'year' ? { bgcolor: '#1B4F8C', textTransform: 'none' } : { textTransform: 'none' }}
-          >
-            {t('partner.finance.period.year')}
-          </Button>
-          {mode === 'year' && (
-            <Stack direction="row" alignItems="center" spacing={1}>
-              <Button size="small" onClick={() => setYear((y) => y - 1)}>‹</Button>
-              <Typography sx={{ fontSize: 13, fontWeight: 600, minWidth: 60, textAlign: 'center' }}>{year}</Typography>
-              <Button size="small" onClick={() => setYear((y) => y + 1)}>›</Button>
-            </Stack>
-          )}
-        </Stack>
-
-        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(4, 1fr)' }, gap: 1.5 }}>
-          <MetricCard
-            label={t('partner.finance.kpi.gross_revenue')}
-            value={history ? formatPrice(history.totals.gross, currency) : '—'}
-            subLabel={t('partner.finance.kpi.gross_sub')}
-            variant="positive"
-            loading={historyQuery.isLoading}
-          />
-          <MetricCard
-            label={t('partner.finance.kpi.commission')}
-            value={history ? formatPrice(history.totals.commission, currency) : '—'}
-            subLabel={t('partner.finance.kpi.commission_sub')}
-            variant="negative"
-            loading={historyQuery.isLoading}
-          />
-          <MetricCard
-            label={t('partner.finance.kpi.payouts')}
-            value={history ? formatPrice(history.totals.net, currency) : '—'}
-            subLabel={t('partner.finance.kpi.payouts_sub')}
-            variant="positive"
-            loading={historyQuery.isLoading}
-          />
-          <MetricCard
-            label={t('partner.finance.kpi.next_payout')}
-            value={nextPayout ? formatPrice(nextPayout.totals.net, currency) : '—'}
-            subLabel={nextPayout ? nextPayout.scheduledFor : t('partner.finance.kpi.no_projected')}
-            variant="primary"
-            loading={historyQuery.isLoading}
-          />
-        </Box>
-
-        {downloadError && (
-          <Alert severity="error" onClose={() => setDownloadError(null)}>
-            {downloadError}
-          </Alert>
+    <PageContainer>
+      <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+        <ToggleButtonGroup
+          size="small"
+          color="primary"
+          exclusive
+          value={mode}
+          onChange={(_, v: PeriodMode | null) => v && setMode(v)}
+        >
+          <ToggleButton value="12m">{t('partner.finance.period.last_12_months')}</ToggleButton>
+          <ToggleButton value="year">{t('partner.finance.period.year')}</ToggleButton>
+        </ToggleButtonGroup>
+        {mode === 'year' && (
+          <Stack direction="row" alignItems="center" spacing={1}>
+            <Button size="small" onClick={() => setYear((y) => y - 1)}>‹</Button>
+            <Typography sx={{ fontSize: 13, fontWeight: 600, minWidth: 60, textAlign: 'center' }}>{year}</Typography>
+            <Button size="small" onClick={() => setYear((y) => y + 1)}>›</Button>
+          </Stack>
         )}
+        <Box sx={{ flexGrow: 1 }} />
+        <ExportButtons onDownload={downloadStatement} />
+      </Stack>
 
-        <Paper variant="outlined" sx={{ borderRadius: 2, borderColor: '#e3e7ee' }}>
-          <Box sx={{ p: 2.5, borderBottom: '1px solid #eef1f5' }}>
-            <Typography sx={{ fontSize: 14, fontWeight: 700, color: '#1a2332' }}>
-              {t('partner.finance.history_title_partner')}
-            </Typography>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(4, 1fr)' }, gap: 1.5 }}>
+        <MetricCard
+          label={t('partner.finance.kpi.gross_revenue')}
+          value={history ? formatPrice(history.totals.gross, currency) : '—'}
+          subLabel={t('partner.finance.kpi.gross_sub')}
+          variant="positive"
+          loading={historyQuery.isLoading}
+        />
+        <MetricCard
+          label={t('partner.finance.kpi.commission')}
+          value={history ? formatPrice(history.totals.commission, currency) : '—'}
+          subLabel={t('partner.finance.kpi.commission_sub')}
+          variant="negative"
+          loading={historyQuery.isLoading}
+        />
+        <MetricCard
+          label={t('partner.finance.kpi.payouts')}
+          value={history ? formatPrice(history.totals.net, currency) : '—'}
+          subLabel={t('partner.finance.kpi.payouts_sub')}
+          variant="positive"
+          loading={historyQuery.isLoading}
+        />
+        <MetricCard
+          label={t('partner.finance.kpi.next_payout')}
+          value={nextPayout ? formatPrice(nextPayout.totals.net, currency) : '—'}
+          subLabel={nextPayout ? nextPayout.scheduledFor : t('partner.finance.kpi.no_projected')}
+          variant="primary"
+          loading={historyQuery.isLoading}
+        />
+      </Box>
+
+      <Paper variant="outlined" sx={{ borderRadius: 2, borderColor: '#e3e7ee' }}>
+        <Box sx={{ p: 2.5, borderBottom: '1px solid #eef1f5' }}>
+          <Typography sx={{ fontSize: 14, fontWeight: 700, color: '#1a2332' }}>
+            {t('partner.finance.history_title_partner')}
+          </Typography>
+        </Box>
+        {historyQuery.isLoading && (
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
+            <CircularProgress size={24} />
           </Box>
-          {historyQuery.isLoading && (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
-              <CircularProgress size={24} />
-            </Box>
-          )}
-          {historyQuery.isError && (
-            <Alert severity="error" sx={{ m: 2 }}>{t('partner.dashboard.load_error')}</Alert>
-          )}
-          {history && (
-            <TableContainer>
-              <Table size="small">
-                <TableHead>
-                  <TableRow sx={{ bgcolor: '#f7f9fc' }}>
-                    <HeaderCell>{t('partner.finance.col.period')}</HeaderCell>
-                    <HeaderCell>{t('partner.finance.col.property')}</HeaderCell>
-                    <HeaderCell align="right">{t('partner.finance.col.gross')}</HeaderCell>
-                    <HeaderCell align="right">{t('partner.finance.col.commission')}</HeaderCell>
-                    <HeaderCell align="right">{t('partner.finance.col.net')}</HeaderCell>
-                    <HeaderCell>{t('partner.finance.col.date')}</HeaderCell>
-                    <HeaderCell>{t('partner.finance.col.status')}</HeaderCell>
+        )}
+        {historyQuery.isError && (
+          <Alert severity="error" sx={{ m: 2 }}>{t('partner.dashboard.load_error')}</Alert>
+        )}
+        {history && (
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow sx={{ bgcolor: '#f7f9fc' }}>
+                  <HeaderCell>{t('partner.finance.col.period')}</HeaderCell>
+                  <HeaderCell>{t('partner.finance.col.property')}</HeaderCell>
+                  <HeaderCell align="right">{t('partner.finance.col.gross')}</HeaderCell>
+                  <HeaderCell align="right">{t('partner.finance.col.commission')}</HeaderCell>
+                  <HeaderCell align="right">{t('partner.finance.col.net')}</HeaderCell>
+                  <HeaderCell>{t('partner.finance.col.date')}</HeaderCell>
+                  <HeaderCell>{t('partner.finance.col.status')}</HeaderCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {months.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} align="center" sx={{ py: 4, fontSize: 13, color: '#5a6a7e', fontStyle: 'italic' }}>
+                      {t('partner.finance.empty')}
+                    </TableCell>
                   </TableRow>
-                </TableHead>
-                <TableBody>
-                  {months.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} align="center" sx={{ py: 4, fontSize: 13, color: '#5a6a7e', fontStyle: 'italic' }}>
-                        {t('partner.finance.empty')}
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    months
-                      .slice()
-                      .reverse()
-                      .flatMap((m) => {
-                        const rows = m.byProperty.map((p, idx) => (
-                          <TableRow
-                            key={`${m.month}-${p.propertyId}`}
-                            hover
-                            sx={{ cursor: 'pointer', '&:hover': { bgcolor: '#F9FAFB' } }}
-                            onClick={() =>
-                              navigate({
-                                to: '/mi-hotel/$propertyId/finanzas',
-                                params: { propertyId: p.propertyId },
-                              })
-                            }
-                          >
-                            <BodyCell sx={{ fontWeight: idx === 0 ? 600 : 400, color: idx === 0 ? '#1a2332' : '#5a6a7e' }}>
-                              {idx === 0 ? m.month : ''}
+                ) : (
+                  months
+                    .slice()
+                    .reverse()
+                    .flatMap((m) => {
+                      const rows = m.byProperty.map((p, idx) => (
+                        <TableRow
+                          key={`${m.month}-${p.propertyId}`}
+                          hover
+                          sx={{ cursor: 'pointer', '&:hover': { bgcolor: '#F9FAFB' } }}
+                          onClick={() =>
+                            navigate({
+                              to: '/mi-hotel/$propertyId',
+                              params: { propertyId: p.propertyId },
+                              search: { tab: 'pagos' },
+                            })
+                          }
+                        >
+                          <BodyCell sx={{ fontWeight: idx === 0 ? 600 : 400, color: idx === 0 ? '#1a2332' : '#5a6a7e' }}>
+                            {idx === 0 ? m.month : ''}
+                          </BodyCell>
+                          <BodyCell>{p.propertyName || '—'}</BodyCell>
+                          <BodyCell align="right">{formatPrice(p.gross, currency)}</BodyCell>
+                          <BodyCell align="right" sx={{ color: '#c62828' }}>
+                            −{formatPrice(p.commission, currency)}
+                          </BodyCell>
+                          <BodyCell align="right" sx={{ color: '#2e7d32', fontWeight: 600 }}>
+                            {formatPrice(p.net, currency)}
+                          </BodyCell>
+                          <BodyCell sx={{ fontFamily: 'monospace' }}>
+                            {idx === 0 ? m.scheduledFor : ''}
+                          </BodyCell>
+                          <BodyCell>
+                            {idx === 0 && (
+                              <Chip
+                                label={t(`partner.finance.status.${m.status}`)}
+                                size="small"
+                                color={STATUS_COLOR[m.status]}
+                                variant="outlined"
+                              />
+                            )}
+                          </BodyCell>
+                        </TableRow>
+                      ));
+                      if (m.byProperty.length > 1) {
+                        rows.push(
+                          <TableRow key={`${m.month}-subtotal`} sx={{ bgcolor: '#f7f9fc' }}>
+                            <BodyCell />
+                            <BodyCell sx={{ fontSize: 11, color: '#5a6a7e', textTransform: 'uppercase', letterSpacing: 0.4, fontWeight: 600 }}>
+                              {t('partner.finance.subtotal')}
                             </BodyCell>
-                            <BodyCell>{p.propertyName || '—'}</BodyCell>
-                            <BodyCell align="right">{formatPrice(p.gross, currency)}</BodyCell>
-                            <BodyCell align="right" sx={{ color: '#c62828' }}>
-                              −{formatPrice(p.commission, currency)}
+                            <BodyCell align="right" sx={{ fontWeight: 600 }}>{formatPrice(m.totals.gross, currency)}</BodyCell>
+                            <BodyCell align="right" sx={{ color: '#c62828', fontWeight: 600 }}>
+                              −{formatPrice(m.totals.commission, currency)}
                             </BodyCell>
-                            <BodyCell align="right" sx={{ color: '#2e7d32', fontWeight: 600 }}>
-                              {formatPrice(p.net, currency)}
+                            <BodyCell align="right" sx={{ color: '#2e7d32', fontWeight: 700 }}>
+                              {formatPrice(m.totals.net, currency)}
                             </BodyCell>
-                            <BodyCell sx={{ fontFamily: 'monospace' }}>
-                              {idx === 0 ? m.scheduledFor : ''}
-                            </BodyCell>
-                            <BodyCell>
-                              {idx === 0 && (
-                                <Chip
-                                  label={t(`partner.finance.status.${m.status}`)}
-                                  size="small"
-                                  color={STATUS_COLOR[m.status]}
-                                  variant="outlined"
-                                />
-                              )}
-                            </BodyCell>
-                          </TableRow>
-                        ));
-                        // Month subtotal row (when more than one property in the month).
-                        if (m.byProperty.length > 1) {
-                          rows.push(
-                            <TableRow key={`${m.month}-subtotal`} sx={{ bgcolor: '#f7f9fc' }}>
-                              <BodyCell />
-                              <BodyCell sx={{ fontSize: 11, color: '#5a6a7e', textTransform: 'uppercase', letterSpacing: 0.4, fontWeight: 600 }}>
-                                {t('partner.finance.subtotal')}
-                              </BodyCell>
-                              <BodyCell align="right" sx={{ fontWeight: 600 }}>{formatPrice(m.totals.gross, currency)}</BodyCell>
-                              <BodyCell align="right" sx={{ color: '#c62828', fontWeight: 600 }}>
-                                −{formatPrice(m.totals.commission, currency)}
-                              </BodyCell>
-                              <BodyCell align="right" sx={{ color: '#2e7d32', fontWeight: 700 }}>
-                                {formatPrice(m.totals.net, currency)}
-                              </BodyCell>
-                              <BodyCell />
-                              <BodyCell />
-                            </TableRow>,
-                          );
-                        }
-                        return rows;
-                      })
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          )}
-        </Paper>
-
-        <Stack direction="row" spacing={1} justifyContent="flex-end">
-          <Button
-            size="small"
-            variant="outlined"
-            startIcon={<GridOnIcon fontSize="small" />}
-            disabled={downloading !== null}
-            onClick={() => downloadStatement('xlsx')}
-            sx={{ textTransform: 'none' }}
-          >
-            {t('partner.payments.report.export_xlsx')}
-          </Button>
-        </Stack>
-      </PageContainer>
-    </Box>
+                            <BodyCell />
+                            <BodyCell />
+                          </TableRow>,
+                        );
+                      }
+                      return rows;
+                    })
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
+      </Paper>
+    </PageContainer>
   );
 }
 

@@ -1,4 +1,8 @@
-import type { PaymentRow } from "../partners/dashboard.types.js";
+import type {
+  DisbursementAggregateTotals,
+  DisbursementMonthDto,
+  PaymentRow,
+} from "../partners/dashboard.types.js";
 
 export type ReportLocale = "es" | "en";
 
@@ -25,4 +29,14 @@ export interface ReportData {
   header: ReportHeader;
   totals: ReportTotals;
   rows: PaymentRow[];
+}
+
+export interface DisbursementReportTotals extends DisbursementAggregateTotals {
+  paymentCount: number;
+}
+
+export interface DisbursementReportData {
+  header: ReportHeader;
+  totals: DisbursementReportTotals;
+  months: DisbursementMonthDto[];
 }

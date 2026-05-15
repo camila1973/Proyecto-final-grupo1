@@ -1,4 +1,4 @@
-import type { ReportLocale } from "./report.types.js";
+import type { ReportLocale } from "./exports.types.js";
 
 interface ReportStrings {
   title: string;
@@ -40,6 +40,31 @@ interface ReportStrings {
     summary: string;
     detail: string;
   };
+  disbursement: {
+    title: string;
+    columns: {
+      month: string;
+      scheduledFor: string;
+      status: string;
+      paidAt: string;
+      reference: string;
+      gross: string;
+      commission: string;
+      net: string;
+      payments: string;
+    };
+    status: {
+      paid: string;
+      pending: string;
+      projected: string;
+      failed: string;
+    };
+    empty: string;
+    sheets: {
+      summary: string;
+      months: string;
+    };
+  };
 }
 
 const ES: ReportStrings = {
@@ -79,6 +104,28 @@ const ES: ReportStrings = {
   },
   empty: "Sin pagos en este período",
   sheets: { summary: "Resumen", detail: "Detalle" },
+  disbursement: {
+    title: "Reporte de desembolsos",
+    columns: {
+      month: "Mes",
+      scheduledFor: "Programado",
+      status: "Estado",
+      paidAt: "Pagado",
+      reference: "Referencia",
+      gross: "Bruto",
+      commission: "Comisión",
+      net: "Neto",
+      payments: "Pagos",
+    },
+    status: {
+      paid: "Pagado",
+      pending: "Pendiente",
+      projected: "Proyectado",
+      failed: "Fallido",
+    },
+    empty: "Sin desembolsos en este período",
+    sheets: { summary: "Resumen", months: "Meses" },
+  },
 };
 
 const EN: ReportStrings = {
@@ -118,6 +165,28 @@ const EN: ReportStrings = {
   },
   empty: "No payments in this period",
   sheets: { summary: "Summary", detail: "Detail" },
+  disbursement: {
+    title: "Disbursements report",
+    columns: {
+      month: "Month",
+      scheduledFor: "Scheduled",
+      status: "Status",
+      paidAt: "Paid at",
+      reference: "Reference",
+      gross: "Gross",
+      commission: "Commission",
+      net: "Net",
+      payments: "Payments",
+    },
+    status: {
+      paid: "Paid",
+      pending: "Pending",
+      projected: "Projected",
+      failed: "Failed",
+    },
+    empty: "No disbursements in this period",
+    sheets: { summary: "Summary", months: "Months" },
+  },
 };
 
 export function reportStrings(locale: ReportLocale): ReportStrings {

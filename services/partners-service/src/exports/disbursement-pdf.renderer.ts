@@ -3,11 +3,13 @@ import { join } from "path";
 import { Injectable } from "@nestjs/common";
 import PDFDocument from "pdfkit";
 import type { Response } from "express";
-import type { ReportData, ReportLocale } from "./report.types.js";
-import { reportStrings } from "./report-i18n.js";
+import type { DisbursementReportData, ReportLocale } from "./exports.types.js";
+import { reportStrings } from "./exports-i18n.js";
+import type {
+  DisbursementMonthDto,
+  DisbursementStatus,
+} from "../partners/dashboard.types.js";
 
-// __dirname resolves to dist/partners-service/src/reports/ at runtime.
-// logo.png is copied by nest-cli to dist/partners-service/assets/logo.png.
 let LOGO_BUFFER: Buffer | null = null;
 function loadLogo(): Buffer | null {
   if (LOGO_BUFFER) return LOGO_BUFFER;
@@ -19,83 +21,62 @@ function loadLogo(): Buffer | null {
   }
 }
 
-// Letter landscape: 792×612 pt
 const PAGE_W = 792;
 const PAGE_H = 612;
 const MARGIN = 32;
 const BRAND = "#1B4F8C";
 const MUTED = "#666666";
 const BORDER = "#E5E7EB";
+const ROW_HEIGHT = 16;
 
 interface Column {
   key:
-    | "date"
-    | "reservation"
-    | "property"
-    | "method"
+    | "month"
+    | "scheduledFor"
+    | "status"
+    | "paidAt"
     | "reference"
-    | "nights"
-    | "rate"
-    | "subtotal"
-    | "taxes"
-    | "total"
+    | "gross"
     | "commission"
-    | "net";
+    | "net"
+    | "payments";
   width: number;
   align: "left" | "right";
-  isCurrency: boolean;
 }
 
-// Sum of widths must equal PAGE_W - 2*MARGIN = 728.
-const COLUMNS_WITH_PROPERTY: Column[] = [
-  { key: "date", width: 60, align: "left", isCurrency: false },
-  { key: "reservation", width: 70, align: "left", isCurrency: false },
-  { key: "property", width: 130, align: "left", isCurrency: false },
-  { key: "method", width: 50, align: "left", isCurrency: false },
-  { key: "reference", width: 90, align: "left", isCurrency: false },
-  { key: "nights", width: 38, align: "right", isCurrency: false },
-  { key: "rate", width: 56, align: "right", isCurrency: true },
-  { key: "subtotal", width: 56, align: "right", isCurrency: true },
-  { key: "taxes", width: 56, align: "right", isCurrency: true },
-  { key: "total", width: 56, align: "right", isCurrency: true },
-  { key: "commission", width: 56, align: "right", isCurrency: true },
-  { key: "net", width: 60, align: "right", isCurrency: true },
+// Sum must equal PAGE_W - 2*MARGIN = 728.
+const COLUMNS: Column[] = [
+  { key: "month", width: 70, align: "left" },
+  { key: "scheduledFor", width: 80, align: "left" },
+  { key: "status", width: 70, align: "left" },
+  { key: "paidAt", width: 80, align: "left" },
+  { key: "reference", width: 120, align: "left" },
+  { key: "gross", width: 80, align: "right" },
+  { key: "commission", width: 80, align: "right" },
+  { key: "net", width: 88, align: "right" },
+  { key: "payments", width: 60, align: "right" },
 ];
-
-const COLUMNS_NO_PROPERTY: Column[] = [
-  { key: "date", width: 72, align: "left", isCurrency: false },
-  { key: "reservation", width: 90, align: "left", isCurrency: false },
-  { key: "method", width: 60, align: "left", isCurrency: false },
-  { key: "reference", width: 120, align: "left", isCurrency: false },
-  { key: "nights", width: 44, align: "right", isCurrency: false },
-  { key: "rate", width: 60, align: "right", isCurrency: true },
-  { key: "subtotal", width: 60, align: "right", isCurrency: true },
-  { key: "taxes", width: 60, align: "right", isCurrency: true },
-  { key: "total", width: 60, align: "right", isCurrency: true },
-  { key: "commission", width: 60, align: "right", isCurrency: true },
-  { key: "net", width: 42, align: "right", isCurrency: true },
-];
-
-const ROW_HEIGHT = 16;
 
 @Injectable()
-export class PdfReportRenderer {
-  renderPdf(data: ReportData, locale: ReportLocale, res: Response): void {
+export class DisbursementPdfRenderer {
+  render(
+    data: DisbursementReportData,
+    locale: ReportLocale,
+    res: Response,
+  ): void {
     const t = reportStrings(locale);
-    const showPropertyColumn = !data.header.propertyId;
-    const columns = showPropertyColumn
-      ? COLUMNS_WITH_PROPERTY
-      : COLUMNS_NO_PROPERTY;
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename="${reportFilename(data, "pdf")}"`,
+      `attachment; filename="${disbursementFilename(data, "pdf")}"`,
     );
 
     const doc = new PDFDocument({
       size: [PAGE_W, PAGE_H],
-      margin: MARGIN,
+      // Bottom margin 0 so footer text near the page bottom doesn't trigger
+      // pdfkit's auto-pagination.
+      margins: { top: MARGIN, bottom: 0, left: MARGIN, right: MARGIN },
       bufferPages: true,
       autoFirstPage: false,
     });
@@ -105,37 +86,34 @@ export class PdfReportRenderer {
     drawHeader(doc, data, t);
     drawTotals(doc, data, t);
     const tableTop = 230;
-    drawTableHeader(doc, columns, t, tableTop);
-
+    drawTableHeader(doc, t, tableTop);
     let y = tableTop + ROW_HEIGHT;
 
     doc.on("pageAdded", () => {
       drawHeader(doc, data, t);
-      drawTableHeader(doc, columns, t, 110);
+      drawTableHeader(doc, t, 110);
       y = 110 + ROW_HEIGHT;
     });
 
-    if (data.rows.length === 0) {
+    if (data.months.length === 0) {
       doc
         .font("Helvetica-Oblique")
         .fontSize(10)
         .fillColor(MUTED)
-        .text(t.empty, MARGIN, y + 8, {
+        .text(t.disbursement.empty, MARGIN, y + 8, {
           width: PAGE_W - 2 * MARGIN,
           align: "center",
         });
     } else {
-      for (const row of data.rows) {
+      for (const month of data.months) {
         if (y + ROW_HEIGHT > PAGE_H - 36) {
           doc.addPage();
-          // y is reset by the pageAdded handler
         }
-        drawRow(doc, columns, row, y);
+        drawRow(doc, month, t, y);
         y += ROW_HEIGHT;
       }
     }
 
-    // Footer with page numbers
     const range = doc.bufferedPageRange();
     for (let i = range.start; i < range.start + range.count; i++) {
       doc.switchToPage(i);
@@ -148,7 +126,7 @@ export class PdfReportRenderer {
 
 function drawHeader(
   doc: PDFKit.PDFDocument,
-  data: ReportData,
+  data: DisbursementReportData,
   t: ReturnType<typeof reportStrings>,
 ): void {
   const logo = loadLogo();
@@ -156,7 +134,7 @@ function drawHeader(
     try {
       doc.image(logo, MARGIN, 28, { width: 90 });
     } catch {
-      // ignore — logo missing in non-prod
+      // ignore
     }
   }
 
@@ -164,7 +142,7 @@ function drawHeader(
     .font("Helvetica-Bold")
     .fontSize(18)
     .fillColor(BRAND)
-    .text(t.title, MARGIN + 110, 30);
+    .text(t.disbursement.title, MARGIN + 110, 30);
 
   doc.font("Helvetica").fontSize(9).fillColor("#333333");
 
@@ -191,7 +169,6 @@ function drawHeader(
   );
   doc.fillColor(MUTED).text(t.header.currencyNote, rightX, 80);
 
-  // Divider
   doc
     .moveTo(MARGIN, 100)
     .lineTo(PAGE_W - MARGIN, 100)
@@ -202,21 +179,37 @@ function drawHeader(
 
 function drawTotals(
   doc: PDFKit.PDFDocument,
-  data: ReportData,
+  data: DisbursementReportData,
   t: ReturnType<typeof reportStrings>,
 ): void {
   const top = 120;
   const cardW = 170;
   const gap = 12;
-  const cards = [
-    { label: t.totals.gross, value: data.totals.grossUsd, bold: false },
-    { label: t.totals.taxes, value: data.totals.taxUsd, bold: false },
+  const cards: Array<{
+    label: string;
+    value: string;
+    bold: boolean;
+  }> = [
     {
-      label: t.totals.commission,
-      value: data.totals.commissionUsd,
+      label: t.disbursement.columns.gross,
+      value: formatUsd(data.totals.gross),
       bold: false,
     },
-    { label: t.totals.net, value: data.totals.netUsd, bold: true },
+    {
+      label: t.disbursement.columns.commission,
+      value: formatUsd(data.totals.commission),
+      bold: false,
+    },
+    {
+      label: t.disbursement.columns.net,
+      value: formatUsd(data.totals.net),
+      bold: true,
+    },
+    {
+      label: t.disbursement.columns.payments,
+      value: String(data.totals.paymentCount),
+      bold: false,
+    },
   ];
 
   cards.forEach((card, i) => {
@@ -235,10 +228,10 @@ function drawTotals(
         align: "left",
       });
     doc
-      .font(card.bold ? "Helvetica-Bold" : "Helvetica-Bold")
+      .font("Helvetica-Bold")
       .fontSize(card.bold ? 18 : 16)
       .fillColor(card.bold ? BRAND : "#1F2937")
-      .text(formatUsd(card.value), x + 12, top + 28, {
+      .text(card.value, x + 12, top + 28, {
         width: cardW - 24,
         align: "left",
       });
@@ -247,7 +240,6 @@ function drawTotals(
 
 function drawTableHeader(
   doc: PDFKit.PDFDocument,
-  columns: Column[],
   t: ReturnType<typeof reportStrings>,
   top: number,
 ): void {
@@ -260,8 +252,8 @@ function drawTableHeader(
 
   let x = MARGIN;
   doc.font("Helvetica-Bold").fontSize(8.5).fillColor(BRAND);
-  for (const col of columns) {
-    doc.text(t.columns[col.key], x + 4, top + 4, {
+  for (const col of COLUMNS) {
+    doc.text(t.disbursement.columns[col.key], x + 4, top + 4, {
       width: col.width - 8,
       align: col.align,
     });
@@ -271,15 +263,14 @@ function drawTableHeader(
 
 function drawRow(
   doc: PDFKit.PDFDocument,
-  columns: Column[],
-  row: import("../partners/dashboard.types.js").PaymentRow,
+  month: DisbursementMonthDto,
+  t: ReturnType<typeof reportStrings>,
   top: number,
 ): void {
   let x = MARGIN;
   doc.font("Helvetica").fontSize(8).fillColor("#1F2937");
-  for (const col of columns) {
-    const value = cellValue(col, row);
-    doc.text(value, x + 4, top + 4, {
+  for (const col of COLUMNS) {
+    doc.text(cellValue(col, month, t), x + 4, top + 4, {
       width: col.width - 8,
       align: col.align,
       ellipsis: true,
@@ -287,7 +278,6 @@ function drawRow(
     });
     x += col.width;
   }
-  // Row separator
   doc
     .moveTo(MARGIN, top + ROW_HEIGHT)
     .lineTo(PAGE_W - MARGIN, top + ROW_HEIGHT)
@@ -298,34 +288,36 @@ function drawRow(
 
 function cellValue(
   col: Column,
-  row: import("../partners/dashboard.types.js").PaymentRow,
+  m: DisbursementMonthDto,
+  t: ReturnType<typeof reportStrings>,
 ): string {
   switch (col.key) {
-    case "date":
-      return row.createdAt.slice(0, 10);
-    case "reservation":
-      return row.reservationId.slice(0, 8);
-    case "property":
-      return row.propertyName || "—";
-    case "method":
-      return row.paymentMethod;
+    case "month":
+      return m.month;
+    case "scheduledFor":
+      return m.scheduledFor;
+    case "status":
+      return statusLabel(m.status, t);
+    case "paidAt":
+      return m.paidAt ? m.paidAt.slice(0, 10) : "—";
     case "reference":
-      return row.reference;
-    case "nights":
-      return String(row.nights);
-    case "rate":
-      return formatUsd(row.ratePerNightUsd);
-    case "subtotal":
-      return formatUsd(row.subtotalUsd);
-    case "taxes":
-      return formatUsd(row.taxesUsd);
-    case "total":
-      return formatUsd(row.totalPaidUsd);
+      return m.externalTransferRef || "—";
+    case "gross":
+      return formatUsd(m.totals.gross);
     case "commission":
-      return formatUsd(row.commissionUsd);
+      return formatUsd(m.totals.commission);
     case "net":
-      return formatUsd(row.earningsUsd);
+      return formatUsd(m.totals.net);
+    case "payments":
+      return String(m.paymentCount);
   }
+}
+
+function statusLabel(
+  status: DisbursementStatus,
+  t: ReturnType<typeof reportStrings>,
+): string {
+  return t.disbursement.status[status] ?? status;
 }
 
 function drawFooter(
@@ -336,17 +328,22 @@ function drawFooter(
 ): void {
   const y = PAGE_H - 22;
   doc.font("Helvetica").fontSize(8).fillColor(MUTED);
+  // lineBreak: false prevents pdfkit auto-pagination when y is below the
+  // doc's bottom margin (intentional for footer art).
   doc.text(t.footer.pageOf(current, total), MARGIN, y, {
     width: 200,
     align: "left",
+    lineBreak: false,
   });
   doc.text(t.header.currencyNote, MARGIN + 200, y, {
     width: PAGE_W - 2 * MARGIN - 400,
     align: "center",
+    lineBreak: false,
   });
   doc.text(t.footer.generatedBy, PAGE_W - MARGIN - 200, y, {
     width: 200,
     align: "right",
+    lineBreak: false,
   });
 }
 
@@ -360,14 +357,16 @@ function formatUsd(n: number): string {
 }
 
 function endLabel(toExclusive: string): string {
-  // The endpoint takes `to` as exclusive; display it as inclusive (to - 1 day).
   const d = new Date(`${toExclusive}T00:00:00.000Z`);
   if (Number.isNaN(d.getTime())) return toExclusive;
   d.setUTCDate(d.getUTCDate() - 1);
   return d.toISOString().slice(0, 10);
 }
 
-export function reportFilename(data: ReportData, ext: "pdf" | "xlsx"): string {
+export function disbursementFilename(
+  data: DisbursementReportData,
+  ext: "pdf" | "csv",
+): string {
   const scope = data.header.propertyId
     ? (data.header.propertyName || data.header.propertyId).slice(0, 30)
     : (data.header.partnerName || "partner").slice(0, 30);
@@ -375,5 +374,5 @@ export function reportFilename(data: ReportData, ext: "pdf" | "xlsx"): string {
     .replace(/[^a-zA-Z0-9-]+/g, "-")
     .replace(/-+/g, "-")
     .toLowerCase();
-  return `travelhub-${safe}-${data.header.from}_${data.header.to}.${ext}`;
+  return `travelhub-disbursements-${safe}-${data.header.from}_${data.header.to}.${ext}`;
 }

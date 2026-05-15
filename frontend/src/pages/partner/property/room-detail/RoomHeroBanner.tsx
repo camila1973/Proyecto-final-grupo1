@@ -33,7 +33,8 @@ export default function RoomHeroBanner({
             { label: roomType },
           ]}
           onItemClick={(i) => {
-            if (i === 0) navigate({ to: '/mi-hotel/$propertyId', params: { propertyId } });
+            if (i === 0)
+              navigate({ to: '/mi-hotel/$propertyId', params: { propertyId }, search: { tab: 'habitaciones' } });
           }}
         />
       }
@@ -56,7 +57,9 @@ export default function RoomHeroBanner({
         <Button
           variant="outlined"
           startIcon={<ArrowBackIcon />}
-          onClick={() => navigate({ to: '/mi-hotel/$propertyId', params: { propertyId } })}
+          onClick={() =>
+            navigate({ to: '/mi-hotel/$propertyId', params: { propertyId }, search: { tab: 'habitaciones' } })
+          }
           sx={{
             borderColor: 'rgba(255,255,255,0.3)',
             color: '#fff',

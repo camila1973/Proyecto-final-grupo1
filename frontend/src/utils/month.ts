@@ -33,6 +33,21 @@ export function formatMonthLabel(month: string, lang: 'es' | 'en'): string {
   return `${names[m - 1]} ${y}`;
 }
 
+export function monthRange(month: string): { from: string; to: string } {
+  const [yStr, mStr] = month.split('-');
+  const y = Number(yStr);
+  const m = Number(mStr);
+  const from = `${y}-${String(m).padStart(2, '0')}-01`;
+  const nextYear = m === 12 ? y + 1 : y;
+  const nextMonth = m === 12 ? 1 : m + 1;
+  const to = `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`;
+  return { from, to };
+}
+
+export function yearRange(year: number): { from: string; to: string } {
+  return { from: `${year}-01-01`, to: `${year + 1}-01-01` };
+}
+
 export function shortMonthLabel(month: string, lang: 'es' | 'en'): string {
   const mStr = month.split('-')[1];
   const m = Number(mStr);

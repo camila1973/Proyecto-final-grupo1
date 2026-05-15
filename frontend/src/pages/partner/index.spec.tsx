@@ -10,6 +10,7 @@ setupTestI18n('es');
 const mockNavigate = jest.fn();
 jest.mock('@tanstack/react-router', () => ({
   useNavigate: () => mockNavigate,
+  useSearch: () => ({ tab: 'resumen' }),
 }));
 
 jest.mock('recharts', () => {
@@ -58,16 +59,25 @@ const METRICS_RESPONSE = {
 
 const DISBURSEMENT_RESPONSE = {
   partnerId: 'partner-1',
-  periodStart: '2026-05-01',
-  periodEnd: '2026-06-01',
-  scheduledFor: '2026-06-01',
+  from: '2026-05-01',
+  to: '2026-06-01',
   currency: 'USD',
-  status: 'projected',
-  paidAt: null,
-  externalTransferRef: null,
   totals: { gross: 0, tax: 0, partnerFee: 0, commission: 0, net: 0 },
-  byProperty: [],
   paymentCount: 0,
+  months: [
+    {
+      month: '2026-05',
+      periodStart: '2026-05-01',
+      periodEnd: '2026-06-01',
+      scheduledFor: '2026-06-01',
+      status: 'projected',
+      paidAt: null,
+      externalTransferRef: null,
+      totals: { gross: 0, tax: 0, partnerFee: 0, commission: 0, net: 0 },
+      byProperty: [],
+      paymentCount: 0,
+    },
+  ],
 };
 
 const PARTNER_DETAILS_RESPONSE = {
@@ -171,21 +181,28 @@ describe('MiHotelPage (Resumen)', () => {
           json: () =>
             Promise.resolve({
               ...DISBURSEMENT_RESPONSE,
-              status: 'paid',
               totals: { gross: 1000, tax: 190, partnerFee: 50, commission: 200, net: 800 },
-              byProperty: [
+              paymentCount: 2,
+              months: [
                 {
-                  propertyId: 'prop-abc',
-                  propertyName: 'Hotel Central Park',
-                  gross: 600,
-                  tax: 100,
-                  partnerFee: 30,
-                  commission: 120,
-                  net: 480,
+                  ...DISBURSEMENT_RESPONSE.months[0],
+                  status: 'paid',
+                  totals: { gross: 1000, tax: 190, partnerFee: 50, commission: 200, net: 800 },
+                  byProperty: [
+                    {
+                      propertyId: 'prop-abc',
+                      propertyName: 'Hotel Central Park',
+                      gross: 600,
+                      tax: 100,
+                      partnerFee: 30,
+                      commission: 120,
+                      net: 480,
+                      paymentCount: 2,
+                    },
+                  ],
                   paymentCount: 2,
                 },
               ],
-              paymentCount: 2,
             }),
         });
       }

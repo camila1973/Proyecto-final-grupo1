@@ -1,4 +1,4 @@
-import type { PaymentRow } from "./dashboard.types.js";
+import type { CapturedPaymentDto, PaymentRow } from "./dashboard.types.js";
 
 // Fallback rates used only when payment-service has not yet snapshotted these
 // values on a payment row (legacy/pre-migration data path).
@@ -64,6 +64,51 @@ export function mapSnapshotToPaymentRow(
     createdAt:
       payment?.createdAt ?? fallback.createdAt ?? new Date().toISOString(),
   };
+}
+
+export function capturedToPaymentRow(r: CapturedPaymentDto): PaymentRow {
+  const snapshot = r.fareSnapshot as {
+    nights?: number;
+    roomRateUsd?: number;
+  } | null;
+  const nights =
+    typeof snapshot?.nights === "number" && snapshot.nights > 0
+      ? snapshot.nights
+      : nightsFromFareSnapshot(r);
+  return mapSnapshotToPaymentRow(
+    {
+      propertyId: r.propertyId,
+      propertyName: r.propertyName,
+      status: r.status,
+      stripePaymentIntentId: r.stripePaymentIntentId,
+      grossAmountUsd: r.grossAmountUsd,
+      taxAmountUsd: r.taxAmountUsd,
+      commissionAmountUsd: r.commissionAmountUsd,
+      netPayoutUsd: r.netPayoutUsd,
+      amountUsd: r.grossAmountUsd,
+      createdAt: r.capturedAt ?? r.createdAt,
+    },
+    {
+      reservationId: r.reservationId,
+      propertyId: r.propertyId ?? "",
+      propertyName: r.propertyName ?? "",
+      status: r.status,
+      grandTotalUsd: r.grossAmountUsd,
+      createdAt: r.createdAt,
+    },
+    nights,
+  );
+}
+
+function nightsFromFareSnapshot(r: CapturedPaymentDto): number {
+  if (!r.fareSnapshot) return 0;
+  const n = (r.fareSnapshot as { nights?: unknown }).nights;
+  if (typeof n === "number" && Number.isFinite(n) && n > 0) return n;
+  if (typeof n === "string") {
+    const parsed = Number(n);
+    if (Number.isFinite(parsed) && parsed > 0) return parsed;
+  }
+  return 0;
 }
 
 export function countNights(checkIn: string, checkOut: string): number {

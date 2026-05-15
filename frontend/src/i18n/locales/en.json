@@ -433,7 +433,7 @@
       "desembolsos": "Disbursements",
       "propiedades": "Properties",
       "equipo": "Team",
-      "finanzas": "Finance",
+      "pagos": "Payments",
       "reservas": "Reservations",
       "habitaciones": "Rooms"
     },
@@ -578,9 +578,14 @@
       "col_total": "Total paid",
       "col_commission": "Commission",
       "col_earnings": "Earnings",
+      "kpi": {
+        "gross": "Gross revenue",
+        "commission": "Commission",
+        "earnings": "Owner earnings"
+      },
       "report": {
         "export_pdf": "Export PDF",
-        "export_xlsx": "Export Excel",
+        "export_csv": "Export CSV",
         "period_mode": {
           "month": "Month",
           "year": "Year"
@@ -628,10 +633,6 @@
         "pending": "Pending",
         "paid": "Paid",
         "failed": "Failed"
-      },
-      "action": {
-        "download_statement": "Download statement",
-        "download_failed": "Could not download the statement. Please try again."
       }
     },
     "properties": {

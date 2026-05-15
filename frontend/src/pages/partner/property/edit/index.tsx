@@ -119,7 +119,8 @@ export default function PropertyEditPage() {
   }
 
   const onSave = () => updateMutation.mutate(toBody(form));
-  const onBack = () => navigate({ to: '/mi-hotel/$propertyId', params: { propertyId } });
+  const onBack = () =>
+    navigate({ to: '/mi-hotel/$propertyId', params: { propertyId }, search: { tab: 'resumen' } });
 
   return (
     <Box sx={{ bgcolor: '#F5F7FA', minHeight: '100vh' }}>

@@ -6,18 +6,15 @@ import { Alert, Box } from '@mui/material';
 import { useAuth } from '../../hooks/useAuth';
 import { useLocale } from '../../context/LocaleContext';
 import {
-  fetchPartner,
   fetchPartnerProperties,
   fetchPropertyMetrics,
 } from '../../utils/queries';
 import { currentMonth } from '../../utils/month';
 import PageContainer from '../../components/PageContainer';
-import HeroBanner from './sections/PartnerHeroBanner';
-import { PartnerTopTabs } from './components/PartnerTabs';
 import MonthSwitcher from './components/MonthSwitcher';
 import PropertiesSection, { type PropertyRow } from './sections/PropertiesTable';
 
-export default function PartnerPropertiesPage() {
+export default function PropertiesBody() {
   const { t } = useTranslation();
   const { token, user } = useAuth();
   const navigate = useNavigate();
@@ -26,12 +23,6 @@ export default function PartnerPropertiesPage() {
   const partnerId = user?.partnerId ?? '';
   const enabled = !!token && !!partnerId;
   const [month, setMonth] = useState(currentMonth());
-
-  const partnerQuery = useQuery({
-    queryKey: ['partner', partnerId],
-    queryFn: () => fetchPartner(partnerId, token!),
-    enabled,
-  });
 
   const propertiesQuery = useQuery({
     queryKey: ['partner-properties', partnerId],
@@ -74,26 +65,17 @@ export default function PartnerPropertiesPage() {
   });
 
   return (
-    <div className="min-h-screen">
-      <HeroBanner
-        orgName={partnerQuery.data?.name ?? ''}
-        identifier={partnerQuery.data?.identifier ?? ''}
-        userName={[user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.email || ''}
-        role={user?.role ?? ''}
+    <PageContainer>
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <MonthSwitcher month={month} onChange={setMonth} language={language} />
+      </Box>
+      <PropertiesSection
+        rows={rows}
+        currency={currency}
+        onView={(propertyId) =>
+          navigate({ to: '/mi-hotel/$propertyId', params: { propertyId }, search: { tab: 'resumen' } })
+        }
       />
-      <PartnerTopTabs active="propiedades" />
-      <PageContainer>
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <MonthSwitcher month={month} onChange={setMonth} language={language} />
-        </Box>
-        <PropertiesSection
-          rows={rows}
-          currency={currency}
-          onView={(propertyId) =>
-            navigate({ to: '/mi-hotel/$propertyId', params: { propertyId } })
-          }
-        />
-      </PageContainer>
-    </div>
+    </PageContainer>
   );
 }

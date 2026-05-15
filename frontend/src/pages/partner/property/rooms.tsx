@@ -26,36 +26,25 @@ import {
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import { useAuth } from '../../../hooks/useAuth';
 import { useLocale } from '../../../context/LocaleContext';
-import {
-  fetchPartnerProperty,
-  fetchPartnerPropertyRooms,
-} from '../../../utils/queries';
+import { fetchPartnerPropertyRooms } from '../../../utils/queries';
 import { formatPrice } from '../../../utils/currency';
-import HeroBanner from '../sections/PropertyHeroBanner';
 import PageContainer from '../../../components/PageContainer';
-import { PropertyTabs } from '../components/PartnerTabs';
 import { TH, TD } from '../sections/ui';
 
 const ROOM_TYPE_OPTIONS = ['', 'deluxe', 'suite', 'standard', 'junior_suite', 'penthouse'];
 
-export default function PropertyRoomsPage() {
+export default function RoomsBody() {
   const { t } = useTranslation();
   const { token, user } = useAuth();
   const { currency } = useLocale();
   const navigate = useNavigate();
-  const { propertyId } = useParams({ from: '/mi-hotel/$propertyId/habitaciones' });
+  const { propertyId } = useParams({ from: '/mi-hotel/$propertyId' });
 
   const [roomType, setRoomType] = useState('');
   const [roomMenu, setRoomMenu] = useState<{ el: HTMLElement; roomId: string } | null>(null);
 
   const partnerId = user?.partnerId ?? '';
   const enabled = !!token && !!partnerId;
-
-  const propertyQuery = useQuery({
-    queryKey: ['partner-property', partnerId, propertyId],
-    queryFn: () => fetchPartnerProperty(partnerId, propertyId, token!),
-    enabled,
-  });
 
   const roomsQuery = useQuery({
     queryKey: ['property-rooms', partnerId, propertyId],
@@ -79,26 +68,11 @@ export default function PropertyRoomsPage() {
     );
   }
 
-  const propertyName = propertyQuery.data?.propertyName ?? propertyId;
-  const propertyAddress = [
-    propertyQuery.data?.propertyNeighborhood,
-    propertyQuery.data?.propertyCity,
-    propertyQuery.data?.propertyCountryCode,
-  ].filter(Boolean).join(', ');
-
   const allRooms = roomsQuery.data?.rooms ?? [];
   const rooms = roomType ? allRooms.filter((r) => r.roomType === roomType) : allRooms;
 
   return (
-    <div className="min-h-screen">
-      <HeroBanner
-        propertyName={propertyName}
-        propertyId={propertyId}
-        address={propertyAddress}
-      />
-      <PropertyTabs propertyId={propertyId} active="habitaciones" />
-
-      <PageContainer>
+    <PageContainer>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <TextField
             select
@@ -218,7 +192,6 @@ export default function PropertyRoomsPage() {
             {t('partner.dashboard.menu_view_availability')}
           </MenuItem>
         </Menu>
-      </PageContainer>
-    </div>
+    </PageContainer>
   );
 }

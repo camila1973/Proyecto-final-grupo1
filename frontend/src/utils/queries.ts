@@ -426,10 +426,18 @@ export interface PartnerPaymentRow {
 
 export interface PartnerPayments {
   partnerId: string;
-  month: string | null;
+  propertyId: string | null;
+  from: string;
+  to: string;
   total: number;
   page: number;
   pageSize: number;
+  totals: {
+    gross: number;
+    commission: number;
+    net: number;
+    count: number;
+  };
   rows: PartnerPaymentRow[];
 }
 
@@ -485,20 +493,21 @@ export async function fetchPropertyReservations(
 
 export async function fetchPartnerPayments(
   partnerId: string,
-  month: string | null,
+  propertyId: string,
+  from: string,
+  to: string,
   page: number,
   pageSize: number,
   token: string,
-  propertyId?: string | null,
 ): Promise<PartnerPayments> {
   const params = new URLSearchParams({
+    from,
+    to,
     page: String(page),
     pageSize: String(pageSize),
   });
-  if (month) params.set('month', month);
-  if (propertyId) params.set('propertyId', propertyId);
   const res = await fetch(
-    `${API_BASE}/api/partners/partners/${encodeURIComponent(partnerId)}/payments?${params}`,
+    `${API_BASE}/api/partners/partners/${encodeURIComponent(partnerId)}/properties/${encodeURIComponent(propertyId)}/payments?${params}`,
     { headers: { Authorization: `Bearer ${token}` } },
   );
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -514,40 +523,6 @@ export interface DisbursementPropertyRollup {
   commission: number;
   net: number;
   paymentCount: number;
-}
-
-export interface PartnerDisbursement {
-  partnerId: string;
-  periodStart: string;
-  periodEnd: string;
-  scheduledFor: string;
-  currency: string;
-  status: 'pending' | 'paid' | 'failed' | 'projected';
-  paidAt: string | null;
-  externalTransferRef: string | null;
-  totals: {
-    gross: number;
-    tax: number;
-    partnerFee: number;
-    commission: number;
-    net: number;
-  };
-  byProperty: DisbursementPropertyRollup[];
-  paymentCount: number;
-}
-
-export async function fetchPartnerDisbursement(
-  partnerId: string,
-  month: string,
-  token: string,
-): Promise<PartnerDisbursement> {
-  const params = new URLSearchParams({ month });
-  const res = await fetch(
-    `${API_BASE}/api/partners/partners/${encodeURIComponent(partnerId)}/disbursements?${params}`,
-    { headers: { Authorization: `Bearer ${token}` } },
-  );
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json() as Promise<PartnerDisbursement>;
 }
 
 export interface DisbursementAggregateTotals {
@@ -581,7 +556,7 @@ export interface PartnerDisbursementHistory {
   months: DisbursementMonth[];
 }
 
-export async function fetchPartnerDisbursementHistory(
+export async function fetchPartnerDisbursements(
   partnerId: string,
   from: string,
   to: string,
@@ -591,7 +566,7 @@ export async function fetchPartnerDisbursementHistory(
   const params = new URLSearchParams({ from, to });
   if (propertyId) params.set('propertyId', propertyId);
   const res = await fetch(
-    `${API_BASE}/api/partners/partners/${encodeURIComponent(partnerId)}/disbursements/history?${params}`,
+    `${API_BASE}/api/partners/partners/${encodeURIComponent(partnerId)}/disbursements?${params}`,
     { headers: { Authorization: `Bearer ${token}` } },
   );
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -1173,52 +1148,58 @@ export async function downloadCheckinPdf(
   URL.revokeObjectURL(url);
 }
 
-async function downloadPaymentsReport(
-  format: 'pdf' | 'xlsx',
-  partnerId: string,
-  from: string,
-  to: string,
-  token: string,
-  propertyId: string | null,
-  lang: string,
-): Promise<void> {
-  const params = new URLSearchParams({ from, to, lang });
-  if (propertyId) params.set('propertyId', propertyId);
-  const res = await fetch(
-    `${API_BASE}/api/partners/partners/${encodeURIComponent(partnerId)}/reports/payments.${format}?${params.toString()}`,
-    { headers: { Authorization: `Bearer ${token}` } },
-  );
+export type ExportFormat = 'pdf' | 'csv';
+
+async function downloadBlob(url: string, token: string, fallbackName: string): Promise<void> {
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const blob = await res.blob();
-  const url = URL.createObjectURL(blob);
+  const objectUrl = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url;
-  a.download = filenameFromHeader(res.headers.get('content-disposition'))
-    ?? `travelhub-${from}_${to}.${format}`;
+  a.href = objectUrl;
+  a.download = filenameFromHeader(res.headers.get('content-disposition')) ?? fallbackName;
   a.click();
-  URL.revokeObjectURL(url);
+  URL.revokeObjectURL(objectUrl);
 }
 
-export function downloadPaymentsReportPdf(
+export function downloadPartnerPayments(
   partnerId: string,
+  format: ExportFormat,
   from: string,
   to: string,
   token: string,
-  propertyId: string | null,
   lang: string,
 ): Promise<void> {
-  return downloadPaymentsReport('pdf', partnerId, from, to, token, propertyId, lang);
+  const params = new URLSearchParams({ format, from, to, lang });
+  const url = `${API_BASE}/api/partners/partners/${encodeURIComponent(partnerId)}/payments?${params}`;
+  return downloadBlob(url, token, `travelhub-${from}_${to}.${format}`);
 }
 
-export function downloadPaymentsReportXlsx(
+export function downloadPropertyPayments(
   partnerId: string,
+  propertyId: string,
+  format: ExportFormat,
   from: string,
   to: string,
   token: string,
-  propertyId: string | null,
   lang: string,
 ): Promise<void> {
-  return downloadPaymentsReport('xlsx', partnerId, from, to, token, propertyId, lang);
+  const params = new URLSearchParams({ format, from, to, lang });
+  const url = `${API_BASE}/api/partners/partners/${encodeURIComponent(partnerId)}/properties/${encodeURIComponent(propertyId)}/payments?${params}`;
+  return downloadBlob(url, token, `travelhub-${propertyId}-${from}_${to}.${format}`);
+}
+
+export function downloadPartnerDisbursements(
+  partnerId: string,
+  format: ExportFormat,
+  from: string,
+  to: string,
+  token: string,
+  lang: string,
+): Promise<void> {
+  const params = new URLSearchParams({ format, from, to, lang });
+  const url = `${API_BASE}/api/partners/partners/${encodeURIComponent(partnerId)}/disbursements?${params}`;
+  return downloadBlob(url, token, `travelhub-disbursements-${from}_${to}.${format}`);
 }
 
 function filenameFromHeader(header: string | null): string | null {

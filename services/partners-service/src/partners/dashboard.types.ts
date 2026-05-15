@@ -153,10 +153,18 @@ export interface DisbursementHistoryResponse {
 
 export interface PaymentsResponse {
   partnerId: string;
-  month: string | null;
+  propertyId: string | null;
+  from: string;
+  to: string;
   total: number;
   page: number;
   pageSize: number;
+  totals: {
+    gross: number;
+    commission: number;
+    net: number;
+    count: number;
+  };
   rows: PaymentRow[];
 }
 

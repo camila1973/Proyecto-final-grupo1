@@ -27,8 +27,8 @@ import type {
 
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 import {
+  capturedToPaymentRow,
   countNights as countNightsShared,
-  mapSnapshotToPaymentRow,
 } from "./payment-row.mapper.js";
 
 const REVENUE_STATUSES = new Set(["confirmed", "submitted", "checked_in"]);
@@ -131,32 +131,45 @@ export class PartnersService {
 
   async getPayments(
     partnerId: string,
-    month: string | null,
+    propertyId: string | null,
+    from: string,
+    to: string,
     page: number,
     pageSize: number,
-    propertyId: string | null,
   ): Promise<PaymentsResponse> {
-    const all = await this.bookingClient.listReservations();
-    const partnerScoped = all.filter((r) => r.partnerId === partnerId);
-    const propertyScoped = propertyId
-      ? partnerScoped.filter((r) => r.propertyId === propertyId)
-      : partnerScoped;
-    const monthFiltered = month
-      ? propertyScoped.filter((r) => isInMonth(r.checkIn, month))
-      : propertyScoped;
-    const eligible = monthFiltered.filter((r) =>
-      ["confirmed", "submitted", "failed"].includes(r.status),
+    const captured = await this.paymentClient.getCapturedByPartner(
+      partnerId,
+      from,
+      to,
+      propertyId ?? undefined,
     );
+    if (!captured) {
+      throw new ServiceUnavailableException(
+        "payment-service unavailable; cannot list payments",
+      );
+    }
 
-    const total = eligible.length;
+    const allRows: PaymentRow[] = captured.rows.map(capturedToPaymentRow);
+    const total = allRows.length;
     const start = Math.max(0, (page - 1) * pageSize);
-    const slice = eligible.slice(start, start + pageSize);
+    const rows = allRows.slice(start, start + pageSize);
 
-    const rows: PaymentRow[] = await Promise.all(
-      slice.map(async (r) => buildPaymentRow(r, this.paymentClient)),
-    );
-
-    return { partnerId, month, total, page, pageSize, rows };
+    return {
+      partnerId,
+      propertyId,
+      from,
+      to,
+      total,
+      page,
+      pageSize,
+      totals: {
+        gross: captured.totals.grossUsd,
+        commission: captured.totals.commissionUsd,
+        net: captured.totals.netUsd,
+        count: captured.totals.count,
+      },
+      rows,
+    };
   }
 
   async getDisbursementHistory(
@@ -183,38 +196,6 @@ export class PartnersService {
       );
     }
     return res;
-  }
-
-  async getDisbursement(partnerId: string, month: string) {
-    const disbursement = await this.paymentClient.getDisbursement(
-      partnerId,
-      month,
-    );
-    if (!disbursement) {
-      // payment-service unavailable or returned an error → degrade to an empty
-      // projected disbursement so the dashboard still renders.
-      const [yStr, mStr] = month.split("-");
-      const y = Number(yStr);
-      const m = Number(mStr);
-      const periodStart = `${y}-${String(m).padStart(2, "0")}-01`;
-      const nextYear = m === 12 ? y + 1 : y;
-      const nextMonth = m === 12 ? 1 : m + 1;
-      const periodEnd = `${nextYear}-${String(nextMonth).padStart(2, "0")}-01`;
-      return {
-        partnerId,
-        periodStart,
-        periodEnd,
-        scheduledFor: periodEnd,
-        currency: "USD",
-        status: "projected" as const,
-        paidAt: null,
-        externalTransferRef: null,
-        totals: { gross: 0, tax: 0, partnerFee: 0, commission: 0, net: 0 },
-        byProperty: [],
-        paymentCount: 0,
-      };
-    }
-    return disbursement;
   }
 }
 
@@ -334,39 +315,6 @@ export function trailingMonths(month: string, count: number): string[] {
     out.push(`${yy}-${mm}`);
   }
   return out;
-}
-
-async function buildPaymentRow(
-  r: ReservationDto,
-  paymentClient: PaymentClientService,
-): Promise<PaymentRow> {
-  const payment = await paymentClient.getStatus(r.id);
-  const nights = countNightsShared(r.checkIn, r.checkOut);
-  return mapSnapshotToPaymentRow(
-    payment
-      ? {
-          propertyId: payment.propertyId,
-          propertyName: payment.propertyName,
-          status: payment.status,
-          stripePaymentIntentId: payment.stripePaymentIntentId,
-          grossAmountUsd: payment.grossAmountUsd,
-          taxAmountUsd: payment.taxAmountUsd,
-          commissionAmountUsd: payment.commissionAmountUsd,
-          netPayoutUsd: payment.netPayoutUsd,
-          amountUsd: payment.amountUsd,
-          createdAt: payment.createdAt,
-        }
-      : null,
-    {
-      reservationId: r.id,
-      propertyId: r.propertyId,
-      propertyName: r.snapshot?.propertyName ?? "",
-      status: r.status,
-      grandTotalUsd: r.grandTotalUsd,
-      createdAt: r.createdAt,
-    },
-    nights,
-  );
 }
 
 export const countNights = countNightsShared;

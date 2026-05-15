@@ -336,101 +336,205 @@ describe("PartnersService", () => {
   });
 
   describe("getPayments", () => {
-    it("returns paginated rows with computed nights and commission", async () => {
-      const data: ReservationDto[] = [
-        makeReservation({
-          id: "rA",
-          status: "confirmed",
-          checkIn: "2026-03-01",
-          checkOut: "2026-03-09",
-          grandTotalUsd: 1440.2,
-        }),
-        makeReservation({
-          id: "rB",
-          status: "confirmed",
-          checkIn: "2026-03-10",
-          checkOut: "2026-03-12",
-          grandTotalUsd: 360,
-        }),
-      ];
-      const svc = makeDashboardSvc(
-        makeBookingClient(data),
-        makePaymentClient(),
+    function makeCapturedPaymentClient(
+      rows: unknown[],
+      totals?: {
+        grossUsd: number;
+        taxUsd: number;
+        commissionUsd: number;
+        netUsd: number;
+        count: number;
+      },
+    ): { client: PaymentClientService; mock: jest.Mock } {
+      const summed = totals ?? {
+        grossUsd: 0,
+        taxUsd: 0,
+        commissionUsd: 0,
+        netUsd: 0,
+        count: rows.length,
+      };
+      const mock = jest.fn().mockResolvedValue({
+        partnerId: "partner-1",
+        from: "2026-03-01",
+        to: "2026-04-01",
+        currency: "USD",
+        totals: summed,
+        rows,
+      });
+      return {
+        client: {
+          getCapturedByPartner: mock,
+        } as unknown as PaymentClientService,
+        mock,
+      };
+    }
+
+    function makeCaptured(
+      overrides: Record<string, unknown> = {},
+    ): Record<string, unknown> {
+      return {
+        paymentId: "pay-1",
+        reservationId: "res-1",
+        propertyId: "prop-1",
+        propertyName: "Hotel Central",
+        status: "captured",
+        stripePaymentIntentId: "pi_abc",
+        grossAmountUsd: 1190,
+        taxAmountUsd: 190,
+        commissionRate: 0.2,
+        commissionAmountUsd: 238,
+        netPayoutUsd: 952,
+        capturedAt: "2026-03-05T12:00:00.000Z",
+        createdAt: "2026-03-05T11:00:00.000Z",
+        fareSnapshot: { nights: 2, roomRateUsd: 500 },
+        ...overrides,
+      };
+    }
+
+    it("maps captured rows and computes totals", async () => {
+      const { client } = makeCapturedPaymentClient(
+        [
+          makeCaptured({ reservationId: "res-a", grossAmountUsd: 1190 }),
+          makeCaptured({ reservationId: "res-b", grossAmountUsd: 360 }),
+        ],
+        {
+          grossUsd: 1550,
+          taxUsd: 247.45,
+          commissionUsd: 310,
+          netUsd: 1240,
+          count: 2,
+        },
       );
-      const result = await svc.getPayments("partner-1", "2026-03", 1, 10, null);
+      const svc = makeDashboardSvc(makeBookingClient([]), client);
+
+      const result = await svc.getPayments(
+        "partner-1",
+        "prop-1",
+        "2026-03-01",
+        "2026-04-01",
+        1,
+        10,
+      );
 
       expect(result.total).toBe(2);
-      expect(result.rows[0].nights).toBe(8);
-      expect(result.rows[0].totalPaidUsd).toBe(1440.2);
-      expect(result.rows[0].commissionUsd).toBeLessThan(0);
-      expect(result.rows[0].earningsUsd).toBeCloseTo(1440.2 - 1440.2 * 0.2, 1);
+      expect(result.rows[0].reservationId).toBe("res-a");
       expect(result.rows[0].paymentMethod).toBe("STRIPE");
+      expect(result.rows[0].totalPaidUsd).toBe(1190);
+      expect(result.totals).toEqual({
+        gross: 1550,
+        commission: 310,
+        net: 1240,
+        count: 2,
+      });
+      expect(result.from).toBe("2026-03-01");
+      expect(result.to).toBe("2026-04-01");
     });
 
     it("paginates when more rows than pageSize", async () => {
-      const data = Array.from({ length: 5 }).map((_, i) =>
-        makeReservation({ id: `r${i}`, status: "confirmed" }),
+      const rows = Array.from({ length: 5 }).map((_, i) =>
+        makeCaptured({ reservationId: `res-${i}` }),
       );
-      const svc = makeDashboardSvc(
-        makeBookingClient(data),
-        makePaymentClient(),
+      const { client } = makeCapturedPaymentClient(rows);
+      const svc = makeDashboardSvc(makeBookingClient([]), client);
+
+      const page1 = await svc.getPayments(
+        "partner-1",
+        "prop-1",
+        "2026-03-01",
+        "2026-04-01",
+        1,
+        2,
       );
-      const page1 = await svc.getPayments("partner-1", "2026-03", 1, 2, null);
-      const page2 = await svc.getPayments("partner-1", "2026-03", 2, 2, null);
+      const page2 = await svc.getPayments(
+        "partner-1",
+        "prop-1",
+        "2026-03-01",
+        "2026-04-01",
+        2,
+        2,
+      );
       expect(page1.rows).toHaveLength(2);
       expect(page2.rows).toHaveLength(2);
       expect(page1.total).toBe(5);
+      expect(page1.totals.count).toBe(5);
     });
 
-    it("returns all months when month is null", async () => {
-      const data: ReservationDto[] = [
-        makeReservation({
-          id: "r1",
-          status: "confirmed",
-          checkIn: "2026-01-01",
-          checkOut: "2026-01-03",
-        }),
-        makeReservation({
-          id: "r2",
-          status: "confirmed",
-          checkIn: "2026-05-01",
-          checkOut: "2026-05-03",
-        }),
-      ];
-      const svc = makeDashboardSvc(
-        makeBookingClient(data),
-        makePaymentClient(),
-      );
-      const result = await svc.getPayments("partner-1", null, 1, 10, null);
-      expect(result.total).toBe(2);
-    });
+    it("forwards propertyId to the captured-by-partner client", async () => {
+      const { client, mock } = makeCapturedPaymentClient([]);
+      const svc = makeDashboardSvc(makeBookingClient([]), client);
 
-    it("scopes results to propertyId when provided", async () => {
-      const data: ReservationDto[] = [
-        makeReservation({
-          id: "r1",
-          propertyId: "prop-A",
-          status: "confirmed",
-        }),
-        makeReservation({
-          id: "r2",
-          propertyId: "prop-B",
-          status: "confirmed",
-        }),
-      ];
-      const svc = makeDashboardSvc(
-        makeBookingClient(data),
-        makePaymentClient(),
-      );
-      const result = await svc.getPayments(
+      await svc.getPayments(
         "partner-1",
-        "2026-03",
+        "prop-A",
+        "2026-03-01",
+        "2026-04-01",
         1,
         10,
+      );
+
+      expect(mock).toHaveBeenCalledWith(
+        "partner-1",
+        "2026-03-01",
+        "2026-04-01",
         "prop-A",
       );
-      expect(result.total).toBe(1);
-      expect(result.rows[0].reservationId).toBe("r1");
+    });
+
+    it("passes undefined propertyId when null", async () => {
+      const { client, mock } = makeCapturedPaymentClient([]);
+      const svc = makeDashboardSvc(makeBookingClient([]), client);
+
+      const result = await svc.getPayments(
+        "partner-1",
+        null,
+        "2026-03-01",
+        "2026-04-01",
+        1,
+        10,
+      );
+
+      expect(mock).toHaveBeenCalledWith(
+        "partner-1",
+        "2026-03-01",
+        "2026-04-01",
+        undefined,
+      );
+      expect(result.propertyId).toBeNull();
+    });
+
+    it("returns empty payload when no captured payments", async () => {
+      const { client } = makeCapturedPaymentClient([]);
+      const svc = makeDashboardSvc(makeBookingClient([]), client);
+
+      const result = await svc.getPayments(
+        "partner-1",
+        "prop-1",
+        "2026-03-01",
+        "2026-04-01",
+        1,
+        10,
+      );
+      expect(result.total).toBe(0);
+      expect(result.rows).toEqual([]);
+      expect(result.totals.count).toBe(0);
+    });
+
+    it("throws ServiceUnavailable when payment-service is down", async () => {
+      const client = {
+        getCapturedByPartner: jest.fn().mockResolvedValue(null),
+      } as unknown as PaymentClientService;
+      const svc = makeDashboardSvc(makeBookingClient([]), client);
+
+      await expect(
+        svc.getPayments(
+          "partner-1",
+          "prop-1",
+          "2026-03-01",
+          "2026-04-01",
+          1,
+          10,
+        ),
+      ).rejects.toThrow(/payment-service unavailable/);
     });
   });
 

@@ -433,7 +433,7 @@
       "desembolsos": "Desembolsos",
       "propiedades": "Propiedades",
       "equipo": "Equipo",
-      "finanzas": "Finanzas",
+      "pagos": "Pagos",
       "reservas": "Reservas",
       "habitaciones": "Habitaciones"
     },
@@ -578,9 +578,14 @@
       "col_total": "Total pagado",
       "col_commission": "Comisión",
       "col_earnings": "Ganancia",
+      "kpi": {
+        "gross": "Ingresos brutos",
+        "commission": "Comisión",
+        "earnings": "Ganancia del propietario"
+      },
       "report": {
         "export_pdf": "Exportar PDF",
-        "export_xlsx": "Exportar Excel",
+        "export_csv": "Exportar CSV",
         "period_mode": {
           "month": "Mes",
           "year": "Año"
@@ -628,10 +633,6 @@
         "pending": "Pendiente",
         "paid": "Pagado",
         "failed": "Fallido"
-      },
-      "action": {
-        "download_statement": "Descargar estado de cuenta",
-        "download_failed": "No se pudo descargar el estado. Inténtalo de nuevo."
       }
     },
     "properties": {
