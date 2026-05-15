@@ -56,16 +56,16 @@ export class ProxyService {
     }
 
     const contentType = response.headers.get("content-type") ?? "";
-    if (contentType.includes("application/pdf")) {
+    const disposition = response.headers.get("content-disposition") ?? "";
+    const isAttachment = disposition.toLowerCase().includes("attachment");
+    const isJson = contentType.includes("application/json");
+    if (isAttachment || (!isJson && contentType !== "")) {
       const buffer = Buffer.from(await response.arrayBuffer());
-      const disposition =
-        response.headers.get("content-disposition") ??
-        "attachment; filename=download.pdf";
       return {
         binary: true,
         status: response.status,
         contentType,
-        disposition,
+        disposition: disposition || "attachment; filename=download",
         buffer,
       };
     }

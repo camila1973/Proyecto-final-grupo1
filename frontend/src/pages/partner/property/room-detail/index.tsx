@@ -58,7 +58,7 @@ export default function RoomDetailPage() {
   const { t } = useTranslation();
   const { token, user } = useAuth();
   const { language, currency } = useLocale();
-  const { propertyId, roomId } = useParams({ from: '/mi-hotel/$propertyId/rooms/$roomId' });
+  const { propertyId, roomId } = useParams({ from: '/mi-hotel/$propertyId/habitaciones/$roomId' });
   const queryClient = useQueryClient();
 
   const [month, setMonth] = useState(currentMonth());

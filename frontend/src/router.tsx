@@ -14,14 +14,14 @@ import CheckoutPage from './pages/booking/checkout';
 import BookingConfirmationPage from './pages/booking/confirmation';
 import ProfilePage from './pages/ProfilePage';
 import TripsPage from './pages/trips';
-import MiHotelPage from './pages/partner/dashboard';
-import PagosPage from './pages/partner/payments';
+import MiHotelPage from './pages/partner';
 import PropertyDashboardPage from './pages/partner/property';
-import PagosPropertyPage from './pages/partner/property/pagos';
 import PropertyEditPage from './pages/partner/property/edit';
 import { TAB_IDS, type TabId } from './pages/partner/property/edit/shared';
-import RoomDetailPage from './pages/partner/property/rooms';
-import ReservationEditPage from './pages/partner/property/reservations/edit';
+import { PARTNER_TAB_IDS, type PartnerTabId } from './pages/partner/shared';
+import { PROPERTY_TAB_IDS, type PropertyTabId } from './pages/partner/property/shared';
+import RoomDetailPage from './pages/partner/property/room-detail';
+import ReservationEditPage from './pages/partner/property/reservation-edit';
 import PartnerRegisterPage from './pages/partner/register';
 
 
@@ -141,25 +141,23 @@ const myBookingsRoute = createRoute({
 const miHotelRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/mi-hotel',
+  validateSearch: (search: Record<string, unknown>) => ({
+    tab: PARTNER_TAB_IDS.includes(search.tab as PartnerTabId)
+      ? (search.tab as PartnerTabId)
+      : 'resumen',
+  }),
   component: MiHotelPage,
-});
-
-const pagosRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/mi-hotel/pagos',
-  component: PagosPage,
 });
 
 const propertyDashboardRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/mi-hotel/$propertyId',
+  validateSearch: (search: Record<string, unknown>) => ({
+    tab: PROPERTY_TAB_IDS.includes(search.tab as PropertyTabId)
+      ? (search.tab as PropertyTabId)
+      : 'resumen',
+  }),
   component: PropertyDashboardPage,
-});
-
-const propertyPagosRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/mi-hotel/$propertyId/pagos',
-  component: PagosPropertyPage,
 });
 
 const propertyEditRoute = createRoute({
@@ -173,7 +171,7 @@ const propertyEditRoute = createRoute({
 
 const roomDetailRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/mi-hotel/$propertyId/rooms/$roomId',
+  path: '/mi-hotel/$propertyId/habitaciones/$roomId',
   component: RoomDetailPage,
 });
 
@@ -197,9 +195,7 @@ const routeTree = rootRoute.addChildren([
   profileRoute,
   myBookingsRoute,
   miHotelRoute,
-  pagosRoute,
   propertyDashboardRoute,
-  propertyPagosRoute,
   propertyEditRoute,
   roomDetailRoute,
   reservationEditRoute,

@@ -135,6 +135,79 @@ export class PaymentsService {
     }
   }
 
+  async getCapturedByPartner(
+    partnerId: string,
+    from: string,
+    to: string,
+    propertyId?: string,
+  ) {
+    const fromDate = parseDateBoundary(from, "from");
+    const toDate = parseDateBoundary(to, "to");
+    if (toDate <= fromDate) {
+      throw new BadRequestException("'to' must be after 'from'");
+    }
+    const days = Math.round(
+      (toDate.getTime() - fromDate.getTime()) / (24 * 60 * 60 * 1000),
+    );
+    if (days > 366) {
+      throw new BadRequestException("Range must be 366 days or less");
+    }
+    if (propertyId && !UUID_REGEX.test(propertyId)) {
+      throw new BadRequestException("Invalid propertyId");
+    }
+
+    const rows = await this.repo.findCapturedByPartner(
+      partnerId,
+      fromDate,
+      toDate,
+      propertyId,
+    );
+
+    const dto = rows.map((r) => ({
+      paymentId: r.id,
+      reservationId: r.reservation_id,
+      propertyId: r.property_id,
+      propertyName: r.property_name,
+      status: r.status,
+      stripePaymentIntentId: r.stripe_payment_intent_id,
+      grossAmountUsd: numOrZero(r.gross_amount_usd ?? r.amount_usd),
+      taxAmountUsd: numOrZero(r.tax_amount_usd),
+      commissionRate: numOrZero(r.commission_rate),
+      commissionAmountUsd: numOrZero(r.commission_amount_usd),
+      netPayoutUsd: numOrZero(r.net_payout_usd ?? r.amount_usd),
+      capturedAt:
+        r.captured_at instanceof Date
+          ? r.captured_at.toISOString()
+          : (r.captured_at ?? null),
+      createdAt:
+        r.created_at instanceof Date
+          ? r.created_at.toISOString()
+          : String(r.created_at),
+      fareSnapshot: r.fare_snapshot ?? null,
+    }));
+
+    const totals = dto.reduce(
+      (acc, r) => {
+        acc.grossUsd = round2(acc.grossUsd + r.grossAmountUsd);
+        acc.taxUsd = round2(acc.taxUsd + r.taxAmountUsd);
+        acc.commissionUsd = round2(acc.commissionUsd + r.commissionAmountUsd);
+        acc.netUsd = round2(acc.netUsd + r.netPayoutUsd);
+        acc.count += 1;
+        return acc;
+      },
+      { grossUsd: 0, taxUsd: 0, commissionUsd: 0, netUsd: 0, count: 0 },
+    );
+
+    return {
+      partnerId,
+      from,
+      to,
+      currency: "USD",
+      totals,
+      rows: dto,
+    };
+  }
+
   async getStatus(reservationId: string) {
     const payment = await this.repo.findByReservationId(reservationId);
     if (!payment) {
@@ -272,4 +345,25 @@ export class PaymentsService {
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
+}
+
+const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function parseDateBoundary(value: string, field: string): Date {
+  if (!DATE_REGEX.test(value)) {
+    throw new BadRequestException(`'${field}' must be YYYY-MM-DD`);
+  }
+  const d = new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(d.getTime())) {
+    throw new BadRequestException(`'${field}' is not a valid date`);
+  }
+  return d;
+}
+
+function numOrZero(v: string | number | null | undefined): number {
+  if (v == null) return 0;
+  const n = typeof v === "number" ? v : parseFloat(v);
+  return Number.isFinite(n) ? n : 0;
 }

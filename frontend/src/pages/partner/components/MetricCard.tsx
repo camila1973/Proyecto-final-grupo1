@@ -1,11 +1,13 @@
+import type { ReactNode } from 'react';
 import { Card, Skeleton, Typography } from '@mui/material';
 
 export interface MetricCardProps {
   label: string;
-  value: string;
+  value: ReactNode;
   subLabel?: string;
   subColor?: string;
-  variant?: 'default' | 'positive' | 'negative';
+  variant?: 'default' | 'positive' | 'negative' | 'primary';
+  icon?: ReactNode;
   testId?: string;
   loading?: boolean;
 }
@@ -14,6 +16,7 @@ const VARIANT_COLORS: Record<NonNullable<MetricCardProps['variant']>, string> = 
   default: '#1a1a1a',
   positive: '#27ae60',
   negative: '#e74c3c',
+  primary: '#1e4a89',
 };
 
 export default function MetricCard({
@@ -22,6 +25,7 @@ export default function MetricCard({
   subLabel,
   subColor = '#4a5568',
   variant = 'default',
+  icon,
   testId,
   loading = false,
 }: MetricCardProps) {
@@ -31,9 +35,12 @@ export default function MetricCard({
       variant="outlined"
       sx={{ p: '16px 18px', borderRadius: 2, borderColor: '#e2e8f0' }}
     >
-      <Typography sx={{ fontSize: 10, color: '#4a5568', letterSpacing: 0.5, mb: 0.75 }}>
-        {label.toUpperCase()}
-      </Typography>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Typography sx={{ fontSize: 10, color: '#4a5568', letterSpacing: 0.5, mb: 0.75 }}>
+          {label.toUpperCase()}
+        </Typography>
+        {icon}
+      </div>
       {loading ? (
         <Skeleton variant="text" width={72} height={28} />
       ) : (

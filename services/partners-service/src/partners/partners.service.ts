@@ -1,4 +1,10 @@
-import { ConflictException, Injectable, Logger } from "@nestjs/common";
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from "@nestjs/common";
 import { PartnersRepository } from "./partners.repository.js";
 import { AuthClientService } from "../clients/auth-client.service.js";
 import { MembersRepository } from "../members/members.repository.js";
@@ -10,6 +16,7 @@ import {
   UpdatePartnerDto,
 } from "./dto/partner.dto.js";
 import type {
+  DisbursementHistoryResponse,
   MetricCard,
   MonthlySeriesPoint,
   PartnerMetricsResponse,
@@ -18,11 +25,12 @@ import type {
   ReservationDto,
 } from "./dashboard.types.js";
 
-// Default commission rate used only when payment-service has not yet
-// snapshotted the rate on the payment row (legacy data path). New payments
-// always carry their own `commissionRate` and `commissionAmountUsd`.
-const FALLBACK_COMMISSION_RATE = 0.2;
-const FALLBACK_TAX_RATE = 0.19;
+const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+import {
+  capturedToPaymentRow,
+  countNights as countNightsShared,
+} from "./payment-row.mapper.js";
+
 const REVENUE_STATUSES = new Set(["confirmed", "submitted", "checked_in"]);
 const LOSS_STATUSES = new Set(["cancelled", "failed", "expired"]);
 
@@ -123,64 +131,71 @@ export class PartnersService {
 
   async getPayments(
     partnerId: string,
-    month: string | null,
+    propertyId: string | null,
+    from: string,
+    to: string,
     page: number,
     pageSize: number,
-    propertyId: string | null,
   ): Promise<PaymentsResponse> {
-    const all = await this.bookingClient.listReservations();
-    const partnerScoped = all.filter((r) => r.partnerId === partnerId);
-    const propertyScoped = propertyId
-      ? partnerScoped.filter((r) => r.propertyId === propertyId)
-      : partnerScoped;
-    const monthFiltered = month
-      ? propertyScoped.filter((r) => isInMonth(r.checkIn, month))
-      : propertyScoped;
-    const eligible = monthFiltered.filter((r) =>
-      ["confirmed", "submitted", "failed"].includes(r.status),
+    const captured = await this.paymentClient.getCapturedByPartner(
+      partnerId,
+      from,
+      to,
+      propertyId ?? undefined,
     );
+    if (!captured) {
+      throw new ServiceUnavailableException(
+        "payment-service unavailable; cannot list payments",
+      );
+    }
 
-    const total = eligible.length;
+    const allRows: PaymentRow[] = captured.rows.map(capturedToPaymentRow);
+    const total = allRows.length;
     const start = Math.max(0, (page - 1) * pageSize);
-    const slice = eligible.slice(start, start + pageSize);
+    const rows = allRows.slice(start, start + pageSize);
 
-    const rows: PaymentRow[] = await Promise.all(
-      slice.map(async (r) => buildPaymentRow(r, this.paymentClient)),
-    );
-
-    return { partnerId, month, total, page, pageSize, rows };
+    return {
+      partnerId,
+      propertyId,
+      from,
+      to,
+      total,
+      page,
+      pageSize,
+      totals: {
+        gross: captured.totals.grossUsd,
+        commission: captured.totals.commissionUsd,
+        net: captured.totals.netUsd,
+        count: captured.totals.count,
+      },
+      rows,
+    };
   }
 
-  async getDisbursement(partnerId: string, month: string) {
-    const disbursement = await this.paymentClient.getDisbursement(
-      partnerId,
-      month,
-    );
-    if (!disbursement) {
-      // payment-service unavailable or returned an error → degrade to an empty
-      // projected disbursement so the dashboard still renders.
-      const [yStr, mStr] = month.split("-");
-      const y = Number(yStr);
-      const m = Number(mStr);
-      const periodStart = `${y}-${String(m).padStart(2, "0")}-01`;
-      const nextYear = m === 12 ? y + 1 : y;
-      const nextMonth = m === 12 ? 1 : m + 1;
-      const periodEnd = `${nextYear}-${String(nextMonth).padStart(2, "0")}-01`;
-      return {
-        partnerId,
-        periodStart,
-        periodEnd,
-        scheduledFor: periodEnd,
-        currency: "USD",
-        status: "projected" as const,
-        paidAt: null,
-        externalTransferRef: null,
-        totals: { gross: 0, tax: 0, partnerFee: 0, commission: 0, net: 0 },
-        byProperty: [],
-        paymentCount: 0,
-      };
+  async getDisbursementHistory(
+    partnerId: string,
+    from: string,
+    to: string,
+    propertyId: string | null,
+  ): Promise<DisbursementHistoryResponse> {
+    if (!DATE_REGEX.test(from)) {
+      throw new BadRequestException("'from' must be YYYY-MM-DD");
     }
-    return disbursement;
+    if (!DATE_REGEX.test(to)) {
+      throw new BadRequestException("'to' must be YYYY-MM-DD");
+    }
+    const res = await this.paymentClient.getDisbursementHistory(
+      partnerId,
+      from,
+      to,
+      propertyId ?? undefined,
+    );
+    if (!res) {
+      throw new ServiceUnavailableException(
+        "payment-service unavailable; cannot load disbursement history",
+      );
+    }
+    return res;
   }
 }
 
@@ -302,50 +317,7 @@ export function trailingMonths(month: string, count: number): string[] {
   return out;
 }
 
-async function buildPaymentRow(
-  r: ReservationDto,
-  paymentClient: PaymentClientService,
-): Promise<PaymentRow> {
-  const payment = await paymentClient.getStatus(r.id);
-  const nights = countNights(r.checkIn, r.checkOut);
-
-  // Prefer snapshotted breakdown from the payment row; fall back to
-  // recomputed values for reservations without a captured payment yet
-  // (or pre-migration rows).
-  const total =
-    payment?.grossAmountUsd ?? r.grandTotalUsd ?? payment?.amountUsd ?? 0;
-  const taxes =
-    payment?.taxAmountUsd ?? total - total / (1 + FALLBACK_TAX_RATE);
-  const subtotal = total - taxes;
-  const ratePerNight = nights > 0 ? subtotal / nights : 0;
-  const commission =
-    payment?.commissionAmountUsd ?? round(total * FALLBACK_COMMISSION_RATE);
-  const earnings = payment?.netPayoutUsd ?? round(total - commission);
-
-  return {
-    reservationId: r.id,
-    propertyId: payment?.propertyId ?? r.propertyId,
-    propertyName: payment?.propertyName ?? r.snapshot?.propertyName ?? "",
-    status: payment?.status ?? r.status,
-    paymentMethod: payment?.stripePaymentIntentId ? "STRIPE" : "—",
-    reference: payment?.stripePaymentIntentId ?? "—",
-    nights,
-    ratePerNightUsd: round(ratePerNight),
-    subtotalUsd: round(subtotal),
-    taxesUsd: round(taxes),
-    totalPaidUsd: round(total),
-    commissionUsd: -commission,
-    earningsUsd: round(earnings),
-    createdAt: payment?.createdAt ?? r.createdAt,
-  };
-}
-
-export function countNights(checkIn: string, checkOut: string): number {
-  const start = new Date(`${checkIn}T00:00:00Z`).getTime();
-  const end = new Date(`${checkOut}T00:00:00Z`).getTime();
-  if (Number.isNaN(start) || Number.isNaN(end) || end <= start) return 0;
-  return Math.round((end - start) / 86_400_000);
-}
+export const countNights = countNightsShared;
 
 function round(n: number, decimals = 2): number {
   const f = Math.pow(10, decimals);

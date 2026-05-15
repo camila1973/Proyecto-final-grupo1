@@ -9,12 +9,11 @@ import {
   CircularProgress,
   Tab,
   Tabs,
-  Typography,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useAuth } from '../../../../hooks/useAuth';
-import PageHero from '../../../../components/PageHero';
 import PageContainer from '../../../../components/PageContainer';
+import PartnerHero, { HeroBreadcrumbEyebrow } from '../../components/PartnerHero';
 import {
   fetchInventoryProperty,
   fetchPartnerCommission,
@@ -120,25 +119,24 @@ export default function PropertyEditPage() {
   }
 
   const onSave = () => updateMutation.mutate(toBody(form));
-  const onBack = () => navigate({ to: '/mi-hotel/$propertyId', params: { propertyId } });
+  const onBack = () =>
+    navigate({ to: '/mi-hotel/$propertyId', params: { propertyId }, search: { tab: 'resumen' } });
 
   return (
     <Box sx={{ bgcolor: '#F5F7FA', minHeight: '100vh' }}>
-      <PageHero>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 3, flexWrap: 'wrap' }}>
-          <Box>
-            <Typography sx={{ fontSize: 11, color: 'white', textTransform: 'uppercase', letterSpacing: 0.5, opacity: 0.85 }}>
-              <Box component="span" sx={{ fontFamily: 'monospace', textTransform: 'none', letterSpacing: 0 }}>{propertyId.slice(0, 8)}</Box>
-              <Box component="span" sx={{ mx: 1, opacity: 0.5 }}>/</Box>
-              {t('partner.properties.edit.breadcrumb')}
-            </Typography>
-            <Typography variant="h4" sx={{ fontWeight: 700, color: 'white', mt: 0.5 }}>
-              {t('partner.properties.edit.page_title')}
-            </Typography>
-            <Typography sx={{ fontSize: 13, color: 'white', opacity: 0.85, mt: 0.5 }}>
-              {property.name} · {[property.neighborhood, property.city, property.countryCode].filter(Boolean).join(', ')}
-            </Typography>
-          </Box>
+      <PartnerHero
+        eyebrow={
+          <HeroBreadcrumbEyebrow
+            separator="/"
+            items={[
+              { label: propertyId.slice(0, 8), mono: true },
+              { label: t('partner.properties.edit.breadcrumb') },
+            ]}
+          />
+        }
+        title={t('partner.properties.edit.page_title')}
+        subtitle={`${property.name} · ${[property.neighborhood, property.city, property.countryCode].filter(Boolean).join(', ')}`}
+        actions={
           <Button
             variant="outlined"
             startIcon={<ArrowBackIcon fontSize="small" />}
@@ -147,8 +145,8 @@ export default function PropertyEditPage() {
           >
             {t('partner.properties.edit.back')}
           </Button>
-        </Box>
-      </PageHero>
+        }
+      />
 
       <Box sx={{ bgcolor: '#fff', borderBottom: '1px solid #e2e8f0', px: 3 }}>
         <Box sx={{ maxWidth: 1152, mx: 'auto' }}>

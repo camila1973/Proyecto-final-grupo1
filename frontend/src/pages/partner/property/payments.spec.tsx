@@ -3,18 +3,18 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { setupTestI18n } from '../../../i18n/test-utils';
 import { LocaleProvider } from '../../../context/LocaleContext';
 import { AuthContext } from '../../../context/auth-context';
-import PagosPropertyPage from './pagos';
+import PaymentsBody from './payments';
 
 setupTestI18n('es');
 
-const mockNavigate = jest.fn();
 jest.mock('@tanstack/react-router', () => ({
-  useNavigate: () => mockNavigate,
   useParams: () => ({ propertyId: 'prop-abc' }),
 }));
 
 const PAYMENT_ROW = {
   reservationId: 'res-uuid-1234',
+  propertyId: 'prop-abc',
+  propertyName: 'Hotel Test',
   status: 'captured',
   paymentMethod: 'STRIPE',
   reference: 'pi_test_abc123',
@@ -30,10 +30,18 @@ const PAYMENT_ROW = {
 
 const PAYMENTS_RESPONSE = {
   partnerId: 'partner-1',
-  month: null,
+  propertyId: 'prop-abc',
+  from: '2026-05-01',
+  to: '2026-06-01',
   total: 1,
   page: 1,
   pageSize: 20,
+  totals: {
+    gross: 535500,
+    commission: -107100,
+    net: 428400,
+    count: 1,
+  },
   rows: [PAYMENT_ROW],
 };
 
@@ -44,7 +52,7 @@ const MOCK_AUTH = {
   logout: jest.fn(),
 };
 
-function renderPage(authValue: typeof MOCK_AUTH | null = MOCK_AUTH) {
+function renderBody(authValue: typeof MOCK_AUTH | null = MOCK_AUTH) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
@@ -52,14 +60,14 @@ function renderPage(authValue: typeof MOCK_AUTH | null = MOCK_AUTH) {
     <QueryClientProvider client={queryClient}>
       <AuthContext.Provider value={authValue as never}>
         <LocaleProvider>
-          <PagosPropertyPage />
+          <PaymentsBody />
         </LocaleProvider>
       </AuthContext.Provider>
     </QueryClientProvider>,
   );
 }
 
-describe('PagosPropertyPage', () => {
+describe('PaymentsBody', () => {
   beforeEach(() => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
@@ -72,13 +80,8 @@ describe('PagosPropertyPage', () => {
     jest.resetAllMocks();
   });
 
-  it('shows login required alert when unauthenticated', () => {
-    renderPage({ token: null, user: null, login: jest.fn(), logout: jest.fn() } as never);
-    expect(screen.getByText('Inicia sesión como socio para ver el panel.')).toBeInTheDocument();
-  });
-
-  it('renders payment title and payment row', async () => {
-    renderPage();
+  it('renders payment row', async () => {
+    renderBody();
     await waitFor(() => {
       expect(screen.getByText('STRIPE')).toBeInTheDocument();
     });
@@ -86,19 +89,34 @@ describe('PagosPropertyPage', () => {
   });
 
   it('renders payment status in uppercase', async () => {
-    renderPage();
+    renderBody();
     await waitFor(() => {
       expect(screen.getByText('CAPTURED')).toBeInTheDocument();
     });
+  });
+
+  it('renders KPI cards from totals', async () => {
+    renderBody();
+    await waitFor(() => {
+      expect(screen.getByText('INGRESOS BRUTOS')).toBeInTheDocument();
+    });
+    expect(screen.getByText('COMISIÓN')).toBeInTheDocument();
+    expect(screen.getByText('GANANCIA DEL PROPIETARIO')).toBeInTheDocument();
   });
 
   it('shows empty state when no payments returned', async () => {
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: true,
       status: 200,
-      json: () => Promise.resolve({ ...PAYMENTS_RESPONSE, total: 0, rows: [] }),
+      json: () =>
+        Promise.resolve({
+          ...PAYMENTS_RESPONSE,
+          total: 0,
+          rows: [],
+          totals: { gross: 0, commission: 0, net: 0, count: 0 },
+        }),
     });
-    renderPage();
+    renderBody();
     await waitFor(() => {
       expect(screen.getByText('No hay pagos para mostrar.')).toBeInTheDocument();
     });
@@ -106,14 +124,16 @@ describe('PagosPropertyPage', () => {
 
   it('shows error alert on fetch failure', async () => {
     (global.fetch as jest.Mock).mockResolvedValue({ ok: false, status: 500 });
-    renderPage();
+    renderBody();
     await waitFor(() => {
-      expect(screen.getByText('No se pudieron cargar las métricas. Inténtalo más tarde.')).toBeInTheDocument();
+      expect(
+        screen.getByText('No se pudieron cargar las métricas. Inténtalo más tarde.'),
+      ).toBeInTheDocument();
     });
   });
 
   it('filters rows by reservationId', async () => {
-    renderPage();
+    renderBody();
     await waitFor(() => {
       expect(screen.getByText('STRIPE')).toBeInTheDocument();
     });
@@ -124,7 +144,7 @@ describe('PagosPropertyPage', () => {
   });
 
   it('filters rows by reference', async () => {
-    renderPage();
+    renderBody();
     await waitFor(() => {
       expect(screen.getByText('pi_test_abc123')).toBeInTheDocument();
     });
@@ -133,25 +153,13 @@ describe('PagosPropertyPage', () => {
     expect(screen.getByText('pi_test_abc123')).toBeInTheDocument();
   });
 
-  it('navigates back to property dashboard on back button', async () => {
-    renderPage();
-    await waitFor(() => {
-      expect(screen.getByText('STRIPE')).toBeInTheDocument();
-    });
-    fireEvent.click(screen.getByText('← Mis hoteles'));
-    expect(mockNavigate).toHaveBeenCalledWith({
-      to: '/mi-hotel/$propertyId',
-      params: { propertyId: 'prop-abc' },
-    });
-  });
-
   it('paginates when multiple pages exist', async () => {
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: true,
       status: 200,
       json: () => Promise.resolve({ ...PAYMENTS_RESPONSE, total: 50 }),
     });
-    renderPage();
+    renderBody();
     await waitFor(() => {
       expect(screen.getByText('STRIPE')).toBeInTheDocument();
     });
@@ -160,5 +168,14 @@ describe('PagosPropertyPage', () => {
     await waitFor(() => {
       expect((global.fetch as jest.Mock).mock.calls.length).toBeGreaterThan(callsBefore);
     });
+  });
+
+  it('uses the nested payments URL', async () => {
+    renderBody();
+    await waitFor(() => {
+      expect((global.fetch as jest.Mock).mock.calls.length).toBeGreaterThan(0);
+    });
+    const [url] = (global.fetch as jest.Mock).mock.calls[0];
+    expect(url).toContain('/partners/partner-1/properties/prop-abc/payments');
   });
 });

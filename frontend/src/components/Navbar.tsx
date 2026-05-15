@@ -32,7 +32,7 @@ export default function Navbar() {
             <>
               <Link to="/profile" className="hover:text-gray-900">{t('nav.profile')}</Link>
               {user.role === 'partner' ? (
-                <Link to="/mi-hotel" className="hover:text-gray-900">{t('nav.myHotels')}</Link>
+                <Link to="/mi-hotel" search={{ tab: 'resumen' }} className="hover:text-gray-900">{t('nav.myHotels')}</Link>
               ) : (
                 <Link to="/trips" className="hover:text-gray-900">{t('nav.myBookings')}</Link>
               )}

@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { setupTestI18n } from '../../../../i18n/test-utils';
 import { LocaleProvider } from '../../../../context/LocaleContext';
 import { AuthContext } from '../../../../context/auth-context';
-import ReservationEditPage from './edit';
+import ReservationEditPage from '.';
 
 setupTestI18n('es');
 
@@ -265,6 +265,7 @@ describe('ReservationEditPage', () => {
       expect(mockNavigate).toHaveBeenCalledWith({
         to: '/mi-hotel/$propertyId',
         params: { propertyId: 'prop-abc' },
+        search: { tab: 'reservas' },
       });
     });
   });
@@ -281,6 +282,7 @@ describe('ReservationEditPage', () => {
     expect(mockNavigate).toHaveBeenCalledWith({
       to: '/mi-hotel/$propertyId',
       params: { propertyId: 'prop-abc' },
+      search: { tab: 'reservas' },
     });
   });
 });

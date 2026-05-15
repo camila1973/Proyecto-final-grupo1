@@ -18,6 +18,10 @@ export interface CapturedPaymentForPeriod {
   net_payout_usd: string;
 }
 
+export interface CapturedPaymentForHistory extends CapturedPaymentForPeriod {
+  captured_at: Date;
+}
+
 @Injectable()
 export class DisbursementsRepository {
   constructor(@Inject(KYSELY) private readonly db: Kysely<Database>) {}
@@ -64,6 +68,62 @@ export class DisbursementsRepository {
       .where("status", "=", "captured")
       .where("captured_at", ">=", new Date(`${periodStart}T00:00:00Z`))
       .where("captured_at", "<", new Date(`${periodEnd}T00:00:00Z`))
+      .execute();
+  }
+
+  // Range variant of findCapturedInPeriod — returns rows over an arbitrary
+  // window with the captured_at timestamp included, optionally filtered by
+  // property. Used by the read-only history endpoint to group rows into
+  // months client-side without materializing anything.
+  async findCapturedInRange(
+    partnerId: string,
+    from: Date,
+    to: Date,
+    propertyId?: string,
+  ): Promise<CapturedPaymentForHistory[]> {
+    let query = this.db
+      .selectFrom("payments")
+      .select([
+        "id as payment_id",
+        sql<string>`coalesce(property_id::text, '')`.as("property_id"),
+        sql<string>`coalesce(property_name, '')`.as("property_name"),
+        "captured_at",
+        sql<string>`coalesce(gross_amount_usd, amount_usd)`.as(
+          "gross_amount_usd",
+        ),
+        sql<string>`coalesce(tax_amount_usd, 0)`.as("tax_amount_usd"),
+        sql<string>`coalesce(partner_fee_usd, 0)`.as("partner_fee_usd"),
+        sql<string>`coalesce(commission_amount_usd, 0)`.as(
+          "commission_amount_usd",
+        ),
+        sql<string>`coalesce(net_payout_usd, amount_usd)`.as("net_payout_usd"),
+      ])
+      .where("partner_id", "=", partnerId)
+      .where("status", "=", "captured")
+      .where("captured_at", ">=", from)
+      .where("captured_at", "<", to);
+    if (propertyId) {
+      query = query.where("property_id", "=", propertyId);
+    }
+    const rows = await query.orderBy("captured_at", "asc").execute();
+    // captured_at is selected without a sql<> annotation, so kysely returns the
+    // raw column. Postgres maps TIMESTAMPTZ to Date in node-pg.
+    return rows as unknown as CapturedPaymentForHistory[];
+  }
+
+  // Materialized disbursement headers over a range. Used by the history
+  // endpoint to inherit status / paid_at for past months.
+  async findManyByPartnerAndRange(
+    partnerId: string,
+    from: string,
+    to: string,
+  ): Promise<DisbursementRow[]> {
+    return this.db
+      .selectFrom("disbursements")
+      .selectAll()
+      .where("partner_id", "=", partnerId)
+      .where("period_start", ">=", from)
+      .where("period_start", "<", to)
       .execute();
   }
 

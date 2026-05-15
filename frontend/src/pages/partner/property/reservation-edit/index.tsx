@@ -97,7 +97,7 @@ export default function ReservationEditPage() {
     mutationFn: () => cancelReservation(reservationId, token!, 'partner_requested'),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['property-reservations'] });
-      navigate({ to: '/mi-hotel/$propertyId', params: { propertyId } });
+      navigate({ to: '/mi-hotel/$propertyId', params: { propertyId }, search: { tab: 'reservas' } });
     },
   });
 
@@ -146,7 +146,7 @@ export default function ReservationEditPage() {
   };
 
   const handleBack = () =>
-    navigate({ to: '/mi-hotel/$propertyId', params: { propertyId } });
+    navigate({ to: '/mi-hotel/$propertyId', params: { propertyId }, search: { tab: 'reservas' } });
 
   const saveError = saveMutation.error
     ? saveMutation.error instanceof Error

@@ -1,7 +1,7 @@
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { setupTestI18n } from '../../../i18n/test-utils';
-import MembersSection from './MembersSection';
+import MembersSection from './MembersTable';
 
 setupTestI18n('es');
 
