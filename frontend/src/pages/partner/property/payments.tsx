@@ -6,7 +6,7 @@ import {
   Alert,
   Box,
   CircularProgress,
-  IconButton,
+  Pagination,
   Paper,
   Stack,
   Table,
@@ -17,8 +17,6 @@ import {
   TableRow,
   TextField,
 } from '@mui/material';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import SearchIcon from '@mui/icons-material/Search';
 import { useAuth } from '../../../hooks/useAuth';
 import { useLocale } from '../../../context/LocaleContext';
@@ -31,8 +29,6 @@ import MetricCard from '../components/MetricCard';
 import ReportExportToolbar, { type PeriodMode } from '../components/ReportExportToolbar';
 
 const PAGE_SIZE = 20;
-
-const NAV_BTN = { bgcolor: '#1B4F8C', color: '#fff', '&:hover': { bgcolor: '#163d6e' } } as const;
 
 export default function PaymentsBody() {
   const { t } = useTranslation();
@@ -128,7 +124,7 @@ export default function PaymentsBody() {
         />
       </Box>
 
-      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+      <Stack direction="row" sx={{ mb: 2 }}>
         <TextField
           size="small"
           placeholder={t('partner.payments.search_placeholder')}
@@ -137,20 +133,13 @@ export default function PaymentsBody() {
           slotProps={{ input: { endAdornment: <SearchIcon fontSize="small" sx={{ color: '#9ca3af' }} /> } }}
           sx={{ width: 260, '& .MuiOutlinedInput-root': { fontSize: 12, borderRadius: 1.5 } }}
         />
-        <Stack direction="row" spacing={0.5}>
-          <IconButton size="small" aria-label={t('partner.dashboard.prev_page')} onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1} sx={NAV_BTN}>
-            <ArrowBackIcon fontSize="small" />
-          </IconButton>
-          <IconButton size="small" aria-label={t('partner.dashboard.next_page')} onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages} sx={NAV_BTN}>
-            <ArrowForwardIcon fontSize="small" />
-          </IconButton>
-        </Stack>
       </Stack>
 
       {isLoading && <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress size={24} /></Box>}
       {isError && <Alert severity="error">{t('partner.dashboard.load_error')}</Alert>}
 
       {data && (
+        <>
         <Paper variant="outlined" sx={{ borderRadius: 2, borderColor: '#e2e8f0', overflow: 'hidden' }}>
           <TableContainer>
             <Table size="small">
@@ -195,6 +184,20 @@ export default function PaymentsBody() {
             </Table>
           </TableContainer>
         </Paper>
+        <Stack direction="row" justifyContent="flex-end" sx={{ mt: 1 }}>
+          <Pagination
+            count={totalPages}
+            page={page}
+            onChange={(_, p) => setPage(p)}
+            color="primary"
+            shape="rounded"
+            size="small"
+            showFirstButton
+            showLastButton
+            disabled={data.total <= PAGE_SIZE}
+          />
+        </Stack>
+        </>
       )}
     </PageContainer>
   );

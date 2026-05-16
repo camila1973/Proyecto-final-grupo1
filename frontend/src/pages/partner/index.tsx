@@ -10,6 +10,7 @@ import {
   fetchPartnerProperties,
   fetchPartnerMetrics,
   fetchPropertyMetrics,
+  fetchPartnerPropertyRooms,
   fetchPartnerDisbursements,
 } from '../../utils/queries';
 import { formatPrice } from '../../utils/currency';
@@ -17,10 +18,12 @@ import { currentMonth, monthRange, shiftMonth, formatMonthLabel } from '../../ut
 import { PROPERTY_COLORS } from './components/RevenueTrendChart';
 import MetricCard from './components/MetricCard';
 import MonthSwitcher from './components/MonthSwitcher';
+import PropertyCard from './components/PropertyCard';
 import HeroBanner from './sections/PartnerHeroBanner';
 import PageContainer from '../../components/PageContainer';
 import ChartsSection from './sections/OverviewCharts';
 import DisbursementsSection from './sections/DisbursementsPreview';
+import { SectionHeader } from './sections/ui';
 import type { PropertyRevenueDataPoint } from './components/PropertyRevenueChart';
 import type { PartnerTabId } from './shared';
 import DisbursementsBody from './disbursements';
@@ -67,6 +70,14 @@ export default function MiHotelPage() {
     })),
   });
 
+  const roomsQueries = useQueries({
+    queries: (propertiesQuery.data?.properties ?? []).map((p) => ({
+      queryKey: ['partner-property-rooms', partnerId, p.propertyId, month],
+      queryFn: () => fetchPartnerPropertyRooms(partnerId, p.propertyId, token!),
+      enabled: enabled && tab === 'resumen' && !!propertiesQuery.data,
+    })),
+  });
+
   const disbursementRange = monthRange(month);
   const disbursementQuery = useQuery({
     queryKey: ['partner-disbursements', partnerId, disbursementRange.from, disbursementRange.to],
@@ -99,6 +110,33 @@ export default function MiHotelPage() {
   const incompleteCount = propertyQueries.filter(
     (q) => !q.isLoading && (q.data?.metrics.confirmed ?? 0) === 0,
   ).length;
+
+  const propertyCards = properties.map((p, i) => {
+    const mq = propertyQueries[i];
+    const rq = roomsQueries[i];
+    const rooms = rq?.data?.rooms ?? [];
+    const inventory = rooms.reduce((sum, r) => sum + (r.totalRooms ?? 0), 0);
+    const avgRateUsd =
+      rooms.length > 0
+        ? rooms.reduce((sum, r) => sum + r.basePriceUsd, 0) / rooms.length
+        : 0;
+    const propSeries = mq?.data?.monthlySeries;
+    const occupancyPct = propSeries
+      ? (propSeries[propSeries.length - 1]?.occupancyRate ?? 0) * 100
+      : 0;
+    return {
+      propertyId: p.propertyId,
+      propertyName: p.propertyName,
+      propertyCity: p.propertyCity,
+      propertyCountryCode: p.propertyCountryCode,
+      active: (mq?.data?.metrics.confirmed ?? 0) > 0,
+      inventory,
+      avgRateUsd,
+      occupancyPct,
+      revenueUsd: mq?.data?.metrics.revenueUsd ?? 0,
+      loading: (mq?.isLoading ?? false) || (rq?.isLoading ?? false),
+    };
+  });
 
   const barData: PropertyRevenueDataPoint[] = properties.map((p, i) => {
     const gross = propertyQueries[i]?.data?.metrics.revenueUsd ?? 0;
@@ -250,6 +288,43 @@ export default function MiHotelPage() {
             status={disbursementStatus}
             onViewHistory={() => navigate({ to: '/mi-hotel', search: { tab: 'desembolsos' } })}
           />
+
+          {propertyCards.length > 0 && (
+            <Box>
+              <SectionHeader title={t('partner.org_dashboard.section_properties')} />
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' },
+                  gap: 2,
+                }}
+              >
+                {propertyCards.map((c) => (
+                  <PropertyCard
+                    key={c.propertyId}
+                    propertyId={c.propertyId}
+                    propertyName={c.propertyName}
+                    propertyCity={c.propertyCity}
+                    propertyCountryCode={c.propertyCountryCode}
+                    active={c.active}
+                    inventory={c.inventory}
+                    avgRateUsd={c.avgRateUsd}
+                    occupancyPct={c.occupancyPct}
+                    revenueUsd={c.revenueUsd}
+                    currency={currency}
+                    loading={c.loading}
+                    onClick={() =>
+                      navigate({
+                        to: '/mi-hotel/$propertyId',
+                        params: { propertyId: c.propertyId },
+                        search: { tab: 'resumen' },
+                      })
+                    }
+                  />
+                ))}
+              </Box>
+            </Box>
+          )}
         </PageContainer>
       )}
 

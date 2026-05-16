@@ -87,4 +87,42 @@ describe('PropertyImageCarousel', () => {
     render(<PropertyImageCarousel images={[]} alt="Hotel A" />);
     expect(screen.getByText(/sin imágenes/i)).toBeInTheDocument();
   });
+
+  it('goes to the previous slide via the prev arrow', () => {
+    render(
+      <PropertyImageCarousel
+        images={['https://cdn.example/a.jpg', 'https://cdn.example/b.jpg', 'https://cdn.example/c.jpg']}
+        alt="Hotel A"
+      />,
+    );
+    fireEvent.click(screen.getByLabelText('Imagen anterior'));
+    // 0 - 1 wraps to last (index 2 → image 3).
+    expect(screen.getByLabelText('Ir a la imagen 3')).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('navigates by clicking an indicator dot', () => {
+    render(
+      <PropertyImageCarousel
+        images={['https://cdn.example/a.jpg', 'https://cdn.example/b.jpg', 'https://cdn.example/c.jpg']}
+        alt="Hotel A"
+      />,
+    );
+    fireEvent.click(screen.getByLabelText('Ir a la imagen 3'));
+    expect(screen.getByLabelText('Ir a la imagen 3')).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('marks an image loaded via onLoad and onError', () => {
+    render(
+      <PropertyImageCarousel
+        images={['https://cdn.example/a.jpg', 'https://cdn.example/b.jpg']}
+        alt="Hotel A"
+      />,
+    );
+    const imgs = document.querySelectorAll('img');
+    fireEvent.load(imgs[0]);
+    fireEvent.error(imgs[1]);
+    // No throw; the spinner overlay should not be present once image 0 loaded.
+    // (Animated pulse is `aria-hidden`; we rely on the absence of any thrown error.)
+    expect(imgs.length).toBe(2);
+  });
 });

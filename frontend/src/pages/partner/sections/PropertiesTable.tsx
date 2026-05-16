@@ -27,7 +27,7 @@ export interface PropertyRow {
   loading: boolean;
   confirmed: number;
   gross: number;
-  lastOccupancy: number | null;
+  managerName: string | null;
 }
 
 interface PropertiesSectionProps {
@@ -39,6 +39,44 @@ interface PropertiesSectionProps {
 interface RowMenu {
   el: HTMLElement;
   propertyId: string;
+}
+
+function IdCell({ propertyId }: { propertyId: string }) {
+  const { t } = useTranslation();
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(propertyId);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // ignore — clipboard API blocked
+    }
+  };
+
+  return (
+    <Tooltip
+      title={copied ? t('partner.org_dashboard.id_copied') : `${propertyId} · ${t('partner.org_dashboard.copy_id_hint')}`}
+      placement="top"
+      arrow
+    >
+      <Typography
+        component="span"
+        onClick={handleCopy}
+        sx={{
+          fontSize: 11,
+          fontFamily: 'monospace',
+          color: '#4a5568',
+          cursor: 'pointer',
+          userSelect: 'none',
+          '&:hover': { color: '#1B4F8C' },
+        }}
+      >
+        {propertyId.slice(0, 8)}
+      </Typography>
+    </Tooltip>
+  );
 }
 
 export default function PropertiesSection({ rows, currency, onView }: PropertiesSectionProps) {
@@ -74,10 +112,10 @@ export default function PropertiesSection({ rows, currency, onView }: Properties
           <Table size="small" sx={{ tableLayout: 'fixed' }}>
             <TableHead>
               <TableRow>
-                <TH width="20%">{t('partner.org_dashboard.col_property')}</TH>
+                <TH width="22%">{t('partner.org_dashboard.col_property')}</TH>
+                <TH width="11%">{t('partner.org_dashboard.col_id')}</TH>
                 <TH>{t('partner.org_dashboard.col_status')}</TH>
                 <TH>{t('partner.org_dashboard.col_manager')}</TH>
-                <TH>{t('partner.org_dashboard.col_occupancy')}</TH>
                 <TH align="right">{t('partner.org_dashboard.col_gross')}</TH>
                 <TH align="right">{t('partner.org_dashboard.col_net_income')}</TH>
                 <TH> </TH>
@@ -100,38 +138,23 @@ export default function PropertiesSection({ rows, currency, onView }: Properties
                       >
                         {row.propertyName}
                       </Typography>
-                      <Typography sx={{ fontSize: 10, color: '#4a5568' }}>
-                        {row.propertyId.slice(0, 8)}
-                      </Typography>
+                    </TD>
+                    <TD>
+                      <IdCell propertyId={row.propertyId} />
                     </TD>
                     <TD>
                       <StatusPill active={row.confirmed > 0} />
                     </TD>
                     <TD>
-                      <Typography sx={{ fontSize: 11, color: '#A32D2D' }}>
-                        {t('partner.org_dashboard.no_manager')}
-                      </Typography>
-                    </TD>
-                    <TD>
-                      {row.loading ? (
-                        '—'
-                      ) : row.lastOccupancy !== null ? (
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-                          <Box sx={{ bgcolor: '#e2e8f0', borderRadius: '2px', height: 4, width: 48, flexShrink: 0 }}>
-                            <Box
-                              sx={{
-                                bgcolor: row.lastOccupancy >= 70 ? '#3B6D11' : '#854F0B',
-                                height: 4,
-                                borderRadius: '2px',
-                                width: `${Math.min(100, row.lastOccupancy)}%`,
-                              }}
-                            />
-                          </Box>
-                          <Typography sx={{ fontSize: 11, color: row.lastOccupancy >= 70 ? '#27500A' : '#854F0B' }}>
-                            {Math.round(row.lastOccupancy)}%
-                          </Typography>
-                        </Box>
-                      ) : '—'}
+                      {row.managerName ? (
+                        <Typography sx={{ fontSize: 12, color: '#1a1a1a' }}>
+                          {row.managerName}
+                        </Typography>
+                      ) : (
+                        <Typography sx={{ fontSize: 11, color: '#A32D2D' }}>
+                          {t('partner.org_dashboard.no_manager')}
+                        </Typography>
+                      )}
                     </TD>
                     <TD align="right">{row.loading ? '—' : formatPrice(row.gross, currency)}</TD>
                     <TD align="right" sx={{ color: '#3B6D11', fontWeight: 500 }}>

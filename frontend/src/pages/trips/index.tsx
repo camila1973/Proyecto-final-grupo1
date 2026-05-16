@@ -36,7 +36,7 @@ import 'dayjs/locale/es';
 dayjs.locale('es');
 
 const ACTIVE_STATUSES: ReservationStatus[] = ['held', 'submitted', 'confirmed', 'checked_in'];
-const PAST_STATUSES: ReservationStatus[] = ['checked_out', 'no_show', 'cancelled', 'failed', 'expired'];
+const PAST_STATUSES: ReservationStatus[] = ['checked_out', 'no_show', 'cancelled', 'failed'];
 
 const STATUS_PILL_STYLE: Record<ReservationStatus, { color: string; bg: string; borderColor: string }> = {
   held:        { color: 'warning.dark',  bg: 'warning.light',       borderColor: 'warning.main' },
@@ -302,8 +302,9 @@ export default function TripsPage() {
     );
   }
 
-  const active = reservations.filter((r) => ACTIVE_STATUSES.includes(r.status));
-  const past = reservations.filter((r) => PAST_STATUSES.includes(r.status));
+  const sorted = [...reservations].sort((a, b) => dayjs(b.createdAt).valueOf() - dayjs(a.createdAt).valueOf());
+  const active = sorted.filter((r) => ACTIVE_STATUSES.includes(r.status));
+  const past = sorted.filter((r) => PAST_STATUSES.includes(r.status));
   const heldReservation = active.find((r) => r.status === 'held') ?? null;
 
   return (

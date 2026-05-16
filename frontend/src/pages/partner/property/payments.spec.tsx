@@ -164,7 +164,8 @@ describe('PaymentsBody', () => {
       expect(screen.getByText('STRIPE')).toBeInTheDocument();
     });
     const callsBefore = (global.fetch as jest.Mock).mock.calls.length;
-    fireEvent.click(screen.getByLabelText('Página siguiente'));
+    // MUI <Pagination> labels each page button with "Go to page N" (default English).
+    fireEvent.click(screen.getByLabelText('Go to page 2'));
     await waitFor(() => {
       expect((global.fetch as jest.Mock).mock.calls.length).toBeGreaterThan(callsBefore);
     });

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   createMemoryHistory,
@@ -141,5 +141,15 @@ describe('PagosPage (Desembolsos)', () => {
     expect(
       await screen.findByText('Inicia sesión como socio para ver el panel.'),
     ).toBeInTheDocument();
+  });
+
+  it('switches to year mode showing the current year', async () => {
+    renderPage();
+    await waitFor(() => expect(screen.getByText('2026-04')).toBeInTheDocument());
+    const yearToggle = screen.getByRole('button', { name: /^Año$/i });
+    fireEvent.click(yearToggle);
+    // The current UTC year should now be visible as a label.
+    const currentYear = new Date().getUTCFullYear();
+    await waitFor(() => expect(screen.getByText(String(currentYear))).toBeInTheDocument());
   });
 });

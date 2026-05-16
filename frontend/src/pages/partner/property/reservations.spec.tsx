@@ -222,42 +222,73 @@ describe('PropertyReservationsPage', () => {
     expect(screen.getByText('No hay reservaciones que coincidan con los filtros.')).toBeInTheDocument();
   });
 
-  // ── Status-based action buttons ────────────────────────────────────────────
+  // ── Status-based action buttons (kebab menu) ───────────────────────────────
+  //
+  // The inline check-in/check-out IconButtons were consolidated into a single
+  // MoreVert (kebab) menu that always renders for non-terminal rows. The 5
+  // actions inside (Edit, Check-in, No-show, Check-out, Cancel) are enabled or
+  // disabled based on the row's status. We assert on the menu items' enabled
+  // state rather than presence/absence.
 
-  it('shows check-in icon button for confirmed reservations', async () => {
+  it('renders the kebab (more actions) button for non-terminal rows', async () => {
     renderPage();
     await waitFor(() => expect(screen.getByText('María López')).toBeInTheDocument());
-    expect(screen.getByLabelText('Registrar Check-in')).toBeInTheDocument();
+    expect(screen.getByLabelText('Más acciones')).toBeInTheDocument();
   });
 
-  it('does not show check-in button for non-confirmed reservations', async () => {
-    mockFetch([{ ...CONFIRMED_RESERVATION, status: 'checked_out' }]);
-    renderPage();
-    await waitFor(() => expect(screen.getByText('María López')).toBeInTheDocument());
-    expect(screen.queryByLabelText('Registrar Check-in')).not.toBeInTheDocument();
-  });
-
-  it('shows check-out icon button for checked_in reservations', async () => {
-    mockFetch([CHECKED_IN_RESERVATION]);
-    renderPage();
-    await waitFor(() => expect(screen.getByText('Carlos Ruiz')).toBeInTheDocument());
-    expect(screen.getByLabelText('Registrar Check-out')).toBeInTheDocument();
-  });
-
-  it('does not show action buttons for terminal statuses', async () => {
+  it('still renders the kebab for terminal statuses (items inside are disabled)', async () => {
     mockFetch([{ ...CONFIRMED_RESERVATION, status: 'cancelled' }]);
     renderPage();
     await waitFor(() => expect(screen.getByText('Cancelada')).toBeInTheDocument());
-    expect(screen.queryByLabelText('Registrar Check-in')).not.toBeInTheDocument();
-    expect(screen.queryByLabelText('Registrar Check-out')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Más acciones')).toBeInTheDocument();
+  });
+
+  it('enables Check-in in the menu for confirmed reservations', async () => {
+    renderPage();
+    await waitFor(() => expect(screen.getByText('María López')).toBeInTheDocument());
+    fireEvent.click(screen.getByLabelText('Más acciones'));
+    const checkInItem = await screen.findByText('Registrar Check-in');
+    expect(checkInItem.closest('li')).not.toHaveAttribute('aria-disabled', 'true');
+  });
+
+  it('disables Check-in in the menu for non-confirmed reservations', async () => {
+    mockFetch([{ ...CONFIRMED_RESERVATION, status: 'checked_out' }]);
+    renderPage();
+    await waitFor(() => expect(screen.getByText('María López')).toBeInTheDocument());
+    fireEvent.click(screen.getByLabelText('Más acciones'));
+    const checkInItem = await screen.findByText('Registrar Check-in');
+    expect(checkInItem.closest('li')).toHaveAttribute('aria-disabled', 'true');
+  });
+
+  it('enables Check-out in the menu for checked_in reservations', async () => {
+    mockFetch([CHECKED_IN_RESERVATION]);
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Carlos Ruiz')).toBeInTheDocument());
+    fireEvent.click(screen.getByLabelText('Más acciones'));
+    const checkOutItem = await screen.findByText('Registrar Check-out');
+    expect(checkOutItem.closest('li')).not.toHaveAttribute('aria-disabled', 'true');
+  });
+
+  it('disables all destructive menu items for terminal statuses', async () => {
+    mockFetch([{ ...CONFIRMED_RESERVATION, status: 'cancelled' }]);
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Cancelada')).toBeInTheDocument());
+    fireEvent.click(screen.getByLabelText('Más acciones'));
+    const checkIn = await screen.findByText('Registrar Check-in');
+    const checkOut = await screen.findByText('Registrar Check-out');
+    const cancel = await screen.findByText('Cancelar reserva');
+    expect(checkIn.closest('li')).toHaveAttribute('aria-disabled', 'true');
+    expect(checkOut.closest('li')).toHaveAttribute('aria-disabled', 'true');
+    expect(cancel.closest('li')).toHaveAttribute('aria-disabled', 'true');
   });
 
   // ── Check-in flow ──────────────────────────────────────────────────────────
 
-  it('opens confirmation dialog when check-in button is clicked', async () => {
+  it('opens confirmation dialog when Check-in menu item is clicked', async () => {
     renderPage();
     await waitFor(() => expect(screen.getByText('María López')).toBeInTheDocument());
-    fireEvent.click(screen.getByLabelText('Registrar Check-in'));
+    fireEvent.click(screen.getByLabelText('Más acciones'));
+    fireEvent.click(await screen.findByText('Registrar Check-in'));
     await waitFor(() => {
       expect(screen.getByText('Confirmar Check-in')).toBeInTheDocument();
     });
@@ -267,7 +298,8 @@ describe('PropertyReservationsPage', () => {
   it('calls partner-check-in API and shows success snackbar on confirm', async () => {
     renderPage();
     await waitFor(() => expect(screen.getByText('María López')).toBeInTheDocument());
-    fireEvent.click(screen.getByLabelText('Registrar Check-in'));
+    fireEvent.click(screen.getByLabelText('Más acciones'));
+    fireEvent.click(await screen.findByText('Registrar Check-in'));
     await waitFor(() => expect(screen.getByText('Confirmar Check-in')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Registrar Check-in', { selector: 'button' }));
     await waitFor(() => {
@@ -283,7 +315,8 @@ describe('PropertyReservationsPage', () => {
     mockFetch([CONFIRMED_RESERVATION], { checkInFails: true });
     renderPage();
     await waitFor(() => expect(screen.getByText('María López')).toBeInTheDocument());
-    fireEvent.click(screen.getByLabelText('Registrar Check-in'));
+    fireEvent.click(screen.getByLabelText('Más acciones'));
+    fireEvent.click(await screen.findByText('Registrar Check-in'));
     await waitFor(() => expect(screen.getByText('Confirmar Check-in')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Registrar Check-in', { selector: 'button' }));
     await waitFor(() => {
@@ -294,7 +327,8 @@ describe('PropertyReservationsPage', () => {
   it('dismisses dialog without calling API when back button is clicked', async () => {
     renderPage();
     await waitFor(() => expect(screen.getByText('María López')).toBeInTheDocument());
-    fireEvent.click(screen.getByLabelText('Registrar Check-in'));
+    fireEvent.click(screen.getByLabelText('Más acciones'));
+    fireEvent.click(await screen.findByText('Registrar Check-in'));
     await waitFor(() => expect(screen.getByText('Confirmar Check-in')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Regresar'));
     expect(screen.queryByText('Confirmar Check-in')).not.toBeInTheDocument();
@@ -349,7 +383,8 @@ describe('PropertyReservationsPage', () => {
     mockFetch([CHECKED_IN_RESERVATION]);
     renderPage();
     await waitFor(() => expect(screen.getByText('Carlos Ruiz')).toBeInTheDocument());
-    fireEvent.click(screen.getByLabelText('Registrar Check-out'));
+    fireEvent.click(screen.getByLabelText('Más acciones'));
+    fireEvent.click(await screen.findByText('Registrar Check-out'));
     await waitFor(() => expect(screen.getByText('Confirmar Check-out')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Registrar Check-out', { selector: 'button' }));
     await waitFor(() => {
@@ -407,12 +442,13 @@ describe('PropertyReservationsPage', () => {
     expect(screen.getByText('Cancelar reserva')).toBeInTheDocument();
   });
 
-  // ── Pagination label ───────────────────────────────────────────────────────
+  // ── Pagination control ─────────────────────────────────────────────────────
 
-  it('shows pagination label when reservations are present', async () => {
+  it('renders the pagination control when reservations are present', async () => {
     renderPage();
     await waitFor(() => expect(screen.getByText('María López')).toBeInTheDocument());
-    expect(screen.getByText('1–1 de 1')).toBeInTheDocument();
+    // MUI Pagination renders a nav element with a default "pagination navigation" label.
+    expect(screen.getByRole('navigation', { name: /pagination/i })).toBeInTheDocument();
   });
 
   // ── Status filter dropdown ─────────────────────────────────────────────────
@@ -429,5 +465,41 @@ describe('PropertyReservationsPage', () => {
     fireEvent.click(option);
     await waitFor(() => expect(screen.queryByText('María López')).not.toBeInTheDocument());
     expect(screen.getByText('Carlos Ruiz')).toBeInTheDocument();
+  });
+
+  // ── No-show flow ───────────────────────────────────────────────────────────
+
+  it('enables No-show menu item when check_in is in the past', async () => {
+    // Use a checkIn that is definitely in the past (2020).
+    mockFetch([{ ...CONFIRMED_RESERVATION, checkIn: '2020-01-01' }]);
+    renderPage();
+    await waitFor(() => expect(screen.getByText('María López')).toBeInTheDocument());
+    fireEvent.click(screen.getByLabelText('Más acciones'));
+    const noShow = await screen.findByText('Marcar no-show');
+    expect(noShow.closest('li')).not.toHaveAttribute('aria-disabled', 'true');
+  });
+
+  it('disables No-show when check_in is in the future', async () => {
+    mockFetch([{ ...CONFIRMED_RESERVATION, checkIn: '2099-01-01' }]);
+    renderPage();
+    await waitFor(() => expect(screen.getByText('María López')).toBeInTheDocument());
+    fireEvent.click(screen.getByLabelText('Más acciones'));
+    const noShow = await screen.findByText('Marcar no-show');
+    expect(noShow.closest('li')).toHaveAttribute('aria-disabled', 'true');
+  });
+
+  it('search input shows empty-filter message when no rows match', async () => {
+    renderPage();
+    await waitFor(() => expect(screen.getByText('María López')).toBeInTheDocument());
+    fireEvent.change(screen.getByPlaceholderText('Buscar por # reserva o huésped'), { target: { value: 'zzzz' } });
+    expect(screen.getByText('No hay reservaciones que coincidan con los filtros.')).toBeInTheDocument();
+  });
+
+  it('renders error alert if the API fails', async () => {
+    mockFetch([], { ok: false });
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByText('No se pudieron cargar las métricas. Inténtalo más tarde.')).toBeInTheDocument();
+    });
   });
 });

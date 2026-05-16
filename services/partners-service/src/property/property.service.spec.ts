@@ -403,4 +403,275 @@ describe("PropertyService", () => {
       ).rejects.toThrow(NotFoundException);
     });
   });
+
+  describe("getRoomDetail", () => {
+    it("maps an inventory room to RoomDetail", async () => {
+      const room = {
+        id: "room-1",
+        propertyId: "prop-1",
+        roomType: "deluxe",
+        bedType: "king",
+        viewType: "ocean",
+        capacity: 2,
+        totalRooms: 5,
+        basePriceUsd: "150.5",
+        status: "active",
+      };
+      const inv = {
+        getRoomById: jest.fn().mockResolvedValue(room),
+      } as unknown as InventoryClientService;
+      const svc = makeSvc(makeBookingClient([]), inv);
+      const result = await svc.getRoomDetail("room-1");
+      expect(result).toEqual({
+        id: "room-1",
+        propertyId: "prop-1",
+        roomType: "deluxe",
+        bedType: "king",
+        viewType: "ocean",
+        capacity: 2,
+        totalRooms: 5,
+        basePriceUsd: 150.5,
+        status: "active",
+      });
+    });
+
+    it("returns null when the inventory client returns null", async () => {
+      const inv = {
+        getRoomById: jest.fn().mockResolvedValue(null),
+      } as unknown as InventoryClientService;
+      const svc = makeSvc(makeBookingClient([]), inv);
+      expect(await svc.getRoomDetail("missing")).toBeNull();
+    });
+  });
+
+  describe("getRoomAvailability", () => {
+    it("delegates to the inventory client", async () => {
+      const days = [
+        {
+          date: "2026-05-01",
+          totalRooms: 5,
+          reservedRooms: 1,
+          heldRooms: 0,
+          blocked: false,
+          available: true,
+        },
+      ];
+      const getRoomAvailability = jest.fn().mockResolvedValue(days);
+      const inv = {
+        getRoomAvailability,
+      } as unknown as InventoryClientService;
+      const svc = makeSvc(makeBookingClient([]), inv);
+      const result = await svc.getRoomAvailability(
+        "room-1",
+        "2026-05-01",
+        "2026-05-31",
+      );
+      expect(result).toEqual(days);
+      expect(getRoomAvailability).toHaveBeenCalledWith(
+        "room-1",
+        "2026-05-01",
+        "2026-05-31",
+      );
+    });
+  });
+
+  describe("getRoomRates", () => {
+    it("maps inventory rates to RoomRatePeriod", async () => {
+      const periods = [
+        {
+          id: "rate-1",
+          roomId: "room-1",
+          fromDate: "2026-05-01",
+          toDate: "2026-05-31",
+          priceUsd: "120.0",
+          currency: "USD",
+          createdAt: "2026-01-01",
+        },
+      ];
+      const inv = {
+        getRoomRates: jest.fn().mockResolvedValue(periods),
+      } as unknown as InventoryClientService;
+      const svc = makeSvc(makeBookingClient([]), inv);
+      const result = await svc.getRoomRates(
+        "room-1",
+        "prop-1",
+        "2026-05-01",
+        "2026-05-31",
+      );
+      expect(result).toEqual([
+        {
+          id: "rate-1",
+          roomId: "room-1",
+          fromDate: "2026-05-01",
+          toDate: "2026-05-31",
+          priceUsd: 120,
+          currency: "USD",
+          createdAt: "2026-01-01",
+        },
+      ]);
+    });
+  });
+
+  describe("blockRoomDates / unblockRoomDates", () => {
+    it("delegates blockRoomDates to the inventory client", async () => {
+      const blockRoomDates = jest.fn().mockResolvedValue(undefined);
+      const inv = {
+        blockRoomDates,
+      } as unknown as InventoryClientService;
+      const svc = makeSvc(makeBookingClient([]), inv);
+      await svc.blockRoomDates("room-1", "2026-05-01", "2026-05-05");
+      expect(blockRoomDates).toHaveBeenCalledWith(
+        "room-1",
+        "2026-05-01",
+        "2026-05-05",
+      );
+    });
+
+    it("delegates unblockRoomDates to the inventory client", async () => {
+      const unblockRoomDates = jest.fn().mockResolvedValue(undefined);
+      const inv = {
+        unblockRoomDates,
+      } as unknown as InventoryClientService;
+      const svc = makeSvc(makeBookingClient([]), inv);
+      await svc.unblockRoomDates("room-1", "2026-05-01", "2026-05-05");
+      expect(unblockRoomDates).toHaveBeenCalledWith(
+        "room-1",
+        "2026-05-01",
+        "2026-05-05",
+      );
+    });
+  });
+
+  describe("createRoomRate", () => {
+    it("delegates to the inventory client", async () => {
+      const createRoomRate = jest.fn().mockResolvedValue({
+        id: "rate-1",
+        roomId: "room-1",
+        fromDate: "2026-05-01",
+        toDate: "2026-05-31",
+        priceUsd: "150",
+        currency: "USD",
+        createdAt: "2026-05-01",
+      });
+      const inv = {
+        createRoomRate,
+      } as unknown as InventoryClientService;
+      const svc = makeSvc(makeBookingClient([]), inv);
+      await svc.createRoomRate("room-1", "2026-05-01", "2026-05-31", 150);
+      expect(createRoomRate).toHaveBeenCalledWith(
+        "room-1",
+        "2026-05-01",
+        "2026-05-31",
+        150,
+      );
+    });
+  });
+
+  describe("getPropertyRooms", () => {
+    it("returns rows with computed occupancy rate", async () => {
+      const room = {
+        id: "room-1",
+        propertyId: "prop-A",
+        roomType: "deluxe",
+        bedType: "king",
+        viewType: "ocean",
+        capacity: 2,
+        totalRooms: 1,
+        basePriceUsd: "100",
+        status: "active",
+      };
+      const reservations: ReservationDto[] = [
+        makeReservation({
+          id: "r1",
+          propertyId: "prop-A",
+          roomId: "room-1",
+          status: "confirmed",
+          checkIn: "2026-03-01",
+          checkOut: "2026-03-04",
+        }),
+      ];
+      const inv = {
+        listRoomsByProperty: jest.fn().mockResolvedValue([room]),
+      } as unknown as InventoryClientService;
+      const svc = makeSvc(makeBookingClient(reservations), inv);
+      const result = await svc.getPropertyRooms(
+        "partner-1",
+        "prop-A",
+        "2026-03",
+      );
+      expect(result.rooms).toHaveLength(1);
+      expect(result.rooms[0].roomId).toBe("room-1");
+      expect(result.rooms[0].occupancyRate).toBeGreaterThan(0);
+    });
+
+    it("clamps occupancy rate to 1 when nights exceed days in month", async () => {
+      // capacity is irrelevant: occupancy is computed as occupied/days.
+      const room = {
+        id: "room-1",
+        propertyId: "prop-A",
+        roomType: "deluxe",
+        bedType: "king",
+        viewType: "ocean",
+        capacity: 2,
+        totalRooms: 1,
+        basePriceUsd: "100",
+        status: "active",
+      };
+      // Reservation spanning the whole month
+      const reservations: ReservationDto[] = [
+        makeReservation({
+          id: "r1",
+          propertyId: "prop-A",
+          roomId: "room-1",
+          status: "confirmed",
+          checkIn: "2026-03-01",
+          checkOut: "2026-04-30",
+        }),
+      ];
+      const inv = {
+        listRoomsByProperty: jest.fn().mockResolvedValue([room]),
+      } as unknown as InventoryClientService;
+      const svc = makeSvc(makeBookingClient(reservations), inv);
+      const result = await svc.getPropertyRooms(
+        "partner-1",
+        "prop-A",
+        "2026-03",
+      );
+      expect(result.rooms[0].occupancyRate).toBeLessThanOrEqual(1);
+    });
+
+    it("returns occupancy=0 when no revenue-status reservations match the room", async () => {
+      const room = {
+        id: "room-1",
+        propertyId: "prop-A",
+        roomType: "deluxe",
+        bedType: "king",
+        viewType: "ocean",
+        capacity: 2,
+        totalRooms: 1,
+        basePriceUsd: "100",
+        status: "active",
+      };
+      const reservations: ReservationDto[] = [
+        makeReservation({
+          id: "r1",
+          propertyId: "prop-A",
+          roomId: "room-1",
+          status: "cancelled",
+          checkIn: "2026-03-01",
+          checkOut: "2026-03-04",
+        }),
+      ];
+      const inv = {
+        listRoomsByProperty: jest.fn().mockResolvedValue([room]),
+      } as unknown as InventoryClientService;
+      const svc = makeSvc(makeBookingClient(reservations), inv);
+      const result = await svc.getPropertyRooms(
+        "partner-1",
+        "prop-A",
+        "2026-03",
+      );
+      expect(result.rooms[0].occupancyRate).toBe(0);
+    });
+  });
 });
