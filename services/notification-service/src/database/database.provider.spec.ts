@@ -67,4 +67,17 @@ describe("DatabaseProvider", () => {
 
     expect(poolInstance.end).toHaveBeenCalled();
   });
+
+  it("defaults connectionString to '' when DATABASE_URL is undefined", () => {
+    delete process.env.DATABASE_URL;
+    new DatabaseProvider();
+
+    // Empty connection string does NOT include 'localhost', so non-localhost ssl branch is taken
+    expect(Pool).toHaveBeenCalledWith(
+      expect.objectContaining({
+        connectionString: "",
+        ssl: { rejectUnauthorized: false },
+      }),
+    );
+  });
 });

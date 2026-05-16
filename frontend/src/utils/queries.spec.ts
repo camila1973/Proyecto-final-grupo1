@@ -10,6 +10,7 @@ import {
   fetchPaymentStatus,
   fetchReservationById,
   fetchMyReservations,
+  hasHeldReservation,
   cancelReservation,
   fetchRefundQuote,
   fetchReservationDetail,
@@ -19,6 +20,37 @@ import {
   downloadCheckinPdf,
   partnerCheckIn,
   partnerCheckOut,
+  partnerNoShow,
+  fetchPartnerMetrics,
+  fetchPropertyMetrics,
+  fetchPropertyReservations,
+  fetchPartnerPayments,
+  fetchPartnerDisbursements,
+  fetchPartnerProperties,
+  fetchPartnerProperty,
+  fetchPartnerMembers,
+  fetchPartnerPropertyRooms,
+  fetchPartnerRoomById,
+  fetchPartnerRoomAvailability,
+  fetchPartnerRoomRates,
+  blockPartnerRoomDates,
+  unblockPartnerRoomDates,
+  createPartnerRoomRate,
+  updatePartnerRoomRate,
+  deletePartnerRoomRate,
+  fetchInventoryProperty,
+  updateInventoryProperty,
+  fetchTaxRulesByCountry,
+  fetchPartnerFees,
+  fetchPartnerCommission,
+  createPartnerFee,
+  updatePartnerFee,
+  deletePartnerFee,
+  fetchPartner,
+  registerPartner,
+  downloadPartnerPayments,
+  downloadPropertyPayments,
+  downloadPartnerDisbursements,
 } from './queries';
 
 function mockOk(data: unknown) {
@@ -620,6 +652,60 @@ describe('queries', () => {
     });
   });
 
+  // ─── hasHeldReservation ─────────────────────────────────────────────────────
+
+  describe('hasHeldReservation', () => {
+    it('returns true when any reservation is held', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(
+        mockOk({ reservations: [{ id: 'r1', status: 'held' }] }),
+      );
+      await expect(hasHeldReservation('tok', 'u1')).resolves.toBe(true);
+    });
+
+    it('returns false when no reservations are held', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(
+        mockOk({ reservations: [{ id: 'r1', status: 'confirmed' }] }),
+      );
+      await expect(hasHeldReservation('tok', 'u1')).resolves.toBe(false);
+    });
+
+    it('returns false when fetch throws', async () => {
+      (global.fetch as jest.Mock).mockRejectedValue(new Error('boom'));
+      await expect(hasHeldReservation('tok', 'u1')).resolves.toBe(false);
+    });
+  });
+
+  // ─── partnerNoShow ──────────────────────────────────────────────────────────
+
+  describe('partnerNoShow', () => {
+    it('sends a PATCH to /no-show', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({ ok: true, json: jest.fn() });
+      await partnerNoShow('res-1', 'tok');
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/reservations/res-1/no-show'),
+        expect.objectContaining({ method: 'PATCH' }),
+      );
+    });
+
+    it('throws server message on failure', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: false,
+        status: 400,
+        json: jest.fn().mockResolvedValue({ message: 'Not eligible' }),
+      });
+      await expect(partnerNoShow('res-1', 'tok')).rejects.toThrow('Not eligible');
+    });
+
+    it('falls back to HTTP status when no message', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: false,
+        status: 500,
+        json: jest.fn().mockResolvedValue({}),
+      });
+      await expect(partnerNoShow('res-1', 'tok')).rejects.toThrow('HTTP 500');
+    });
+  });
+
   // ─── partnerCheckOut ────────────────────────────────────────────────────────
 
   describe('partnerCheckOut', () => {
@@ -658,6 +744,557 @@ describe('queries', () => {
         json: jest.fn().mockResolvedValue({}),
       });
       await expect(partnerCheckOut('res-1', 'tok')).rejects.toThrow('HTTP 500');
+    });
+  });
+
+  // ─── Partner Dashboard endpoints ────────────────────────────────────────────
+
+  describe('fetchPartnerMetrics', () => {
+    it('returns metrics on success without roomType', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockOk({ partnerId: 'p', month: '2026-05' }));
+      const data = await fetchPartnerMetrics('p', '2026-05', null, 'tok');
+      expect(data).toEqual({ partnerId: 'p', month: '2026-05' });
+      const url = (global.fetch as jest.Mock).mock.calls[0][0] as string;
+      expect(url).toContain('month=2026-05');
+      expect(url).not.toContain('roomType=');
+    });
+
+    it('includes roomType when provided', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockOk({}));
+      await fetchPartnerMetrics('p', '2026-05', 'suite', 'tok');
+      const url = (global.fetch as jest.Mock).mock.calls[0][0] as string;
+      expect(url).toContain('roomType=suite');
+    });
+
+    it('throws on error', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockFail(401));
+      await expect(fetchPartnerMetrics('p', 'm', null, 'tok')).rejects.toThrow('HTTP 401');
+    });
+  });
+
+  describe('fetchPropertyMetrics', () => {
+    it('hits the property-scoped metrics endpoint', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockOk({}));
+      await fetchPropertyMetrics('p', 'prop', '2026-05', null, 'tok');
+      const url = (global.fetch as jest.Mock).mock.calls[0][0] as string;
+      expect(url).toContain('/partners/p/properties/prop/metrics');
+    });
+
+    it('appends roomType when provided', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockOk({}));
+      await fetchPropertyMetrics('p', 'prop', '2026-05', 'suite', 'tok');
+      const url = (global.fetch as jest.Mock).mock.calls[0][0] as string;
+      expect(url).toContain('roomType=suite');
+    });
+
+    it('throws on error', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockFail(404));
+      await expect(fetchPropertyMetrics('p', 'prop', 'm', null, 'tok')).rejects.toThrow('HTTP 404');
+    });
+  });
+
+  describe('fetchPropertyReservations', () => {
+    it('returns the reservations payload', async () => {
+      const body = { partnerId: 'p', propertyId: 'prop', month: 'm', reservations: [] };
+      (global.fetch as jest.Mock).mockResolvedValue(mockOk(body));
+      await expect(fetchPropertyReservations('p', 'prop', 'm', null, 'tok')).resolves.toEqual(body);
+    });
+
+    it('includes roomType param when provided', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockOk({}));
+      await fetchPropertyReservations('p', 'prop', 'm', 'suite', 'tok');
+      const url = (global.fetch as jest.Mock).mock.calls[0][0] as string;
+      expect(url).toContain('roomType=suite');
+    });
+
+    it('throws on error', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockFail(403));
+      await expect(fetchPropertyReservations('p', 'prop', 'm', null, 'tok')).rejects.toThrow('HTTP 403');
+    });
+  });
+
+  describe('fetchPartnerPayments', () => {
+    it('returns payments payload and forwards all query params', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockOk({ rows: [] }));
+      await fetchPartnerPayments('p', 'prop', '2026-05-01', '2026-06-01', 2, 25, 'tok');
+      const url = (global.fetch as jest.Mock).mock.calls[0][0] as string;
+      expect(url).toContain('/partners/p/properties/prop/payments');
+      expect(url).toContain('from=2026-05-01');
+      expect(url).toContain('to=2026-06-01');
+      expect(url).toContain('page=2');
+      expect(url).toContain('pageSize=25');
+    });
+
+    it('throws on error', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockFail(500));
+      await expect(
+        fetchPartnerPayments('p', 'prop', '2026-05-01', '2026-06-01', 1, 20, 'tok'),
+      ).rejects.toThrow('HTTP 500');
+    });
+  });
+
+  describe('fetchPartnerDisbursements', () => {
+    it('returns disbursements without propertyId query', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockOk({ months: [] }));
+      await fetchPartnerDisbursements('p', '2026-01-01', '2026-12-31', 'tok');
+      const url = (global.fetch as jest.Mock).mock.calls[0][0] as string;
+      expect(url).toContain('from=2026-01-01');
+      expect(url).toContain('to=2026-12-31');
+      expect(url).not.toContain('propertyId=');
+    });
+
+    it('includes propertyId when provided', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockOk({ months: [] }));
+      await fetchPartnerDisbursements('p', 'a', 'b', 'tok', 'prop-abc');
+      const url = (global.fetch as jest.Mock).mock.calls[0][0] as string;
+      expect(url).toContain('propertyId=prop-abc');
+    });
+
+    it('throws on error', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockFail(401));
+      await expect(fetchPartnerDisbursements('p', 'a', 'b', 'tok')).rejects.toThrow('HTTP 401');
+    });
+  });
+
+  describe('fetchPartnerProperties', () => {
+    it('returns the properties list', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockOk({ partnerId: 'p', properties: [] }));
+      await expect(fetchPartnerProperties('p', 'tok')).resolves.toEqual({ partnerId: 'p', properties: [] });
+    });
+
+    it('throws on error', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockFail(404));
+      await expect(fetchPartnerProperties('p', 'tok')).rejects.toThrow('HTTP 404');
+    });
+  });
+
+  describe('fetchPartnerProperty', () => {
+    it('returns the property summary', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockOk({ propertyId: 'prop' }));
+      await expect(fetchPartnerProperty('p', 'prop', 'tok')).resolves.toEqual({ propertyId: 'prop' });
+    });
+
+    it('throws on error', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockFail(404));
+      await expect(fetchPartnerProperty('p', 'prop', 'tok')).rejects.toThrow('HTTP 404');
+    });
+  });
+
+  describe('fetchPartnerMembers', () => {
+    it('returns the members list', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockOk([{ id: 'm1' }]));
+      await expect(fetchPartnerMembers('p', 'tok')).resolves.toEqual([{ id: 'm1' }]);
+    });
+
+    it('throws on error', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockFail(403));
+      await expect(fetchPartnerMembers('p', 'tok')).rejects.toThrow('HTTP 403');
+    });
+  });
+
+  describe('fetchPartnerPropertyRooms', () => {
+    it('returns rooms payload', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockOk({ rooms: [] }));
+      await fetchPartnerPropertyRooms('p', 'prop', 'tok');
+      const url = (global.fetch as jest.Mock).mock.calls[0][0] as string;
+      expect(url).toContain('/partners/p/properties/prop/rooms');
+    });
+
+    it('throws on error', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockFail(500));
+      await expect(fetchPartnerPropertyRooms('p', 'prop', 'tok')).rejects.toThrow('HTTP 500');
+    });
+  });
+
+  // ─── Room Detail endpoints ──────────────────────────────────────────────────
+
+  describe('fetchPartnerRoomById', () => {
+    it('returns room detail', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockOk({ id: 'r1' }));
+      await expect(fetchPartnerRoomById('p', 'prop', 'r1', 'tok')).resolves.toEqual({ id: 'r1' });
+    });
+
+    it('throws on error', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockFail(404));
+      await expect(fetchPartnerRoomById('p', 'prop', 'r1', 'tok')).rejects.toThrow('HTTP 404');
+    });
+  });
+
+  describe('fetchPartnerRoomAvailability', () => {
+    it('returns the array form of availability', async () => {
+      const days = [{ date: '2026-05-01', available: true }];
+      (global.fetch as jest.Mock).mockResolvedValue(mockOk(days));
+      await expect(
+        fetchPartnerRoomAvailability('p', 'prop', 'r1', '2026-05-01', '2026-06-01', 'tok'),
+      ).resolves.toEqual(days);
+    });
+
+    it('returns days property if response is wrapped', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockOk({ days: [{ date: 'x' }] }));
+      const out = await fetchPartnerRoomAvailability('p', 'prop', 'r1', 'a', 'b', 'tok');
+      expect(out).toEqual([{ date: 'x' }]);
+    });
+
+    it('returns [] when neither array nor days key is present', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockOk({}));
+      const out = await fetchPartnerRoomAvailability('p', 'prop', 'r1', 'a', 'b', 'tok');
+      expect(out).toEqual([]);
+    });
+
+    it('throws on error', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockFail(500));
+      await expect(
+        fetchPartnerRoomAvailability('p', 'prop', 'r1', 'a', 'b', 'tok'),
+      ).rejects.toThrow('HTTP 500');
+    });
+  });
+
+  describe('fetchPartnerRoomRates', () => {
+    it('returns the array form of rates', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockOk([{ id: 'r' }]));
+      await expect(fetchPartnerRoomRates('p', 'prop', 'r1', 'a', 'b', 'tok')).resolves.toEqual([{ id: 'r' }]);
+    });
+
+    it('returns rates property when wrapped', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockOk({ rates: [{ id: 'r' }] }));
+      await expect(fetchPartnerRoomRates('p', 'prop', 'r1', 'a', 'b', 'tok')).resolves.toEqual([{ id: 'r' }]);
+    });
+
+    it('returns [] when key is absent', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockOk({}));
+      await expect(fetchPartnerRoomRates('p', 'prop', 'r1', 'a', 'b', 'tok')).resolves.toEqual([]);
+    });
+
+    it('throws on error', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockFail(500));
+      await expect(fetchPartnerRoomRates('p', 'prop', 'r1', 'a', 'b', 'tok')).rejects.toThrow('HTTP 500');
+    });
+  });
+
+  describe('blockPartnerRoomDates', () => {
+    it('POSTs the block payload', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({ ok: true });
+      await blockPartnerRoomDates('p', 'prop', 'r1', '2026-05-01', '2026-05-04', 'tok');
+      const [url, init] = (global.fetch as jest.Mock).mock.calls[0];
+      expect(url).toContain('/rooms/r1/block');
+      expect(init.method).toBe('POST');
+      expect(init.body).toBe(JSON.stringify({ fromDate: '2026-05-01', toDate: '2026-05-04' }));
+    });
+
+    it('throws on error', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockFail(409));
+      await expect(blockPartnerRoomDates('p', 'prop', 'r1', 'a', 'b', 'tok')).rejects.toThrow('HTTP 409');
+    });
+  });
+
+  describe('unblockPartnerRoomDates', () => {
+    it('POSTs to /unblock', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({ ok: true });
+      await unblockPartnerRoomDates('p', 'prop', 'r1', 'a', 'b', 'tok');
+      const [url] = (global.fetch as jest.Mock).mock.calls[0];
+      expect(url).toContain('/rooms/r1/unblock');
+    });
+
+    it('throws on error', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockFail(500));
+      await expect(unblockPartnerRoomDates('p', 'prop', 'r1', 'a', 'b', 'tok')).rejects.toThrow('HTTP 500');
+    });
+  });
+
+  describe('createPartnerRoomRate', () => {
+    it('POSTs to /rates', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({ ok: true });
+      await createPartnerRoomRate('p', 'prop', 'r1', '2026-05-01', '2026-05-05', 200, 'tok');
+      const [url, init] = (global.fetch as jest.Mock).mock.calls[0];
+      expect(url).toContain('/rooms/r1/rates');
+      expect(init.method).toBe('POST');
+      expect(JSON.parse(init.body).priceUsd).toBe(200);
+    });
+
+    it('throws on error', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockFail(400));
+      await expect(createPartnerRoomRate('p', 'prop', 'r1', 'a', 'b', 100, 'tok')).rejects.toThrow('HTTP 400');
+    });
+  });
+
+  describe('updatePartnerRoomRate', () => {
+    it('PUTs to /rates/:id', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({ ok: true });
+      await updatePartnerRoomRate('p', 'prop', 'r1', 'rate-1', 'a', 'b', 99, 'tok');
+      const [url, init] = (global.fetch as jest.Mock).mock.calls[0];
+      expect(url).toContain('/rooms/r1/rates/rate-1');
+      expect(init.method).toBe('PUT');
+    });
+
+    it('throws on error', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockFail(500));
+      await expect(updatePartnerRoomRate('p', 'prop', 'r1', 'rate-1', 'a', 'b', 99, 'tok')).rejects.toThrow('HTTP 500');
+    });
+  });
+
+  describe('deletePartnerRoomRate', () => {
+    it('DELETEs the rate', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({ ok: true });
+      await deletePartnerRoomRate('p', 'prop', 'r1', 'rate-1', 'tok');
+      const [url, init] = (global.fetch as jest.Mock).mock.calls[0];
+      expect(url).toContain('/rooms/r1/rates/rate-1');
+      expect(init.method).toBe('DELETE');
+    });
+
+    it('throws on error', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockFail(403));
+      await expect(deletePartnerRoomRate('p', 'prop', 'r1', 'rate-1', 'tok')).rejects.toThrow('HTTP 403');
+    });
+  });
+
+  // ─── Inventory · Property ───────────────────────────────────────────────────
+
+  describe('fetchInventoryProperty', () => {
+    it('returns the property record', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockOk({ id: 'p' }));
+      await expect(fetchInventoryProperty('p', 'tok')).resolves.toEqual({ id: 'p' });
+    });
+
+    it('throws on error', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockFail(404));
+      await expect(fetchInventoryProperty('p', 'tok')).rejects.toThrow('HTTP 404');
+    });
+  });
+
+  describe('updateInventoryProperty', () => {
+    it('PATCHes the inventory property', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockOk({ id: 'p', name: 'New' }));
+      const out = await updateInventoryProperty('p', { name: 'New' }, 'tok');
+      expect(out).toEqual({ id: 'p', name: 'New' });
+      const [, init] = (global.fetch as jest.Mock).mock.calls[0];
+      expect(init.method).toBe('PATCH');
+    });
+
+    it('throws on error', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockFail(409));
+      await expect(updateInventoryProperty('p', {}, 'tok')).rejects.toThrow('HTTP 409');
+    });
+  });
+
+  // ─── Tax rules / Fees / Commission ──────────────────────────────────────────
+
+  describe('fetchTaxRulesByCountry', () => {
+    it('returns the rules array', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockOk([{ id: 't' }]));
+      await expect(fetchTaxRulesByCountry('CO', 'tok')).resolves.toEqual([{ id: 't' }]);
+    });
+
+    it('throws on error', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockFail(401));
+      await expect(fetchTaxRulesByCountry('CO', 'tok')).rejects.toThrow('HTTP 401');
+    });
+  });
+
+  describe('fetchPartnerFees', () => {
+    it('returns fees and forwards partnerId', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockOk([{ id: 'f' }]));
+      await fetchPartnerFees('p', 'tok');
+      const url = (global.fetch as jest.Mock).mock.calls[0][0] as string;
+      expect(url).toContain('partnerId=p');
+    });
+
+    it('throws on error', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockFail(500));
+      await expect(fetchPartnerFees('p', 'tok')).rejects.toThrow('HTTP 500');
+    });
+  });
+
+  describe('fetchPartnerCommission', () => {
+    it('returns commission rate', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockOk({ partnerId: 'p', ratePct: 20 }));
+      await expect(fetchPartnerCommission('p', 'tok')).resolves.toEqual({ partnerId: 'p', ratePct: 20 });
+    });
+
+    it('throws on error', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockFail(500));
+      await expect(fetchPartnerCommission('p', 'tok')).rejects.toThrow('HTTP 500');
+    });
+  });
+
+  describe('createPartnerFee', () => {
+    it('POSTs to /fees', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockOk({ id: 'f' }));
+      await createPartnerFee(
+        { partnerId: 'p', feeName: 'Cleaning', feeType: 'FLAT_PER_STAY', effectiveFrom: '2026-01-01' },
+        'tok',
+      );
+      const [url, init] = (global.fetch as jest.Mock).mock.calls[0];
+      expect(url).toContain('/partners/fees');
+      expect(init.method).toBe('POST');
+    });
+
+    it('throws on error', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockFail(400));
+      await expect(
+        createPartnerFee(
+          { partnerId: 'p', feeName: 'x', feeType: 'PERCENTAGE', effectiveFrom: 'a' },
+          'tok',
+        ),
+      ).rejects.toThrow('HTTP 400');
+    });
+  });
+
+  describe('updatePartnerFee', () => {
+    it('PUTs to /fees/:id', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockOk({ id: 'f' }));
+      await updatePartnerFee(
+        'f1',
+        { partnerId: 'p', feeName: 'x', feeType: 'PERCENTAGE', effectiveFrom: 'a' },
+        'tok',
+      );
+      const [url, init] = (global.fetch as jest.Mock).mock.calls[0];
+      expect(url).toContain('/partners/fees/f1');
+      expect(init.method).toBe('PUT');
+    });
+
+    it('throws on error', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockFail(404));
+      await expect(
+        updatePartnerFee(
+          'f1',
+          { partnerId: 'p', feeName: 'x', feeType: 'PERCENTAGE', effectiveFrom: 'a' },
+          'tok',
+        ),
+      ).rejects.toThrow('HTTP 404');
+    });
+  });
+
+  describe('deletePartnerFee', () => {
+    it('DELETEs the fee', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({ ok: true });
+      await deletePartnerFee('f1', 'tok');
+      const [url, init] = (global.fetch as jest.Mock).mock.calls[0];
+      expect(url).toContain('/partners/fees/f1');
+      expect(init.method).toBe('DELETE');
+    });
+
+    it('throws on error', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockFail(403));
+      await expect(deletePartnerFee('f1', 'tok')).rejects.toThrow('HTTP 403');
+    });
+  });
+
+  // ─── Partner registration ───────────────────────────────────────────────────
+
+  describe('fetchPartner', () => {
+    it('returns the partner record', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockOk({ id: 'p', name: 'X' }));
+      await expect(fetchPartner('p', 'tok')).resolves.toEqual({ id: 'p', name: 'X' });
+    });
+
+    it('throws on error', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockFail(404));
+      await expect(fetchPartner('p', 'tok')).rejects.toThrow('HTTP 404');
+    });
+  });
+
+  describe('registerPartner', () => {
+    const PARAMS = {
+      orgName: 'Org',
+      slug: 'org',
+      firstName: 'A',
+      lastName: 'B',
+      ownerEmail: 'a@b.com',
+      ownerPassword: 'pw',
+    };
+
+    it('returns the registration payload', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(
+        mockOk({ partner: { id: 'p' }, challengeId: 'ch-1' }),
+      );
+      const out = await registerPartner(PARAMS);
+      expect(out.challengeId).toBe('ch-1');
+    });
+
+    it('throws an enriched error with status and body on failure', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: false,
+        status: 409,
+        json: jest.fn().mockResolvedValue({ message: 'Slug exists' }),
+      });
+      await expect(registerPartner(PARAMS)).rejects.toMatchObject({
+        message: 'Slug exists',
+        status: 409,
+      });
+    });
+
+    it('falls back to HTTP status when body has no message', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: false,
+        status: 500,
+        json: jest.fn().mockResolvedValue({}),
+      });
+      await expect(registerPartner(PARAMS)).rejects.toThrow('HTTP 500');
+    });
+  });
+
+  // ─── downloadBlob-based exports ─────────────────────────────────────────────
+
+  describe('downloadPartnerPayments / downloadPropertyPayments / downloadPartnerDisbursements', () => {
+    let clickSpy: jest.Mock;
+
+    beforeEach(() => {
+      global.URL.createObjectURL = jest.fn().mockReturnValue('blob:fake');
+      global.URL.revokeObjectURL = jest.fn();
+      clickSpy = jest.fn();
+      jest.spyOn(document, 'createElement').mockReturnValue({
+        href: '',
+        download: '',
+        click: clickSpy,
+      } as unknown as HTMLElement);
+    });
+
+    afterEach(() => {
+      (document.createElement as unknown as jest.SpyInstance).mockRestore?.();
+    });
+
+    it('downloadPartnerPayments fires a download from the partner-level URL', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        blob: jest.fn().mockResolvedValue(new Blob(['x'])),
+        headers: { get: () => null },
+      });
+      await downloadPartnerPayments('p', 'pdf', '2026-05-01', '2026-06-01', 'tok', 'es');
+      const url = (global.fetch as jest.Mock).mock.calls[0][0] as string;
+      expect(url).toContain('/partners/p/payments');
+      expect(url).toContain('format=pdf');
+      expect(clickSpy).toHaveBeenCalled();
+    });
+
+    it('downloadPartnerPayments throws on error', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockFail(500));
+      await expect(
+        downloadPartnerPayments('p', 'csv', 'a', 'b', 'tok', 'es'),
+      ).rejects.toThrow('HTTP 500');
+    });
+
+    it('downloadPropertyPayments uses the property-scoped URL', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        blob: jest.fn().mockResolvedValue(new Blob(['x'])),
+        headers: { get: () => 'attachment; filename="payments.csv"' },
+      });
+      await downloadPropertyPayments('p', 'prop', 'csv', 'a', 'b', 'tok', 'es');
+      const url = (global.fetch as jest.Mock).mock.calls[0][0] as string;
+      expect(url).toContain('/partners/p/properties/prop/payments');
+      expect(clickSpy).toHaveBeenCalled();
+    });
+
+    it('downloadPartnerDisbursements uses the disbursements URL', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        blob: jest.fn().mockResolvedValue(new Blob(['x'])),
+        headers: { get: () => null },
+      });
+      await downloadPartnerDisbursements('p', 'pdf', 'a', 'b', 'tok', 'es');
+      const url = (global.fetch as jest.Mock).mock.calls[0][0] as string;
+      expect(url).toContain('/partners/p/disbursements');
+      expect(clickSpy).toHaveBeenCalled();
     });
   });
 });

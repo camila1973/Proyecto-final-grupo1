@@ -37,4 +37,18 @@ describe("booking-checked-out template", () => {
   it("returns null when guest has no email", () => {
     expect(render(makeEvent({ guestInfo: null }))).toBeNull();
   });
+
+  it("falls back to 'huésped' when firstName is empty/whitespace", () => {
+    const result = render(
+      makeEvent({
+        guestInfo: {
+          firstName: "   ",
+          lastName: "García",
+          email: "ana@example.com",
+        },
+      }),
+    );
+    expect(result?.body).toContain("huésped");
+    expect(result?.body).not.toContain("Ana");
+  });
 });

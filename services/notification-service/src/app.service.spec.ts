@@ -184,6 +184,31 @@ describe("AppService", () => {
       );
       loggerSpy.mockRestore();
     });
+
+    it("logs String(err) when sendEmail rejects with a non-Error value", async () => {
+      const loggerSpy = jest
+        .spyOn((service as any).logger, "error")
+        .mockImplementation(() => {});
+      jest
+        .spyOn(service as any, "sendEmail")
+        .mockRejectedValue("plain string error");
+
+      service.sendNotification({
+        userId: "usr_001",
+        to: "test@example.com",
+        channel: "email",
+        subject: "Test",
+        message: "Hello",
+      });
+
+      await new Promise((resolve) => setImmediate(resolve));
+
+      expect(loggerSpy).toHaveBeenCalledWith(
+        "Email send error",
+        "plain string error",
+      );
+      loggerSpy.mockRestore();
+    });
   });
 
   describe("sendEmail (private, called directly)", () => {
@@ -379,6 +404,31 @@ describe("AppService", () => {
       expect(loggerSpy).toHaveBeenCalledWith(
         "Push send error",
         expect.any(String),
+      );
+      loggerSpy.mockRestore();
+    });
+
+    it("logs String(err) when sendPush rejects with a non-Error value", async () => {
+      mockDeviceTokensService.findByUserId.mockResolvedValue("token-xyz");
+      mockFirebaseService.sendPushNotification.mockRejectedValue(
+        "non-error push failure",
+      );
+      const loggerSpy = jest
+        .spyOn((service as any).logger, "error")
+        .mockImplementation(() => {});
+
+      service.sendNotification({
+        userId: "usr_001",
+        channel: "push",
+        subject: "Test",
+        message: "Hello",
+      });
+
+      await new Promise((resolve) => setImmediate(resolve));
+
+      expect(loggerSpy).toHaveBeenCalledWith(
+        "Push send error",
+        "non-error push failure",
       );
       loggerSpy.mockRestore();
     });

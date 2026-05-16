@@ -127,4 +127,26 @@ describe('PropertyDashboardPage (Resumen)', () => {
       expect((global.fetch as jest.Mock).mock.calls.length).toBeGreaterThan(callsBefore);
     });
   });
+
+  it('navigates to the pagos tab via the navigator', async () => {
+    renderPage();
+    await waitFor(() => expect(screen.getByTestId('metric-confirmed')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('tab', { name: /Pagos/i }));
+    expect(mockNavigate).toHaveBeenCalledWith(
+      expect.objectContaining({ search: { tab: 'pagos' } }),
+    );
+  });
+
+  it('filters by room type', async () => {
+    renderPage();
+    await waitFor(() => expect(screen.getByTestId('metric-confirmed')).toBeInTheDocument());
+    fireEvent.mouseDown(screen.getByLabelText('Tipo de habitación'));
+    const option = await screen.findByRole('option', { name: 'suite' });
+    fireEvent.click(option);
+    await waitFor(() => {
+      const calls = (global.fetch as jest.Mock).mock.calls;
+      const hasSuiteCall = calls.some(([url]: [string]) => url.includes('roomType=suite'));
+      expect(hasSuiteCall).toBe(true);
+    });
+  });
 });

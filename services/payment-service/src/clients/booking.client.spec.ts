@@ -16,12 +16,123 @@ function errorResponse(status = 500) {
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
+function jsonResponse(body: unknown) {
+  return Promise.resolve({
+    ok: true,
+    status: 200,
+    json: () => Promise.resolve(body),
+  } as Response);
+}
+
 describe("BookingClient", () => {
   let client: BookingClient;
 
   beforeEach(() => {
     jest.clearAllMocks();
     client = new BookingClient();
+  });
+
+  // ─── getReservation ────────────────────────────────────────────────────────
+
+  describe("getReservation", () => {
+    it("returns parsed reservation when fetch is ok", async () => {
+      const body = {
+        id: "res-uuid",
+        bookerId: "u-1",
+        partnerId: "p-1",
+        propertyId: "prop-1",
+        status: "held",
+        grandTotalUsd: 100,
+        taxTotalUsd: 10,
+        feeTotalUsd: 5,
+        fareBreakdown: null,
+        snapshot: { propertyName: "Hotel" },
+      };
+      mockFetch.mockReturnValue(jsonResponse(body));
+
+      const result = await client.getReservation("res-uuid");
+
+      expect(result).toEqual(body);
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining("/reservations/res-uuid"),
+      );
+    });
+
+    it("throws UpstreamServiceError when the response is not ok", async () => {
+      mockFetch.mockReturnValue(errorResponse(404));
+
+      await expect(client.getReservation("res-uuid")).rejects.toThrow(
+        UpstreamServiceError,
+      );
+    });
+
+    it("wraps network errors in UpstreamServiceError", async () => {
+      mockFetch.mockRejectedValue(new Error("ECONNREFUSED"));
+
+      const err = await client.getReservation("res-uuid").catch((e) => e);
+
+      expect(err).toBeInstanceOf(UpstreamServiceError);
+      expect(err.service).toBe("booking-service");
+    });
+
+    it("does not double-wrap UpstreamServiceError", async () => {
+      mockFetch.mockRejectedValue(
+        new UpstreamServiceError("booking-service", "already wrapped"),
+      );
+
+      const err = await client.getReservation("res-uuid").catch((e) => e);
+
+      expect(err).toBeInstanceOf(UpstreamServiceError);
+      expect(err.cause).toBe("already wrapped");
+    });
+  });
+
+  // ─── getRefundQuote ────────────────────────────────────────────────────────
+
+  describe("getRefundQuote", () => {
+    it("returns parsed refund quote when fetch is ok", async () => {
+      const body = {
+        policy: "partial_refund" as const,
+        refundableUsd: 50,
+        daysUntilCheckIn: 3,
+      };
+      mockFetch.mockReturnValue(jsonResponse(body));
+
+      const result = await client.getRefundQuote("res-uuid");
+
+      expect(result).toEqual(body);
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining("/reservations/res-uuid/refund-quote"),
+      );
+    });
+
+    it("throws UpstreamServiceError when the response is not ok", async () => {
+      mockFetch.mockReturnValue(errorResponse(500));
+
+      await expect(client.getRefundQuote("res-uuid")).rejects.toThrow(
+        UpstreamServiceError,
+      );
+    });
+
+    it("wraps network errors in UpstreamServiceError", async () => {
+      mockFetch.mockRejectedValue(new Error("network down"));
+
+      const err = await client.getRefundQuote("res-uuid").catch((e) => e);
+
+      expect(err).toBeInstanceOf(UpstreamServiceError);
+      expect(err.service).toBe("booking-service");
+    });
+
+    it("does not double-wrap UpstreamServiceError", async () => {
+      mockFetch.mockRejectedValue(
+        new UpstreamServiceError("booking-service", "already wrapped"),
+      );
+
+      const err = await client.getRefundQuote("res-uuid").catch((e) => e);
+
+      expect(err).toBeInstanceOf(UpstreamServiceError);
+      expect(err.cause).toBe("already wrapped");
+    });
   });
 
   // ─── submitReservation ─────────────────────────────────────────────────────

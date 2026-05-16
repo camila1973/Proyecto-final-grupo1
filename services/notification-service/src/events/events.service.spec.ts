@@ -102,6 +102,52 @@ describe("EventsService.handle", () => {
       }),
     );
   });
+
+  it("ignores unknown routing keys (no template registered)", async () => {
+    const debugSpy = jest
+      .spyOn((service as any).logger, "debug")
+      .mockImplementation(() => {});
+
+    await service.handle(
+      "booking.unknown" as any,
+      makeEvent({ routingKey: "booking.confirmed" }),
+    );
+
+    expect(app.sendNotification).not.toHaveBeenCalled();
+    expect(debugSpy).toHaveBeenCalledWith(
+      expect.stringContaining("No template for booking.unknown"),
+    );
+    debugSpy.mockRestore();
+  });
+
+  it("forwards html field when the rendered message includes html", async () => {
+    // Stub the templates registry to return an html-bearing message
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const templatesMod = require("./templates/index") as {
+      templates: Record<string, unknown>;
+    };
+    const originalRenderer = templatesMod.templates["booking.confirmed"];
+    templatesMod.templates["booking.confirmed"] = () => ({
+      channel: "email" as const,
+      to: "user@example.com",
+      subject: "Hi",
+      body: "Plain body",
+      html: "<b>HTML</b>",
+    });
+
+    try {
+      await service.handle(
+        "booking.confirmed",
+        makeEvent({ routingKey: "booking.confirmed" }),
+      );
+
+      expect(app.sendNotification).toHaveBeenCalledWith(
+        expect.objectContaining({ html: "<b>HTML</b>" }),
+      );
+    } finally {
+      templatesMod.templates["booking.confirmed"] = originalRenderer;
+    }
+  });
 });
 
 // ─── onModuleInit ─────────────────────────────────────────────────────────────
@@ -163,6 +209,45 @@ describe("EventsService.onModuleInit", () => {
     expect(channel.assertQueue).toHaveBeenCalledTimes(7);
     expect(channel.bindQueue).toHaveBeenCalledTimes(7);
     expect(channel.consume).toHaveBeenCalledTimes(7);
+  });
+
+  it("consume callback returns silently when msg is null (cancelled by broker)", async () => {
+    process.env.MESSAGE_BROKER_TYPE = "rabbitmq";
+    const dispatchSpy = jest
+      .spyOn(service as any, "dispatchRabbitMQ")
+      .mockImplementation(() => undefined);
+
+    await service.onModuleInit();
+
+    // Grab the first consume callback registered
+    const consumeCb = channel.consume.mock.calls[0][1] as (
+      msg: unknown,
+    ) => void;
+    expect(typeof consumeCb).toBe("function");
+
+    // Calling with null should be a no-op (covers `if (!msg) return;`)
+    consumeCb(null);
+
+    expect(dispatchSpy).not.toHaveBeenCalled();
+    dispatchSpy.mockRestore();
+  });
+
+  it("consume callback dispatches when msg is non-null", async () => {
+    process.env.MESSAGE_BROKER_TYPE = "rabbitmq";
+    const dispatchSpy = jest
+      .spyOn(service as any, "dispatchRabbitMQ")
+      .mockImplementation(() => undefined);
+
+    await service.onModuleInit();
+
+    const consumeCb = channel.consume.mock.calls[0][1] as (
+      msg: unknown,
+    ) => void;
+    const fakeMsg = { content: Buffer.from("{}") };
+    consumeCb(fakeMsg);
+
+    expect(dispatchSpy).toHaveBeenCalledWith(fakeMsg, expect.any(Function));
+    dispatchSpy.mockRestore();
   });
 
   it("logs error and does not throw when RabbitMQ connection fails", async () => {
