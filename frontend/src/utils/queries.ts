@@ -280,6 +280,17 @@ export async function partnerCheckOut(id: string, token: string): Promise<void> 
   }
 }
 
+export async function partnerNoShow(id: string, token: string): Promise<void> {
+  const res = await fetch(
+    `${API_BASE}/api/booking/reservations/${id}/no-show`,
+    { method: 'PATCH', headers: { Authorization: `Bearer ${token}` } },
+  );
+  if (!res.ok) {
+    const data = (await res.json().catch(() => ({}))) as { message?: string };
+    throw new Error(data.message ?? `HTTP ${res.status}`);
+  }
+}
+
 export async function cancelReservation(
   id: string,
   token: string,
@@ -632,6 +643,7 @@ export interface PartnerRoomRow {
   capacity: number;
   bedType: string;
   basePriceUsd: number;
+  totalRooms: number;
   status: string;
   occupancyRate: number;
 }

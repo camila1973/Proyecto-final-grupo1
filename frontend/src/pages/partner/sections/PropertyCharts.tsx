@@ -40,43 +40,39 @@ export default function ChartsSection({
 
   return (
     <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-      <Box>
+      <Card sx={{ p: 2 }}>
         <Typography sx={{ fontSize: 14, fontWeight: 500, color: '#1a1a1a', mb: 1.5 }}>
           {t('partner.org_dashboard.chart_revenue_by_property', { month: monthLabel })}
         </Typography>
-        <Card sx={{ p: 2 }}>
-          <Box sx={{ display: 'flex', gap: 1.75, mb: 1.5, fontSize: 11, color: '#4a5568' }}>
-            {BAR_LEGEND_KEYS.map((key, i) => (
-              <Box key={key} sx={{ display: 'flex', alignItems: 'center', gap: 0.625 }}>
-                <Box sx={{ width: 10, height: 10, borderRadius: '2px', bgcolor: BAR_COLORS[i] }} />
-                <span>{t(`partner.org_dashboard.${key}`)}</span>
-              </Box>
-            ))}
-          </Box>
-          <PropertyRevenueChart data={barData} loading={loading} />
-        </Card>
-      </Box>
+        <Box sx={{ display: 'flex', gap: 1.75, mb: 1.5, fontSize: 11, color: '#4a5568' }}>
+          {BAR_LEGEND_KEYS.map((key, i) => (
+            <Box key={key} sx={{ display: 'flex', alignItems: 'center', gap: 0.625 }}>
+              <Box sx={{ width: 10, height: 10, borderRadius: '2px', bgcolor: BAR_COLORS[i] }} />
+              <span>{t(`partner.org_dashboard.${key}`)}</span>
+            </Box>
+          ))}
+        </Box>
+        <PropertyRevenueChart data={barData} loading={loading} />
+      </Card>
 
-      <Box>
+      <Card sx={{ p: 2 }}>
         <Typography sx={{ fontSize: 14, fontWeight: 500, color: '#1a1a1a', mb: 1.5 }}>
           {t('partner.org_dashboard.chart_trend')}
         </Typography>
-        <Card sx={{ p: 2 }}>
-          {trendSeries.length > 0 && (
-            <Box sx={{ display: 'flex', gap: 1.75, mb: 1.5, fontSize: 11, color: '#4a5568' }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.625 }}>
-                <Box sx={{ width: 10, height: 3, borderRadius: '2px', bgcolor: PROPERTY_COLORS[0] }} />
-                <span>{propertyName.length > 12 ? propertyName.slice(0, 12) + '…' : propertyName}</span>
-              </Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.625 }}>
-                <Box sx={{ width: 10, height: 3, borderRadius: '2px', bgcolor: '#3B6D11' }} />
-                <span>{t('partner.org_dashboard.legend_net')}</span>
-              </Box>
+        {trendSeries.length > 0 && (
+          <Box sx={{ display: 'flex', gap: 1.75, mb: 1.5, fontSize: 11, color: '#4a5568' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.625 }}>
+              <Box sx={{ width: 10, height: 3, borderRadius: '2px', bgcolor: PROPERTY_COLORS[0] }} />
+              <span>{propertyName.length > 12 ? propertyName.slice(0, 12) + '…' : propertyName}</span>
             </Box>
-          )}
-          <RevenueTrendChart series={trendSeries} loading={loading} />
-        </Card>
-      </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.625 }}>
+              <Box sx={{ width: 10, height: 3, borderRadius: '2px', bgcolor: '#3B6D11' }} />
+              <span>{t('partner.org_dashboard.legend_net')}</span>
+            </Box>
+          </Box>
+        )}
+        <RevenueTrendChart series={trendSeries} loading={loading} />
+      </Card>
     </Box>
   );
 }

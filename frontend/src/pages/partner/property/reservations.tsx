@@ -16,6 +16,7 @@ import {
   IconButton,
   Menu,
   MenuItem,
+  Pagination,
   Paper,
   Snackbar,
   Stack,
@@ -26,29 +27,30 @@ import {
   TableHead,
   TableRow,
   TextField,
-  Tooltip,
   Typography,
 } from '@mui/material';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import BlockOutlinedIcon from '@mui/icons-material/BlockOutlined';
 import HowToRegOutlinedIcon from '@mui/icons-material/HowToRegOutlined';
 import LogoutOutlinedIcon from '@mui/icons-material/LogoutOutlined';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import SearchIcon from '@mui/icons-material/Search';
 import { useAuth } from '../../../hooks/useAuth';
+import { useLocale } from '../../../context/LocaleContext';
 import {
   cancelReservation,
   fetchPropertyReservations,
   partnerCheckIn,
   partnerCheckOut,
+  partnerNoShow,
 } from '../../../utils/queries';
 import PageContainer from '../../../components/PageContainer';
+import MonthSwitcher from '../components/MonthSwitcher';
 import { TH, TD } from '../sections/ui';
+import dayjs from '../../../utils/dayjs';
 import { currentMonth } from '../../../utils/month';
 
 const PAGE_SIZE = 10;
 const STATUS_OPTIONS = ['', 'confirmed', 'checked_in', 'checked_out', 'cancelled', 'failed', 'expired'];
-const NAV_BTN = { bgcolor: '#1B4F8C', color: '#fff', '&:hover': { bgcolor: '#163d6e' } } as const;
 
 interface StatusChipProps { status: string }
 function StatusChip({ status }: StatusChipProps) {
@@ -110,11 +112,12 @@ function ConfirmDialog({ open, title, description, confirmLabel, confirmColor = 
   );
 }
 
-type PendingAction = { type: 'check_in' | 'check_out' | 'cancel'; reservationId: string };
+type PendingAction = { type: 'check_in' | 'check_out' | 'no_show' | 'cancel'; reservationId: string };
 
 export default function ReservationsBody() {
   const { t } = useTranslation();
   const { token, user } = useAuth();
+  const { language } = useLocale();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { propertyId } = useParams({ from: '/mi-hotel/$propertyId' });
@@ -122,13 +125,13 @@ export default function ReservationsBody() {
   const [searchText, setSearchText] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [page, setPage] = useState(1);
-  const [rowMenu, setRowMenu] = useState<{ el: HTMLElement; reservationId: string; status: string } | null>(null);
+  const [month, setMonth] = useState(currentMonth());
+  const [rowMenu, setRowMenu] = useState<{ el: HTMLElement; reservationId: string; status: string; checkIn: string } | null>(null);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
   const [snack, setSnack] = useState<{ msg: string; severity: 'success' | 'error' } | null>(null);
 
   const partnerId = user?.partnerId ?? '';
   const enabled = !!token && !!partnerId;
-  const month = currentMonth();
 
   const reservationsQuery = useQuery({
     queryKey: ['property-reservations', partnerId, propertyId, month, null],
@@ -159,6 +162,15 @@ export default function ReservationsBody() {
     onError: (err: Error) => setSnack({ msg: err.message || t('partner.dashboard.action_error'), severity: 'error' }),
   });
 
+  const noShowMutation = useMutation({
+    mutationFn: (id: string) => partnerNoShow(id, token!),
+    onSuccess: () => {
+      invalidateReservations();
+      setSnack({ msg: t('partner.dashboard.action_success_no_show'), severity: 'success' });
+    },
+    onError: (err: Error) => setSnack({ msg: err.message || t('partner.dashboard.action_error'), severity: 'error' }),
+  });
+
   const cancelMutation = useMutation({
     mutationFn: (id: string) => cancelReservation(id, token!, 'partner_requested'),
     onSuccess: () => {
@@ -168,7 +180,7 @@ export default function ReservationsBody() {
     onError: (err: Error) => setSnack({ msg: err.message || t('partner.dashboard.action_error'), severity: 'error' }),
   });
 
-  const isMutating = checkInMutation.isPending || checkOutMutation.isPending || cancelMutation.isPending;
+  const isMutating = checkInMutation.isPending || checkOutMutation.isPending || noShowMutation.isPending || cancelMutation.isPending;
   const isLoading = reservationsQuery.isLoading;
 
   const filteredReservations = useMemo(() => {
@@ -184,6 +196,7 @@ export default function ReservationsBody() {
   const totalPages = Math.max(1, Math.ceil(filteredReservations.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
   const pageRows = filteredReservations.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const today = dayjs().format('YYYY-MM-DD');
 
   const handleConfirmAction = () => {
     if (!pendingAction) return;
@@ -191,6 +204,7 @@ export default function ReservationsBody() {
     setPendingAction(null);
     if (type === 'check_in') checkInMutation.mutate(reservationId);
     else if (type === 'check_out') checkOutMutation.mutate(reservationId);
+    else if (type === 'no_show') noShowMutation.mutate(reservationId);
     else if (type === 'cancel') cancelMutation.mutate(reservationId);
   };
 
@@ -208,6 +222,12 @@ export default function ReservationsBody() {
       description: t('partner.dashboard.dialog_check_out_body'),
       confirmLabel: t('partner.dashboard.menu_check_out'),
       confirmColor: 'primary' as const,
+    };
+    if (type === 'no_show') return {
+      title: t('partner.dashboard.dialog_no_show_title'),
+      description: t('partner.dashboard.dialog_no_show_body'),
+      confirmLabel: t('partner.dashboard.menu_no_show'),
+      confirmColor: 'error' as const,
     };
     return {
       title: t('partner.dashboard.dialog_cancel_title'),
@@ -266,19 +286,11 @@ export default function ReservationsBody() {
 
           <Box sx={{ flexGrow: 1 }} />
 
-          <Stack direction="row" spacing={1} alignItems="center">
-            <Typography sx={{ fontSize: 12, color: '#6b7280', whiteSpace: 'nowrap' }}>
-              {filteredReservations.length > 0
-                ? t('partner.dashboard.pagination_label', { from: (safePage - 1) * PAGE_SIZE + 1, to: Math.min(safePage * PAGE_SIZE, filteredReservations.length), total: filteredReservations.length })
-                : ''}
-            </Typography>
-            <IconButton size="small" aria-label={t('partner.dashboard.prev_page')} onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={safePage <= 1} sx={NAV_BTN}>
-              <ArrowBackIcon fontSize="small" />
-            </IconButton>
-            <IconButton size="small" aria-label={t('partner.dashboard.next_page')} onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={safePage >= totalPages} sx={NAV_BTN}>
-              <ArrowForwardIcon fontSize="small" />
-            </IconButton>
-          </Stack>
+          <MonthSwitcher
+            month={month}
+            onChange={(next) => { setMonth(next); setPage(1); }}
+            language={language}
+          />
         </Stack>
 
         <Paper variant="outlined" sx={{ borderRadius: 2, borderColor: '#e2e8f0', overflow: 'hidden' }}>
@@ -316,12 +328,8 @@ export default function ReservationsBody() {
                 ) : pageRows.map((r) => {
                   const isActingOn = (checkInMutation.isPending && checkInMutation.variables === r.id)
                     || (checkOutMutation.isPending && checkOutMutation.variables === r.id)
+                    || (noShowMutation.isPending && noShowMutation.variables === r.id)
                     || (cancelMutation.isPending && cancelMutation.variables === r.id);
-
-                  const canCheckIn  = r.status === 'confirmed';
-                  const canCheckOut = r.status === 'checked_in';
-                  const canCancel   = r.status === 'confirmed' || r.status === 'checked_in';
-                  const hasActions  = canCheckIn || canCheckOut || canCancel;
 
                   return (
                     <TableRow
@@ -346,45 +354,17 @@ export default function ReservationsBody() {
                       <TD align="right">
                         {isActingOn ? (
                           <CircularProgress size={16} sx={{ color: '#1B4F8C' }} />
-                        ) : hasActions ? (
-                          <>
-                            {canCheckIn && (
-                              <Tooltip title={t('partner.dashboard.menu_check_in')} arrow>
-                                <IconButton
-                                  size="small"
-                                  sx={{ color: '#15803d' }}
-                                  onClick={() => setPendingAction({ type: 'check_in', reservationId: r.id })}
-                                  disabled={isMutating}
-                                  aria-label={t('partner.dashboard.menu_check_in')}
-                                >
-                                  <HowToRegOutlinedIcon fontSize="small" />
-                                </IconButton>
-                              </Tooltip>
-                            )}
-                            {canCheckOut && (
-                              <Tooltip title={t('partner.dashboard.menu_check_out')} arrow>
-                                <IconButton
-                                  size="small"
-                                  sx={{ color: '#1B4F8C' }}
-                                  onClick={() => setPendingAction({ type: 'check_out', reservationId: r.id })}
-                                  disabled={isMutating}
-                                  aria-label={t('partner.dashboard.menu_check_out')}
-                                >
-                                  <LogoutOutlinedIcon fontSize="small" />
-                                </IconButton>
-                              </Tooltip>
-                            )}
-                            <IconButton
-                              size="small"
-                              sx={{ color: '#6b7280' }}
-                              onClick={(e) => setRowMenu({ el: e.currentTarget, reservationId: r.id, status: r.status })}
-                              disabled={isMutating}
-                              aria-label={t('partner.dashboard.row_menu_label')}
-                            >
-                              <MoreVertIcon fontSize="small" />
-                            </IconButton>
-                          </>
-                        ) : null}
+                        ) : (
+                          <IconButton
+                            size="small"
+                            sx={{ color: '#6b7280' }}
+                            onClick={(e) => setRowMenu({ el: e.currentTarget, reservationId: r.id, status: r.status, checkIn: r.checkIn })}
+                            disabled={isMutating}
+                            aria-label={t('partner.dashboard.row_menu_label')}
+                          >
+                            <MoreVertIcon fontSize="small" />
+                          </IconButton>
+                        )}
                       </TD>
                     </TableRow>
                   );
@@ -393,6 +373,20 @@ export default function ReservationsBody() {
             </Table>
           </TableContainer>
         </Paper>
+
+        <Stack direction="row" justifyContent="flex-end" sx={{ mt: 1 }}>
+          <Pagination
+            count={totalPages}
+            page={safePage}
+            onChange={(_, p) => setPage(p)}
+            color="primary"
+            shape="rounded"
+            size="small"
+            showFirstButton
+            showLastButton
+            disabled={filteredReservations.length <= PAGE_SIZE}
+          />
+        </Stack>
       </PageContainer>
 
       <Menu
@@ -401,62 +395,74 @@ export default function ReservationsBody() {
         onClose={() => setRowMenu(null)}
         slotProps={{ paper: { sx: { minWidth: 180, borderRadius: 1.5, boxShadow: '0 4px 16px rgba(0,0,0,0.12)' } } }}
       >
-        {rowMenu?.status === 'confirmed' && [
-          <MenuItem
-            key="checkin"
-            sx={{ fontSize: 13, color: '#15803d', gap: 1 }}
-            onClick={() => {
-              setPendingAction({ type: 'check_in', reservationId: rowMenu.reservationId });
-              setRowMenu(null);
-            }}
-          >
-            <HowToRegOutlinedIcon fontSize="small" />
-            {t('partner.dashboard.menu_check_in')}
-          </MenuItem>,
-          <MenuItem
-            key="edit"
-            sx={{ fontSize: 13 }}
-            onClick={() => {
-              navigate({ to: '/mi-hotel/$propertyId/reservas/$reservationId/editar', params: { propertyId, reservationId: rowMenu.reservationId } });
-              setRowMenu(null);
-            }}
-          >
-            {t('partner.dashboard.menu_edit_reservation')}
-          </MenuItem>,
-          <MenuItem
-            key="cancel"
-            sx={{ fontSize: 13, color: '#b91c1c' }}
-            onClick={() => {
-              setPendingAction({ type: 'cancel', reservationId: rowMenu.reservationId });
-              setRowMenu(null);
-            }}
-          >
-            {t('partner.dashboard.menu_cancel_reservation')}
-          </MenuItem>,
-        ]}
-        {rowMenu?.status === 'checked_in' && [
-          <MenuItem
-            key="checkout"
-            sx={{ fontSize: 13, color: '#1B4F8C', gap: 1 }}
-            onClick={() => {
-              setPendingAction({ type: 'check_out', reservationId: rowMenu.reservationId });
-              setRowMenu(null);
-            }}
-          >
-            <LogoutOutlinedIcon fontSize="small" />
-            {t('partner.dashboard.menu_check_out')}
-          </MenuItem>,
-          <MenuItem
-            key="cancel"
-            sx={{ fontSize: 13, color: '#b91c1c' }}
-            onClick={() => {
-              setPendingAction({ type: 'cancel', reservationId: rowMenu.reservationId });
-              setRowMenu(null);
-            }}
-          >
-            {t('partner.dashboard.menu_cancel_reservation')}
-          </MenuItem>,
-        ]}
+        {(() => {
+          if (!rowMenu) return null;
+          const canEdit = rowMenu.status === 'confirmed';
+          const canCheckIn = rowMenu.status === 'confirmed';
+          const canNoShow = rowMenu.status === 'confirmed' && rowMenu.checkIn <= today;
+          const canCheckOut = rowMenu.status === 'checked_in';
+          const canCancel = rowMenu.status === 'confirmed' || rowMenu.status === 'checked_in';
+          return [
+            <MenuItem
+              key="edit"
+              sx={{ fontSize: 13 }}
+              disabled={!canEdit}
+              onClick={() => {
+                navigate({ to: '/mi-hotel/$propertyId/reservas/$reservationId/editar', params: { propertyId, reservationId: rowMenu.reservationId } });
+                setRowMenu(null);
+              }}
+            >
+              {t('partner.dashboard.menu_edit_reservation')}
+            </MenuItem>,
+            <MenuItem
+              key="checkin"
+              sx={{ fontSize: 13, color: canCheckIn ? '#15803d' : undefined, gap: 1 }}
+              disabled={!canCheckIn}
+              onClick={() => {
+                setPendingAction({ type: 'check_in', reservationId: rowMenu.reservationId });
+                setRowMenu(null);
+              }}
+            >
+              <HowToRegOutlinedIcon fontSize="small" />
+              {t('partner.dashboard.menu_check_in')}
+            </MenuItem>,
+            <MenuItem
+              key="noshow"
+              sx={{ fontSize: 13, color: canNoShow ? '#b91c1c' : undefined, gap: 1 }}
+              disabled={!canNoShow}
+              onClick={() => {
+                setPendingAction({ type: 'no_show', reservationId: rowMenu.reservationId });
+                setRowMenu(null);
+              }}
+            >
+              <BlockOutlinedIcon fontSize="small" />
+              {t('partner.dashboard.menu_no_show')}
+            </MenuItem>,
+            <MenuItem
+              key="checkout"
+              sx={{ fontSize: 13, color: canCheckOut ? '#1B4F8C' : undefined, gap: 1 }}
+              disabled={!canCheckOut}
+              onClick={() => {
+                setPendingAction({ type: 'check_out', reservationId: rowMenu.reservationId });
+                setRowMenu(null);
+              }}
+            >
+              <LogoutOutlinedIcon fontSize="small" />
+              {t('partner.dashboard.menu_check_out')}
+            </MenuItem>,
+            <MenuItem
+              key="cancel"
+              sx={{ fontSize: 13, color: canCancel ? '#b91c1c' : undefined }}
+              disabled={!canCancel}
+              onClick={() => {
+                setPendingAction({ type: 'cancel', reservationId: rowMenu.reservationId });
+                setRowMenu(null);
+              }}
+            >
+              {t('partner.dashboard.menu_cancel_reservation')}
+            </MenuItem>,
+          ];
+        })()}
       </Menu>
 
       {confirmDialog && (

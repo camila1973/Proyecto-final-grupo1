@@ -215,6 +215,7 @@ export class PropertyService {
         capacity: room.capacity,
         bedType: room.bedType,
         basePriceUsd: parseFloat(room.basePriceUsd),
+        totalRooms: room.totalRooms,
         status: room.status,
         occupancyRate,
       };

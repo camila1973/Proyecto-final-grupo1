@@ -282,6 +282,7 @@ export interface PropertyRoomRow {
   capacity: number;
   bedType: string;
   basePriceUsd: number;
+  totalRooms: number;
   status: string;
   occupancyRate: number;
 }

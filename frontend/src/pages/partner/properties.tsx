@@ -7,6 +7,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useLocale } from '../../context/LocaleContext';
 import {
   fetchPartnerProperties,
+  fetchPartnerMembers,
   fetchPropertyMetrics,
 } from '../../utils/queries';
 import { currentMonth } from '../../utils/month';
@@ -30,6 +31,12 @@ export default function PropertiesBody() {
     enabled,
   });
 
+  const membersQuery = useQuery({
+    queryKey: ['partner-members', partnerId],
+    queryFn: () => fetchPartnerMembers(partnerId, token!),
+    enabled,
+  });
+
   const propertyQueries = useQueries({
     queries: (propertiesQuery.data?.properties ?? []).map((p) => ({
       queryKey: ['property-metrics', partnerId, p.propertyId, month],
@@ -47,20 +54,26 @@ export default function PropertiesBody() {
   }
 
   const properties = propertiesQuery.data?.properties ?? [];
+  const members = membersQuery.data ?? [];
+
+  const managerByProperty = new Map<string, string>();
+  for (const m of members) {
+    if (m.role !== 'manager' || !m.propertyId) continue;
+    if (managerByProperty.has(m.propertyId)) continue;
+    const fullName = [m.firstName, m.lastName].filter(Boolean).join(' ').trim();
+    managerByProperty.set(m.propertyId, fullName || m.email);
+  }
 
   const rows: PropertyRow[] = properties.map((p, i) => {
     const propData = propertyQueries[i]?.data;
     const loading = propertyQueries[i]?.isLoading ?? false;
-    const propSeries = propData?.monthlySeries;
     return {
       propertyId: p.propertyId,
       propertyName: p.propertyName,
       loading,
       confirmed: propData?.metrics.confirmed ?? 0,
       gross: propData?.metrics.revenueUsd ?? 0,
-      lastOccupancy: propSeries
-        ? (propSeries[propSeries.length - 1]?.occupancyRate ?? 0) * 100
-        : null,
+      managerName: managerByProperty.get(p.propertyId) ?? null,
     };
   });
 

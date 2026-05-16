@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
-import { useQuery } from '@tanstack/react-query';
+import { useQueries, useQuery } from '@tanstack/react-query';
 import { Alert, Box, MenuItem, Tab, Tabs, TextField } from '@mui/material';
 import { useAuth } from '../../../hooks/useAuth';
 import { useLocale } from '../../../context/LocaleContext';
@@ -9,19 +9,29 @@ import HeroBanner from '../sections/PropertyHeroBanner';
 import PageContainer from '../../../components/PageContainer';
 import {
   fetchPartnerProperty,
+  fetchPartnerPropertyRooms,
   fetchPropertyMetrics,
+  fetchPropertyReservations,
 } from '../../../utils/queries';
 import { formatPrice } from '../../../utils/currency';
-import { currentMonth, formatMonthLabel } from '../../../utils/month';
+import dayjs from '../../../utils/dayjs';
+import { currentMonth, formatMonthLabel, shiftMonth } from '../../../utils/month';
 import MetricCard from '../components/MetricCard';
 import MonthSwitcher from '../components/MonthSwitcher';
+import RoomCard from '../components/RoomCard';
 import ChartsSection from '../sections/PropertyCharts';
+import TodayMovements from '../sections/TodayMovements';
+import { SectionHeader } from '../sections/ui';
 import type { PropertyTabId } from './shared';
 import PaymentsBody from './payments';
 import ReservationsBody from './reservations';
 import RoomsBody from './rooms';
 
 const ROOM_TYPE_OPTIONS = ['', 'deluxe', 'suite', 'standard', 'junior_suite', 'penthouse'];
+
+function todayIso(): string {
+  return dayjs().format('YYYY-MM-DD');
+}
 
 export default function PropertyDashboardPage() {
   const { t } = useTranslation();
@@ -57,6 +67,32 @@ export default function PropertyDashboardPage() {
     enabled,
   });
 
+  const roomsQuery = useQuery({
+    queryKey: ['property-rooms', partnerId, propertyId],
+    queryFn: () => fetchPartnerPropertyRooms(partnerId, propertyId, token!),
+    enabled: enabled && tab === 'resumen',
+  });
+
+  const roomMetricsQueries = useQueries({
+    queries: (roomsQuery.data?.rooms ?? []).map((r) => ({
+      queryKey: ['property-metrics', partnerId, propertyId, month, r.roomType],
+      queryFn: () => fetchPropertyMetrics(partnerId, propertyId, month, r.roomType, token!),
+      enabled: enabled && tab === 'resumen' && !!roomsQuery.data,
+    })),
+  });
+
+  const previousMonth = shiftMonth(month, -1);
+  const reservationsCurrentMonth = useQuery({
+    queryKey: ['property-reservations', partnerId, propertyId, month, null],
+    queryFn: () => fetchPropertyReservations(partnerId, propertyId, month, null, token!),
+    enabled: enabled && tab === 'resumen',
+  });
+  const reservationsPreviousMonth = useQuery({
+    queryKey: ['property-reservations', partnerId, propertyId, previousMonth, null],
+    queryFn: () => fetchPropertyReservations(partnerId, propertyId, previousMonth, null, token!),
+    enabled: enabled && tab === 'resumen',
+  });
+
   if (!enabled) {
     return (
       <PageContainer>
@@ -74,6 +110,35 @@ export default function PropertyDashboardPage() {
 
   const isResumenError = tab === 'resumen' && metricsQuery.isError;
   const isResumenLoading = tab === 'resumen' && metricsQuery.isLoading;
+
+  const today = todayIso();
+  const allReservations = [
+    ...(reservationsCurrentMonth.data?.reservations ?? []),
+    ...(reservationsPreviousMonth.data?.reservations ?? []),
+  ];
+  const checkInsToday = allReservations.filter(
+    (r) => r.status === 'confirmed' && r.checkIn === today,
+  );
+  const checkOutsToday = allReservations.filter(
+    (r) => r.status === 'checked_in' && r.checkOut === today,
+  );
+  const todayLoading = reservationsCurrentMonth.isLoading || reservationsPreviousMonth.isLoading;
+
+  const roomCards = (roomsQuery.data?.rooms ?? []).map((room, i) => {
+    const mq = roomMetricsQueries[i];
+    return {
+      roomId: room.roomId,
+      roomType: room.roomType,
+      bedType: room.bedType,
+      capacity: room.capacity,
+      totalRooms: room.totalRooms,
+      basePriceUsd: room.basePriceUsd,
+      occupancyRate: room.occupancyRate,
+      revenueUsd: mq?.data?.metrics.revenueUsd ?? 0,
+      active: room.status === 'active',
+      loading: mq?.isLoading ?? false,
+    };
+  });
 
   return (
     <div className="min-h-screen">
@@ -139,6 +204,48 @@ export default function PropertyDashboardPage() {
             loading={isResumenLoading}
             monthLabel={formatMonthLabel(month, language)}
           />
+
+          <TodayMovements
+            checkIns={checkInsToday}
+            checkOuts={checkOutsToday}
+            loading={todayLoading}
+          />
+
+          {roomCards.length > 0 && (
+            <Box>
+              <SectionHeader title={t('partner.dashboard.rooms_title')} />
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' },
+                  gap: 2,
+                }}
+              >
+                {roomCards.map((c) => (
+                  <RoomCard
+                    key={c.roomId}
+                    roomId={c.roomId}
+                    roomType={c.roomType}
+                    bedType={c.bedType}
+                    capacity={c.capacity}
+                    totalRooms={c.totalRooms}
+                    basePriceUsd={c.basePriceUsd}
+                    occupancyRate={c.occupancyRate}
+                    revenueUsd={c.revenueUsd}
+                    active={c.active}
+                    currency={currency}
+                    loading={c.loading}
+                    onClick={() =>
+                      navigate({
+                        to: '/mi-hotel/$propertyId/habitaciones/$roomId',
+                        params: { propertyId, roomId: c.roomId },
+                      })
+                    }
+                  />
+                ))}
+              </Box>
+            </Box>
+          )}
         </PageContainer>
       )}
 

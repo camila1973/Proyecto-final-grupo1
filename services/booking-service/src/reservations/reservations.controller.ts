@@ -10,6 +10,7 @@ import {
   HttpCode,
   HttpStatus,
   Ip,
+  NotFoundException,
   Res,
 } from "@nestjs/common";
 import type { Response } from "express";
@@ -137,6 +138,18 @@ export class ReservationsController {
   @HttpCode(HttpStatus.OK)
   checkOut(@Param("id") id: string) {
     return this.reservationsService.checkOut(id);
+  }
+
+  @Patch(":id/no-show")
+  @HttpCode(HttpStatus.OK)
+  async noShow(@Param("id") id: string) {
+    const result = await this.reservationsService.noShow(id);
+    if (!result) {
+      throw new NotFoundException(
+        `Reservation ${id} not found or not in confirmed state`,
+      );
+    }
+    return result;
   }
 
   @Patch(":id/guest-info")
