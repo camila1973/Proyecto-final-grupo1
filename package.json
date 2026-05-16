@@ -46,7 +46,13 @@
     "e2e:mobile": "maestro test e2e/mobile/flows/ --config e2e/mobile/config.yaml",
     "e2e:mobile:flow": "sh -c 'maestro test e2e/mobile/flows/$0.yaml --config e2e/mobile/config.yaml'",
     "e2e:mobile:report": "mkdir -p e2e/mobile/reports e2e/mobile/.artifacts && maestro test e2e/mobile/flows/ --config e2e/mobile/config.yaml --format html-detailed --output e2e/mobile/reports/report.html --debug-output e2e/mobile/.artifacts",
-    "e2e:mobile:record": "sh -c 'maestro record e2e/mobile/flows/$0.yaml --config e2e/mobile/config.yaml'"
+    "e2e:mobile:record": "sh -c 'maestro record e2e/mobile/flows/$0.yaml --config e2e/mobile/config.yaml'",
+    "e2e:web": "playwright test --config e2e/frontend/playwright.config.ts",
+    "e2e:web:headed": "playwright test --config e2e/frontend/playwright.config.ts --headed",
+    "e2e:web:ui": "playwright test --config e2e/frontend/playwright.config.ts --ui",
+    "e2e:web:flow": "sh -c 'playwright test --config e2e/frontend/playwright.config.ts e2e/frontend/src/tests/$0'",
+    "e2e:web:report": "playwright show-report playwright-report/frontend",
+    "e2e:web:record": "playwright codegen http://localhost:4200"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

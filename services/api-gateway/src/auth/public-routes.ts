@@ -31,6 +31,8 @@ export const PUBLIC_ROUTES: PublicRoute[] = [
     pattern: /^\/api\/integration\/webhooks\/[^/]+\/events\/?$/,
   },
 
+  { method: "POST", pattern: /^\/api\/partners\/partners\/register\/?$/ },
+
   { method: "OPTIONS", pattern: /.*/ },
 ];
 

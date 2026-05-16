@@ -147,6 +147,7 @@ export function CheckoutForm({
                     helperText={fieldErrors.firstName}
                     onChange={(e) => { setFirstName(e.target.value); clearFieldError('firstName'); }}
                     sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1.5 } }}
+                    slotProps={{ htmlInput: { 'aria-label': t('booking.checkout.guest.first_name') } }}
                   />
                   <LabeledField
                     label={t('booking.checkout.guest.last_name')}
@@ -156,6 +157,7 @@ export function CheckoutForm({
                     helperText={fieldErrors.lastName}
                     onChange={(e) => { setLastName(e.target.value); clearFieldError('lastName'); }}
                     sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1.5 } }}
+                    slotProps={{ htmlInput: { 'aria-label': t('booking.checkout.guest.last_name') } }}
                   />
                 </Box>
                 <LabeledField
@@ -167,6 +169,7 @@ export function CheckoutForm({
                   helperText={fieldErrors.email || t('booking.checkout.guest.email_hint')}
                   onChange={(e) => { setEmail(e.target.value); clearFieldError('email'); }}
                   sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1.5 } }}
+                  slotProps={{ htmlInput: { 'aria-label': t('booking.checkout.guest.email') } }}
                 />
                 <LabeledField
                   label={t('booking.checkout.guest.phone')}
@@ -177,6 +180,7 @@ export function CheckoutForm({
                   helperText={fieldErrors.phone}
                   onChange={(e) => { setPhone(e.target.value); clearFieldError('phone'); }}
                   sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1.5 } }}
+                  slotProps={{ htmlInput: { 'aria-label': t('booking.checkout.guest.phone') } }}
                 />
               </Box>
             </>
