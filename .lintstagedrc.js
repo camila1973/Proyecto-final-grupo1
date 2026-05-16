@@ -18,7 +18,11 @@ function groupByService(files) {
 
 module.exports = {
   'services/**/*.ts': (files) => {
-    const byService = groupByService(files);
+    // scripts/ files live outside the project tsconfig's include glob and the
+    // type-checked parser can't resolve them. Lint everything else.
+    const lintable = files.filter((f) => !/[\\/]scripts[\\/]/.test(f));
+    if (lintable.length === 0) return [];
+    const byService = groupByService(lintable);
     return Object.entries(byService).map(([svc, svcFiles]) => {
       const cfg = resolve(__dirname, 'services', svc, 'eslint.config.mjs');
       return `eslint --fix --config ${cfg} ${svcFiles.join(' ')}`;

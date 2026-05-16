@@ -827,8 +827,6 @@
       "metric_top_property_empty": "No activity this month",
       "metric_net": "Net payout",
       "metric_net_sublabel": "commission {{commission}} · disbursed {{date}}",
-      "alert_disbursement": "Pending disbursement: <strong>{{amount}}</strong> on {{date}}.",
-      "alert_see_detail": "See detail ↓",
       "chart_revenue_by_property": "Revenue by property · {{month}}",
       "chart_trend": "Revenue trend · last 6 months",
       "legend_gross": "Gross",

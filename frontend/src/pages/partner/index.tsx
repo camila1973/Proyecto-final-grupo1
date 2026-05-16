@@ -257,21 +257,6 @@ export default function MiHotelPage() {
             />
           </div>
 
-          {disbursementRows.length > 0 && (
-            <div className="bg-[#E8EFF7] border border-[#85B7EB] rounded-lg px-4 py-2.5 flex items-center gap-3 text-[#0C447C]">
-              <span className="shrink-0">ℹ</span>
-              <span className="text-xs">
-                {t('partner.org_dashboard.alert_disbursement', {
-                  amount: formatPrice(totalNetPayout, currency),
-                  date: disbursementLabel,
-                })}{' '}
-                <a href="#disbursements" className="font-medium cursor-pointer text-[#0C447C]">
-                  {t('partner.org_dashboard.alert_see_detail')}
-                </a>
-              </span>
-            </div>
-          )}
-
           <ChartsSection
             barData={barData}
             trendSeries={trendSeries}

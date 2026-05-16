@@ -1,0 +1,119 @@
+name: E2E Frontend (Playwright)
+
+# Manual-only. Installs the Playwright Chromium browser on ubuntu-latest and
+# runs the traveller suite under e2e/frontend/ against the deployed frontend
+# + api-gateway. Uploads the HTML report and per-test artifacts (trace /
+# screenshots / video).
+#
+# Prerequisites in the deployed environment:
+# - The bypass user (e2e@travelhub.com / E2eTest1234!) exists in auth-service
+#   with mfa_required=false. See services/auth-service/scripts/seed.ts.
+# - The inventory seeded property `b1000000-0000-0000-0000-000000000001` /
+#   room `c1000000-0000-0000-0000-000000000001` is available for the date
+#   window pinned in e2e/frontend/src/helpers/seed.ts.
+# - Stripe is configured in TEST mode so 4242 4242 4242 4242 is accepted.
+
+on:
+  workflow_dispatch:
+    inputs:
+      api_url:
+        description: 'Gateway URL the playwright helpers call directly (leave blank to use the GATEWAY_URL repository variable).'
+        required: false
+        type: string
+      frontend_url:
+        description: 'Frontend URL the browser navigates to (leave blank to use the FRONTEND_URL repository variable).'
+        required: false
+        type: string
+
+concurrency:
+  group: e2e-frontend-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  NX_DAEMON: 'false'
+  NX_TUI: 'false'
+  HUSKY: '0'
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
+jobs:
+  e2e-chromium:
+    name: Chromium + Playwright
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup (pnpm + Node + deps)
+        uses: ./.github/actions/setup
+
+      - name: Validate env (GATEWAY_URL + FRONTEND_URL)
+        env:
+          API_BASE_URL: ${{ github.event.inputs.api_url || vars.GATEWAY_URL }}
+          FRONTEND_BASE_URL: ${{ github.event.inputs.frontend_url || vars.FRONTEND_URL }}
+        run: |
+          if [ -z "$API_BASE_URL" ]; then
+            echo "::error::API_BASE_URL is empty. Set the GATEWAY_URL repository variable or pass the api_url workflow input."
+            exit 1
+          fi
+          if [ -z "$FRONTEND_BASE_URL" ]; then
+            echo "::error::FRONTEND_BASE_URL is empty. Set the FRONTEND_URL repository variable or pass the frontend_url workflow input."
+            exit 1
+          fi
+          echo "Frontend: $FRONTEND_BASE_URL"
+          echo "API: $API_BASE_URL"
+
+      - name: Wait for api-gateway healthy
+        env:
+          API_BASE_URL: ${{ github.event.inputs.api_url || vars.GATEWAY_URL }}
+        run: |
+          for i in {1..30}; do
+            if curl -fsS "$API_BASE_URL/api/auth/health" > /dev/null 2>&1; then
+              echo "api-gateway is up"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::api-gateway at $API_BASE_URL did not become healthy"
+          exit 1
+
+      - name: Wait for frontend
+        env:
+          FRONTEND_BASE_URL: ${{ github.event.inputs.frontend_url || vars.FRONTEND_URL }}
+        run: |
+          for i in {1..30}; do
+            if curl -fsS "$FRONTEND_BASE_URL" > /dev/null 2>&1; then
+              echo "frontend is up"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::frontend at $FRONTEND_BASE_URL did not become healthy"
+          exit 1
+
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run Playwright
+        env:
+          API_BASE_URL: ${{ github.event.inputs.api_url || vars.GATEWAY_URL }}
+          FRONTEND_BASE_URL: ${{ github.event.inputs.frontend_url || vars.FRONTEND_URL }}
+        run: pnpm exec nx e2e frontend
+
+      - name: Upload Playwright HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ github.run_id }}
+          path: playwright-report/frontend
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Upload Playwright per-test artifacts (trace / screenshots / video)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-artifacts-${{ github.run_id }}
+          path: test-results/frontend
+          retention-days: 7
+          if-no-files-found: ignore

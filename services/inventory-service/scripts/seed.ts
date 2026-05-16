@@ -201,7 +201,7 @@ async function seed() {
   await db
     .insertInto("inv_rooms")
     .values([
-      // ── Gran Caribe Resort & Spa ──────────────────────────────────────────
+      // ── Gran Caribe Resort & Spa — 5★ Cancún beachfront resort ────────────
       {
         id: ROOM(1),
         property_id: PROP_CANCUN_1,
@@ -209,7 +209,7 @@ async function seed() {
         bed_type: "king",
         view_type: "ocean",
         capacity: 2,
-        total_rooms: 3,
+        total_rooms: 80,
         base_price_usd: "320.00",
       },
       {
@@ -219,10 +219,10 @@ async function seed() {
         bed_type: "king",
         view_type: "ocean",
         capacity: 4,
-        total_rooms: 2,
+        total_rooms: 25,
         base_price_usd: "580.00",
       },
-      // ── Playa Azul Hotel ──────────────────────────────────────────────────
+      // ── Playa Azul Hotel — 4★ mid-size hotel ──────────────────────────────
       {
         id: ROOM(3),
         property_id: PROP_CANCUN_2,
@@ -230,7 +230,7 @@ async function seed() {
         bed_type: "queen",
         view_type: "pool",
         capacity: 2,
-        total_rooms: 5,
+        total_rooms: 90,
         base_price_usd: "145.00",
       },
       {
@@ -240,7 +240,7 @@ async function seed() {
         bed_type: "king",
         view_type: "ocean",
         capacity: 2,
-        total_rooms: 3,
+        total_rooms: 50,
         base_price_usd: "195.00",
       },
       {
@@ -250,10 +250,10 @@ async function seed() {
         bed_type: "king",
         view_type: "ocean",
         capacity: 3,
-        total_rooms: 2,
+        total_rooms: 18,
         base_price_usd: "265.00",
       },
-      // ── Hostal Sol Cancún ─────────────────────────────────────────────────
+      // ── Hostal Sol Cancún — hostel ────────────────────────────────────────
       {
         id: ROOM(6),
         property_id: PROP_CANCUN_3,
@@ -261,7 +261,7 @@ async function seed() {
         bed_type: "double",
         view_type: "city",
         capacity: 2,
-        total_rooms: 4,
+        total_rooms: 22,
         base_price_usd: "65.00",
       },
       {
@@ -271,10 +271,10 @@ async function seed() {
         bed_type: "twin",
         view_type: "garden",
         capacity: 2,
-        total_rooms: 4,
+        total_rooms: 18,
         base_price_usd: "55.00",
       },
-      // ── Hotel Histórico Centro ────────────────────────────────────────────
+      // ── Hotel Histórico Centro — 4★ CDMX heritage hotel ───────────────────
       {
         id: ROOM(8),
         property_id: PROP_CDMX_1,
@@ -282,7 +282,7 @@ async function seed() {
         bed_type: "king",
         view_type: "city",
         capacity: 2,
-        total_rooms: 3,
+        total_rooms: 35,
         base_price_usd: "280.00",
       },
       {
@@ -292,10 +292,10 @@ async function seed() {
         bed_type: "king",
         view_type: "city",
         capacity: 4,
-        total_rooms: 1,
+        total_rooms: 2,
         base_price_usd: "650.00",
       },
-      // ── Condesa Inn ───────────────────────────────────────────────────────
+      // ── Condesa Inn — boutique hotel ──────────────────────────────────────
       {
         id: ROOM(10),
         property_id: PROP_CDMX_2,
@@ -303,7 +303,7 @@ async function seed() {
         bed_type: "queen",
         view_type: "garden",
         capacity: 2,
-        total_rooms: 5,
+        total_rooms: 28,
         base_price_usd: "110.00",
       },
     ])

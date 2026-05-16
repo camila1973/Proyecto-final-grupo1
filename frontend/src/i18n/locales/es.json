@@ -827,8 +827,6 @@
       "metric_top_property_empty": "Sin actividad este mes",
       "metric_net": "Pago neto",
       "metric_net_sublabel": "comisión {{commission}} · desembolso {{date}}",
-      "alert_disbursement": "Desembolso pendiente: <strong>{{amount}}</strong> para el {{date}}.",
-      "alert_see_detail": "Ver detalle ↓",
       "chart_revenue_by_property": "Ingresos por propiedad · {{month}}",
       "chart_trend": "Tendencia de ingresos · últimos 6 meses",
       "legend_gross": "Bruto",
