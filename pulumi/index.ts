@@ -481,7 +481,7 @@ function makeCloudRun(
         connector: vpcConnector.id,
         egress: "PRIVATE_RANGES_ONLY",
       },
-      scaling: { minInstanceCount: 1, maxInstanceCount: 1 },
+      scaling: { minInstanceCount: 0, maxInstanceCount: 1 },
       containers: [{
         // Pin Cloud Run to the digest-qualified image name. Using img.imageName
         // resolves to ".../<service>:latest", which is identical across rebuilds —
