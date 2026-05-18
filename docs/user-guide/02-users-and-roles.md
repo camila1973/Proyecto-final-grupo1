@@ -3,26 +3,24 @@
 TravelHub maneja **cuatro tipos de usuarios**. Cada uno ve una interfaz
 diferente y tiene permisos distintos.
 
-## Mapa de roles
+## Cómo se origina cada rol
 
 ```mermaid
 flowchart TB
     Anon[🌐 Invitado<br/>no registrado]
-    Guest[🧳 Viajero]
-    PartnerUser[🏨 Usuario partner]
-    Manager[🛎️ Manager<br/>de propiedad]
-    Admin[🛠️ Administrador]
+    Anon -->|registro abierto| Guest[🧳 Viajero]
+    Anon -->|registro asistido<br/>de partner| PartnerUser[🏨 Usuario partner]
+    PartnerUser -.->|invita<br/>parcialmente implementado| Manager[🛎️ Manager<br/>de propiedad]
+    Internal[👷 Equipo TravelHub] -->|crea manualmente| Admin[🛠️ Administrador]
 
-    Anon -->|registro| Guest
-    Anon -->|registro asistido| PartnerUser
-    PartnerUser -.->|invita| Manager
-    Admin -.->|creado internamente| Admin
-
-    Guest -->|reserva, paga, check-in| Reservas[(Reservas)]
-    PartnerUser -->|gestiona| Propiedades[(Propiedades)]
-    Manager -->|gestiona| Propiedades
-    Admin -->|acceso transversal| Reservas
-    Admin -->|acceso transversal| Propiedades
+    classDef anon fill:#6b7280,stroke:#4b5563,color:#fff
+    classDef guest fill:#10b981,stroke:#059669,color:#fff
+    classDef partner fill:#3b82f6,stroke:#1d4ed8,color:#fff
+    classDef admin fill:#f59e0b,stroke:#d97706,color:#fff
+    class Anon anon
+    class Guest guest
+    class PartnerUser,Manager partner
+    class Internal,Admin admin
 ```
 
 ## Resumen rápido
