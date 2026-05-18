@@ -23,6 +23,14 @@ Nx 22 monorepo for the TravelHub platform — a hotel and travel booking system 
 └── mobile/                   # Expo 54 + React Native app (port 8081)
 ```
 
+## Documentation
+
+La documentación técnica principal está centralizada en `docs/`. Empieza por el índice:
+
+- [docs/index.md](docs/index.md) — índice y Quickstart (despliegue rápido)
+
+Dentro de `docs/` encontrarás guías más detalladas como `setup.md`, `architecture.md`, `deployment.md` y `ci-and-testing.md`.
+
 ## Prerequisites
 
 - Node.js 24
@@ -102,48 +110,33 @@ GitHub Actions runs on every push to `main` and on pull requests:
 
 ## Deployment
 
-Infrastructure is managed with [Pulumi](https://www.pulumi.com/) in `pulumi/`. State lives in S3 (`s3://travelhub-pulumi-state`). Services run on AWS App Runner; the frontend is served from S3 + CloudFront.
+Infrastructure is managed with [Pulumi](https://www.pulumi.com/) in `pulumi/`. The current deployment target is Google Cloud Platform: Cloud Run, Cloud SQL, Memorystore, Pub/Sub, Cloud Storage and Secret Manager.
 
-### Prerequisites
+For full production deployment instructions and required secrets, consulte `DEPLOYMENT.md`.
 
-- [Pulumi CLI](https://www.pulumi.com/docs/install/)
-- AWS credentials with access to the account
-- `cd pulumi && npm install`
-
-### Deploy locally
+### Local deployment commands
 
 ```bash
-cd pulumi
-
-# Export credentials (needed when using AWS SSO / login sessions)
-eval "$(aws configure export-credentials --format env)"
-
-# Preview
-AWS_REGION=us-east-1 PULUMI_CONFIG_PASSPHRASE="" pulumi preview --stack prod
-
-# Deploy backend (builds Docker images, pushes to ECR, updates App Runner)
-AWS_REGION=us-east-1 PULUMI_CONFIG_PASSPHRASE="" pulumi up --stack prod
-
-# Deploy frontend (run after pulumi up)
-cd ..
-pnpm run build:frontend
-BUCKET=$(AWS_REGION=us-east-1 PULUMI_CONFIG_PASSPHRASE="" pulumi stack output frontendBucket --stack prod --cwd pulumi)
-CDN_ID=$(AWS_REGION=us-east-1 PULUMI_CONFIG_PASSPHRASE="" pulumi stack output cdnId --stack prod --cwd pulumi)
-aws s3 sync dist/frontend/ "s3://${BUCKET}/" --delete
-aws cloudfront create-invalidation --distribution-id "${CDN_ID}" --paths "/*"
+pnpm run infra:install
+pnpm run infra:preview
+pnpm run infra:up
+pnpm run infra:down
+pnpm run deploy:frontend
 ```
 
-### Deploy via GitHub Actions
+### GitHub Actions deployment
 
-Trigger manually: **Actions → Deploy → Run workflow**
+El workflow de despliegue está en `.github/workflows/deploy.yml`.
 
-Required secrets in the `production` GitHub Environment:
+- `deploy-infra` se ejecuta cuando cambian archivos en `pulumi/` o el despliegue se dispara manualmente.
+- `deploy-services` construye y despliega únicamente los servicios afectados.
+- `deploy-frontend` despliega el frontend cuando solo cambia `frontend/`.
 
-| Secret | Description |
-|---|---|
-| `AWS_ACCESS_KEY_ID` | IAM key with ECR / App Runner / S3 / CloudFront access |
-| `AWS_SECRET_ACCESS_KEY` | Corresponding secret key |
-| `PULUMI_CONFIG_PASSPHRASE` | Empty string (no secret encryption on this project) |
+### Notas clave
+
+- El estado de Pulumi se almacena en un bucket de GCS.
+- El frontend se despliega con `scripts/deploy-frontend.mjs`.
+- El proveedor actual es GCP, no AWS.
 
 ## Code Quality
 
@@ -161,7 +154,7 @@ Required secrets in the `production` GitHub Environment:
 | Language | TypeScript 5 |
 | Testing | Jest 30, ts-jest |
 | Linting | ESLint 9 (flat config), Prettier |
-| Deployment | AWS App Runner (services), S3 + CloudFront (frontend) |
+| Deployment | GCP Cloud Run, Cloud SQL, Cloud Storage + Pulumi |
 
 ## Learn More
 

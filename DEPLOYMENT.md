@@ -6,16 +6,106 @@ All production deployments run through **GitHub Actions**. You do not run `pulum
 
 ## GitHub Secrets Required
 
-Go to **Settings → Secrets and variables → Actions → New repository secret** and add all four:
+Go to **Settings → Secrets and variables → Actions → New repository secret** and add the values used by the deployment and build workflows. The workflows and Pulumi expect the following secrets and configuration keys:
 
-| Secret | Required by | Value |
+| Secret | Required by | Notes |
 |---|---|---|
-| `GCP_SA_KEY` | deploy, destroy, seed | Full JSON key of the deploy service account — see "Create the deploy service account" below |
-| `GCP_PROJECT_ID` | deploy, destroy | Your GCP project ID, e.g. `travelhub-cbayona-prod` |
-| `PULUMI_CONFIG_PASSPHRASE` | deploy, destroy, seed | Empty string `""` — this project uses no passphrase encryption |
-| `CODECOV_TOKEN` | ci (optional) | Token from [codecov.io](https://codecov.io) for coverage reports — omit if you don't use Codecov |
+| `GCP_SA_KEY` | `deploy`, `destroy`, `seed` | Full JSON key of the deploy service account used by GitHub Actions (or configure Workload Identity Federation as an alternative). |
+| `GCP_PROJECT_ID` | `deploy`, `destroy` | GCP project id (e.g. `travelhub-prod`). Pulumi and gcloud commands read this. |
+| `PULUMI_CONFIG_PASSPHRASE` | `deploy`, `destroy`, `seed` | Set to empty string `""` for this repo (Pulumi secrets not encrypted with a passphrase). |
+| `CODECOV_TOKEN` | `ci` (optional) | Optional — upload coverage reports to Codecov. |
+| `SMTP_USER` | `deploy` | Pulumi writes this to Secret Manager (plain value). |
+| `SMTP_PASS` | `deploy` | Pulumi writes this to Secret Manager (secret). |
+| `SMTP_FROM` | `deploy` | Sender address used by notification emails (plain). |
+| `STRIPE_SECRET_KEY` | `deploy` | Stripe secret key (secret Pulumi config). |
+| `STRIPE_WEBHOOK_SECRET` | `deploy` | Stripe webhook secret (secret Pulumi config). |
+| `STRIPE_PUBLISHABLE_KEY` | `deploy`, `mobile workflows`, `publish-release` | Build-time value used when compiling frontend/mobile; present in several workflows. |
+| `AUTH_JWT_SECRET` | `deploy` | JWT secret used by services (secret Pulumi config). |
+| `FIREBASE_PROJECT_ID` | `deploy` | Firebase project id (plain). |
+| `FIREBASE_CLIENT_EMAIL` | `deploy` | Firebase service account client email (secret Pulumi config). |
+| `FIREBASE_PRIVATE_KEY` | `deploy` | Firebase private key (secret — store with newline characters escaped). |
 
-That is everything. No AWS credentials, no other secrets.
+Notes:
+- Pulumi will create per-service DB secrets named like `travelhub-db-url-<service>`; you do not need to create those manually.
+- Mobile and some CI workflows reference `STRIPE_PUBLISHABLE_KEY` and will fail the build if it is not present.
+- If you prefer not to store a long JSON service-account key in GitHub, consider configuring Workload Identity Federation (GCP) and giving the Actions runner an identity with the required roles.
+
+### Quick Pulumi config examples
+
+After the first `pulumi up` (or before building the frontend) you may want to set Pulumi config values that are consumed by the `deploy.yml` workflow. From the repo root run:
+
+```bash
+# inside pulumi/ directory: set plain values
+cd pulumi
+pulumi config set --stack prod smtpUser "smtp@example.com"
+pulumi config set --stack prod smtpFrom "noreply@example.com"
+
+# set secret values
+pulumi config set --stack prod --secret smtpPass "super-secret-smtp-pass"
+pulumi config set --stack prod --secret stripeSecretKey "sk_live_xxx"
+pulumi config set --stack prod stripePublishableKey "pk_live_xxx"
+pulumi config set --stack prod --secret authJwtSecret "replace-with-random-secret"
+
+# set firebase (private key may contain newlines; easier to use GitHub secret and let the workflow set Pulumi)
+pulumi config set --stack prod firebaseProjectId "my-firebase-project"
+cd ..
+```
+
+Tip: For values that contain newlines (for example `FIREBASE_PRIVATE_KEY`) prefer setting them using the GitHub web UI or `gh secret` so newlines are preserved correctly. Example with the GitHub CLI:
+
+```bash
+printf '%s' "$FIREBASE_PRIVATE_KEY" | gh secret set FIREBASE_PRIVATE_KEY
+```
+
+### Helpful `gcloud` / `gsutil` snippets
+
+If you need to create the Pulumi state bucket and grant the deployer SA access manually:
+
+```bash
+# create bucket
+gcloud storage buckets create gs://travelhub-pulumi-state --location=us-central1 --uniform-bucket-level-access
+
+# grant SA access to the bucket (replace ${SA_EMAIL})
+gsutil iam ch serviceAccount:${SA_EMAIL}:roles/storage.objectAdmin gs://travelhub-pulumi-state
+```
+
+### Deploy env examples (local)
+
+You can run Pulumi locally for debugging. Example with explicit stack and region:
+
+```bash
+PULUMI_STACK=prod REGION=us-central1 PULUMI_CONFIG_PASSPHRASE="" pulumi up --cwd pulumi
+
+# read outputs
+PULUMI_STACK=prod pulumi stack output --cwd pulumi
+```
+
+### Exact `pulumi config set` commands used by the workflows
+
+These are the precise `pulumi config set` invocations the `deploy.yml` workflow runs (replace `prod` with your stack name if different). Run them from the repository root using `--cwd pulumi` or change directory into `pulumi/` first.
+
+```bash
+# plain values
+pulumi config set --stack prod --cwd pulumi smtpHost "smtp.gmail.com"
+pulumi config set --stack prod --cwd pulumi smtpUser "smtp@example.com"
+pulumi config set --stack prod --cwd pulumi smtpFrom "noreply@example.com"
+pulumi config set --stack prod --cwd pulumi stripePublishableKey "pk_live_xxx"
+pulumi config set --stack prod --cwd pulumi firebaseProjectId "my-firebase-project"
+
+# secret values (use --secret to encrypt into Pulumi state)
+pulumi config set --stack prod --cwd pulumi --secret smtpPass "super-secret-smtp-pass"
+pulumi config set --stack prod --cwd pulumi --secret stripeSecretKey "sk_live_xxx"
+pulumi config set --stack prod --cwd pulumi --secret stripeWebhookSecret "whsec_xxx"
+pulumi config set --stack prod --cwd pulumi --secret authJwtSecret "replace-with-random-secret"
+pulumi config set --stack prod --cwd pulumi --secret firebaseClientEmail "firebase-client@example.iam.gserviceaccount.com"
+pulumi config set --stack prod --cwd pulumi --secret firebasePrivateKey "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----"
+```
+
+Note: The workflow sets these values from GitHub Secrets automatically before calling `pulumi up`. If you run the workflow, you do not need to run these manually unless you are debugging locally.
+
+### Note on Service Account roles
+
+The deploy service account needs a broad set of roles to provision infra. The `gcloud` snippet earlier in this doc lists the roles used by the project; keep that list as the minimal set for deployment. If you prefer tighter RBAC, grant the roles incrementally and test the workflow to see which permission fails.
 
 ---
 
@@ -212,6 +302,44 @@ One secret per service that has a database, named `travelhub-db-url-{service}`:
 | `travelhub-db-url-integration-service` | integration-service |
 
 The `DATABASE_URL` secret contains the full PostgreSQL connection string including the password. Cloud Run injects it at startup via `secretKeyRef` — the plaintext password never appears in Cloud Run environment variable configuration.
+
+### Vendor webhook secrets (Hotelbeds / TravelClick / RoomRaccoon)
+
+Third-party webhook signing secrets used by `integration-service` are not created automatically by Pulumi in this repo. You must provision them in Secret Manager and make them available to the Cloud Run service. Recommended steps:
+
+1. Create the secret in Secret Manager:
+
+```bash
+# replace NAME and VALUE
+gcloud secrets create travelhub-webhook-hotelbeds --replication-policy="automatic"
+printf '%s' "${HOTELBEDS_SECRET}" | gcloud secrets versions add travelhub-webhook-hotelbeds --data-file=-
+```
+
+2. Attach the secret to the Cloud Run service (so it becomes an env var at runtime):
+
+```bash
+# set SECRET_ENV_NAME on the Cloud Run service to point to Secret Manager secret latest version
+gcloud run services update travelhub-integration-service \
+  --region=us-central1 \
+  --update-secrets WEBHOOK_SECRET_HOTELBEDS=travelhub-webhook-hotelbeds:latest
+```
+
+Repeat for `travelhub-webhook-travelclick` and `travelhub-webhook-roomraccoon` (env var names expected by the service: `WEBHOOK_SECRET_TRAVELCLICK`, `WEBHOOK_SECRET_ROOMRACCOON`).
+
+Note: If you prefer to manage these via Pulumi, add Pulumi `appConfig` keys and secret manager creation to `pulumi/index.ts`, then run `pulumi up` so the change is tracked in IaC.
+
+### FX conversion flag (`FX_MOCK`)
+
+`integration-service` is deployed with `FX_MOCK=true` by default (see `pulumi/index.ts` where `plainEnv["FX_MOCK"] = "true"`). This means price conversions are mocked in production unless changed.
+
+To change this permanently, update `pulumi/index.ts` to source the flag from `pulumi.Config()` or remove the hard-coded value, then run:
+
+```bash
+cd pulumi
+pulumi up --stack prod
+```
+
+Avoid updating Cloud Run env vars manually when Pulumi controls the service; manual edits will be overwritten by the next `pulumi up`.
 
 ### Services (Cloud Run)
 9 Cloud Run services, one per microservice. All use a shared service account (`travelhub-cloudrun@PROJECT.iam.gserviceaccount.com`).
