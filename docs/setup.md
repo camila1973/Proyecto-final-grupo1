@@ -31,6 +31,24 @@ pnpm start
 
 Esto ejecuta `nx run-many -t serve` y levanta todos los servicios y el frontend en modo de desarrollo.
 
+## Despliegue local a GCP
+
+Si necesitas desplegar desde tu máquina a un proyecto GCP nuevo, usa la guía de Quickstart y el helper de configuración:
+
+- [docs/quickstart-deploy.md](quickstart-deploy.md)
+- `scripts/pulumi-config.sh`
+
+El flujo típico es:
+
+```bash
+cd pulumi
+pulumi stack init prod
+bash ../scripts/pulumi-config.sh prod
+pulumi up --stack prod --yes
+```
+
+Asegúrate de haber iniciado sesión con `gcloud auth login` y de haber configurado el proyecto correcto con `gcloud config set project <GCP_PROJECT_ID>`.
+
 ## Levantar servicios individuales
 
 ```bash

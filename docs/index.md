@@ -15,6 +15,7 @@ Contenido (orden recomendado):
    - [Arquitectura y servicios](architecture.md)
 5. CI & Testing
    - [CI y testing](ci-and-testing.md)
+   - [Performance testing](performance-testing.md)
 6. Services
    - [integration-service](integration-service.md)
    - Otros servicios: `services/<name>` (por crear)
