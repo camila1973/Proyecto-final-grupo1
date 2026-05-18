@@ -14,7 +14,9 @@ export function login(gatewayUrl, email, password) {
     },
   );
 
-  if (res.status !== 200) {
+  // NestJS @Post returns 201 by default and auth-service does not override it,
+  // so accept any 2xx instead of pinning to 200.
+  if (res.status < 200 || res.status >= 300) {
     throw new Error(
       `Login failed for ${email}: ${res.status} ${res.body?.slice(0, 200)}`,
     );
