@@ -20,6 +20,7 @@ import { check } from "k6";
 import { textSummary } from "https://jslib.k6.io/k6-summary/0.0.2/index.js";
 import { htmlReport } from "https://raw.githubusercontent.com/benc-uk/k6-reporter/main/dist/bundle.js";
 import { post, patch, get } from "../../lib/http.js";
+import { login } from "../../lib/auth.js";
 import { jitter } from "../../lib/utils.js";
 import {
   BOOKING_BOOKER_ID,
@@ -27,6 +28,11 @@ import {
   BOOKING_PROPERTY_ID,
   BOOKING_PARTNER_ID,
 } from "../../fixtures/seed-data.js";
+
+// Seeded MFA-bypass account (services/auth-service/scripts/seed.ts).
+// All PATCH /reservations/* endpoints require a valid JWT at the gateway.
+const E2E_EMAIL    = __ENV.E2E_EMAIL    || "e2e@travelhub.com";
+const E2E_PASSWORD = __ENV.E2E_PASSWORD || "E2eTest1234!";
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -76,7 +82,7 @@ function datePair() {
   };
 }
 
-function createReservation(checkIn, checkOut) {
+function createReservation(checkIn, checkOut, token) {
   return post(
     `${BOOKING}/reservations`,
     {
@@ -88,47 +94,51 @@ function createReservation(checkIn, checkOut) {
       checkOut,
     },
     { name: "create_reservation" },
+    token,
   );
 }
 
-function submitReservation(id) {
-  return patch(`${BOOKING}/reservations/${id}/submit`, null, { name: "submit_reservation" });
+function submitReservation(id, token) {
+  return patch(`${BOOKING}/reservations/${id}/submit`, null, { name: "submit_reservation" }, token);
 }
 
-function confirmReservation(id) {
-  return patch(`${BOOKING}/reservations/${id}/confirm`, null, { name: "confirm_reservation" });
+function confirmReservation(id, token) {
+  return patch(`${BOOKING}/reservations/${id}/confirm`, null, { name: "confirm_reservation" }, token);
 }
 
-function getReservation(id) {
-  return get(`${BOOKING}/reservations/${id}`, { name: "get_reservation" });
+function getReservation(id, token) {
+  return get(`${BOOKING}/reservations/${id}`, { name: "get_reservation" }, token);
 }
 
-function updateGuestInfo(id) {
+function updateGuestInfo(id, token) {
   return patch(
     `${BOOKING}/reservations/${id}/guest-info`,
     { firstName: "Smoke", lastName: "Test", email: "smoke@travelhub.com", phone: "+52 555 000 0000" },
     { name: "update_guest_info" },
+    token,
   );
 }
 
-function failReservation(id) {
+function failReservation(id, token) {
   return patch(
     `${BOOKING}/reservations/${id}/fail`,
     { reason: "Your card was declined." },
     { name: "fail_reservation" },
+    token,
   );
 }
 
-function cancelReservation(id) {
+function cancelReservation(id, token) {
   return patch(
     `${BOOKING}/reservations/${id}/cancel`,
     { reason: "Smoke test cancellation" },
     { name: "cancel_reservation" },
+    token,
   );
 }
 
-function reholdReservation(id) {
-  return patch(`${BOOKING}/reservations/${id}/rehold`, null, { name: "rehold_reservation" });
+function reholdReservation(id, token) {
+  return patch(`${BOOKING}/reservations/${id}/rehold`, null, { name: "rehold_reservation" }, token);
 }
 
 // ─── Scenarios ────────────────────────────────────────────────────────────────
@@ -138,10 +148,10 @@ function reholdReservation(id) {
  * Full flow: create (held) → guest-info → submit (submitted) → confirm (confirmed).
  * Verifies HTTP statuses and response shape at each step.
  */
-function happyPath() {
+function happyPath(token) {
   const { checkIn, checkOut } = datePair();
 
-  const resRes = createReservation(checkIn, checkOut);
+  const resRes = createReservation(checkIn, checkOut, token);
   const resOk = check(resRes, {
     "happy_path: reservation 201":       (r) => r.status === 201,
     "happy_path: status held":            (r) => { try { return JSON.parse(r.body).status === "held"; } catch { return false; } },
@@ -151,18 +161,18 @@ function happyPath() {
   if (!resOk || resRes.status !== 201) return;
   const { id } = JSON.parse(resRes.body);
 
-  const patchRes = updateGuestInfo(id);
+  const patchRes = updateGuestInfo(id, token);
   check(patchRes, {
     "happy_path: guest-info 200": (r) => r.status === 200,
   });
 
-  const submitRes = submitReservation(id);
+  const submitRes = submitReservation(id, token);
   check(submitRes, {
     "happy_path: submit 200":       (r) => r.status === 200,
     "happy_path: status submitted":  (r) => { try { return JSON.parse(r.body).status === "submitted"; } catch { return false; } },
   });
 
-  const confirmRes = confirmReservation(id);
+  const confirmRes = confirmReservation(id, token);
   check(confirmRes, {
     "happy_path: confirm 200":      (r) => r.status === 200,
     "happy_path: status confirmed": (r) => { try { return JSON.parse(r.body).status === "confirmed"; } catch { return false; } },
@@ -174,15 +184,15 @@ function happyPath() {
  * Two POST /reservations with the same booker/room/dates return the same reservation ID.
  * The partial unique index on held prevents duplicate active holds.
  */
-function idempotency() {
+function idempotency(token) {
   const { checkIn, checkOut } = datePair();
 
-  const r1 = createReservation(checkIn, checkOut);
+  const r1 = createReservation(checkIn, checkOut, token);
   check(r1, { "idempotency: 1st reservation 201": (r) => r.status === 201 });
   if (r1.status !== 201) return;
   const id1 = JSON.parse(r1.body).id;
 
-  const r2 = createReservation(checkIn, checkOut); // identical params
+  const r2 = createReservation(checkIn, checkOut, token); // identical params
   const id2 = (r2.status === 200 || r2.status === 201) ? JSON.parse(r2.body).id : null;
   check(r2, {
     "idempotency: 2nd call is 2xx":       (r) => r.status >= 200 && r.status < 300,
@@ -190,8 +200,8 @@ function idempotency() {
   });
 
   // Cleanup — confirm so the held is released
-  submitReservation(id1);
-  confirmReservation(id1);
+  submitReservation(id1, token);
+  confirmReservation(id1, token);
 }
 
 /**
@@ -199,14 +209,14 @@ function idempotency() {
  * Creates a reservation and fetches it by ID.
  * Verifies the response shape and status.
  */
-function getReservationScenario() {
+function getReservationScenario(token) {
   const { checkIn, checkOut } = datePair();
 
-  const resRes = createReservation(checkIn, checkOut);
+  const resRes = createReservation(checkIn, checkOut, token);
   if (resRes.status !== 201) return;
   const { id } = JSON.parse(resRes.body);
 
-  const getRes = getReservation(id);
+  const getRes = getReservation(id, token);
   check(getRes, {
     "get_reservation: 200":              (r) => r.status === 200,
     "get_reservation: id matches":       (r) => { try { return JSON.parse(r.body).id === id; } catch { return false; } },
@@ -214,48 +224,48 @@ function getReservationScenario() {
   });
 
   // Cleanup
-  submitReservation(id);
-  confirmReservation(id);
+  submitReservation(id, token);
+  confirmReservation(id, token);
 }
 
 /**
  * 3 — Submit without prior held (idempotency guard)
  * Submitting an already-submitted or confirmed reservation returns 404.
  */
-function submitAlreadyPending() {
+function submitAlreadyPending(token) {
   const { checkIn, checkOut } = datePair();
 
-  const resRes = createReservation(checkIn, checkOut);
+  const resRes = createReservation(checkIn, checkOut, token);
   if (resRes.status !== 201) return;
   const { id } = JSON.parse(resRes.body);
 
   // First submit: ok
-  const s1 = submitReservation(id);
+  const s1 = submitReservation(id, token);
   check(s1, { "double_submit: 1st submit 200": (r) => r.status === 200 });
 
   // Second submit on already-submitted: rejected (404 — not held anymore)
-  const s2 = submitReservation(id);
+  const s2 = submitReservation(id, token);
   check(s2, { "double_submit: 2nd submit rejected": (r) => r.status === 404 || r.status === 409 || r.status === 400 });
 
   // Cleanup
-  confirmReservation(id);
+  confirmReservation(id, token);
 }
 
 /**
  * 4 — Full lifecycle check
  * Creates, submits, confirms and verifies final state via GET.
  */
-function fullLifecycle() {
+function fullLifecycle(token) {
   const { checkIn, checkOut } = datePair();
 
-  const resRes = createReservation(checkIn, checkOut);
+  const resRes = createReservation(checkIn, checkOut, token);
   if (resRes.status !== 201) return;
   const { id } = JSON.parse(resRes.body);
 
-  submitReservation(id);
-  confirmReservation(id);
+  submitReservation(id, token);
+  confirmReservation(id, token);
 
-  const getRes = getReservation(id);
+  const getRes = getReservation(id, token);
   check(getRes, {
     "lifecycle: final status confirmed": (r) => { try { return JSON.parse(r.body).status === "confirmed"; } catch { return false; } },
   });
@@ -267,15 +277,15 @@ function fullLifecycle() {
  * Verifies the reservation reaches the cancelled state and the inventory hold
  * is released (subsequent create on the same dates should succeed).
  */
-function cancelHeld() {
+function cancelHeld(token) {
   const { checkIn, checkOut } = datePair();
 
-  const resRes = createReservation(checkIn, checkOut);
+  const resRes = createReservation(checkIn, checkOut, token);
   check(resRes, { "cancel_held: reservation 201": (r) => r.status === 201 });
   if (resRes.status !== 201) return;
   const { id } = JSON.parse(resRes.body);
 
-  const cancelRes = cancelReservation(id);
+  const cancelRes = cancelReservation(id, token);
   check(cancelRes, {
     "cancel_held: cancel 200":         (r) => r.status === 200,
     "cancel_held: status cancelled":   (r) => { try { return JSON.parse(r.body).status === "cancelled"; } catch { return false; } },
@@ -283,11 +293,11 @@ function cancelHeld() {
   });
 
   // Inventory should be freed — same dates can be held again
-  const retryRes = createReservation(checkIn, checkOut);
+  const retryRes = createReservation(checkIn, checkOut, token);
   check(retryRes, { "cancel_held: room available after cancel": (r) => r.status === 201 });
   if (retryRes.status === 201) {
-    submitReservation(JSON.parse(retryRes.body).id);
-    confirmReservation(JSON.parse(retryRes.body).id);
+    submitReservation(JSON.parse(retryRes.body).id, token);
+    confirmReservation(JSON.parse(retryRes.body).id, token);
   }
 }
 
@@ -296,18 +306,18 @@ function cancelHeld() {
  * Creates a reservation, submits it (submitted), then cancels.
  * Verifies the reservation reaches the cancelled state.
  */
-function cancelSubmitted() {
+function cancelSubmitted(token) {
   const { checkIn, checkOut } = datePair();
 
-  const resRes = createReservation(checkIn, checkOut);
+  const resRes = createReservation(checkIn, checkOut, token);
   check(resRes, { "cancel_submitted: reservation 201": (r) => r.status === 201 });
   if (resRes.status !== 201) return;
   const { id } = JSON.parse(resRes.body);
 
-  const submitRes = submitReservation(id);
+  const submitRes = submitReservation(id, token);
   check(submitRes, { "cancel_submitted: submit 200": (r) => r.status === 200 });
 
-  const cancelRes = cancelReservation(id);
+  const cancelRes = cancelReservation(id, token);
   check(cancelRes, {
     "cancel_submitted: cancel 200":       (r) => r.status === 200,
     "cancel_submitted: status cancelled": (r) => { try { return JSON.parse(r.body).status === "cancelled"; } catch { return false; } },
@@ -319,21 +329,21 @@ function cancelSubmitted() {
  * Full retry path: held → submitted → failed → held (rehold) → submitted → confirmed.
  * Verifies the reservation recovers from a failed payment and reaches confirmed.
  */
-function failAndRetry() {
+function failAndRetry(token) {
   const { checkIn, checkOut } = datePair();
 
-  const resRes = createReservation(checkIn, checkOut);
+  const resRes = createReservation(checkIn, checkOut, token);
   check(resRes, { "fail_retry: reservation 201": (r) => r.status === 201 });
   if (resRes.status !== 201) return;
   const { id } = JSON.parse(resRes.body);
 
   // Transition to submitted
-  const submitRes = submitReservation(id);
+  const submitRes = submitReservation(id, token);
   check(submitRes, { "fail_retry: submit 200": (r) => r.status === 200 });
   if (submitRes.status !== 200) return;
 
   // Simulate Stripe payment_failed webhook response
-  const failRes = failReservation(id);
+  const failRes = failReservation(id, token);
   check(failRes, {
     "fail_retry: fail 200":        (r) => r.status === 200,
     "fail_retry: status failed":   (r) => { try { return JSON.parse(r.body).status === "failed"; } catch { return false; } },
@@ -342,7 +352,7 @@ function failAndRetry() {
   if (failRes.status !== 200) return;
 
   // Re-acquire inventory hold (failed → held)
-  const reholdRes = reholdReservation(id);
+  const reholdRes = reholdReservation(id, token);
   check(reholdRes, {
     "fail_retry: rehold 200":      (r) => r.status === 200,
     "fail_retry: status held":     (r) => { try { return JSON.parse(r.body).status === "held"; } catch { return false; } },
@@ -351,10 +361,10 @@ function failAndRetry() {
   if (reholdRes.status !== 200) return;
 
   // Retry: submit → confirm
-  const submitRes2 = submitReservation(id);
+  const submitRes2 = submitReservation(id, token);
   check(submitRes2, { "fail_retry: 2nd submit 200": (r) => r.status === 200 });
 
-  const confirmRes = confirmReservation(id);
+  const confirmRes = confirmReservation(id, token);
   check(confirmRes, {
     "fail_retry: confirm 200":      (r) => r.status === 200,
     "fail_retry: status confirmed": (r) => { try { return JSON.parse(r.body).status === "confirmed"; } catch { return false; } },
@@ -374,8 +384,15 @@ const SCENARIOS = [
   failAndRetry,
 ];
 
-export default function () {
-  SCENARIOS[__ITER % SCENARIOS.length]();
+export function setup() {
+  // Single login at the start of the test; reused across all iterations.
+  // Token TTL is 3600s (auth.types.ts) — well beyond a 5-minute smoke run.
+  const token = login(GATEWAY_URL, E2E_EMAIL, E2E_PASSWORD);
+  return { token };
+}
+
+export default function (data) {
+  SCENARIOS[__ITER % SCENARIOS.length](data.token);
   jitter(300, 700); // 0.3–1s think time between iterations
 }
 

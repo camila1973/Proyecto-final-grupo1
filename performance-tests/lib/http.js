@@ -5,37 +5,43 @@ const BASE_HEADERS = {
   "X-Load-Test": "true",
 };
 
-// GET with automatic X-Load-Test header and optional extra tags.
-export function get(url, tags = {}) {
+function buildHeaders(auth) {
+  return auth
+    ? { ...BASE_HEADERS, Authorization: `Bearer ${auth}` }
+    : BASE_HEADERS;
+}
+
+// GET with automatic X-Load-Test header, optional Bearer auth, and optional extra tags.
+export function get(url, tags = {}, auth = null) {
   return http.get(url, {
-    headers: BASE_HEADERS,
+    headers: buildHeaders(auth),
     tags,
     timeout: "45s",
   });
 }
 
-// POST with JSON body, X-Load-Test header, and optional extra tags.
-export function post(url, body, tags = {}) {
+// POST with JSON body, X-Load-Test header, optional Bearer auth, and optional extra tags.
+export function post(url, body, tags = {}, auth = null) {
   return http.post(url, JSON.stringify(body), {
-    headers: BASE_HEADERS,
+    headers: buildHeaders(auth),
     tags,
     timeout: "45s",
   });
 }
 
-// PATCH with optional JSON body, X-Load-Test header, and optional extra tags.
-export function patch(url, body, tags = {}) {
+// PATCH with optional JSON body, X-Load-Test header, optional Bearer auth, and optional extra tags.
+export function patch(url, body, tags = {}, auth = null) {
   return http.patch(url, body != null ? JSON.stringify(body) : null, {
-    headers: BASE_HEADERS,
+    headers: buildHeaders(auth),
     tags,
     timeout: "45s",
   });
 }
 
-// DELETE with X-Load-Test header and optional extra tags.
-export function del(url, tags = {}) {
+// DELETE with X-Load-Test header, optional Bearer auth, and optional extra tags.
+export function del(url, tags = {}, auth = null) {
   return http.del(url, null, {
-    headers: BASE_HEADERS,
+    headers: buildHeaders(auth),
     tags,
     timeout: "45s",
   });
