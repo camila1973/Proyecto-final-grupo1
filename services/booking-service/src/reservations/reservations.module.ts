@@ -1,6 +1,6 @@
 import { Module } from "@nestjs/common";
 import { ReservationsController } from "./reservations.controller.js";
-import { InternalReservationsController } from "./internal.controller.js";
+import { ReservationJobsController } from "./reservation-jobs.controller.js";
 import { ReservationsService } from "./reservations.service.js";
 import { ReservationsRepository } from "./reservations.repository.js";
 import { HoldExpiryService } from "./hold-expiry.service.js";
@@ -21,7 +21,7 @@ import { PublisherModule } from "../events/publisher.module.js";
     PartnerFeesModule,
     PublisherModule,
   ],
-  controllers: [ReservationsController, InternalReservationsController],
+  controllers: [ReservationsController, ReservationJobsController],
   providers: [
     ReservationsService,
     ReservationsRepository,

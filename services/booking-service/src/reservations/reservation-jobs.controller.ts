@@ -22,7 +22,7 @@ import { InternalTokenGuard } from "./internal-token.guard.js";
 // changing every caller.
 @Controller("reservations")
 @UseGuards(InternalTokenGuard)
-export class InternalReservationsController {
+export class ReservationJobsController {
   constructor(
     private readonly holdExpiryService: HoldExpiryService,
     private readonly noShowService: NoShowService,

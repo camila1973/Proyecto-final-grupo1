@@ -10,7 +10,8 @@ import { PartnerFeesModule } from "./partner-fees/partner-fees.module.js";
 import { PublisherModule } from "./events/publisher.module.js";
 
 // Hold-expiry and no-show sweeps are driven by Google Cloud Scheduler hitting
-// /internal/reservations/* — see services/booking-service/src/reservations/internal.controller.ts
+// /reservations/expire-holds and /reservations/mark-no-shows — see
+// services/booking-service/src/reservations/reservation-jobs.controller.ts
 // and pulumi/index.ts for the Scheduler job definitions.
 @Module({
   imports: [

@@ -1,5 +1,5 @@
 import { ExecutionContext, UnauthorizedException } from "@nestjs/common";
-import { InternalReservationsController } from "./internal.controller.js";
+import { ReservationJobsController } from "./reservation-jobs.controller.js";
 import { InternalTokenGuard } from "./internal-token.guard.js";
 import type { HoldExpiryService } from "./hold-expiry.service.js";
 import type { NoShowService } from "./no-show.service.js";
@@ -15,7 +15,7 @@ function makeContext(headers: Record<string, string>): ExecutionContext {
   } as unknown as ExecutionContext;
 }
 
-describe("InternalReservationsController", () => {
+describe("ReservationJobsController", () => {
   it("expire-holds delegates to HoldExpiryService", async () => {
     const holdExpiry = {
       expireHolds: jest
@@ -23,7 +23,7 @@ describe("InternalReservationsController", () => {
         .mockResolvedValue({ processed: 4, skipped: false }),
     } as unknown as HoldExpiryService;
     const noShow = {} as NoShowService;
-    const controller = new InternalReservationsController(holdExpiry, noShow);
+    const controller = new ReservationJobsController(holdExpiry, noShow);
 
     const result = await controller.expireHolds();
 
@@ -38,7 +38,7 @@ describe("InternalReservationsController", () => {
         .fn()
         .mockResolvedValue({ processed: 2, skipped: false }),
     } as unknown as NoShowService;
-    const controller = new InternalReservationsController(holdExpiry, noShow);
+    const controller = new ReservationJobsController(holdExpiry, noShow);
 
     const result = await controller.markNoShows();
 
