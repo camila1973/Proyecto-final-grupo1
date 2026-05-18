@@ -25,6 +25,21 @@ cd pulumi
 pulumi stack init prod
 ```
 
+> Si vas a desplegar desde cero en otro proyecto GCP, asegúrate de usar `gcloud auth login` y el proyecto correcto:
+>
+> ```bash
+gcloud auth login
+> gcloud config set project <GCP_PROJECT_ID>
+> ```
+>
+> Luego crea la pila con un nombre adecuado para ese proyecto, por ejemplo:
+>
+> ```bash
+> pulumi stack init prod
+> # o
+> pulumi stack init <nuevo-stack>
+> ```
+>
 3. Configura los valores requeridos (ejemplos):
 
 ```bash
@@ -75,4 +90,30 @@ Si algo falla
 - Revisa `pulumi` logs y el output del workflow en GitHub Actions.
 - Usa `pulumi stack output` para ver URLs y recursos creados.
 
-¿Necesitas que añada un script `scripts/pulumi-config.sh` para automatizar la creación de estos config a partir de variables de entorno? (puedo generarlo si quieres).
+### Script de configuración rápida
+
+También puedes automatizar la creación de los valores de configuración con el helper. Si usas otro stack, pásalo como primer argumento:
+
+```bash
+bash ./scripts/pulumi-config.sh prod
+# o para otro stack
+bash ./scripts/pulumi-config.sh <stack-name>
+```
+
+El script usa estas variables de entorno:
+
+- `GCP_PROJECT_ID`
+- `GCP_REGION`
+- `AUTH_JWT_SECRET`
+- `STRIPE_SECRET_KEY`
+- `STRIPE_WEBHOOK_SECRET`
+- `STRIPE_PUBLISHABLE_KEY`
+- `SMTP_HOST`
+- `SMTP_USER`
+- `SMTP_PASS`
+- `FIREBASE_PROJECT_ID`
+- `FIREBASE_CLIENT_EMAIL`
+- `FIREBASE_PRIVATE_KEY`
+- `GCP_SERVICE_ACCOUNT_KEY` o `GCP_SERVICE_ACCOUNT_KEY_FILE`
+
+Si no quieres usar un archivo JSON, exporta `GCP_SERVICE_ACCOUNT_KEY` con el contenido del key file.
