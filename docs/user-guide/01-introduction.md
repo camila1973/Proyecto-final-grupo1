@@ -9,28 +9,34 @@ que ponen sus habitaciones a la venta.
 ## Vista general
 
 ```mermaid
-flowchart LR
-    subgraph Demanda
-        V[🧳 Viajero]
-    end
-    subgraph TravelHub
-        Web[💻 Web / App móvil]
-        Portal[🏨 Portal 'Mi Hotel']
-        Core[(Motor TravelHub<br/>búsqueda · reservas · pagos)]
-    end
-    subgraph Oferta
-        P[🏨 Partner / Hotelero]
-        PMS[🔌 PMS externo<br/>Hotelbeds, TravelClick…]
-    end
+flowchart TB
+    V[🧳 Viajero]
+    Web[💻 Web / App móvil]
+    Core[(🏗️ Motor TravelHub<br/>búsqueda · reservas · pagos)]
+    Portal[💼 Portal 'Mi Hotel']
+    P[🏨 Partner / Hotelero]
+    PMS[🔌 PMS externo<br/>Hotelbeds, TravelClick…]
 
     V -->|busca, reserva, paga| Web
     Web --> Core
-    P -->|gestiona inventario y reservas| Portal
-    Portal --> Core
+    Core -->|emails, confirmaciones| V
+
     PMS -.->|webhooks, CSV| Core
-    Core -->|emails, notificaciones| V
-    Core -->|desembolsos| P
+
+    Core <--> Portal
+    Portal <-->|gestiona inventario<br/>y reservas| P
+    Core -.->|desembolsos| P
+
+    classDef demand fill:#10b981,stroke:#059669,color:#fff
+    classDef supply fill:#3b82f6,stroke:#1d4ed8,color:#fff
+    classDef th fill:#475569,stroke:#334155,color:#fff
+    class V demand
+    class P,PMS supply
+    class Web,Core,Portal th
 ```
+
+> 🟢 verde = lado de la **demanda** (viajero) · 🔵 azul = lado de la **oferta**
+> (hotelero, PMS) · ⚫ gris = pieza interna de **TravelHub**.
 
 ## ¿Qué resuelve?
 
