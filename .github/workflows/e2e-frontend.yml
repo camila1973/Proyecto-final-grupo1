@@ -98,7 +98,7 @@ jobs:
         env:
           API_BASE_URL: ${{ github.event.inputs.api_url || vars.GATEWAY_URL }}
           FRONTEND_BASE_URL: ${{ github.event.inputs.frontend_url || vars.FRONTEND_URL }}
-        run: pnpm exec nx e2e frontend
+        run: pnpm exec nx e2e frontend-e2e
 
       - name: Upload Playwright HTML report
         if: always()
