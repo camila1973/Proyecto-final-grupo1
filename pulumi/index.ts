@@ -661,7 +661,7 @@ new gcp.cloudscheduler.Job("expire-holds-cron", {
   attemptDeadline: "60s",
   retryConfig: { retryCount: 1, maxBackoffDuration: "30s", minBackoffDuration: "5s" },
   httpTarget: {
-    uri:        pulumi.interpolate`${bookingServiceUri}/internal/reservations/expire-holds`,
+    uri:        pulumi.interpolate`${bookingServiceUri}/reservations/expire-holds`,
     httpMethod: "POST",
     headers: {
       "X-Internal-Token": internalCronSecretValue.result,
@@ -680,7 +680,7 @@ new gcp.cloudscheduler.Job("mark-no-shows-cron", {
   attemptDeadline: "300s",
   retryConfig: { retryCount: 1, maxBackoffDuration: "60s", minBackoffDuration: "10s" },
   httpTarget: {
-    uri:        pulumi.interpolate`${bookingServiceUri}/internal/reservations/mark-no-shows`,
+    uri:        pulumi.interpolate`${bookingServiceUri}/reservations/mark-no-shows`,
     httpMethod: "POST",
     headers: {
       "X-Internal-Token": internalCronSecretValue.result,
