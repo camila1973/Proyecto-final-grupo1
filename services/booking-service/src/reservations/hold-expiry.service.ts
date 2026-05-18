@@ -1,12 +1,15 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { Interval } from "@nestjs/schedule";
 import { ReservationsRepository } from "./reservations.repository.js";
 import { InventoryClient } from "../clients/inventory.client.js";
 import { CacheService } from "../cache/cache.service.js";
 
-const EXPIRY_INTERVAL_MS = 60_000;
 const LOCK_KEY = "booking:hold-expiry:lock";
-const LOCK_TTL_SECONDS = 70; // interval + 10s buffer
+const LOCK_TTL_SECONDS = 70; // covers a generous run-time window
+
+export interface ExpireHoldsResult {
+  processed: number;
+  skipped: boolean;
+}
 
 @Injectable()
 export class HoldExpiryService {
@@ -18,12 +21,15 @@ export class HoldExpiryService {
     private readonly cache: CacheService,
   ) {}
 
-  @Interval(EXPIRY_INTERVAL_MS)
-  async expireHolds(): Promise<void> {
+  // Invoked by Cloud Scheduler via POST /internal/reservations/expire-holds.
+  // The Redis lock guards against duplicate executions when Cloud Scheduler
+  // retries on transient failures.
+  async expireHolds(): Promise<ExpireHoldsResult> {
     const acquired = await this.cache.acquireLock(LOCK_KEY, LOCK_TTL_SECONDS);
-    if (!acquired) return;
+    if (!acquired) return { processed: 0, skipped: true };
 
     const expired = await this.reservationsRepo.findExpiredHolds();
+    let processed = 0;
 
     for (const row of expired) {
       const updated = await this.reservationsRepo.expire(
@@ -41,11 +47,14 @@ export class HoldExpiryService {
           row.check_in,
           row.check_out,
         );
+        processed += 1;
       } catch (err) {
         this.logger.warn(
           `Failed to unhold inventory for expired reservation ${row.id}: ${err}`,
         );
       }
     }
+
+    return { processed, skipped: false };
   }
 }

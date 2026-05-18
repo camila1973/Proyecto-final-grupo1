@@ -257,6 +257,7 @@ services:
       INVENTORY_SERVICE_URL: http://inventory-service:3003
       NOTIFICATION_SERVICE_URL: http://notification-service:3006
       PARTNERS_SERVICE_URL: http://partners-service:3007
+      INTERNAL_CRON_SECRET: ${INTERNAL_CRON_SECRET:-local-cron-dev-secret}
     depends_on:
       booking-db:
         condition: service_healthy
