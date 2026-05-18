@@ -483,7 +483,12 @@ function makeCloudRun(
       },
       scaling: { minInstanceCount: 1, maxInstanceCount: 1 },
       containers: [{
-        image: img.imageName,
+        // Pin Cloud Run to the digest-qualified image name. Using img.imageName
+        // resolves to ".../<service>:latest", which is identical across rebuilds —
+        // Pulumi reports no diff on the container, so a fresh image gets pushed
+        // to the registry but Cloud Run keeps serving the old revision. repoDigest
+        // includes the @sha256:… suffix, so every rebuild forces a new revision.
+        image: img.repoDigest,
         ports: [{ containerPort: 8080 }],
         envs: [...plainVars, ...secretVars],
         volumeMounts,
