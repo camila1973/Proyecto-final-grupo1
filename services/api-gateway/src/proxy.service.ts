@@ -46,10 +46,15 @@ export class ProxyService {
 
     // Prefer rawBody (captured because NestFactory was started with rawBody: true)
     // so signed payloads like Stripe webhooks aren't re-serialized in transit.
+    // Uint8Array.from(buffer) yields a Uint8Array<ArrayBuffer> that fetch's
+    // BodyInit accepts — Node Buffer is Uint8Array<ArrayBufferLike>, which TS
+    // does not consider assignable to BodyInit since the typed generic was added.
     const rawBody = (req as Request & { rawBody?: Buffer }).rawBody;
-    const forwardBody = isBodyless
+    const forwardBody: BodyInit | undefined = isBodyless
       ? undefined
-      : (rawBody ?? JSON.stringify(req.body));
+      : rawBody
+        ? Uint8Array.from(rawBody)
+        : JSON.stringify(req.body);
 
     let response: globalThis.Response;
     try {
