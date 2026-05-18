@@ -100,7 +100,7 @@ async function seed() {
         last_name: u.lastName,
         phone: null,
         partner_id: u.partnerId,
-        mfa_required: u.mfaRequired ?? true,
+        mfa_required: u.mfaRequired ?? false,
       })),
     )
     .execute();
