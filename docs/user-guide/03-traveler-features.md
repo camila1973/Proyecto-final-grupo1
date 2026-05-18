@@ -70,24 +70,35 @@ En la pantalla de checkout, el viajero:
 
 ### Estados de una reserva
 
-```mermaid
-stateDiagram-v2
-    [*] --> held: Reservar
-    held --> submitted: Iniciar pago
-    held --> expired: 15 min sin pago
-    submitted --> confirmed: Pago OK
-    submitted --> failed: Pago rechazado
-    submitted --> cancelled: Cancelar
-    failed --> held: Reintentar pago
-    confirmed --> checked_in: Check-in (QR o manual)
-    confirmed --> cancelled: Cancelar
-    confirmed --> no_show: No se presentó
-    checked_in --> checked_out: Check-out
+**Camino feliz** (de izquierda a derecha):
 
-    checked_out --> [*]
-    expired --> [*]
-    cancelled --> [*]
-    no_show --> [*]
+```mermaid
+flowchart LR
+    held([held]) -->|Iniciar pago| submitted([submitted])
+    submitted -->|Pago OK| confirmed([confirmed])
+    confirmed -->|Check-in| checked_in([checked_in])
+    checked_in -->|Check-out| checked_out([checked_out])
+
+    classDef happy fill:#10b981,stroke:#059669,color:#fff
+    class held,submitted,confirmed,checked_in,checked_out happy
+```
+
+**Salidas alternativas** (estados no felices):
+
+```mermaid
+flowchart LR
+    held([held]) -->|15 min sin pago| expired([expired])
+    held -->|Cancelar| cancelled([cancelled])
+    submitted([submitted]) -->|Pago rechazado| failed([failed])
+    submitted -->|Cancelar| cancelled
+    failed -.->|Reintentar pago| held
+    confirmed([confirmed]) -->|Cancelar| cancelled
+    confirmed -->|No se presentó| no_show([no_show])
+
+    classDef sad fill:#ef4444,stroke:#b91c1c,color:#fff
+    classDef neutral fill:#6b7280,stroke:#4b5563,color:#fff
+    class failed,cancelled,no_show sad
+    class expired neutral
 ```
 
 | Estado | Significado |

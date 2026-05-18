@@ -7,21 +7,22 @@ cuando sea necesario.
 ## Vista del partner sobre el ciclo de la reserva
 
 ```mermaid
-stateDiagram-v2
-    [*] --> confirmed: Viajero paga<br/>(automático)
-    confirmed --> checked_in: Check-in<br/>(QR del huésped o manual)
-    confirmed --> cancelled: Partner-cancel<br/>(overbooking, cierre…)
-    confirmed --> no_show: Job diario<br/>(no se presentó)
-    checked_in --> checked_out: Check-out manual
-    cancelled --> [*]
-    checked_out --> [*]
-    no_show --> [*]
+flowchart LR
+    Pay[💳 Viajero paga<br/>automático] --> confirmed([confirmed])
+    confirmed -->|Check-in QR o manual| checked_in([checked_in])
+    checked_in -->|Check-out manual| checked_out([checked_out])
+    confirmed -->|Partner-cancel<br/>overbooking, cierre…| cancelled([cancelled])
+    confirmed -->|Job diario<br/>no se presentó| no_show([no_show])
 
-    note right of confirmed
-      Aquí empieza la acción
-      del partner
-    end note
+    classDef happy fill:#10b981,stroke:#059669,color:#fff
+    classDef sad fill:#ef4444,stroke:#b91c1c,color:#fff
+    classDef start fill:#3b82f6,stroke:#1d4ed8,color:#fff
+    class confirmed,checked_in,checked_out happy
+    class cancelled,no_show sad
+    class Pay start
 ```
+
+> Donde empieza la acción del partner: una reserva ya **`confirmed`**.
 
 ## 12.1. Acceder a las reservas
 
