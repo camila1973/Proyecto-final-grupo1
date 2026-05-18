@@ -76,7 +76,19 @@ jobs:
           fi
           echo "Building against: $EXPO_PUBLIC_API_URL"
 
+      # Cache the built APK by commit SHA + resolved gateway URL. The URL is
+      # baked into the JS bundle at build time, so the same SHA pointed at a
+      # different gateway must rebuild. Cache hits skip `eas build` entirely
+      # (~10–20 min saved on repeat manual runs of the same commit).
+      - name: Cache Android APK by commit + gateway URL
+        id: apk-cache
+        uses: actions/cache@v4
+        with:
+          path: artifacts/app.apk
+          key: apk-${{ github.sha }}-${{ github.event.inputs.api_url || vars.GATEWAY_URL }}
+
       - name: Build Android APK pointed at deployed gateway
+        if: steps.apk-cache.outputs.cache-hit != 'true'
         working-directory: mobile
         env:
           ANDROID_HOME: /usr/local/lib/android/sdk

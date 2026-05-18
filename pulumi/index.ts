@@ -646,9 +646,22 @@ for (const svc of MICROSERVICES) {
 // Auth: shared secret in the X-Internal-Token header validated by
 // services/booking-service/src/reservations/internal-token.guard.ts.
 //
-// NOTE: The Cloud Scheduler API (`cloudscheduler.googleapis.com`) must be
-// enabled on the project. Enable once via:
-//   gcloud services enable cloudscheduler.googleapis.com --project=$PROJECT
+// NOTE: Two one-time bootstrap steps are required before this stack can
+// create the Cloud Scheduler jobs. Run both from a privileged identity
+// (project owner / IAM admin), not from the CI deployer SA itself:
+//
+//   1. Enable the Cloud Scheduler API:
+//        gcloud services enable cloudscheduler.googleapis.com \
+//          --project=$PROJECT
+//
+//   2. Grant the CI deployer SA permission to create scheduler jobs:
+//        gcloud projects add-iam-policy-binding $PROJECT \
+//          --member=serviceAccount:travelhub-deployer@$PROJECT.iam.gserviceaccount.com \
+//          --role=roles/cloudscheduler.admin
+//
+// Without (2), `pulumi up` fails with a 403 on cloudscheduler.jobs.create.
+// The grant cannot be expressed in this file because the deployer SA would
+// need the permission to grant itself the permission (chicken-and-egg).
 
 const bookingServiceUri = runners["booking-service"]!.uri;
 
