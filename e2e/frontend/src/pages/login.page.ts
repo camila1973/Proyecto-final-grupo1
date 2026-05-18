@@ -4,7 +4,7 @@ export class LoginPage {
   constructor(private readonly page: Page) {}
 
   async goto(): Promise<void> {
-    await this.page.goto('/#/login');
+    await this.page.goto('#/login');
   }
 
   async fillAndSubmit(email: string, password: string): Promise<void> {
