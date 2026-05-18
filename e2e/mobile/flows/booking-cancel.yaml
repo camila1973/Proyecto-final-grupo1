@@ -94,6 +94,15 @@ env:
 # per-card cancel button.
 - openLink: travelhub:///trips
 
+# Narrow the list to confirmed reservations — the e2e account accumulates
+# rows across runs (clearState only resets the app, not the DB), and on
+# "All" a leftover cancelled card can sit above the fold and push the
+# fresh confirmed one out of view. trips.tsx sorts newest-first by
+# createdAt, so the reservation we just paid for is at the top of the
+# Confirmed list and its per-card cancel CTA is always visible.
+- tapOn:
+    id: "filter-confirmed"
+
 - extendedWaitUntil:
     visible:
       id: "btn-cancel-reservation"
@@ -109,8 +118,27 @@ env:
 - tapOn:
     text: "Yes, cancel|Sí, cancelar"
 
-# After cancellation, the card reloads with the "cancelled" status chip
-# (bookings.status.cancelled).
+# Switch to the Cancelled pill before asserting the chip. On "All" a stale
+# cancelled card from a prior run would satisfy the text match without
+# proving this run's cancel actually went through; filtering forces the
+# assertion to depend on a row that wasn't there before this flow ran.
+#
+# The pill row is a horizontal ScrollView nested inside the FlatList's
+# ListHeaderComponent (trips.tsx FilterPills). scrollUntilVisible — even
+# with centerElement / visibilityPercentage tweaks — keeps targeting the
+# outer FlatList and never moves the row, so drive the gesture directly
+# with a coordinate swipe at the pill band (~18% of screen height, just
+# below "My Bookings"). One leftward swipe is enough on phone widths: at
+# Pixel 6 size only the four leftmost pills fit and Cancelled sits just
+# past Checked in.
+- swipe:
+    start: 90%, 18%
+    end: 10%, 18%
+    duration: 600
+
+- tapOn:
+    id: "filter-cancelled"
+
 - extendedWaitUntil:
     visible:
       text: "Cancelled|Cancelada"
