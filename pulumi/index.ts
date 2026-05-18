@@ -352,6 +352,28 @@ const authJwtSecretSecret = (() => {
   return secret;
 })();
 
+// ─── Secret Manager — shared secret for /internal/* endpoints ─────────────────
+// Cloud Scheduler sends this value in the X-Internal-Token header; booking-service
+// validates it in InternalTokenGuard (services/booking-service/src/reservations).
+
+const internalCronSecretValue = new random.RandomPassword("internal-cron-secret", {
+  length: 48,
+  special: false,
+});
+
+const internalCronSecret = (() => {
+  const secret = new gcp.secretmanager.Secret("secret-internal-cron", {
+    secretId: "travelhub-internal-cron-secret",
+    replication: { auto: {} },
+    labels: LABELS,
+  });
+  new gcp.secretmanager.SecretVersion("secret-internal-cron-version", {
+    secret: secret.id,
+    secretData: internalCronSecretValue.result,
+  });
+  return secret;
+})();
+
 // ─── Secret Manager — inter-service URL secrets ──────────────────────────────
 // Secret IDs are static strings known before any Cloud Run service is created,
 // so services can reference them without any cross-service Pulumi dependency.
@@ -550,6 +572,7 @@ for (const svc of MICROSERVICES) {
     secretEnvVars["INVENTORY_SERVICE_URL"]    = { secretId: urlSecrets["inventory-service"]!.secretId };
     secretEnvVars["NOTIFICATION_SERVICE_URL"] = { secretId: urlSecrets["notification-service"]!.secretId };
     secretEnvVars["PARTNERS_SERVICE_URL"]     = { secretId: urlSecrets["partners-service"]!.secretId };
+    secretEnvVars["INTERNAL_CRON_SECRET"]     = { secretId: internalCronSecret.secretId };
   }
 
   if (svc.name === "payment-service") {
@@ -614,6 +637,61 @@ for (const svc of MICROSERVICES) {
     secretData: runners[svc.name]!.uri,
   }, { ignoreChanges: ["secretData"] });
 }
+
+// ─── Cloud Scheduler — periodic sweeps for booking-service ────────────────────
+// Replaces the previous in-process @nestjs/schedule @Interval crons. Cloud Run
+// scales to zero when idle, so timers driven by the container don't fire
+// reliably; Cloud Scheduler decouples cadence from instance lifecycle.
+//
+// Auth: shared secret in the X-Internal-Token header validated by
+// services/booking-service/src/reservations/internal-token.guard.ts.
+//
+// NOTE: The Cloud Scheduler API (`cloudscheduler.googleapis.com`) must be
+// enabled on the project. Enable once via:
+//   gcloud services enable cloudscheduler.googleapis.com --project=$PROJECT
+
+const bookingServiceUri = runners["booking-service"]!.uri;
+
+new gcp.cloudscheduler.Job("expire-holds-cron", {
+  name:        "travelhub-expire-holds",
+  description: "Sweep held reservations whose TTL elapsed; releases inventory.",
+  schedule:    "* * * * *",       // every minute
+  timeZone:    "Etc/UTC",
+  region:      REGION,
+  attemptDeadline: "60s",
+  retryConfig: { retryCount: 1, maxBackoffDuration: "30s", minBackoffDuration: "5s" },
+  httpTarget: {
+    uri:        pulumi.interpolate`${bookingServiceUri}/reservations/expire-holds`,
+    httpMethod: "POST",
+    headers: {
+      "X-Internal-Token": internalCronSecretValue.result,
+      "Content-Type":     "application/json",
+    },
+    body: Buffer.from("{}").toString("base64"),
+  },
+});
+
+new gcp.cloudscheduler.Job("mark-no-shows-cron", {
+  name:        "travelhub-mark-no-shows",
+  description: "Flip stale confirmed reservations (check_in past) to no_show.",
+  // Daily at 02:00 UTC. The sweep only matches `check_in < today`, so one
+  // pass per day after midnight (plus a 2h buffer for late arrivals) is
+  // sufficient and the cheapest cadence.
+  schedule:    "0 2 * * *",
+  timeZone:    "Etc/UTC",
+  region:      REGION,
+  attemptDeadline: "300s",
+  retryConfig: { retryCount: 1, maxBackoffDuration: "60s", minBackoffDuration: "10s" },
+  httpTarget: {
+    uri:        pulumi.interpolate`${bookingServiceUri}/reservations/mark-no-shows`,
+    httpMethod: "POST",
+    headers: {
+      "X-Internal-Token": internalCronSecretValue.result,
+      "Content-Type":     "application/json",
+    },
+    body: Buffer.from("{}").toString("base64"),
+  },
+});
 
 // ─── Frontend — Cloud Storage static website (~$1/month) ─────────────────────
 

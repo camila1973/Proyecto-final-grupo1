@@ -1,12 +1,18 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { Interval } from "@nestjs/schedule";
 import { ReservationsRepository } from "./reservations.repository.js";
 import { ReservationsService } from "./reservations.service.js";
 import { CacheService } from "../cache/cache.service.js";
 
-const NO_SHOW_INTERVAL_MS = 3_600_000; // 1 hour
 const LOCK_KEY = "booking:no-show:lock";
-const LOCK_TTL_SECONDS = 3_700; // interval + 100s buffer
+// Cloud Scheduler runs this daily; the lock just needs to outlast the sweep
+// plus one retry. attemptDeadline=300s, retryCount=1, maxBackoff=60s →
+// worst case ~660s. 900s gives margin without holding the lock unnecessarily.
+const LOCK_TTL_SECONDS = 900;
+
+export interface MarkNoShowsResult {
+  processed: number;
+  skipped: boolean;
+}
 
 @Injectable()
 export class NoShowService {
@@ -18,21 +24,27 @@ export class NoShowService {
     private readonly cache: CacheService,
   ) {}
 
-  @Interval(NO_SHOW_INTERVAL_MS)
-  async markStaleConfirmedAsNoShow(): Promise<void> {
+  // Invoked by Cloud Scheduler via POST /internal/reservations/mark-no-shows.
+  // The Redis lock guards against duplicate executions when Cloud Scheduler
+  // retries on transient failures.
+  async markStaleConfirmedAsNoShow(): Promise<MarkNoShowsResult> {
     const acquired = await this.cache.acquireLock(LOCK_KEY, LOCK_TTL_SECONDS);
-    if (!acquired) return;
+    if (!acquired) return { processed: 0, skipped: true };
 
     const stale = await this.reservationsRepo.findStaleConfirmed();
+    let processed = 0;
 
     for (const row of stale) {
       try {
         await this.reservationsService.noShow(row.id);
+        processed += 1;
       } catch (err) {
         this.logger.warn(
           `Failed to mark reservation ${row.id} as no_show: ${err}`,
         );
       }
     }
+
+    return { processed, skipped: false };
   }
 }

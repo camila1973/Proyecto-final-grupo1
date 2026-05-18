@@ -52,7 +52,9 @@
     "e2e:web:ui": "playwright test --config e2e/frontend/playwright.config.ts --ui",
     "e2e:web:flow": "sh -c 'playwright test --config e2e/frontend/playwright.config.ts e2e/frontend/src/tests/$0'",
     "e2e:web:report": "playwright show-report playwright-report/frontend",
-    "e2e:web:record": "playwright codegen http://localhost:4200"
+    "e2e:web:record": "playwright codegen http://localhost:4200",
+    "cron:expire-holds": "curl -fsS -X POST http://localhost:3004/reservations/expire-holds -H 'X-Internal-Token: local-cron-dev-secret'",
+    "cron:mark-no-shows": "curl -fsS -X POST http://localhost:3004/reservations/mark-no-shows -H 'X-Internal-Token: local-cron-dev-secret'"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

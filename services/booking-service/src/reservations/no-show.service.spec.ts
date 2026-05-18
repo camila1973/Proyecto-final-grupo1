@@ -41,8 +41,9 @@ describe("NoShowService", () => {
         acquireLock: jest.fn().mockResolvedValue(false),
       });
 
-      await service.markStaleConfirmedAsNoShow();
+      const result = await service.markStaleConfirmedAsNoShow();
 
+      expect(result).toEqual({ processed: 0, skipped: true });
       expect(findStaleConfirmed).not.toHaveBeenCalled();
     });
 
@@ -51,8 +52,9 @@ describe("NoShowService", () => {
         findStaleConfirmed: jest.fn().mockResolvedValue([]),
       });
 
-      await service.markStaleConfirmedAsNoShow();
+      const result = await service.markStaleConfirmedAsNoShow();
 
+      expect(result).toEqual({ processed: 0, skipped: false });
       expect(noShow).not.toHaveBeenCalled();
     });
 
@@ -66,8 +68,9 @@ describe("NoShowService", () => {
         findStaleConfirmed: jest.fn().mockResolvedValue(rows),
       });
 
-      await service.markStaleConfirmedAsNoShow();
+      const result = await service.markStaleConfirmedAsNoShow();
 
+      expect(result).toEqual({ processed: 3, skipped: false });
       expect(noShow).toHaveBeenCalledTimes(3);
       expect(noShow).toHaveBeenNthCalledWith(1, "r1");
       expect(noShow).toHaveBeenNthCalledWith(2, "r2");
@@ -84,7 +87,10 @@ describe("NoShowService", () => {
           .mockResolvedValueOnce({ id: "r2" }),
       });
 
-      await expect(service.markStaleConfirmedAsNoShow()).resolves.not.toThrow();
+      const result = await service.markStaleConfirmedAsNoShow();
+
+      // Only the second row counted as processed; the first failed.
+      expect(result).toEqual({ processed: 1, skipped: false });
       expect(noShow).toHaveBeenCalledTimes(2);
     });
   });

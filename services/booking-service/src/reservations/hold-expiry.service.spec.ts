@@ -47,8 +47,9 @@ describe("HoldExpiryService", () => {
         acquireLock: jest.fn().mockResolvedValue(false),
       });
 
-      await service.expireHolds();
+      const result = await service.expireHolds();
 
+      expect(result).toEqual({ processed: 0, skipped: true });
       expect(findExpiredHolds).not.toHaveBeenCalled();
     });
 
@@ -57,8 +58,9 @@ describe("HoldExpiryService", () => {
         findExpiredHolds: jest.fn().mockResolvedValue([]),
       });
 
-      await service.expireHolds();
+      const result = await service.expireHolds();
 
+      expect(result).toEqual({ processed: 0, skipped: false });
       expect(expire).not.toHaveBeenCalled();
       expect(unhold).not.toHaveBeenCalled();
     });
@@ -70,8 +72,9 @@ describe("HoldExpiryService", () => {
         expire: jest.fn().mockResolvedValue(makeRow({ status: "expired" })),
       });
 
-      await service.expireHolds();
+      const result = await service.expireHolds();
 
+      expect(result).toEqual({ processed: 1, skipped: false });
       expect(expire).toHaveBeenCalledWith(row.id, "hold ttl elapsed");
       expect(unhold).toHaveBeenCalledWith(
         row.room_id,
@@ -111,8 +114,9 @@ describe("HoldExpiryService", () => {
         expire: jest.fn().mockResolvedValue(makeRow({ status: "expired" })),
       });
 
-      await service.expireHolds();
+      const result = await service.expireHolds();
 
+      expect(result).toEqual({ processed: 2, skipped: false });
       expect(expire).toHaveBeenCalledTimes(2);
       expect(unhold).toHaveBeenCalledTimes(2);
     });
