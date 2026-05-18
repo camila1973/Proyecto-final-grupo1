@@ -41,7 +41,6 @@
       ],
       "./plugins/withCoreSplashscreen",
       "./plugins/withAndroidAbiOverride",
-      "./plugins/withExpoPodsSwift6",
       [
         "expo-splash-screen",
         {
