@@ -18,8 +18,12 @@ export class ProxyService {
   async forward(targetUrl: string, req: Request): Promise<ProxyResult> {
     const method = req.method.toUpperCase();
     const isBodyless = ["GET", "HEAD", "DELETE"].includes(method);
+    const incomingContentType = req.headers["content-type"];
     const headers: Record<string, string> = {
-      "content-type": "application/json",
+      "content-type":
+        typeof incomingContentType === "string"
+          ? incomingContentType
+          : "application/json",
     };
     if (req.headers.authorization)
       headers["authorization"] = req.headers.authorization;
@@ -29,6 +33,9 @@ export class ProxyService {
       "x-user-role",
       "x-partner-id",
       "x-property-id",
+      // Stripe signs the raw request bytes; the verifier in payment-service
+      // compares this header against req.rawBody, so it must pass through.
+      "stripe-signature",
     ] as const;
     for (const name of passthrough) {
       const value = req.headers[name];
@@ -37,12 +44,19 @@ export class ProxyService {
 
     this.logger.log(`→ ${method} ${targetUrl}`);
 
+    // Prefer rawBody (captured because NestFactory was started with rawBody: true)
+    // so signed payloads like Stripe webhooks aren't re-serialized in transit.
+    const rawBody = (req as Request & { rawBody?: Buffer }).rawBody;
+    const forwardBody = isBodyless
+      ? undefined
+      : (rawBody ?? JSON.stringify(req.body));
+
     let response: globalThis.Response;
     try {
       response = await fetch(targetUrl, {
         method,
         headers,
-        body: isBodyless ? undefined : JSON.stringify(req.body),
+        body: forwardBody,
       });
     } catch (err) {
       this.logger.error(
