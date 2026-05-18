@@ -101,6 +101,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Expo SDK 55 / expo-modules-core 55 ships Swift 6.2 syntax
+      # (@MainActor on protocol conformance — SE-0470). The runner's default
+      # selection is Xcode 16.4 (Swift 6.0), which rejects it as
+      # "unknown attribute 'MainActor'". Pin the latest stable Xcode so the
+      # toolchain matches the source.
+      - name: Select latest stable Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
       - name: Setup (pnpm + Node + deps)
         uses: ./.github/actions/setup
 
