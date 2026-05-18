@@ -4,7 +4,10 @@ import { ReservationsService } from "./reservations.service.js";
 import { CacheService } from "../cache/cache.service.js";
 
 const LOCK_KEY = "booking:no-show:lock";
-const LOCK_TTL_SECONDS = 3_700; // covers an hourly cadence with buffer
+// Cloud Scheduler runs this daily; the lock just needs to outlast the sweep
+// plus one retry. attemptDeadline=300s, retryCount=1, maxBackoff=60s →
+// worst case ~660s. 900s gives margin without holding the lock unnecessarily.
+const LOCK_TTL_SECONDS = 900;
 
 export interface MarkNoShowsResult {
   processed: number;

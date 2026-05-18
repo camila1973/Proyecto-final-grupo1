@@ -674,7 +674,10 @@ new gcp.cloudscheduler.Job("expire-holds-cron", {
 new gcp.cloudscheduler.Job("mark-no-shows-cron", {
   name:        "travelhub-mark-no-shows",
   description: "Flip stale confirmed reservations (check_in past) to no_show.",
-  schedule:    "0 * * * *",       // hourly on the hour
+  // Daily at 02:00 UTC. The sweep only matches `check_in < today`, so one
+  // pass per day after midnight (plus a 2h buffer for late arrivals) is
+  // sufficient and the cheapest cadence.
+  schedule:    "0 2 * * *",
   timeZone:    "Etc/UTC",
   region:      REGION,
   attemptDeadline: "300s",
