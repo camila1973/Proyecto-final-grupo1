@@ -14,7 +14,7 @@ export class SearchPage {
       checkOut: BOOKING_WINDOW.checkOut,
       guests: String(BOOKING_WINDOW.guests),
     });
-    await this.page.goto(`/#/search?${search.toString()}`);
+    await this.page.goto(`#/search?${search.toString()}`);
   }
 
   // Each result card exposes a "Reservar" button. The seed has 3 Cancún

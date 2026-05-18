@@ -4,7 +4,7 @@ export class TripsPage {
   constructor(private readonly page: Page) {}
 
   async goto(): Promise<void> {
-    await this.page.goto('/#/trips');
+    await this.page.goto('#/trips');
     // The trips heading is a styled <p>, not an actual heading element. Wait
     // on the URL and the "Mis reservaciones" text anywhere on the page (the
     // navbar entry doesn't count — it's a button — but the page title does).
